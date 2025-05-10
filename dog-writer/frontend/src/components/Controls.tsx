@@ -1,24 +1,17 @@
 import React from 'react';
+import { useAppContext } from '../contexts/AppContext';
 
-interface ControlsProps {
-  authorPersona: string;
-  helpFocus: string;
-  selectedLLM: string;
-  onAuthorChange: (author: string) => void;
-  onHelpFocusChange: (focus: string) => void;
-  onLLMChange: (llm: string) => void;
-  onSaveCheckpoint: () => void;
-}
+const Controls: React.FC = () => {
+  const {
+    authorPersona,
+    helpFocus,
+    selectedLLM,
+    setAuthorPersona,
+    setHelpFocus,
+    setSelectedLLM,
+    handleSaveCheckpoint
+  } = useAppContext();
 
-const Controls: React.FC<ControlsProps> = ({
-  authorPersona,
-  helpFocus,
-  selectedLLM,
-  onAuthorChange,
-  onHelpFocusChange,
-  onLLMChange,
-  onSaveCheckpoint
-}) => {
   const authors = [
     "Ernest Hemingway",
     "Jane Austen",
@@ -45,7 +38,7 @@ const Controls: React.FC<ControlsProps> = ({
         <select
           id="author-select"
           value={authorPersona}
-          onChange={(e) => onAuthorChange(e.target.value)}
+          onChange={(e) => setAuthorPersona(e.target.value)}
           className="select-control"
         >
           {authors.map(author => (
@@ -59,7 +52,7 @@ const Controls: React.FC<ControlsProps> = ({
         <select
           id="focus-select"
           value={helpFocus}
-          onChange={(e) => onHelpFocusChange(e.target.value)}
+          onChange={(e) => setHelpFocus(e.target.value)}
           className="select-control"
         >
           {helpFocuses.map(focus => (
@@ -73,7 +66,7 @@ const Controls: React.FC<ControlsProps> = ({
         <select
           id="llm-select"
           value={selectedLLM}
-          onChange={(e) => onLLMChange(e.target.value)}
+          onChange={(e) => setSelectedLLM(e.target.value)}
           className="select-control"
         >
           {llmOptions.map(llm => (
@@ -84,7 +77,7 @@ const Controls: React.FC<ControlsProps> = ({
 
       <button 
         className="checkpoint-button"
-        onClick={onSaveCheckpoint}
+        onClick={handleSaveCheckpoint}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>

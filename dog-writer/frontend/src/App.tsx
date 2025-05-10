@@ -28,48 +28,22 @@ This refactoring will improve:
 - Performance through better component isolation
 */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, Link, Outlet } from 'react-router-dom';
 import Editor from './components/Editor';
 import ChatPane from './components/ChatPane';
 import Controls from './components/Controls';
-import api, { ChatMessage } from './services/api';
 import MangaStudioPage from './pages/MangaStudioPage';
 import VoiceNotesPage from './pages/VoiceNotesPage';
 import './App.css';
-import { useChat } from './hooks/useChat';
-import { useEditor } from './hooks/useEditor';
-import { useApiHealth } from './hooks/useApiHealth';
-
-// Type for API errors from AxiosError-like objects
-interface ApiErrorData {
-  error?: string; // Common pattern for FastAPI validation errors or custom errors
-  detail?: string | Array<{ loc: string[]; msg: string; type: string }>; // FastAPI validation errors often have detail
-  // Allow other string-keyed properties
-  [key: string]: unknown;
-}
-
-interface ApiError {
-  message: string;
-  response?: {
-    status: number;
-    statusText: string;
-    data?: ApiErrorData; // More specific type for error data
-  };
-  request?: unknown; // Use unknown for request as its structure is complex and not directly used for error messages here
-}
+import { useAppContext } from './contexts/AppContext';
 
 // Main layout component that includes header and controls
-const AppLayout: React.FC<{ 
-  authorPersona: string; 
-  helpFocus: string; 
-  selectedLLM: string;
-  onAuthorChange: (val: string) => void;
-  onHelpFocusChange: (val: string) => void;
-  onLLMChange: (val: string) => void;
-  onSaveCheckpoint: () => void;
-  apiGlobalError: string | null;
-}> = ({ authorPersona, helpFocus, selectedLLM, onAuthorChange, onHelpFocusChange, onLLMChange, onSaveCheckpoint, apiGlobalError }) => {
+const AppLayout: React.FC = () => {
+  const { 
+    apiGlobalError 
+  } = useAppContext();
+
   return (
     <>
       <header className="app-header">
@@ -80,15 +54,7 @@ const AppLayout: React.FC<{
           <Link to="/voice-notes">Voice Notes</Link>
         </nav>
       </header>
-      <Controls
-        authorPersona={authorPersona}
-        helpFocus={helpFocus}
-        selectedLLM={selectedLLM}
-        onAuthorChange={onAuthorChange}
-        onHelpFocusChange={onHelpFocusChange}
-        onLLMChange={onLLMChange}
-        onSaveCheckpoint={onSaveCheckpoint}
-      />
+      <Controls />
       {apiGlobalError && (
         <div className="api-error-banner global-api-error">
           <p>{apiGlobalError}</p>
@@ -100,218 +66,184 @@ const AppLayout: React.FC<{
 };
 
 // Component for the main Writer's Desk (Editor + Chat)
-const WritersDesk: React.FC<{
-  editorContent: string;
-  setEditorContent: (content: string) => void;
-  handleTextHighlighted: (text: string) => void;
-  messages: ChatMessage[];
-  handleSendMessage: (message: string) => Promise<void>;
-  thinkingTrail: string | null;
-  highlightedText: string | null;
-  helpFocus: string;
-  authorPersona: string;
-  isStreaming: boolean;
-  streamingText: string;
-  isThinking: boolean;
-  chatApiError: string | null;
-}> = (props) => {
+const WritersDesk: React.FC = () => {
+  const {
+    editorContent,
+    setEditorContent,
+    handleTextHighlighted,
+    chatApiError
+  } = useAppContext();
+
   return (
     <main className="app-content">
       <div className="editor-pane">
         <Editor 
-          content={props.editorContent} 
-          onChange={props.setEditorContent}
-          onTextHighlighted={props.handleTextHighlighted}
+          content={editorContent} 
+          onChange={setEditorContent}
+          onTextHighlighted={handleTextHighlighted}
         />
       </div>
       <div className="chat-and-manga-pane">
-        {props.chatApiError && (
+        {chatApiError && (
           <div className="api-error-banner chat-api-error">
-            <p>{props.chatApiError}</p>
+            <p>{chatApiError}</p>
           </div>
         )}
-        <ChatPane 
-          messages={props.messages} 
-          onSendMessage={props.handleSendMessage}
-          thinkingTrail={props.thinkingTrail}
-          highlightedText={props.highlightedText}
-          helpFocus={props.helpFocus}
-          authorPersona={props.authorPersona}
-          isStreaming={props.isStreaming}
-          streamingText={props.streamingText}
-          isThinking={props.isThinking}
-        />
+        <ChatPane />
       </div>
     </main>
   );
 };
 
 function App() {
-  const [authorPersona, setAuthorPersona] = useState('Ernest Hemingway');
-  const [helpFocus, setHelpFocus] = useState('Dialogue Writing');
-  const [selectedLLM, setSelectedLLM] = useState('Google Gemini');
-
-  const { apiGlobalError, setApiGlobalError, checkApiConnection, clearApiGlobalError } = useApiHealth();
-
-  const {
-    editorContent,
-    setEditorContent,
-    highlightedText,
-    handleTextHighlighted,
-  } = useEditor({});
-
-  const {
-    messages,
-    thinkingTrail,
-    apiError: chatApiError,
-    isStreaming,
-    streamText,
-    isThinking,
-    handleSendMessage,
-  } = useChat({
-    authorPersona,
-    helpFocus,
-    editorContent,
-    selectedLLM,
-  });
-
-  const handleSaveCheckpoint = async () => {
-    console.log("Save Checkpoint clicked");
-    try {
-      await api.createCheckpoint({ editor_text: editorContent, chat_history: messages });
-      console.log("Checkpoint saved successfully.");
-    } catch (error) {
-      const typedError = error as ApiError;
-      let specificApiError = `Error saving checkpoint: ${typedError.message || 'Unknown error'}`;
-      if (typedError.response && typedError.response.data) {
-        const errorDetail = typedError.response.data.detail || typedError.response.data.error || JSON.stringify(typedError.response.data);
-        specificApiError = `Checkpoint API error: ${typedError.response.status} - ${errorDetail}`;
-      } else if (typedError.response) {
-        specificApiError = `Checkpoint API error: ${typedError.response.status} - ${typedError.response.statusText}`;
-      }
-      setApiGlobalError(specificApiError);
-    }
-  };
-
   return (
     <div className="app">
       <Routes>
-        <Route 
-          path="/" 
-          element={(
-            <AppLayout 
-              authorPersona={authorPersona} 
-              helpFocus={helpFocus} 
-              selectedLLM={selectedLLM} 
-              onAuthorChange={setAuthorPersona} 
-              onHelpFocusChange={setHelpFocus} 
-              onLLMChange={setSelectedLLM}
-              onSaveCheckpoint={handleSaveCheckpoint}
-              apiGlobalError={apiGlobalError}
-            />
-          )}
-        >
-          <Route 
-            index 
-            element={(
-              <WritersDesk 
-                editorContent={editorContent}
-                setEditorContent={setEditorContent}
-                handleTextHighlighted={handleTextHighlighted}
-                messages={messages}
-                handleSendMessage={handleSendMessage}
-                thinkingTrail={thinkingTrail}
-                highlightedText={highlightedText}
-                helpFocus={helpFocus}
-                authorPersona={authorPersona}
-                isStreaming={isStreaming}
-                streamingText={streamText}
-                isThinking={isThinking}
-                chatApiError={chatApiError}
-              />
-            )} 
-          />
-          <Route 
-            path="manga" 
-            element={(
-              <MangaStudioPage 
-                editorStoryText={editorContent} 
-                currentAuthorPersona={authorPersona} 
-              />
-            )} 
-          />
-          <Route 
-            path="voice-notes" 
-            element={<VoiceNotesPage />} 
-          />
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<WritersDesk />} />
+          <Route path="manga" element={<MangaStudioPage />} />
+          <Route path="voice-notes" element={<VoiceNotesPage />} />
         </Route>
       </Routes>
       
       <style>{`
-        .app-nav {
-          margin-left: auto;
-          display: flex;
-          gap: 1rem;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        :root {
+          --primary: #6366f1;
+          --primary-light: #818cf8;
+          --primary-dark: #4f46e5;
+          --accent-color: #14b8a6;
+          --accent-light: #5eead4; 
+          --text-primary: #0f172a;
+          --text-secondary: #334155;
+          --text-tertiary: #64748b;
+          --bg-main: #f8fafc;
+          --bg-panel: #ffffff;
+          --border-color: #e2e8f0;
+          --rounded-sm: 0.25rem;
+          --rounded-md: 0.375rem;
+          --rounded-lg: 0.5rem;
+          --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
-        .app-nav a {
-          color: white;
-          text-decoration: none;
-          padding: 0.5rem 1rem;
-          border-radius: 4px;
-          transition: background-color 0.2s;
-        }
-        .app-nav a:hover, .app-nav a.active {
-          background-color: rgba(255,255,255,0.2);
-        }
-        .api-error-banner {
-          background-color: #fee2e2;
-          color: #b91c1c;
-          padding: 10px;
+
+        * {
+          box-sizing: border-box;
           margin: 0;
-          text-align: center;
-          border: 1px solid #fecaca;
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          width: 100%;
-          z-index: 1000;
+          padding: 0;
         }
+
+        body {
+          font-family: var(--font-primary);
+          background-color: var(--bg-main);
+          color: var(--text-primary);
+        }
+
         .app {
-          display: flex;
-          flex-direction: column;
           height: 100vh;
           overflow: hidden;
-        }
-        .app-content {
-          flex: 1;
-          overflow: hidden;
-          padding: 1.5rem;
-          gap: 1.5rem;
-          display: flex;
-        }
-        .editor-pane, .chat-and-manga-pane {
-          flex: 1;
-          min-width: 0;
           display: flex;
           flex-direction: column;
+        }
+
+        .app-header {
+          display: flex;
+          align-items: center;
+          padding: 0.75rem 1.5rem;
+          background-color: var(--primary);
+          color: white;
+          z-index: 10;
+        }
+
+        .app-header h1 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-right: 2rem;
+        }
+
+        .app-nav {
+          display: flex;
+          gap: 1.5rem;
+        }
+
+        .app-nav a {
+          color: rgba(255, 255, 255, 0.85);
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.875rem;
+          padding: 0.25rem 0.5rem;
+          border-radius: var(--rounded-sm);
+          transition: all 0.2s;
+        }
+
+        .app-nav a:hover {
+          color: white;
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .app-content {
+          display: flex;
+          flex: 1;
           overflow: hidden;
-          background-color: white;
         }
-        .chat-pane .messages-container {
-          background-color: white !important;
+
+        .editor-pane {
+          flex: 1;
+          max-width: 50%;
+          border-right: 1px solid var(--border-color);
+          overflow: auto;
         }
-        .chat-pane .chat-container {
-          background-color: white !important;
+
+        .chat-and-manga-pane {
+          flex: 1;
+          overflow: auto;
+          position: relative;
         }
+
+        .api-error-banner {
+          background-color: #fee2e2;
+          border-left: 4px solid #ef4444;
+          color: #b91c1c;
+          padding: 0.75rem 1rem;
+          margin-bottom: 1rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          animation: slideDown 0.3s ease;
+        }
+
+        .global-api-error {
+          margin: 0.5rem 1rem;
+          border-radius: var(--rounded-md);
+        }
+
+        .chat-api-error {
+          margin: 0.5rem;
+          border-radius: var(--rounded-md);
+        }
+
+        @keyframes slideDown {
+          from {
+            transform: translateY(-10px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
         @media (max-width: 768px) {
           .app-content {
             flex-direction: column;
-            overflow-y: auto;
           }
-          .editor-pane, .chat-and-manga-pane {
-            height: auto;
-            flex: 1;
-            overflow: visible;
+          
+          .editor-pane {
+            max-width: 100%;
+            height: 50vh;
+            border-right: none;
+            border-bottom: 1px solid var(--border-color);
           }
         }
       `}</style>

@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import api, { MangaPageFE, MangaScriptResponseFE } from '../services/api';
 import MangaDisplay from '../components/MangaDisplay';
 import '../App.css'; // Assuming some shared styles might be in App.css or a global one
+import { useAppContext } from '../contexts/AppContext';
 
-interface MangaStudioPageProps {
-  editorStoryText: string;
-  currentAuthorPersona: string;
-}
-
-const MangaStudioPage: React.FC<MangaStudioPageProps> = ({ editorStoryText, currentAuthorPersona }) => {
+const MangaStudioPage: React.FC = () => {
+  const { editorContent, authorPersona } = useAppContext();
+  
   const [mangaPageData, setMangaPageData] = useState<MangaPageFE | null>(null);
   const [isGeneratingManga, setIsGeneratingManga] = useState(false);
   const [mangaError, setMangaError] = useState<string | null>(null);
@@ -16,13 +14,13 @@ const MangaStudioPage: React.FC<MangaStudioPageProps> = ({ editorStoryText, curr
   const [useEditorText, setUseEditorText] = useState<boolean>(true);
 
   const handleLoadFromEditor = () => {
-    setStoryText(editorStoryText);
+    setStoryText(editorContent);
     setUseEditorText(false);
   };
 
   const handleGenerateManga = async () => {
-    // Determine which text to use - either from editor (via props) or the local text input
-    const textToUse = useEditorText ? editorStoryText : storyText;
+    // Determine which text to use - either from editor (via context) or the local text input
+    const textToUse = useEditorText ? editorContent : storyText;
     
     if (!textToUse.trim()) {
       setMangaError("Please provide some story text first, either from the editor or by typing it here.");
@@ -34,7 +32,7 @@ const MangaStudioPage: React.FC<MangaStudioPageProps> = ({ editorStoryText, curr
     try {
       const response: MangaScriptResponseFE = await api.generateMangaScript({
         story_text: textToUse,
-        author_persona: currentAuthorPersona
+        author_persona: authorPersona
       });
       if (response.error) {
         setMangaError(response.error);
@@ -86,7 +84,7 @@ const MangaStudioPage: React.FC<MangaStudioPageProps> = ({ editorStoryText, curr
           <button 
             onClick={handleLoadFromEditor} 
             className="load-editor-text-button"
-            disabled={!editorStoryText.trim()}
+            disabled={!editorContent.trim()}
           >
             Load Text from Editor
           </button>
@@ -106,14 +104,14 @@ const MangaStudioPage: React.FC<MangaStudioPageProps> = ({ editorStoryText, curr
           <div className="editor-preview">
             <h3>Text from Writer's Desk:</h3>
             <div className="editor-text-preview">
-              {editorStoryText || "(No text available in editor)"}
+              {editorContent || "(No text available in editor)"}
             </div>
           </div>
         )}
 
         <button 
           onClick={handleGenerateManga} 
-          disabled={isGeneratingManga || (useEditorText && !editorStoryText.trim()) || (!useEditorText && !storyText.trim())} 
+          disabled={isGeneratingManga || (useEditorText && !editorContent.trim()) || (!useEditorText && !storyText.trim())} 
           className="manga-generate-button"
         >
           {isGeneratingManga ? 'Generating Manga Page...' : 'Generate Manga'}
