@@ -2,14 +2,31 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Paragraph from '@tiptap/extension-paragraph';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAppContext } from '../contexts/AppContext';
 
 interface EditorProps {
-  content: string;
-  onChange: (content: string) => void;
-  onTextHighlighted: (text: string) => void;
+  content?: string;
+  onChange?: (content: string) => void;
+  onTextHighlighted?: (text: string) => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ content, onChange, onTextHighlighted }) => {
+const Editor: React.FC<EditorProps> = ({ 
+  content: contentProp, 
+  onChange: onChangeProp, 
+  onTextHighlighted: onTextHighlightedProp 
+}) => {
+  // Use context values as fallback if props are not provided
+  const { 
+    editorContent: contextContent, 
+    setEditorContent: contextOnChange,
+    handleTextHighlighted: contextOnTextHighlighted
+  } = useAppContext();
+
+  // Use props if provided, otherwise use context
+  const content = contentProp !== undefined ? contentProp : contextContent;
+  const onChange = onChangeProp || contextOnChange;
+  const onTextHighlighted = onTextHighlightedProp || contextOnTextHighlighted;
+
   const [fontSize, setFontSize] = useState('16px');
   const [fontFamily, setFontFamily] = useState('Inter');
   
@@ -18,11 +35,18 @@ const Editor: React.FC<EditorProps> = ({ content, onChange, onTextHighlighted })
       StarterKit,
       Paragraph,
     ],
-    content: '',
+    content: content || '',
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
   });
+
+  // Update editor content when the content prop changes
+  useEffect(() => {
+    if (editor && content && editor.getHTML() !== content) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
   
   // Set up placeholder effect
   useEffect(() => {

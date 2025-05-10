@@ -72,50 +72,29 @@ Benefits:
 - Better code organization
 */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage } from '../services/api';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useAppContext } from '../contexts/AppContext';
 
-interface ChatPaneProps {
-  messages: ChatMessage[];
-  onSendMessage: (message: string) => void;
-  thinkingTrail?: string | null;
-  highlightedText?: string | null;
-  helpFocus?: string;
-  authorPersona?: string;
-  isStreaming?: boolean;
-  streamingText?: string;
-  isThinking?: boolean;
-}
+const ChatPane: React.FC = () => {
+  const { 
+    messages, 
+    handleSendMessage, 
+    thinkingTrail,
+    highlightedText,
+    helpFocus,
+    authorPersona,
+    isStreaming,
+    streamText,
+    isThinking
+  } = useAppContext();
 
-const ChatPane: React.FC<ChatPaneProps> = ({ 
-  messages, 
-  onSendMessage, 
-  thinkingTrail,
-  highlightedText,
-  helpFocus = "Dialogue Writing",
-  authorPersona = "Ernest Hemingway",
-  isStreaming = false,
-  streamingText = '',
-  isThinking = false
-}) => {
   const [newMessage, setNewMessage] = useState('');
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Generate suggested questions when text is highlighted or focus changes
-  useEffect(() => {
-    if (highlightedText) {
-      generateSuggestedQuestions(helpFocus);
-    }
-  }, [highlightedText, helpFocus, authorPersona]);
-
-  const generateSuggestedQuestions = (focus: string) => {
+  // Define the generateSuggestedQuestions function with useCallback
+  const generateSuggestedQuestions = useCallback((focus: string) => {
     const questions: {[key: string]: string[]} = {
       "Dialogue Writing": [
         `How would ${authorPersona} improve this dialogue?`,
@@ -145,17 +124,29 @@ const ChatPane: React.FC<ChatPaneProps> = ({
     };
 
     setSuggestedQuestions(questions[focus] || questions["Overall Tone"]);
-  };
+  }, [authorPersona]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Generate suggested questions when text is highlighted or focus changes
+  useEffect(() => {
+    if (highlightedText) {
+      generateSuggestedQuestions(helpFocus);
+    }
+  }, [highlightedText, helpFocus, generateSuggestedQuestions]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const onSendMessageHandle = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim()) {
       console.log("Sending message:", newMessage);
-      onSendMessage(newMessage.trim());
+      handleSendMessage(newMessage.trim());
       setNewMessage('');
     }
   };
@@ -200,47 +191,15 @@ const ChatPane: React.FC<ChatPaneProps> = ({
                   <line x1="16" y1="2" x2="16" y2="6"></line>
                   <line x1="8" y1="2" x2="8" y2="6"></line>
                   <line x1="3" y1="10" x2="21" y2="10"></line>
-                  <path d="M8 14h.01"></path>
-                  <path d="M12 14h.01"></path>
-                  <path d="M16 14h.01"></path>
-                  <path d="M8 18h.01"></path>
-                  <path d="M12 18h.01"></path>
-                  <path d="M16 18h.01"></path>
                 </svg>
               </div>
             )}
-            <div className="message-bubble">
-              <div className="message-content">{msg.content}</div>
+            <div className="message-content">
+              {renderMessage(msg)}
             </div>
           </div>
         ))}
-        
-        {isThinking && (
-          <div className="message ai-message thinking-message">
-            <div className="message-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-                <path d="M8 14h.01"></path>
-                <path d="M12 14h.01"></path>
-                <path d="M16 14h.01"></path>
-                <path d="M8 18h.01"></path>
-                <path d="M12 18h.01"></path>
-                <path d="M16 18h.01"></path>
-              </svg>
-            </div>
-            <div className="message-bubble">
-              <div className="message-content thinking-content">
-                <span className="thinking-dots">
-                  <span>.</span><span>.</span><span>.</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-        
+
         {isStreaming && (
           <div className="message ai-message streaming-message">
             <div className="message-avatar">
@@ -249,73 +208,77 @@ const ChatPane: React.FC<ChatPaneProps> = ({
                 <line x1="16" y1="2" x2="16" y2="6"></line>
                 <line x1="8" y1="2" x2="8" y2="6"></line>
                 <line x1="3" y1="10" x2="21" y2="10"></line>
-                <path d="M8 14h.01"></path>
-                <path d="M12 14h.01"></path>
-                <path d="M16 14h.01"></path>
-                <path d="M8 18h.01"></path>
-                <path d="M12 18h.01"></path>
-                <path d="M16 18h.01"></path>
               </svg>
             </div>
-            <div className="message-bubble">
-              <div className="message-content">{streamingText}<span className="cursor-blink">|</span></div>
+            <div className="message-content">
+              {streamText}
+              <span className="typing-cursor"></span>
             </div>
           </div>
         )}
-        
-        {showThinkingTrail && thinkingTrail && (
-          <div className="thinking-trail-box">
-            <div className="thinking-trail-title">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 12h5"></path>
-                <path d="M9 12h5"></path>
-                <path d="M16 12h6"></path>
-                <path d="M2 6h20"></path>
-                <path d="M2 18h20"></path>
-              </svg>
-              AI Thinking Trail
-            </div>
-            <pre className="thinking-trail-content">{thinkingTrail}</pre>
-          </div>
-        )}
-        
-        {highlightedText && suggestedQuestions.length > 0 && (
-          <div className="suggested-questions">
-            <div className="suggested-questions-title">Suggested Questions:</div>
-            <div className="question-buttons">
-              {suggestedQuestions.map((question, index) => (
-                <button 
-                  key={index} 
-                  className="question-button"
-                  onClick={() => handleSelectQuestion(question)}
-                >
-                  {question}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        
+
         <div ref={messagesEndRef} />
       </div>
+
+      {showThinkingTrail && thinkingTrail && (
+        <div className="thinking-trail">
+          <div className="thinking-trail-header">AI Thinking Process:</div>
+          <div className="thinking-trail-content">{thinkingTrail}</div>
+        </div>
+      )}
+
+      {isThinking && (
+        <div className="thinking-indicator">
+          <div className="thinking-text">
+            <span>Owen is thinking</span>
+            <span className="thinking-dots">
+              <span className="dot">.</span>
+              <span className="dot">.</span>
+              <span className="dot">.</span>
+            </span>
+          </div>
+        </div>
+      )}
       
-      <form className="input-container" onSubmit={handleSendMessage}>
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={highlightedText ? "Ask about the highlighted text..." : "Ask your AI author..."}
-          className={`message-input ${newMessage ? 'has-text' : ''}`}
-          disabled={isStreaming}
-        />
-        <button type="submit" className="send-button" disabled={!newMessage.trim() || isStreaming}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
-      </form>
-      
+      {highlightedText && suggestedQuestions.length > 0 && (
+        <div className="suggested-questions">
+          <div className="suggested-title">Suggested questions:</div>
+          <div className="questions-list">
+            {suggestedQuestions.map((question, index) => (
+              <button 
+                key={index}
+                className="question-item"
+                onClick={() => handleSelectQuestion(question)}
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="chat-input">
+        <form onSubmit={onSendMessageHandle}>
+          <textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Ask Owen for writing help..."
+            className="chat-textarea"
+            disabled={isStreaming || isThinking}
+          />
+          <button 
+            type="submit" 
+            className="send-button"
+            disabled={!newMessage.trim() || isStreaming || isThinking}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
+
       <style>{`
         .chat-container {
           display: flex;
@@ -642,6 +605,52 @@ const ChatPane: React.FC<ChatPaneProps> = ({
       `}</style>
     </div>
   );
+};
+
+// Helper function to render message content with proper formatting
+const renderMessage = (message: { role: string; content: string }) => {
+  // Split by code blocks (if any)
+  const parts = message.content.split(/```(?:([a-zA-Z0-9]+)\n)?([\s\S]*?)```/g);
+  
+  // If no code blocks, return the content directly
+  if (parts.length === 1) {
+    return <p>{renderTextWithLineBreaks(message.content)}</p>;
+  }
+  
+  // Render the message with code blocks
+  return (
+    <div>
+      {parts.map((part, idx) => {
+        // Regular text part
+        if (idx % 3 === 0) {
+          return part ? <p key={idx}>{renderTextWithLineBreaks(part)}</p> : null;
+        }
+        // Language specification (parts[1], parts[4], etc.)
+        else if (idx % 3 === 1) {
+          return null; // We use this in the next part
+        }
+        // Code block content (parts[2], parts[5], etc.)
+        else {
+          const language = parts[idx - 1] || '';
+          return (
+            <pre key={idx} className={`code-block${language ? ` language-${language}` : ''}`}>
+              <code>{part}</code>
+            </pre>
+          );
+        }
+      })}
+    </div>
+  );
+};
+
+// Helper function to render text with line breaks
+const renderTextWithLineBreaks = (text: string) => {
+  return text.split('\n').map((line, i) => (
+    <React.Fragment key={i}>
+      {line}
+      {i < text.split('\n').length - 1 && <br />}
+    </React.Fragment>
+  ));
 };
 
 export default ChatPane; 

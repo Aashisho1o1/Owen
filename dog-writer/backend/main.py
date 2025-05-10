@@ -46,7 +46,7 @@ import asyncio # For running image generation concurrently
 from models.schemas import CheckpointRequest, MangaStoryRequest, MangaScriptResponse, MangaPage
 from services.llm_service import LLMService
 from services.persona_service import create_writer_persona
-from routers import chat_router, voice_router # MODIFIED: Added voice_router
+from routers import chat_router, voice_router, manga_router, checkpoint_router
 
 # Initialize LLM Service (this will handle API key loading via its own load_dotenv)
 # This instance can be made available to routers via dependency injection if needed,
@@ -54,7 +54,11 @@ from routers import chat_router, voice_router # MODIFIED: Added voice_router
 # For now, chat_router.py instantiates its own LLMService.
 # llm_service = LLMService() # Commented out as chat_router instantiates its own for now
 
-app = FastAPI()
+app = FastAPI(
+    title="DOG Writer API",
+    description="AI-powered writing assistant API",
+    version="0.1.0"
+)
 
 # Configure CORS - Ensure all origins are allowed for development
 origins = [
@@ -77,12 +81,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the chat router
+# Include all routers
 app.include_router(chat_router.router)
-app.include_router(voice_router.router) # NEW: Include the voice router
+app.include_router(voice_router.router)
+app.include_router(manga_router.router)
+app.include_router(checkpoint_router.router)
 
 @app.get("/api/health")
 def health_check():
+    """Simple health check endpoint"""
     return {"status": "ok"}
 
 # The original /api/chat endpoint has been moved to routers/chat_router.py

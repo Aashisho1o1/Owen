@@ -23,6 +23,7 @@ export interface UseChatOptions {
   helpFocus: string;
   editorContent: string;
   selectedLLM: string;
+  setApiGlobalError?: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export interface UseChatReturn {
@@ -35,7 +36,8 @@ export interface UseChatReturn {
   streamText: string;
   isThinking: boolean;
   handleSendMessage: (message: string) => Promise<void>;
-  fullResponse: string; // Added to allow parent component to know the full response for other uses if needed
+  handleSaveCheckpoint: () => Promise<void>;
+  fullResponse: string; 
 }
 
 export const useChat = ({
@@ -44,6 +46,7 @@ export const useChat = ({
   helpFocus,
   editorContent,
   selectedLLM,
+  setApiGlobalError,
 }: UseChatOptions): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
@@ -152,6 +155,30 @@ export const useChat = ({
     }
   }, [messages, editorContent, authorPersona, helpFocus, selectedLLM]);
 
+  const handleSaveCheckpoint = useCallback(async () => {
+    console.log("Save Checkpoint clicked");
+    try {
+      await api.createCheckpoint({ editor_text: editorContent, chat_history: messages });
+      console.log("Checkpoint saved successfully.");
+    } catch (error) {
+      const typedError = error as ApiError;
+      let specificApiError = `Error saving checkpoint: ${typedError.message || 'Unknown error'}`;
+      if (typedError.response && typedError.response.data) {
+        const errorDetail = typedError.response.data.detail || typedError.response.data.error || JSON.stringify(typedError.response.data);
+        specificApiError = `Checkpoint API error: ${typedError.response.status} - ${errorDetail}`;
+      } else if (typedError.response) {
+        specificApiError = `Checkpoint API error: ${typedError.response.status} - ${typedError.response.statusText}`;
+      }
+      
+      // Use global error setter if provided, otherwise use local error state
+      if (setApiGlobalError) {
+        setApiGlobalError(specificApiError);
+      } else {
+        setApiError(specificApiError);
+      }
+    }
+  }, [editorContent, messages, setApiGlobalError]);
+
   return {
     messages,
     setMessages, // Expose setMessages if direct manipulation is needed (e.g., for clearing chat)
@@ -162,6 +189,7 @@ export const useChat = ({
     streamText,
     isThinking,
     handleSendMessage,
+    handleSaveCheckpoint,
     fullResponse,
   };
 }; 

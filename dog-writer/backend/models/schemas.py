@@ -21,6 +21,10 @@ class CheckpointRequest(BaseModel):
     editor_text: str
     chat_history: List[ChatMessage]
 
+class CheckpointResponse(BaseModel):
+    status: str
+    message: str
+
 # --- New Models for Manga Feature ---
 class MangaStoryRequest(BaseModel):
     story_text: str
