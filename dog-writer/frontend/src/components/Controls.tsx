@@ -3,16 +3,20 @@ import React from 'react';
 interface ControlsProps {
   authorPersona: string;
   helpFocus: string;
+  selectedLLM: string;
   onAuthorChange: (author: string) => void;
   onHelpFocusChange: (focus: string) => void;
+  onLLMChange: (llm: string) => void;
   onSaveCheckpoint: () => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
   authorPersona,
   helpFocus,
+  selectedLLM,
   onAuthorChange,
   onHelpFocusChange,
+  onLLMChange,
   onSaveCheckpoint
 }) => {
   const authors = [
@@ -27,6 +31,11 @@ const Controls: React.FC<ControlsProps> = ({
     "Plot Development",
     "Character Introduction",
     "Overall Tone"
+  ];
+
+  const llmOptions = [
+    "Google Gemini",
+    "Anthropic Claude"
   ];
 
   return (
@@ -55,6 +64,20 @@ const Controls: React.FC<ControlsProps> = ({
         >
           {helpFocuses.map(focus => (
             <option key={focus} value={focus}>{focus}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="controls-group">
+        <label htmlFor="llm-select">AI Model</label>
+        <select
+          id="llm-select"
+          value={selectedLLM}
+          onChange={(e) => onLLMChange(e.target.value)}
+          className="select-control"
+        >
+          {llmOptions.map(llm => (
+            <option key={llm} value={llm}>{llm}</option>
           ))}
         </select>
       </div>
