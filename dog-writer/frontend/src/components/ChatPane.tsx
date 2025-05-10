@@ -1,11 +1,84 @@
+/*
+# REFACTORING PLAN
+
+This ChatPane component is extremely large (573 lines) and should be broken down into smaller, more focused components:
+
+1. Extract sub-components to their own files:
+   - `ChatMessage.tsx` - Display a single message 
+   - `ChatInput.tsx` - Handle message input and submission
+   - `ThinkingTrail.tsx` - Display thinking trail
+   - `ChatHeader.tsx` - Chat header with persona info
+
+2. Create utility functions for repeated logic:
+   - `utils/messageFormatting.ts` - Handle message formatting/parsing
+   - `utils/streamingText.ts` - Text streaming animation logic
+
+3. Extract styles to separate CSS files:
+   - `styles/ChatPane.css`
+   - `styles/ChatMessage.css`
+   - etc.
+
+Example implementation structure:
+
+```tsx
+// components/chat/ChatMessage.tsx
+export const ChatMessage = ({ message, highlightedText }) => {
+  return (
+    <div className={`chat-message ${message.role}`}>
+      <div className="message-content">{renderMessageContent(message, highlightedText)}</div>
+    </div>
+  );
+};
+
+// components/chat/ChatInput.tsx
+export const ChatInput = ({ onSendMessage, isDisabled }) => {
+  const [inputValue, setInputValue] = useState("");
+  // Input handling logic...
+  return (
+    <div className="chat-input-container">
+      <textarea value={inputValue} onChange={...} />
+      <button onClick={handleSend} disabled={isDisabled}>Send</button>
+    </div>
+  );
+};
+
+// ChatPane.tsx (much smaller)
+import { ChatMessage } from './chat/ChatMessage';
+import { ChatInput } from './chat/ChatInput';
+import { ThinkingTrail } from './chat/ThinkingTrail';
+import { ChatHeader } from './chat/ChatHeader';
+import './styles/ChatPane.css';
+
+const ChatPane = ({ messages, onSendMessage, ...otherProps }) => {
+  return (
+    <div className="chat-pane">
+      <ChatHeader authorPersona={otherProps.authorPersona} helpFocus={otherProps.helpFocus} />
+      <div className="messages-container">
+        {messages.map(message => <ChatMessage key={...} message={message} />)}
+        {otherProps.isStreaming && <StreamingMessage text={otherProps.streamingText} />}
+      </div>
+      <ThinkingTrail trail={otherProps.thinkingTrail} isThinking={otherProps.isThinking} />
+      <ChatInput onSendMessage={onSendMessage} isDisabled={otherProps.isStreaming || otherProps.isThinking} />
+    </div>
+  );
+};
+```
+
+Benefits:
+- Improved readability with smaller, focused components
+- Better testability
+- Easier maintenance
+- Potential for better performance through more targeted re-renders
+- Better code organization
+*/
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../services/api';
 
 interface ChatPaneProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
-  fillInTheBlanks?: string | null;
-  reasoning?: string | null;
+  thinkingTrail?: string | null;
   highlightedText?: string | null;
   helpFocus?: string;
   authorPersona?: string;
@@ -17,8 +90,7 @@ interface ChatPaneProps {
 const ChatPane: React.FC<ChatPaneProps> = ({ 
   messages, 
   onSendMessage, 
-  fillInTheBlanks,
-  reasoning,
+  thinkingTrail,
   highlightedText,
   helpFocus = "Dialogue Writing",
   authorPersona = "Ernest Hemingway",
@@ -27,7 +99,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({
   isThinking = false
 }) => {
   const [newMessage, setNewMessage] = useState('');
-  const [showReasoning, setShowReasoning] = useState(false);
+  const [showThinkingTrail, setShowThinkingTrail] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -96,14 +168,16 @@ const ChatPane: React.FC<ChatPaneProps> = ({
     <div className="chat-container">
       <div className="chat-header">
         <h2>AI Author Chat</h2>
-        {reasoning && (
-          <button 
-            className="toggle-reasoning-button"
-            onClick={() => setShowReasoning(!showReasoning)}
-          >
-            {showReasoning ? 'Hide' : 'Show'} AI Reasoning
-          </button>
-        )}
+        <div className="header-buttons">
+          {thinkingTrail && (
+            <button 
+              className="toggle-thinking-button"
+              onClick={() => setShowThinkingTrail(!showThinkingTrail)}
+            >
+              {showThinkingTrail ? 'Hide' : 'Show'} AI Thinking Trail
+            </button>
+          )}
+        </div>
       </div>
       
       <div className="messages-container">
@@ -189,28 +263,19 @@ const ChatPane: React.FC<ChatPaneProps> = ({
           </div>
         )}
         
-        {showReasoning && reasoning && (
-          <div className="reasoning-box">
-            <div className="reasoning-title">
+        {showThinkingTrail && thinkingTrail && (
+          <div className="thinking-trail-box">
+            <div className="thinking-trail-title">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                <path d="M2 12h5"></path>
+                <path d="M9 12h5"></path>
+                <path d="M16 12h6"></path>
+                <path d="M2 6h20"></path>
+                <path d="M2 18h20"></path>
               </svg>
-              AI Reasoning
+              AI Thinking Trail
             </div>
-            <div>{reasoning}</div>
-          </div>
-        )}
-        
-        {fillInTheBlanks && (
-          <div className="suggestion-box">
-            <div className="suggestion-title">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              Suggested Text
-            </div>
-            <div>{fillInTheBlanks}</div>
+            <pre className="thinking-trail-content">{thinkingTrail}</pre>
           </div>
         )}
         
@@ -421,7 +486,7 @@ const ChatPane: React.FC<ChatPaneProps> = ({
           50% { opacity: 0; }
         }
         
-        .reasoning-box, .suggestion-box {
+        .reasoning-box {
           border: 1px solid #e2e8f0;
           border-radius: var(--rounded-lg);
           padding: 16px;
@@ -429,23 +494,16 @@ const ChatPane: React.FC<ChatPaneProps> = ({
           background-color: white;
           width: 90%;
           box-shadow: var(--shadow-sm);
+          border-left: 3px solid var(--secondary-color);
         }
         
-        .reasoning-title, .suggestion-title {
+        .reasoning-title {
           font-weight: 600;
           margin-bottom: 8px;
           color: var(--text-primary);
           display: flex;
           align-items: center;
           gap: 6px;
-        }
-        
-        .reasoning-box {
-          border-left: 3px solid var(--secondary-color);
-        }
-        
-        .suggestion-box {
-          border-left: 3px solid var(--accent-color);
         }
         
         .input-container {
