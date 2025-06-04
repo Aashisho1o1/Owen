@@ -77,10 +77,10 @@ import { useAppContext } from '../contexts/AppContext';
 
 const ChatPane: React.FC = () => {
   const { 
-    messages, 
+  messages, 
     handleSendMessage, 
-    thinkingTrail,
-    highlightedText,
+  thinkingTrail,
+  highlightedText,
     helpFocus,
     authorPersona,
     isStreaming,
@@ -199,7 +199,7 @@ const ChatPane: React.FC = () => {
             </div>
           </div>
         ))}
-
+        
         {isStreaming && (
           <div className="message ai-message streaming-message">
             <div className="message-avatar">
@@ -219,12 +219,12 @@ const ChatPane: React.FC = () => {
 
         <div ref={messagesEndRef} />
       </div>
-
-      {showThinkingTrail && thinkingTrail && (
+        
+        {showThinkingTrail && thinkingTrail && (
         <div className="thinking-trail">
           <div className="thinking-trail-header">AI Thinking Process:</div>
           <div className="thinking-trail-content">{thinkingTrail}</div>
-        </div>
+            </div>
       )}
 
       {isThinking && (
@@ -237,48 +237,48 @@ const ChatPane: React.FC = () => {
               <span className="dot">.</span>
             </span>
           </div>
-        </div>
-      )}
-      
-      {highlightedText && suggestedQuestions.length > 0 && (
-        <div className="suggested-questions">
+          </div>
+        )}
+        
+        {highlightedText && suggestedQuestions.length > 0 && (
+          <div className="suggested-questions">
           <div className="suggested-title">Suggested questions:</div>
           <div className="questions-list">
-            {suggestedQuestions.map((question, index) => (
-              <button 
-                key={index}
+              {suggestedQuestions.map((question, index) => (
+                <button 
+                  key={index} 
                 className="question-item"
-                onClick={() => handleSelectQuestion(question)}
-              >
-                {question}
-              </button>
-            ))}
+                  onClick={() => handleSelectQuestion(question)}
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
+        )}
+        
       <div className="chat-input">
         <form onSubmit={onSendMessageHandle}>
           <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Ask Owen for writing help..."
             className="chat-textarea"
             disabled={isStreaming || isThinking}
-          />
+        />
           <button 
             type="submit" 
             className="send-button"
             disabled={!newMessage.trim() || isStreaming || isThinking}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          </button>
-        </form>
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
       </div>
-
+      
       <style>{`
         .chat-container {
           display: flex;

@@ -11,7 +11,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <MantineProvider>
         <AppProvider>
-          <App />
+      <App />
         </AppProvider>
       </MantineProvider>
     </BrowserRouter>

@@ -35,7 +35,7 @@ def test_dalle_generation():
         
         # Print the image URL
         if hasattr(response, 'data') and len(response.data) > 0 and hasattr(response.data[0], 'url'):
-            print(f"Success! Image URL: {response.data[0].url}")
+        print(f"Success! Image URL: {response.data[0].url}")
             print("Complete response structure:")
             print(response)
         else:
@@ -55,6 +55,6 @@ def test_dalle_generation():
         print(f"Error generating DALL-E image: {e}")
         import traceback
         traceback.print_exc()
-
+        
 if __name__ == "__main__":
     test_dalle_generation() 

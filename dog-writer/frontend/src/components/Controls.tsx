@@ -3,9 +3,9 @@ import { useAppContext } from '../contexts/AppContext';
 
 const Controls: React.FC = () => {
   const {
-    authorPersona,
-    helpFocus,
-    selectedLLM,
+  authorPersona,
+  helpFocus,
+  selectedLLM,
     setAuthorPersona,
     setHelpFocus,
     setSelectedLLM,

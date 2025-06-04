@@ -34,7 +34,7 @@ An AI-powered collaborative writing assistant that allows users to write text an
 
 3. Install dependencies:
    ```
-   pip install fastapi uvicorn python-multipart google-generativeai python-dotenv
+   pip install fastapi uvicorn python-multipart google-generativeai python-dotenv google-cloud-speech==2.22.0
    ```
 
 4. Create a `.env` file in the backend directory and add your Gemini API key:
