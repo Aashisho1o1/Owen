@@ -117,28 +117,28 @@ const MangaStudioPage: React.FC = () => {
           {isGeneratingManga ? 'Generating Manga Page...' : 'Generate Manga'}
         </button>
 
-        {mangaError && (
+      {mangaError && (
           <div className="manga-error-banner">
-            <p>Manga Generation Error: {mangaError}</p>
-          </div>
-        )}
+          <p>Manga Generation Error: {mangaError}</p>
+        </div>
+      )}
       </div>
 
       {/* Right side - Output display */}
       <div className="manga-display-pane">
-        {isGeneratingManga && (
-          <div className="manga-loading-placeholder">Generating your manga page... This can take up to a minute.</div>
-        )}
+      {isGeneratingManga && (
+        <div className="manga-loading-placeholder">Generating your manga page... This can take up to a minute.</div>
+      )}
 
-        {mangaPageData && !isGeneratingManga && (
-          <MangaDisplay mangaPage={mangaPageData} />
-        )}
-        
-        {!mangaPageData && !isGeneratingManga && !mangaError && (
-          <div className="manga-placeholder">
+      {mangaPageData && !isGeneratingManga && (
+        <MangaDisplay mangaPage={mangaPageData} />
+      )}
+      
+      {!mangaPageData && !isGeneratingManga && !mangaError && (
+         <div className="manga-placeholder">
             <p>Your generated manga page will appear here.</p>
-          </div>
-        )}
+        </div>
+      )}
       </div>
 
       <style jsx>{`
@@ -164,7 +164,7 @@ const MangaStudioPage: React.FC = () => {
         .manga-input-options {
           display: flex;
           flex-wrap: wrap;
-          align-items: center;
+          align-items: center; 
           gap: 20px;
           margin-bottom: 15px;
         }
@@ -251,9 +251,9 @@ const MangaStudioPage: React.FC = () => {
         }
         
         .manga-loading-placeholder, .manga-placeholder {
-          text-align: center;
-          font-size: 1.2em;
-          color: #555;
+            text-align: center;
+            font-size: 1.2em;
+            color: #555;
           margin-top: 30px;
           display: flex;
           justify-content: center;

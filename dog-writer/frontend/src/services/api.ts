@@ -60,18 +60,6 @@ export interface MangaScriptResponseFE {
   error?: string | null;
 }
 
-export interface TranscriptionResponse {
-  transcription: string;
-  error?: string;
-}
-
-export interface OrganizedIdeaResponse {
-  original_text?: string;
-  summary?: string;
-  category?: string;
-  error?: string;
-}
-
 const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
     const response = await axios.post<ChatResponse>(`${API_URL}/chat`, request);
@@ -91,47 +79,6 @@ const api = {
   generateMangaScript: async (request: MangaStoryRequest): Promise<MangaScriptResponseFE> => {
     const response = await axios.post<MangaScriptResponseFE>(`${API_URL}/manga/generate_script`, request);
     return response.data;
-  },
-
-  async transcribeAudio(audioBlob: Blob): Promise<TranscriptionResponse> {
-    const formData = new FormData();
-    formData.append('audio_file', audioBlob, 'dictation.webm'); // Ensure filename and type are appropriate
-    try {
-      const response = await axios.post<TranscriptionResponse>(`${API_URL}/voice/transcribe`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error("Error transcribing audio:", error.response?.data || error.message);
-      return { transcription: '', error: error.response?.data?.detail || error.message || 'Transcription failed' };
-    }
-  },
-
-  async organizeIdea(text: string): Promise<OrganizedIdeaResponse> {
-    try {
-      const response = await axios.post<OrganizedIdeaResponse>(`${API_URL}/voice/organize_idea`, { text });
-      return response.data;
-    } catch (error: any) {
-      console.error("Error organizing idea:", error.response?.data || error.message);
-      return { error: error.response?.data?.detail || error.message || 'Organization failed' };
-    }
-  },
-
-  async synthesizeSpeech(text: string): Promise<Blob | null> {
-    try {
-      const response = await axios.post<Blob>(`${API_URL}/voice/synthesize`, 
-        { text },
-        { responseType: 'blob' } // Important: tells Axios to expect binary data (audio)
-      );
-      return response.data;
-    } catch (error: any) {
-      console.error("Error synthesizing speech:", error.response?.data || error.message);
-      // If error.response.data is a Blob, it might contain an error message if the server sends JSON error as blob
-      // This part might need refinement based on how backend errors are sent for blob responses.
-      return null;
-    }
   },
 };
 

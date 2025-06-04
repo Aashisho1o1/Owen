@@ -1,43 +1,3 @@
-"""
-# REFACTORING PLAN
-
-This file should be reorganized by splitting routes into separate modules:
-
-1. `main.py` - Core app initialization, CORS setup, main imports
-2. `routers/chat_router.py` - Chat-related endpoints
-3. `routers/manga_router.py` - Manga generation endpoints
-4. `routers/checkpoint_router.py` - Checkpoint/save functionality
-
-Implementation plan:
-1. Create a 'routers' directory
-2. Move each set of related routes to their own file
-3. Use FastAPI's APIRouter for modular routing
-4. Import and include routers in main.py
-
-Example structure:
-```python
-# In routers/chat_router.py
-from fastapi import APIRouter, Depends
-router = APIRouter(prefix="/api/chat", tags=["chat"])
-
-@router.post("/", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    # Existing chat logic...
-
-# In main.py
-from routers import chat_router, manga_router
-app = FastAPI()
-app.include_router(chat_router.router)
-app.include_router(manga_router.router)
-```
-
-This approach improves:
-- Code organization
-- Testability
-- Maintainability
-- Readability
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio # For running image generation concurrently
@@ -56,7 +16,7 @@ from routers import chat_router, voice_router, manga_router, checkpoint_router
 
 app = FastAPI(
     title="DOG Writer API",
-    description="AI-powered writing assistant API",
+    description="AI-powered writing assistant",
     version="0.1.0"
 )
 
@@ -92,8 +52,6 @@ def health_check():
     """Simple health check endpoint"""
     return {"status": "ok"}
 
-# The original /api/chat endpoint has been moved to routers/chat_router.py
-# So, it is removed from here.
 
 @app.post("/api/checkpoint")
 async def create_checkpoint(request: CheckpointRequest):

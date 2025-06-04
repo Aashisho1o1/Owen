@@ -91,14 +91,14 @@ class LLMService:
             # the event loop in this async function
             def generate_image():
                 try:
-                    response = self.openai_client.images.generate(
-                        model="dall-e-3",
-                        prompt=full_prompt,
-                        size="1024x1024", # Standard DALL-E 3 size
-                        quality="standard", # Can be "hd" for higher quality but more cost
-                        n=1,
-                        response_format="url" # Get a URL to the image
-                    )
+            response = self.openai_client.images.generate(
+                model="dall-e-3",
+                prompt=full_prompt,
+                size="1024x1024", # Standard DALL-E 3 size
+                quality="standard", # Can be "hd" for higher quality but more cost
+                n=1,
+                response_format="url" # Get a URL to the image
+            )
                     return response.data[0].url, None  # Return URL and no error
                 except Exception as e:
                     return None, str(e)  # Return no URL and the error message

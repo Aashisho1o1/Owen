@@ -48,5 +48,5 @@ class MangaPage(BaseModel):
 
 class MangaScriptResponse(BaseModel):
     manga_page: Optional[MangaPage] = None
-    error: Optional[str] = None
+    error: Optional[str] = None 
     warning: Optional[str] = None  # Add warning field for non-fatal issues 
