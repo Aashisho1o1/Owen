@@ -2,17 +2,20 @@
 Database Service for DOG Writer
 
 Optimized SQLite service with connection pooling, better error handling,
-and reduced code duplication.
+security enhancements, and reduced code duplication.
 """
 
 import sqlite3
 import json
 import uuid
 import logging
+import hashlib
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
 from contextlib import contextmanager
+from cryptography.fernet import Fernet
 
 from models.schemas import UserPreferences, UserProfile, UserFeedback
 
@@ -24,21 +27,62 @@ class DatabaseError(Exception):
 
 class DatabaseService:
     """
-    Optimized SQLite database service for user preferences, writing profiles, and analytics.
-    Features connection pooling, transaction management, and reduced code duplication.
+    Secure SQLite database service for user preferences, writing profiles, and analytics.
+    Features connection pooling, transaction management, encryption, and security hardening.
     """
     
     def __init__(self, db_path: str = "dog_writer.db"):
         self.db_path = Path(db_path)
+        
+        # Initialize encryption for sensitive data
+        self._init_encryption()
+        
+        # Set secure database configuration
+        self._secure_db_config()
+        
         self.init_database()
         logger.info(f"Database service initialized with {self.db_path}")
     
+    def _init_encryption(self):
+        """Initialize encryption for sensitive data"""
+        # Get or generate encryption key
+        key_file = "db_encryption.key"
+        if os.path.exists(key_file):
+            with open(key_file, 'rb') as f:
+                key = f.read()
+        else:
+            key = Fernet.generate_key()
+            # In production, store this securely (e.g., environment variable or key management service)
+            with open(key_file, 'wb') as f:
+                f.write(key)
+            logger.warning("Generated new encryption key. Store this securely!")
+        
+        self.cipher = Fernet(key)
+    
+    def _secure_db_config(self):
+        """Configure secure database settings"""
+        # Set restrictive file permissions
+        if self.db_path.exists():
+            os.chmod(self.db_path, 0o600)  # Read/write for owner only
+    
     @contextmanager
     def get_connection(self):
-        """Context manager for database connections with automatic cleanup"""
+        """Context manager for database connections with security hardening"""
         conn = None
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(
+                self.db_path,
+                timeout=30.0,  # Prevent indefinite locks
+                check_same_thread=False
+            )
+            
+            # Enable security features
+            conn.execute("PRAGMA foreign_keys = ON")  # Enforce foreign key constraints
+            conn.execute("PRAGMA journal_mode = WAL")  # Better concurrency and safety
+            conn.execute("PRAGMA synchronous = FULL")  # Maximum durability
+            conn.execute("PRAGMA temp_store = MEMORY")  # Store temp data in memory
+            conn.execute("PRAGMA secure_delete = ON")  # Securely delete data
+            
             conn.row_factory = sqlite3.Row  # Enable dict-like access
             yield conn
         except Exception as e:
@@ -52,13 +96,17 @@ class DatabaseService:
     
     def _execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List, Any, None]:
         """
-        Execute a database query with standardized error handling
+        Execute a database query with parameterized queries for security
         
         Args:
-            query: SQL query string
-            params: Query parameters
+            query: SQL query string with ? placeholders
+            params: Query parameters (NEVER string formatted)
             fetch: 'one', 'all', or None (for insert/update)
         """
+        # Validate that query uses parameterized format
+        if any(char in query for char in ['%', 'format', 'f"', "f'"]) and params:
+            raise DatabaseError("Use parameterized queries only - no string formatting allowed")
+        
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(query, params)
@@ -70,6 +118,22 @@ class DatabaseService:
             else:
                 conn.commit()
                 return cursor.lastrowid
+    
+    def _encrypt_sensitive_data(self, data: str) -> str:
+        """Encrypt sensitive data before storing"""
+        if not data:
+            return data
+        return self.cipher.encrypt(data.encode()).decode()
+    
+    def _decrypt_sensitive_data(self, encrypted_data: str) -> str:
+        """Decrypt sensitive data after retrieving"""
+        if not encrypted_data:
+            return encrypted_data
+        try:
+            return self.cipher.decrypt(encrypted_data.encode()).decode()
+        except Exception as e:
+            logger.error(f"Decryption failed: {e}")
+            return ""
     
     def _serialize_json(self, data: Any) -> Optional[str]:
         """Safely serialize data to JSON string"""
@@ -90,86 +154,96 @@ class DatabaseService:
         except (TypeError, ValueError) as e:
             logger.warning(f"JSON deserialization failed: {e}")
             return default
+    
+    def _hash_user_id(self, user_id: str) -> str:
+        """Hash user ID for privacy (one-way hash)"""
+        return hashlib.sha256(user_id.encode()).hexdigest()
 
     def init_database(self):
-        """Initialize database with optimized schema"""
+        """Initialize database with optimized and secure schema"""
         schema_queries = [
-            # User profiles table with proper indexing
+            # User profiles table with proper indexing and constraints
             '''CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id TEXT PRIMARY KEY,
-                english_variant TEXT DEFAULT 'standard',
-                writing_style_profile TEXT,  -- JSON string
+                user_id_hash TEXT PRIMARY KEY,  -- Hashed for privacy
+                english_variant TEXT DEFAULT 'standard' CHECK(english_variant IN ('standard', 'indian', 'british', 'american')),
+                writing_style_profile TEXT,  -- Encrypted JSON string
                 onboarding_completed BOOLEAN DEFAULT FALSE,
-                user_corrections TEXT,  -- JSON array of strings
+                user_corrections TEXT,  -- Encrypted JSON array
                 writing_type TEXT,
                 feedback_style TEXT,
                 primary_goal TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                -- Constraints
+                CHECK(length(writing_type) <= 100),
+                CHECK(length(feedback_style) <= 100),
+                CHECK(length(primary_goal) <= 500)
             )''',
             
-            # User feedback table
+            # User feedback table with constraints
             '''CREATE TABLE IF NOT EXISTS user_feedback (
                 feedback_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                original_message TEXT,
-                ai_response TEXT,
-                user_feedback TEXT,
-                correction_type TEXT,
+                user_id_hash TEXT NOT NULL,
+                original_message TEXT NOT NULL,  -- Encrypted
+                ai_response TEXT NOT NULL,       -- Encrypted
+                user_feedback TEXT NOT NULL,     -- Encrypted
+                correction_type TEXT NOT NULL CHECK(correction_type IN ('grammar', 'style', 'tone', 'general')),
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES user_profiles (user_id)
+                FOREIGN KEY (user_id_hash) REFERENCES user_profiles (user_id_hash) ON DELETE CASCADE
             )''',
             
-            # Writing sessions table for productivity tracking
+            # Writing sessions table with constraints
             '''CREATE TABLE IF NOT EXISTS writing_sessions (
                 session_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                session_start_time TEXT,
+                user_id_hash TEXT NOT NULL,
+                session_start_time TEXT NOT NULL,
                 session_end_time TEXT,
-                total_active_seconds INTEGER DEFAULT 0,
-                total_session_duration_seconds INTEGER DEFAULT 0,
-                total_keystrokes INTEGER DEFAULT 0,
-                total_words_written INTEGER DEFAULT 0,
+                total_active_seconds INTEGER DEFAULT 0 CHECK(total_active_seconds >= 0),
+                total_session_duration_seconds INTEGER DEFAULT 0 CHECK(total_session_duration_seconds >= 0),
+                total_keystrokes INTEGER DEFAULT 0 CHECK(total_keystrokes >= 0),
+                total_words_written INTEGER DEFAULT 0 CHECK(total_words_written >= 0),
                 focus_lost_intervals TEXT,  -- JSON array
-                date TEXT,  -- YYYY-MM-DD for aggregation
+                date TEXT NOT NULL,  -- YYYY-MM-DD for aggregation
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES user_profiles (user_id)
+                FOREIGN KEY (user_id_hash) REFERENCES user_profiles (user_id_hash) ON DELETE CASCADE
             )''',
             
-            # Real-time writing activity
+            # Real-time writing activity with constraints
             '''CREATE TABLE IF NOT EXISTS writing_activity (
                 activity_id TEXT PRIMARY KEY,
-                session_id TEXT,
-                user_id TEXT,
-                activity_type TEXT,  -- 'typing', 'editing', 'scrolling', 'thinking_pause'
+                session_id TEXT NOT NULL,
+                user_id_hash TEXT NOT NULL,
+                activity_type TEXT NOT NULL CHECK(activity_type IN ('typing', 'editing', 'scrolling', 'thinking_pause')),
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                duration_seconds INTEGER DEFAULT 0,
-                content_length INTEGER DEFAULT 0,
-                FOREIGN KEY (session_id) REFERENCES writing_sessions (session_id),
-                FOREIGN KEY (user_id) REFERENCES user_profiles (user_id)
+                duration_seconds INTEGER DEFAULT 0 CHECK(duration_seconds >= 0),
+                content_length INTEGER DEFAULT 0 CHECK(content_length >= 0),
+                FOREIGN KEY (session_id) REFERENCES writing_sessions (session_id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id_hash) REFERENCES user_profiles (user_id_hash) ON DELETE CASCADE
             )''',
             
-            # Daily writing summaries for analytics
+            # Daily writing summaries with constraints
             '''CREATE TABLE IF NOT EXISTS daily_writing_stats (
                 stat_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                date TEXT,  -- YYYY-MM-DD
-                total_active_minutes INTEGER DEFAULT 0,
-                total_sessions INTEGER DEFAULT 0,
-                total_keystrokes INTEGER DEFAULT 0,
-                total_words INTEGER DEFAULT 0,
-                longest_session_minutes INTEGER DEFAULT 0,
-                focus_score REAL DEFAULT 0.0,
+                user_id_hash TEXT NOT NULL,
+                date TEXT NOT NULL,  -- YYYY-MM-DD
+                total_active_minutes INTEGER DEFAULT 0 CHECK(total_active_minutes >= 0),
+                total_sessions INTEGER DEFAULT 0 CHECK(total_sessions >= 0),
+                total_keystrokes INTEGER DEFAULT 0 CHECK(total_keystrokes >= 0),
+                total_words INTEGER DEFAULT 0 CHECK(total_words >= 0),
+                longest_session_minutes INTEGER DEFAULT 0 CHECK(longest_session_minutes >= 0),
+                focus_score REAL DEFAULT 0.0 CHECK(focus_score >= 0.0 AND focus_score <= 1.0),
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES user_profiles (user_id)
+                FOREIGN KEY (user_id_hash) REFERENCES user_profiles (user_id_hash) ON DELETE CASCADE,
+                UNIQUE(user_id_hash, date)  -- Prevent duplicate daily stats
             )''',
             
             # Indexes for better performance
-            'CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON writing_sessions(user_id, date)',
+            'CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON writing_sessions(user_id_hash, date)',
             'CREATE INDEX IF NOT EXISTS idx_activity_session ON writing_activity(session_id)',
-            'CREATE INDEX IF NOT EXISTS idx_daily_stats_user_date ON daily_writing_stats(user_id, date)',
-            'CREATE INDEX IF NOT EXISTS idx_feedback_user ON user_feedback(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_daily_stats_user_date ON daily_writing_stats(user_id_hash, date)',
+            'CREATE INDEX IF NOT EXISTS idx_feedback_user ON user_feedback(user_id_hash)',
+            'CREATE INDEX IF NOT EXISTS idx_feedback_timestamp ON user_feedback(timestamp)',
         ]
         
         with self.get_connection() as conn:
@@ -184,15 +258,26 @@ class DatabaseService:
         return str(uuid.uuid4())
     
     def save_user_preferences(self, user_id: str, preferences: UserPreferences) -> bool:
-        """Save or update user preferences with UPSERT"""
+        """Save or update user preferences with UPSERT and encryption"""
         try:
+            user_id_hash = self._hash_user_id(user_id)
+            
+            # Encrypt sensitive data
+            writing_style_profile = self._encrypt_sensitive_data(
+                self._serialize_json(preferences.writing_style_profile)
+            ) if preferences.writing_style_profile else None
+            
+            user_corrections = self._encrypt_sensitive_data(
+                self._serialize_json(preferences.user_corrections)
+            ) if preferences.user_corrections else None
+            
             query = '''
                 INSERT INTO user_profiles (
-                    user_id, english_variant, writing_style_profile,
+                    user_id_hash, english_variant, writing_style_profile,
                     onboarding_completed, user_corrections, writing_type,
                     feedback_style, primary_goal, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id) DO UPDATE SET
+                ON CONFLICT(user_id_hash) DO UPDATE SET
                     english_variant = excluded.english_variant,
                     writing_style_profile = excluded.writing_style_profile,
                     onboarding_completed = excluded.onboarding_completed,
@@ -203,22 +288,22 @@ class DatabaseService:
                     updated_at = excluded.updated_at
             '''
             
-            params = (
-                user_id,
+            self._execute_query(query, (
+                user_id_hash,
                 preferences.english_variant,
-                self._serialize_json(preferences.writing_style_profile),
+                writing_style_profile,
                 preferences.onboarding_completed,
-                self._serialize_json(preferences.user_corrections),
+                user_corrections,
                 preferences.writing_type,
                 preferences.feedback_style,
                 preferences.primary_goal,
                 datetime.now().isoformat()
-            )
+            ))
             
-            self._execute_query(query, params)
             return True
             
-        except DatabaseError:
+        except Exception as e:
+            logger.error(f"Error saving user preferences: {e}")
             return False
     
     def get_user_preferences(self, user_id: str) -> Optional[UserPreferences]:
@@ -228,10 +313,10 @@ class DatabaseService:
                 SELECT english_variant, writing_style_profile,
                        onboarding_completed, user_corrections, writing_type,
                        feedback_style, primary_goal
-                FROM user_profiles WHERE user_id = ?
+                FROM user_profiles WHERE user_id_hash = ?
             '''
             
-            row = self._execute_query(query, (user_id,), fetch='one')
+            row = self._execute_query(query, (self._hash_user_id(user_id),), fetch='one')
             
             if row:
                 return UserPreferences(
@@ -262,14 +347,14 @@ class DatabaseService:
         try:
             query = '''
                 INSERT INTO user_feedback (
-                    feedback_id, user_id, original_message, ai_response,
+                    feedback_id, user_id_hash, original_message, ai_response,
                     user_feedback, correction_type
                 ) VALUES (?, ?, ?, ?, ?, ?)
             '''
             
             feedback_id = str(uuid.uuid4())
-            params = (feedback_id, user_id, original_message, ai_response,
-                     user_feedback, correction_type)
+            params = (feedback_id, self._hash_user_id(user_id), self._encrypt_sensitive_data(original_message), self._encrypt_sensitive_data(ai_response),
+                     self._encrypt_sensitive_data(user_feedback), correction_type)
             
             self._execute_query(query, params)
             
@@ -298,23 +383,23 @@ class DatabaseService:
         """Get user's feedback history"""
         try:
             query = '''
-                SELECT feedback_id, user_id, original_message, ai_response,
+                SELECT feedback_id, user_id_hash, original_message, ai_response,
                        user_feedback, correction_type, timestamp
                 FROM user_feedback 
-                WHERE user_id = ?
+                WHERE user_id_hash = ?
                 ORDER BY timestamp DESC
                 LIMIT ?
             '''
             
-            rows = self._execute_query(query, (user_id, limit), fetch='all')
+            rows = self._execute_query(query, (self._hash_user_id(user_id), limit), fetch='all')
             
             return [
                 UserFeedback(
                     feedback_id=row['feedback_id'],
-                    user_id=row['user_id'],
-                    original_message=row['original_message'],
-                    ai_response=row['ai_response'],
-                    user_feedback=row['user_feedback'],
+                    user_id=row['user_id_hash'],
+                    original_message=self._decrypt_sensitive_data(row['original_message']),
+                    ai_response=self._decrypt_sensitive_data(row['ai_response']),
+                    user_feedback=self._decrypt_sensitive_data(row['user_feedback']),
                     correction_type=row['correction_type'],
                     timestamp=row['timestamp']
                 )
@@ -361,11 +446,11 @@ class DatabaseService:
             
             query = '''
                 INSERT INTO writing_sessions (
-                    session_id, user_id, session_start_time, date
+                    session_id, user_id_hash, session_start_time, date
                 ) VALUES (?, ?, ?, ?)
             '''
             
-            params = (session_id, user_id, now.isoformat(), date_str)
+            params = (session_id, self._hash_user_id(user_id), now.isoformat(), date_str)
             self._execute_query(query, params)
             
             logger.info(f"Started writing session {session_id} for user {user_id}")
@@ -381,12 +466,12 @@ class DatabaseService:
         try:
             query = '''
                 INSERT INTO writing_activity (
-                    activity_id, session_id, user_id, activity_type, content_length
+                    activity_id, session_id, user_id_hash, activity_type, content_length
                 ) VALUES (?, ?, ?, ?, ?)
             '''
             
             activity_id = str(uuid.uuid4())
-            params = (activity_id, session_id, user_id, activity_type, content_length)
+            params = (activity_id, session_id, self._hash_user_id(user_id), activity_type, content_length)
             
             self._execute_query(query, params)
             return True
@@ -407,7 +492,7 @@ class DatabaseService:
         try:
             # Get session data
             query = '''
-                SELECT session_start_time, user_id, date 
+                SELECT session_start_time, user_id_hash, date 
                 FROM writing_sessions 
                 WHERE session_id = ?
             '''
@@ -417,7 +502,7 @@ class DatabaseService:
                 return False
             
             start_time_str = session_data['session_start_time']
-            user_id = session_data['user_id']
+            user_id_hash = session_data['user_id_hash']
             date_str = session_data['date']
             
             start_time = datetime.fromisoformat(start_time_str)
@@ -452,7 +537,7 @@ class DatabaseService:
             self._execute_query(update_query, update_params)
             
             # Update daily stats
-            self._update_daily_stats(user_id, date_str, total_active_seconds, 
+            self._update_daily_stats(user_id_hash, date_str, total_active_seconds, 
                                    total_keystrokes, total_words, 
                                    total_duration, focus_score)
             
@@ -463,7 +548,7 @@ class DatabaseService:
             logger.error(f"Failed to end writing session {session_id}")
             return False
     
-    def _update_daily_stats(self, user_id: str, date_str: str, 
+    def _update_daily_stats(self, user_id_hash: str, date_str: str, 
                            session_active_seconds: int, session_keystrokes: int,
                            session_words: int, session_duration: int, 
                            session_focus_score: float):
@@ -479,10 +564,10 @@ class DatabaseService:
                 SELECT stat_id, total_active_minutes, total_sessions, total_keystrokes,
                        total_words, longest_session_minutes, focus_score
                 FROM daily_writing_stats 
-                WHERE user_id = ? AND date = ?
+                WHERE user_id_hash = ? AND date = ?
             '''
             
-            existing = self._execute_query(select_query, (user_id, date_str), fetch='one')
+            existing = self._execute_query(select_query, (user_id_hash, date_str), fetch='one')
             session_minutes = session_active_seconds // 60
             
             if existing:
@@ -526,7 +611,7 @@ class DatabaseService:
                 # Create new daily stats
                 insert_query = '''
                     INSERT INTO daily_writing_stats (
-                        stat_id, user_id, date, total_active_minutes, total_sessions,
+                        stat_id, user_id_hash, date, total_active_minutes, total_sessions,
                         total_keystrokes, total_words, longest_session_minutes,
                         focus_score
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -534,7 +619,7 @@ class DatabaseService:
                 
                 stat_id = str(uuid.uuid4())
                 insert_params = (
-                    stat_id, user_id, date_str, session_minutes, 1,
+                    stat_id, user_id_hash, date_str, session_minutes, 1,
                     session_keystrokes, session_words, session_minutes,
                     session_focus_score
                 )
@@ -542,7 +627,7 @@ class DatabaseService:
                 self._execute_query(insert_query, insert_params)
                 
         except DatabaseError:
-            logger.warning(f"Failed to update daily stats for {user_id} on {date_str}")
+            logger.warning(f"Failed to update daily stats for {user_id_hash} on {date_str}")
     
     def get_weekly_analytics(self, user_id: str, week_offset: int = 0) -> Dict[str, Any]:
         """
@@ -563,13 +648,13 @@ class DatabaseService:
                 SELECT date, total_active_minutes, total_sessions, total_keystrokes,
                        total_words, longest_session_minutes, focus_score
                 FROM daily_writing_stats
-                WHERE user_id = ? AND date BETWEEN ? AND ?
+                WHERE user_id_hash = ? AND date BETWEEN ? AND ?
                 ORDER BY date
             '''
             
             daily_data = self._execute_query(
                 query, 
-                (user_id, week_start.isoformat(), week_end.isoformat()), 
+                (self._hash_user_id(user_id), week_start.isoformat(), week_end.isoformat()), 
                 fetch='all'
             ) or []
             
