@@ -1,6 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import json
 import re
+
+# Import security services
+from services.auth_service import get_current_user_id, get_optional_user_id
+from services.validation_service import ChatMessageModel, UserFeedbackModel, input_validator
 
 # Change relative imports to absolute imports
 from models.schemas import (
@@ -19,11 +23,21 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """Enhanced chat endpoint with personalized, culturally-aware feedback."""
+async def chat(
+    request: ChatRequest, 
+    user_id: str = Depends(get_current_user_id)
+):
+    """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
-        # Handle user session and preferences
-        user_id = "default_user"  # In production, extract from auth token
+        # Validate and sanitize all input data
+        validated_message = input_validator.validate_chat_message(request.message)
+        validated_editor_text = input_validator.validate_text_input(request.editor_text or "")
+        validated_llm_provider = input_validator.validate_llm_provider(request.llm_provider)
+        validated_english_variant = input_validator.validate_english_variant(
+            request.english_variant or "standard"
+        )
+        
+        # Get user preferences - now user_id comes from JWT token
         user_preferences = request.user_preferences
         
         # If no preferences provided, try to load from database
@@ -33,21 +47,20 @@ async def chat(request: ChatRequest):
                 # Create default preferences for new user
                 user_preferences = db_service.create_default_preferences(user_id)
         
-        # Extract user message and check for highlighted text
+        # Extract highlighted text safely
         highlighted_text = None
-        message = request.message
-        if "improve this text:" in request.message and '"' in request.message:
-            parts = request.message.split('"')
+        if "improve this text:" in validated_message and '"' in validated_message:
+            parts = validated_message.split('"')
             if len(parts) >= 3:
-                highlighted_text = parts[1]
+                highlighted_text = input_validator.validate_text_input(parts[1])
         
         # Use the new modular prompt assembly system
         final_prompt = llm_service.assemble_chat_prompt(
-            user_message=message,
-            editor_text=request.editor_text,
+            user_message=validated_message,
+            editor_text=validated_editor_text,
             author_persona=request.author_persona,
             help_focus=request.help_focus,
-            english_variant=request.english_variant or user_preferences.english_variant,
+            english_variant=validated_english_variant,
             user_style_profile=user_preferences.writing_style_profile,
             user_corrections=user_preferences.user_corrections,
             highlighted_text=highlighted_text
@@ -57,14 +70,14 @@ async def chat(request: ChatRequest):
         response_text = None
         thinking_trail = None
 
-        if request.llm_provider == "Google Gemini":
+        if validated_llm_provider == "Google Gemini":
             # Format prompt for Gemini (expects list of dicts)
             prompts = [
                 {"role": "user", "parts": [final_prompt]}
             ]
-            response_text = await llm_service.generate_with_selected_llm(prompts, request.llm_provider)
+            response_text = await llm_service.generate_with_selected_llm(prompts, validated_llm_provider)
         else: # Anthropic Claude
-            response_result = await llm_service.generate_with_selected_llm(final_prompt, request.llm_provider)
+            response_result = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
             
             if isinstance(response_result, dict) and "text" in response_result:
                 response_text = response_result["text"]
@@ -74,7 +87,7 @@ async def chat(request: ChatRequest):
                 response_text = json.dumps({"dialogue_response": "Error: Received unexpected response structure from LLM service for Claude."})
                 thinking_trail = response_result.get("thinking_trail", "Error retrieving thinking trail.") if isinstance(response_result, dict) else "Unknown error in thinking trail."
 
-        # Parse the JSON response
+        # Parse and validate the JSON response
         try:
             ai_response_dict = {}
             if response_text:
@@ -104,18 +117,22 @@ async def chat(request: ChatRequest):
                 dialogue_content = ai_response_dict.get("text", str(ai_response_dict))
                 ai_response_dict["dialogue_response"] = dialogue_content if isinstance(dialogue_content, str) else "Error: AI response format was incorrect (missing dialogue_response)."
             
+            # Validate and sanitize the AI response
+            sanitized_response = input_validator.validate_text_input(ai_response_dict["dialogue_response"])
+            
             # Store user feedback if provided
             if request.feedback_on_previous:
+                validated_feedback = input_validator.validate_text_input(request.feedback_on_previous)
                 db_service.add_user_feedback(
                     user_id=user_id,
-                    original_message=message,
-                    ai_response=ai_response_dict["dialogue_response"],
-                    user_feedback=request.feedback_on_previous,
+                    original_message=validated_message,
+                    ai_response=sanitized_response,
+                    user_feedback=validated_feedback,
                     correction_type="general"  # Could be enhanced to detect type
                 )
             
             return ChatResponse(
-                dialogue_response=ai_response_dict["dialogue_response"],
+                dialogue_response=sanitized_response,
                 thinking_trail=thinking_trail
             )
         except Exception as json_error:
@@ -125,6 +142,9 @@ async def chat(request: ChatRequest):
                 thinking_trail=thinking_trail
             )
             
+    except HTTPException:
+        # Re-raise HTTP exceptions (like authentication errors)
+        raise
     except Exception as e:
         print(f"General error in /api/chat: {e}")
         error_dialogue = "Error: Failed to generate response. An unexpected error occurred."
@@ -139,13 +159,17 @@ async def chat(request: ChatRequest):
         )
 
 @router.post("/analyze-writing", response_model=WritingSampleResponse)
-async def analyze_writing_sample(request: WritingSampleRequest):
+async def analyze_writing_sample(
+    request: WritingSampleRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """Analyze a user's writing sample to create a personalized style profile."""
     try:
-        user_id = request.user_id or "default_user"
+        # Validate writing sample
+        validated_sample = input_validator.validate_text_input(request.writing_sample)
         
         # Analyze the writing style using LLM
-        style_profile = await llm_service.analyze_writing_style(request.writing_sample)
+        style_profile = await llm_service.analyze_writing_style(validated_sample)
         
         # Save the style profile to database
         if not style_profile.get("error"):
@@ -162,6 +186,8 @@ async def analyze_writing_sample(request: WritingSampleRequest):
             success=True
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error analyzing writing sample: {e}")
         return WritingSampleResponse(
@@ -171,16 +197,27 @@ async def analyze_writing_sample(request: WritingSampleRequest):
         )
 
 @router.post("/feedback")
-async def submit_user_feedback(request: UserFeedbackRequest):
+async def submit_user_feedback(
+    request: UserFeedbackRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """Submit user feedback on AI responses for continuous improvement."""
     try:
-        user_id = "default_user"  # In production, extract from auth token
+        # Validate all feedback data
+        validated_original = input_validator.validate_text_input(request.original_message)
+        validated_ai_response = input_validator.validate_text_input(request.ai_response)
+        validated_feedback = input_validator.validate_text_input(request.user_feedback)
+        
+        # Validate correction type
+        allowed_types = ['grammar', 'style', 'tone', 'general']
+        if request.correction_type not in allowed_types:
+            raise HTTPException(status_code=400, detail=f"Invalid correction type. Must be one of: {allowed_types}")
         
         success = db_service.add_user_feedback(
             user_id=user_id,
-            original_message=request.original_message,
-            ai_response=request.ai_response,
-            user_feedback=request.user_feedback,
+            original_message=validated_original,
+            ai_response=validated_ai_response,
+            user_feedback=validated_feedback,
             correction_type=request.correction_type
         )
         
@@ -189,64 +226,102 @@ async def submit_user_feedback(request: UserFeedbackRequest):
         else:
             return {"status": "error", "message": "Failed to record feedback"}
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error submitting user feedback: {e}")
         return {"status": "error", "message": str(e)}
 
 @router.post("/onboarding", response_model=OnboardingResponse)
-async def complete_onboarding(request: OnboardingRequest):
+async def complete_onboarding(
+    request: OnboardingRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """Complete user onboarding and save initial preferences."""
     try:
-        user_id = "default_user"  # In production, extract from auth token
+        # Validate onboarding data
+        validated_writing_type = input_validator.validate_text_input(request.writing_type)
+        validated_feedback_style = input_validator.validate_text_input(request.feedback_style)
+        validated_primary_goal = input_validator.validate_text_input(request.primary_goal)
+        validated_english_variant = input_validator.validate_english_variant(request.english_variant)
         
         success = db_service.complete_onboarding(
             user_id=user_id,
-            writing_type=request.writing_type,
-            feedback_style=request.feedback_style,
-            primary_goal=request.primary_goal,
-            english_variant=request.english_variant
+            writing_type=validated_writing_type,
+            feedback_style=validated_feedback_style,
+            primary_goal=validated_primary_goal,
+            english_variant=validated_english_variant
         )
         
         if success:
+            # Get updated preferences
             user_preferences = db_service.get_user_preferences(user_id)
+            
             return OnboardingResponse(
                 success=True,
-                user_preferences=user_preferences,
-                message="Onboarding completed successfully"
+                message="Onboarding completed successfully",
+                user_preferences=user_preferences
             )
         else:
-            raise HTTPException(status_code=500, detail="Failed to save onboarding preferences")
+            return OnboardingResponse(
+                success=False,
+                message="Failed to complete onboarding"
+            )
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error completing onboarding: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return OnboardingResponse(
+            success=False,
+            message=str(e)
+        )
 
 @router.get("/preferences")
-async def get_user_preferences():
-    """Get current user preferences."""
+async def get_user_preferences(user_id: str = Depends(get_current_user_id)):
+    """Get user preferences for the authenticated user."""
     try:
-        user_id = "default_user"  # In production, extract from auth token
         preferences = db_service.get_user_preferences(user_id)
         
         if preferences:
-            return {"status": "success", "preferences": preferences}
+            return {
+                "status": "success",
+                "preferences": preferences
+            }
         else:
-            # Create default preferences
-            preferences = db_service.create_default_preferences(user_id)
-            return {"status": "success", "preferences": preferences}
+            # Create default preferences for new user
+            default_preferences = db_service.create_default_preferences(user_id)
+            return {
+                "status": "success", 
+                "preferences": default_preferences
+            }
             
     except Exception as e:
-        print(f"Error retrieving user preferences: {e}")
-        return {"status": "error", "message": str(e)}
+        print(f"Error getting user preferences: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "preferences": None
+        }
 
 @router.get("/style-options")
 async def get_style_options():
-    """Get available English variants."""
-    return {
-        "english_variants": [
-            {"value": "standard", "label": "Standard English"},
-            {"value": "indian", "label": "Indian English"},
-            {"value": "british", "label": "British English"},
-            {"value": "american", "label": "American English"}
-        ]
-    } 
+    """Get available style options (no authentication required)."""
+    try:
+        return {
+            "english_variants": [
+                {"value": "standard", "label": "Standard English"},
+                {"value": "indian", "label": "Indian English"},
+                {"value": "british", "label": "British English"},
+                {"value": "american", "label": "American English"}
+            ],
+            "correction_types": [
+                {"value": "grammar", "label": "Grammar"},
+                {"value": "style", "label": "Style"},
+                {"value": "tone", "label": "Tone"},
+                {"value": "general", "label": "General"}
+            ]
+        }
+    except Exception as e:
+        print(f"Error getting style options: {e}")
+        return {"error": str(e)} 
