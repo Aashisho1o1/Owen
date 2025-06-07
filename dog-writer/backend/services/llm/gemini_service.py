@@ -1,77 +1,102 @@
 """
-Google Gemini LLM service implementation
-"""
-import google.generativeai as genai
-from typing import Dict, Any, Union, List, Optional
+Google Gemini LLM Service
 
-from services.llm.base_service import BaseLLMService
+Handles all Google Gemini API interactions with error handling and response processing.
+"""
+
+import json
+import asyncio
+import google.generativeai as genai
+from typing import Dict, Any, List, Optional
+
+from .base_service import BaseLLMService, LLMError, log_api_error, clean_json_response
 
 class GeminiService(BaseLLMService):
-    """
-    Service for interacting with Google's Gemini models
-    """
+    """Google Gemini LLM service implementation"""
+    
     def __init__(self):
-        """Initialize the Gemini service"""
-        super().__init__()
+        super().__init__("GEMINI_API_KEY")
+        if self.available:
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel('gemini-1.5-pro')
+    
+    async def generate_text(self, prompt: str, **kwargs) -> str:
+        """Generate text using Gemini"""
+        if not self.available:
+            raise LLMError("Gemini service not available - missing API key")
         
-        # Get API key
-        self.api_key = self.get_env_var("GEMINI_API_KEY", required=True)
-        
-        # Configure the client
-        genai.configure(api_key=self.api_key)
-        
-        # Set up model (default to gemini-1.5-pro, but can be overridden)
-        self.model_name = self.get_env_var("GEMINI_MODEL_NAME") or "gemini-1.5-pro"
-        self.model = genai.GenerativeModel(self.model_name)
-        
-        self.initialized = True
-        self.logger.info(f"Gemini service initialized with model: {self.model_name}")
-        
-    async def generate_text(self, prompt: Union[str, List[Dict[str, Any]]], **kwargs) -> Union[str, Dict[str, Any]]:
-        """
-        Generate text using Gemini
-        
-        Args:
-            prompt: Either a string prompt or a list of dictionaries with 'role' and 'parts' keys
-            kwargs: Additional parameters for Gemini
-            
-        Returns:
-            Generated text or dictionary with text and metadata
-        """
-        if not self.initialized:
-            self.logger.error("Gemini service not properly initialized")
-            return "Error: Gemini service not initialized"
-            
         try:
-            # Ensure prompt is properly formatted for Gemini
-            if isinstance(prompt, str):
-                # Convert string prompt to the format expected by Gemini
-                formatted_prompt = [{"role": "user", "parts": [prompt]}]
-            else:
-                formatted_prompt = prompt
-                
-            # Generate content
-            response = self.model.generate_content(formatted_prompt)
+            # Gemini API is synchronous, so we run it in a thread
+            def _generate():
+                response = self.model.generate_content(prompt)
+                return response.text
             
-            # Process response
-            if response.candidates and len(response.candidates) > 0 and \
-               response.candidates[0].content and response.candidates[0].content.parts and \
-               len(response.candidates[0].content.parts) > 0:
-                
-                full_text_response = ""
-                for part in response.candidates[0].content.parts:
-                    if hasattr(part, 'text') and isinstance(part.text, str):
-                        full_text_response += part.text
-                
-                if not full_text_response.strip():
-                    self.logger.warning("Gemini returned empty response")
-                    return "Error: Empty response from Gemini"
-                    
-                return full_text_response
-            else:
-                self.logger.warning("Invalid response structure from Gemini")
-                return "Error: Invalid response structure from Gemini"
-                
+            result = await asyncio.to_thread(_generate)
+            return result
+            
         except Exception as e:
-            self.log_api_error("Gemini", e, "generate_text")
-            return f"Error generating text with Gemini: {str(e)}" 
+            log_api_error("Gemini", e, "text generation")
+            raise LLMError(f"Gemini text generation failed: {str(e)}")
+    
+    async def generate_structured(self, prompt: str, schema: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+        """Generate structured JSON data using Gemini"""
+        if not self.available:
+            raise LLMError("Gemini service not available - missing API key")
+        
+        try:
+            # Add JSON formatting instruction to prompt
+            structured_prompt = f"{prompt}\n\nRespond with valid JSON only, no additional text."
+            
+            def _generate():
+                response = self.model.generate_content(structured_prompt)
+                return response.text
+            
+            result = await asyncio.to_thread(_generate)
+            cleaned_result = clean_json_response(result)
+            
+            try:
+                return json.loads(cleaned_result)
+            except json.JSONDecodeError as e:
+                raise LLMError(f"Invalid JSON response from Gemini: {str(e)}")
+            
+        except Exception as e:
+            log_api_error("Gemini", e, "structured generation")
+            raise LLMError(f"Gemini structured generation failed: {str(e)}")
+    
+    async def analyze_writing_style(self, writing_sample: str) -> Dict[str, Any]:
+        """Analyze writing style using Gemini's advanced language understanding"""
+        from .base_service import get_prompt_template
+        
+        prompt = get_prompt_template('style_analysis', writing_sample=writing_sample)
+        return await self.generate_structured(prompt, {})
+    
+    async def generate_with_conversation_history(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """Generate response with conversation history"""
+        if not self.available:
+            raise LLMError("Gemini service not available - missing API key")
+        
+        try:
+            # Convert messages to Gemini format
+            chat = self.model.start_chat(history=[])
+            
+            # Add conversation history (except the last message)
+            for message in messages[:-1]:
+                if message['role'] == 'user':
+                    chat.send_message(message['content'])
+            
+            # Generate response to the last message
+            last_message = messages[-1]['content']
+            
+            def _generate():
+                response = chat.send_message(last_message)
+                return response.text
+            
+            result = await asyncio.to_thread(_generate)
+            return result
+            
+        except Exception as e:
+            log_api_error("Gemini", e, "conversation generation")
+            raise LLMError(f"Gemini conversation generation failed: {str(e)}")
+
+# Global instance
+gemini_service = GeminiService() 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import api, { ChatMessage, ChatRequest, ChatResponse } from '../services/api';
+import api, { ChatMessage, ChatRequest, ChatResponse, UserPreferences } from '../services/api';
 
 interface ApiErrorData {
   error?: string;
@@ -24,6 +24,8 @@ export interface UseChatOptions {
   editorContent: string;
   selectedLLM: string;
   setApiGlobalError?: React.Dispatch<React.SetStateAction<string | null>>;
+  userPreferences?: UserPreferences;
+  feedbackOnPrevious?: string;
 }
 
 export interface UseChatReturn {
@@ -47,6 +49,8 @@ export const useChat = ({
   editorContent,
   selectedLLM,
   setApiGlobalError,
+  userPreferences,
+  feedbackOnPrevious,
 }: UseChatOptions): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
@@ -61,15 +65,21 @@ export const useChat = ({
     // Initialize with a welcome message if no initial messages are provided
     // and ensure messages isn't empty to prevent re-triggering.
     if (initialMessages.length === 0 && messages.length === 0) {
+      const englishVariantLabel = userPreferences?.english_variant === 'indian' ? 'Indian English' :
+                                 userPreferences?.english_variant === 'british' ? 'British English' :
+                                 userPreferences?.english_variant === 'american' ? 'American English' : '';
+      
+      const variantText = englishVariantLabel ? ` I'll respect your ${englishVariantLabel} preferences.` : '';
+      
       setMessages([
         {
           role: 'assistant',
-          content: `Hello, I'm your ${authorPersona} AI writing assistant. I'll help you with your ${helpFocus.toLowerCase()}. What would you like to ask?`,
+          content: `Hello, I'm your ${authorPersona} AI writing assistant. I'll help you with your ${helpFocus.toLowerCase()}.${variantText} What would you like to ask?`,
         },
       ]);
       setThinkingTrail(null); // Reset thinking trail with persona change
     }
-  }, [authorPersona, helpFocus, initialMessages.length, messages.length]);
+  }, [authorPersona, helpFocus, initialMessages.length, messages.length, userPreferences?.english_variant]);
   
   // Effect for simulating typing stream
   useEffect(() => {
@@ -115,6 +125,9 @@ export const useChat = ({
         help_focus: helpFocus,
         chat_history: updatedMessages, // Send the latest messages including the current user message
         llm_provider: selectedLLM,
+        user_preferences: userPreferences,
+        feedback_on_previous: feedbackOnPrevious,
+        english_variant: userPreferences?.english_variant,
       };
       
       const response: ChatResponse = await api.chat(requestData);
@@ -153,7 +166,7 @@ export const useChat = ({
       setIsThinking(false);
       setIsStreaming(false);
     }
-  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM]);
+  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious]);
 
   const handleSaveCheckpoint = useCallback(async () => {
     console.log("Save Checkpoint clicked");

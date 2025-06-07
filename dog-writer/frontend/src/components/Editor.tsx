@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Paragraph from '@tiptap/extension-paragraph';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, forwardRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 
 interface EditorProps {
@@ -10,11 +10,11 @@ interface EditorProps {
   onTextHighlighted?: (text: string) => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ 
+const Editor = forwardRef<HTMLDivElement, EditorProps>(({ 
   content: contentProp, 
   onChange: onChangeProp, 
   onTextHighlighted: onTextHighlightedProp 
-}) => {
+}, ref) => {
   // Use context values as fallback if props are not provided
   const { 
     editorContent: contextContent, 
@@ -104,7 +104,7 @@ const Editor: React.FC<EditorProps> = ({
   }, [editor, handleSelectionChange]);
 
   return (
-    <div className="editor-container">
+    <div className="editor-container" ref={ref}>
       <div className="editor-header">
         <h2>Text Content</h2>
         <p className="selection-hint">Highlight text to discuss with the AI</p>
@@ -341,6 +341,8 @@ const Editor: React.FC<EditorProps> = ({
       `}</style>
     </div>
   );
-};
+});
+
+Editor.displayName = 'Editor';
 
 export default Editor; 

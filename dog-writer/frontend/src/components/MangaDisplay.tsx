@@ -68,7 +68,7 @@ const MangaDisplay: React.FC<MangaDisplayProps> = ({ mangaPage }) => {
           </div>
         ))}
       </div>
-      <style jsx>{`
+      <style>{`
         .manga-display-container {
           padding: 20px;
           border: 1px solid #ccc;

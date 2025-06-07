@@ -1,174 +1,269 @@
-import React from 'react';
+/**
+ * Controls Component - Redesigned
+ * 
+ * Minimal icon-based controls for writing preferences and settings.
+ * Uses the new design system for consistent styling.
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 
 const Controls: React.FC = () => {
   const {
-  authorPersona,
-  helpFocus,
-  selectedLLM,
+    authorPersona,
     setAuthorPersona,
+    helpFocus,
     setHelpFocus,
+    selectedLLM,
     setSelectedLLM,
-    handleSaveCheckpoint
+    handleSaveCheckpoint,
+    userPreferences,
+    englishVariants,
+    updateEnglishVariant
   } = useAppContext();
 
-  const authors = [
-    "Ernest Hemingway",
-    "Jane Austen",
-    "Virginia Woolf"
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [timerActive, setTimerActive] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const authorPersonas = [
+    'Ernest Hemingway',
+    'Virginia Woolf', 
+    'Maya Angelou',
+    'George Orwell',
+    'Toni Morrison',
+    'J.K. Rowling',
+    'Haruki Murakami',
+    'Margaret Atwood'
   ];
 
   const helpFocuses = [
-    "Dialogue Writing",
-    "Scene Description",
-    "Plot Development",
-    "Character Introduction",
-    "Overall Tone"
+    'Dialogue Writing',
+    'Scene Description', 
+    'Plot Development',
+    'Character Introduction',
+    'Overall Tone'
   ];
 
   const llmOptions = [
-    "Google Gemini",
-    "Anthropic Claude"
+    'Google Gemini',
+    'Anthropic Claude'
   ];
 
+  const toggleDropdown = (dropdown: string) => {
+    setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
+  };
+
+  const handleSelection = (dropdown: string, value: string) => {
+    switch (dropdown) {
+      case 'persona':
+        setAuthorPersona(value);
+        break;
+      case 'focus':
+        setHelpFocus(value);
+        break;
+      case 'english':
+        updateEnglishVariant(value);
+        break;
+      case 'model':
+        setSelectedLLM(value);
+        break;
+    }
+    setActiveDropdown(null);
+  };
+
+  const getDisplayValue = (type: string) => {
+    switch (type) {
+      case 'persona':
+        return authorPersona.split(' ')[0]; // First name only
+      case 'focus':
+        return helpFocus.split(' ')[0]; // First word only
+      case 'english':
+        const variant = englishVariants.find(v => v.value === userPreferences.english_variant);
+        return variant?.label.split(' ')[0] || 'US'; // First word only
+      case 'model':
+        return selectedLLM.split(' ')[0]; // First word only
+      default:
+        return '';
+    }
+  };
+
+  const handleTimerToggle = () => {
+    setTimerActive(!timerActive);
+    // Here you could integrate with the actual writing timer functionality
+  };
+
   return (
-    <div className="controls-container">
-      <div className="controls-group">
-        <label htmlFor="author-select">Author Persona</label>
-        <select
-          id="author-select"
-          value={authorPersona}
-          onChange={(e) => setAuthorPersona(e.target.value)}
-          className="select-control"
-        >
-          {authors.map(author => (
-            <option key={author} value={author}>{author}</option>
-          ))}
-        </select>
+    <div className="controls-container" ref={containerRef}>
+      <div className="controls-left">
+        
+        {/* Author Persona */}
+        <div className="control-icon-group">
+          <button
+            className={`control-icon-button ${activeDropdown === 'persona' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('persona')}
+            title={`Author Persona: ${authorPersona}`}
+            aria-expanded={activeDropdown === 'persona'}
+            aria-haspopup="true"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">👤</span>
+            </div>
+            <div className="control-tooltip">Author</div>
+          </button>
+          {activeDropdown === 'persona' && (
+            <div className="control-dropdown" role="menu">
+              {authorPersonas.map((persona) => (
+                <button
+                  key={persona}
+                  className={`dropdown-option ${authorPersona === persona ? 'selected' : ''}`}
+                  onClick={() => handleSelection('persona', persona)}
+                  role="menuitem"
+                >
+                  {persona}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Help Focus */}
+        <div className="control-icon-group">
+          <button
+            className={`control-icon-button ${activeDropdown === 'focus' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('focus')}
+            title={`Help Focus: ${helpFocus}`}
+            aria-expanded={activeDropdown === 'focus'}
+            aria-haspopup="true"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">🎯</span>
+            </div>
+            <div className="control-tooltip">Focus</div>
+          </button>
+          {activeDropdown === 'focus' && (
+            <div className="control-dropdown" role="menu">
+              {helpFocuses.map((focus) => (
+                <button
+                  key={focus}
+                  className={`dropdown-option ${helpFocus === focus ? 'selected' : ''}`}
+                  onClick={() => handleSelection('focus', focus)}
+                  role="menuitem"
+                >
+                  {focus}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* English Style */}
+        <div className="control-icon-group">
+          <button
+            className={`control-icon-button ${activeDropdown === 'english' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('english')}
+            title={`English Style: ${englishVariants.find(v => v.value === userPreferences.english_variant)?.label}`}
+            aria-expanded={activeDropdown === 'english'}
+            aria-haspopup="true"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">🌍</span>
+            </div>
+            <div className="control-tooltip">English</div>
+          </button>
+          {activeDropdown === 'english' && (
+            <div className="control-dropdown" role="menu">
+              {englishVariants.map((variant) => (
+                <button
+                  key={variant.value}
+                  className={`dropdown-option ${userPreferences.english_variant === variant.value ? 'selected' : ''}`}
+                  onClick={() => handleSelection('english', variant.value)}
+                  role="menuitem"
+                >
+                  {variant.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* AI Model */}
+        <div className="control-icon-group">
+          <button
+            className={`control-icon-button ${activeDropdown === 'model' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('model')}
+            title={`AI Model: ${selectedLLM}`}
+            aria-expanded={activeDropdown === 'model'}
+            aria-haspopup="true"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">🤖</span>
+            </div>
+            <div className="control-tooltip">AI Model</div>
+          </button>
+          {activeDropdown === 'model' && (
+            <div className="control-dropdown" role="menu">
+              {llmOptions.map((model) => (
+                <button
+                  key={model}
+                  className={`dropdown-option ${selectedLLM === model ? 'selected' : ''}`}
+                  onClick={() => handleSelection('model', model)}
+                  role="menuitem"
+                >
+                  {model}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="controls-divider"></div>
+
+        {/* Writing Timer Clock Icon */}
+        <div className="control-action-group">
+          <button
+            className={`control-action-button ${timerActive ? 'active' : ''}`}
+            onClick={handleTimerToggle}
+            title={timerActive ? "Stop Writing Timer" : "Start Writing Timer"}
+            aria-label={timerActive ? "Stop Writing Timer" : "Start Writing Timer"}
+          >
+            <div className="control-button-content">
+              <span className="control-icon">⏱️</span>
+            </div>
+            <div className="control-tooltip">Timer</div>
+          </button>
+        </div>
+
+        {/* Save Checkpoint Button */}
+        <div className="control-action-group">
+          <button
+            className="control-action-button"
+            onClick={handleSaveCheckpoint}
+            title="Save Checkpoint"
+            aria-label="Save Checkpoint"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">💾</span>
+            </div>
+            <div className="control-tooltip">Save</div>
+          </button>
+        </div>
       </div>
-
-      <div className="controls-group">
-        <label htmlFor="focus-select">Help Focus</label>
-        <select
-          id="focus-select"
-          value={helpFocus}
-          onChange={(e) => setHelpFocus(e.target.value)}
-          className="select-control"
-        >
-          {helpFocuses.map(focus => (
-            <option key={focus} value={focus}>{focus}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="controls-group">
-        <label htmlFor="llm-select">AI Model</label>
-        <select
-          id="llm-select"
-          value={selectedLLM}
-          onChange={(e) => setSelectedLLM(e.target.value)}
-          className="select-control"
-        >
-          {llmOptions.map(llm => (
-            <option key={llm} value={llm}>{llm}</option>
-          ))}
-        </select>
-      </div>
-
-      <button 
-        className="checkpoint-button"
-        onClick={handleSaveCheckpoint}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        Save Checkpoint
-      </button>
-
-      <style>{`
-        .controls-container {
-          display: flex;
-          align-items: center;
-          padding: 12px 24px;
-          background-color: white;
-          border-bottom: 1px solid #e2e8f0;
-          gap: 20px;
-          box-shadow: var(--shadow-sm);
-          z-index: 5;
-        }
-        
-        .controls-group {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        
-        label {
-          font-weight: 500;
-          color: var(--text-secondary);
-          font-size: 0.875rem;
-        }
-        
-        .select-control {
-          padding: 8px 12px;
-          border: 1px solid #e2e8f0;
-          border-radius: var(--rounded-md);
-          font-size: 0.875rem;
-          min-width: 200px;
-          background-color: #f8fafc;
-          color: var(--text-primary);
-          transition: all 0.2s;
-          outline: none;
-          box-shadow: var(--shadow-sm);
-        }
-        
-        .select-control:focus {
-          border-color: var(--primary-light);
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-        }
-        
-        .checkpoint-button {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 16px;
-          background-color: var(--accent-color);
-          color: white;
-          border: none;
-          border-radius: var(--rounded-md);
-          cursor: pointer;
-          margin-left: auto;
-          font-weight: 500;
-          transition: all 0.2s;
-          box-shadow: var(--shadow-sm);
-        }
-        
-        .checkpoint-button:hover {
-          background-color: #0d9488;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        
-        .checkpoint-button:active {
-          transform: translateY(0);
-        }
-        
-        @media (max-width: 768px) {
-          .controls-container {
-            flex-wrap: wrap;
-            gap: 16px;
-            padding: 12px 16px;
-          }
-          
-          .checkpoint-button {
-            margin-left: 0;
-            width: 100%;
-            justify-content: center;
-          }
-        }
-      `}</style>
     </div>
   );
 };
