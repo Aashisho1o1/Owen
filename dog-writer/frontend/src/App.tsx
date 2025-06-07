@@ -1,89 +1,155 @@
-import React from 'react';
-import { Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
+import React, { useRef, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { AppProvider } from './contexts/AppContext';
 import Editor from './components/Editor';
 import ChatPane from './components/ChatPane';
 import Controls from './components/Controls';
+import WritingTimer from './components/WritingTimer';
 import MangaStudioPage from './pages/MangaStudioPage';
-import SoundToSpeechPage from './pages/SoundToSpeechPage';
 import './App.css';
-import { useAppContext } from './contexts/AppContext';
 
-// Main layout component that includes header and controls
-const AppLayout: React.FC = () => {
-  const { 
-    apiGlobalError 
-  } = useAppContext();
-  
-  const location = useLocation();
-  const isFullscreenRoute = location.pathname === '/sound-to-speech';
-
+// Voice to Text Page
+const VoiceToTextPage: React.FC = () => {
   return (
-    <>
-      <header className="app-header" style={{
-        display: isFullscreenRoute ? 'none' : 'flex'
-      }}>
-        <h1>Owen</h1>
-        <nav className="app-nav">
-          <Link to="/">Writer's Desk</Link>
-          <Link to="/manga">Manga Studio</Link>
-          <Link to="/sound-to-speech">Sound to Speech</Link>
-        </nav>
-      </header>
-      {!isFullscreenRoute && <Controls />}
-      {apiGlobalError && (
-        <div className="api-error-banner global-api-error">
-          <p>{apiGlobalError}</p>
-        </div>
-      )}
-      <div className={`layout-container ${isFullscreenRoute ? 'layout-container--fullscreen' : 'layout-container--with-header'}`}>
-        <Outlet />
-      </div>
-    </>
-  );
-};
-
-// Component for the main Writer's Desk (Editor + Chat)
-const WritersDesk: React.FC = () => {
-  const {
-    editorContent,
-    setEditorContent,
-    handleTextHighlighted,
-    chatApiError
-  } = useAppContext();
-
-  return (
-    <main className="app-content">
-      <div className="editor-pane">
-        <Editor 
-          content={editorContent} 
-          onChange={setEditorContent}
-          onTextHighlighted={handleTextHighlighted}
-        />
-      </div>
-      <div className="chat-and-manga-pane">
-        {chatApiError && (
-          <div className="api-error-banner chat-api-error">
-            <p>{chatApiError}</p>
+    <div className="voice-page">
+      <div className="voice-controls">
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '8px', marginBottom: '20px' }}>
+            <h3>🎤 Voice Recognition</h3>
+            <p>Advanced voice-to-text functionality coming soon...</p>
+            <p>Will include real-time transcription and voice commands</p>
           </div>
-        )}
-        <ChatPane />
+        </div>
       </div>
-    </main>
-  );
-};
-
-function App() {
-  return (
-    <div className="app">
-      <Routes>
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<WritersDesk />} />
-          <Route path="manga" element={<MangaStudioPage />} />
-          <Route path="sound-to-speech" element={<SoundToSpeechPage />} />
-        </Route>
-      </Routes>
     </div>
   );
-}
+};
+
+// Clean navigation component
+const Navigation: React.FC = () => {
+  const location = useLocation();
+  
+  const navItems = [
+    { path: '/', label: 'Writer\'s Desk', icon: '✍️' },
+    { path: '/manga', label: 'Manga Studio', icon: '🎨' },
+    { path: '/voice', label: 'Voice to Text', icon: '🎤' },
+  ];
+
+  return (
+    <nav className="main-navigation">
+      <div className="nav-brand">
+        <h1 className="brand-text">Owen</h1>
+        <span className="brand-tagline">AI Writing Companion</span>
+      </div>
+      
+      <div className="nav-links">
+        {navItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+          >
+            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-label">{item.label}</span>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+};
+
+// Full Writers Desk with single-pane layout and toggleable chat
+const WritersDesk: React.FC = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
+  };
+
+  return (
+    <div className="writers-desk">
+      {/* Main Writing Interface - Text content at the very top */}
+      <div className={`writing-interface ${isChatOpen ? 'with-chat' : 'editor-only'}`}>
+        {/* Main Editor Panel - Text content at the top */}
+        <div className="editor-panel">
+          <div className="editor-container">
+            <Editor ref={editorRef} />
+          </div>
+        </div>
+
+        {/* Sliding Chat Panel */}
+        <div className={`chat-panel ${isChatOpen ? 'open' : 'closed'}`}>
+          <ChatPane />
+        </div>
+      </div>
+
+      {/* Floating Controls - Left Sidebar */}
+      <div className="controls-sidebar">
+        <Controls />
+      </div>
+
+      {/* Floating Chat Toggle Button */}
+      <button 
+        className={`chat-toggle-button ${isChatOpen ? 'active' : ''}`}
+        onClick={toggleChat}
+        title={isChatOpen ? 'Close AI Chat' : 'Open AI Chat'}
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="20" 
+          height="20" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        {isChatOpen ? 'Close Chat' : 'AI Chat'}
+      </button>
+    </div>
+  );
+};
+
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="app-layout">
+      <Navigation />
+      
+      <main className="main-content">
+        <div className="content-wrapper">
+          {children}
+        </div>
+        
+        {/* Writing Timer - Floating */}
+        <div className="writing-timer-float">
+          <WritingTimer editorRef={editorRef} />
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AppProvider>
+      <Router>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<WritersDesk />} />
+            <Route path="/manga" element={<MangaStudioPage />} />
+            <Route path="/voice" element={<VoiceToTextPage />} />
+            <Route path="*" element={<WritersDesk />} />
+          </Routes>
+        </AppLayout>
+      </Router>
+    </AppProvider>
+  );
+};
 
 export default App;

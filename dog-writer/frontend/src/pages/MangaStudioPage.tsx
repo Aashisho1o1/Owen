@@ -61,9 +61,6 @@ const MangaStudioPage: React.FC = () => {
     <main className="app-content">
       {/* Left side - Input panel */}
       <div className="manga-input-pane">
-        <h2>Manga Studio</h2>
-        <p>Convert your story into a manga page.</p>
-        
         <div className="manga-input-options">
           <label>
             <input 
@@ -141,7 +138,7 @@ const MangaStudioPage: React.FC = () => {
       )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .manga-input-pane, .manga-display-pane {
           flex: 1;
           overflow: auto;

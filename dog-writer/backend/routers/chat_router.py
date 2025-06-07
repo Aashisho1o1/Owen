@@ -3,24 +3,15 @@ import json
 import re
 
 # Change relative imports to absolute imports
-from models.schemas import ChatRequest, ChatResponse
+from models.schemas import (
+    ChatRequest, ChatResponse, WritingSampleRequest, WritingSampleResponse,
+    UserFeedbackRequest, OnboardingRequest, OnboardingResponse
+)
 from services.llm_service import LLMService
-from services.persona_service import create_writer_persona
+from services.database_service import db_service
 
-# Initialize services (assuming llm_service is a singleton or appropriately managed)
-# If LLMService needs to be initialized per request or differently, this needs adjustment.
-# For now, let's assume it's initialized in main.py and we get an instance or use a global one.
-# This might require passing llm_service instance or using Depends.
-
-# To avoid circular dependency if llm_service is initialized in main.py and imported here,
-# we might need to adjust how services are provided. For now, let's assume a simplified access.
-# One common pattern is to initialize services in main.py and pass them to router functions
-# using Depends, or access them via a global/app state if appropriate for the design.
-
-# For this refactoring step, we will instantiate it directly here if not passed.
-# However, a better approach for shared services is dependency injection.
-llm_service = LLMService() # This assumes LLMService can be instantiated directly here.
-                           # In a larger app, consider FastAPI's Depends for service instances.
+# Initialize services
+llm_service = LLMService()
 
 router = APIRouter(
     prefix="/api/chat",
@@ -29,94 +20,51 @@ router = APIRouter(
 
 @router.post("/", response_model=ChatResponse)
 async def chat(request: ChatRequest):
+    """Enhanced chat endpoint with personalized, culturally-aware feedback."""
     try:
-        persona = create_writer_persona(request.author_persona)
+        # Handle user session and preferences
+        user_id = "default_user"  # In production, extract from auth token
+        user_preferences = request.user_preferences
         
+        # If no preferences provided, try to load from database
+        if not user_preferences:
+            user_preferences = db_service.get_user_preferences(user_id)
+            if not user_preferences:
+                # Create default preferences for new user
+                user_preferences = db_service.create_default_preferences(user_id)
+        
+        # Extract user message and check for highlighted text
         highlighted_text = None
         message = request.message
         if "improve this text:" in request.message and '"' in request.message:
             parts = request.message.split('"')
             if len(parts) >= 3:
                 highlighted_text = parts[1]
-                # message remains request.message to keep full context for LLM
         
-        system_prompt = f"""
-        You are an AI writing assistant embodying the exact style, voice, and approach of {request.author_persona}. 
-        Your goal is to provide a constructive and meaningful feedback as a writing coach and mentor.
+        # Use the new modular prompt assembly system
+        final_prompt = llm_service.assemble_chat_prompt(
+            user_message=message,
+            editor_text=request.editor_text,
+            author_persona=request.author_persona,
+            help_focus=request.help_focus,
+            english_variant=request.english_variant or user_preferences.english_variant,
+            user_style_profile=user_preferences.writing_style_profile,
+            user_corrections=user_preferences.user_corrections,
+            highlighted_text=highlighted_text
+        )
         
-        WRITER CHARACTERISTICS:
-        - Writing style: {persona.get('writing_style', 'Distinctive and unique prose style')}
-        - Voice: {persona.get('voice', 'Unique authorial voice')}
-        - Themes: {persona.get('themes', 'Characteristic themes and subjects')}
-        - Techniques: {persona.get('techniques', 'Distinctive writing techniques')}
-        
-        EXAMPLES OF AUTHENTIC STYLE:
-        {' '.join([f'"{{example}}"' for example in persona.get('examples', [])])}
-        
-        DIALOGUE GUIDANCE:
-        {persona.get('dialogue_guidance', 'Write dialogue that feels authentic to this author')}
-        
-        YOUR ROLE:
-        - You are helping with: {request.help_focus}
-        - All advice must authentically reflect how {request.author_persona} would approach this aspect of writing
-        - Stay true to their worldview, values, and era-appropriate perspectives
-        - Provide specific, actionable guidance based on their distinctive approach
-        
-        IMPORTANT:
-        1. Don't just mimic surface quirks - internalize their deeper patterns of thought and structural tendencies
-        2. Avoid anachronistic advice or modern concepts that wouldn't align with their era
-        3. When giving examples, they should be indistinguishable from the author's actual writing
-        4. Balance authorial style with clarity and accessibility - responses should be both authentic and easily understood
-        5. Make dialogue free-flowing and avoid overly complex or difficult to follow language
-        
-        Format your response as a JSON object with ONLY the key: 'dialogue_response'.
-        Example: {{"dialogue_response": "Your advice in accessible {request.author_persona} style"}}
-        """ 
-        
-        context_prompt = f"""
-        USER'S CURRENT WRITING:
-        {request.editor_text}
-        
-        USER'S HELP FOCUS:
-        {request.help_focus}
-        
-        USER'S QUESTION:
-        {message}
-        """
-        
-        if highlighted_text:
-            context_prompt += f"""
-            
-            HIGHLIGHTED TEXT TO IMPROVE:
-            "{highlighted_text}"
-            
-            Please focus specifically on improving this highlighted text in {request.author_persona}'s style.
-            Suggest edits, rewrites, or improvements to make it more aligned with how {request.author_persona} would write it.
-            """
-        
-        context_prompt += f"""
-        
-        Based on the writing style guidance provided, craft a response that addresses the user's specific question in {request.author_persona}'s authentic voice.
-        
-        Response must be formatted as a valid JSON object with this exact key:
-        {{
-            "dialogue_response": "Your authentic {request.author_persona}-style response here"
-        }}
-        """
-        
+        # Generate response using selected LLM
         response_text = None
         thinking_trail = None
 
         if request.llm_provider == "Google Gemini":
+            # Format prompt for Gemini (expects list of dicts)
             prompts = [
-                {"role": "user", "parts": [system_prompt]},
-                {"role": "model", "parts": ["I understand my role as a writing assistant embodying " + request.author_persona]},
-                {"role": "user", "parts": [context_prompt]}
+                {"role": "user", "parts": [final_prompt]}
             ]
             response_text = await llm_service.generate_with_selected_llm(prompts, request.llm_provider)
         else: # Anthropic Claude
-            combined_prompt = f"{system_prompt}\n\n{context_prompt}"
-            response_result = await llm_service.generate_with_selected_llm(combined_prompt, request.llm_provider)
+            response_result = await llm_service.generate_with_selected_llm(final_prompt, request.llm_provider)
             
             if isinstance(response_result, dict) and "text" in response_result:
                 response_text = response_result["text"]
@@ -126,6 +74,7 @@ async def chat(request: ChatRequest):
                 response_text = json.dumps({"dialogue_response": "Error: Received unexpected response structure from LLM service for Claude."})
                 thinking_trail = response_result.get("thinking_trail", "Error retrieving thinking trail.") if isinstance(response_result, dict) else "Unknown error in thinking trail."
 
+        # Parse the JSON response
         try:
             ai_response_dict = {}
             if response_text:
@@ -155,6 +104,16 @@ async def chat(request: ChatRequest):
                 dialogue_content = ai_response_dict.get("text", str(ai_response_dict))
                 ai_response_dict["dialogue_response"] = dialogue_content if isinstance(dialogue_content, str) else "Error: AI response format was incorrect (missing dialogue_response)."
             
+            # Store user feedback if provided
+            if request.feedback_on_previous:
+                db_service.add_user_feedback(
+                    user_id=user_id,
+                    original_message=message,
+                    ai_response=ai_response_dict["dialogue_response"],
+                    user_feedback=request.feedback_on_previous,
+                    correction_type="general"  # Could be enhanced to detect type
+                )
+            
             return ChatResponse(
                 dialogue_response=ai_response_dict["dialogue_response"],
                 thinking_trail=thinking_trail
@@ -174,9 +133,120 @@ async def chat(request: ChatRequest):
         elif str(e):
             error_dialogue = f"Error: {str(e)}"
             
-        # Consider raising HTTPException here for FastAPI to handle client response codes appropriately
-        # For now, returning ChatResponse with error details
         return ChatResponse(
             dialogue_response=error_dialogue,
             thinking_trail=None
-        ) 
+        )
+
+@router.post("/analyze-writing", response_model=WritingSampleResponse)
+async def analyze_writing_sample(request: WritingSampleRequest):
+    """Analyze a user's writing sample to create a personalized style profile."""
+    try:
+        user_id = request.user_id or "default_user"
+        
+        # Analyze the writing style using LLM
+        style_profile = await llm_service.analyze_writing_style(request.writing_sample)
+        
+        # Save the style profile to database
+        if not style_profile.get("error"):
+            success = db_service.save_writing_style_profile(user_id, style_profile)
+            if not success:
+                return WritingSampleResponse(
+                    style_profile=style_profile,
+                    success=False,
+                    error="Failed to save style profile to database"
+                )
+        
+        return WritingSampleResponse(
+            style_profile=style_profile,
+            success=True
+        )
+        
+    except Exception as e:
+        print(f"Error analyzing writing sample: {e}")
+        return WritingSampleResponse(
+            style_profile={},
+            success=False,
+            error=str(e)
+        )
+
+@router.post("/feedback")
+async def submit_user_feedback(request: UserFeedbackRequest):
+    """Submit user feedback on AI responses for continuous improvement."""
+    try:
+        user_id = "default_user"  # In production, extract from auth token
+        
+        success = db_service.add_user_feedback(
+            user_id=user_id,
+            original_message=request.original_message,
+            ai_response=request.ai_response,
+            user_feedback=request.user_feedback,
+            correction_type=request.correction_type
+        )
+        
+        if success:
+            return {"status": "success", "message": "Feedback recorded successfully"}
+        else:
+            return {"status": "error", "message": "Failed to record feedback"}
+            
+    except Exception as e:
+        print(f"Error submitting user feedback: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.post("/onboarding", response_model=OnboardingResponse)
+async def complete_onboarding(request: OnboardingRequest):
+    """Complete user onboarding and save initial preferences."""
+    try:
+        user_id = "default_user"  # In production, extract from auth token
+        
+        success = db_service.complete_onboarding(
+            user_id=user_id,
+            writing_type=request.writing_type,
+            feedback_style=request.feedback_style,
+            primary_goal=request.primary_goal,
+            english_variant=request.english_variant
+        )
+        
+        if success:
+            user_preferences = db_service.get_user_preferences(user_id)
+            return OnboardingResponse(
+                success=True,
+                user_preferences=user_preferences,
+                message="Onboarding completed successfully"
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save onboarding preferences")
+            
+    except Exception as e:
+        print(f"Error completing onboarding: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/preferences")
+async def get_user_preferences():
+    """Get current user preferences."""
+    try:
+        user_id = "default_user"  # In production, extract from auth token
+        preferences = db_service.get_user_preferences(user_id)
+        
+        if preferences:
+            return {"status": "success", "preferences": preferences}
+        else:
+            # Create default preferences
+            preferences = db_service.create_default_preferences(user_id)
+            return {"status": "success", "preferences": preferences}
+            
+    except Exception as e:
+        print(f"Error retrieving user preferences: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.get("/style-options")
+async def get_style_options():
+    """Get available English variants."""
+    return {
+        "english_variants": [
+            {"value": "standard", "label": "Standard English"},
+            {"value": "indian", "label": "Indian English"},
+            {"value": "british", "label": "British English"},
+            {"value": "american", "label": "American English"}
+        ]
+    } 
