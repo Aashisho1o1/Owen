@@ -5,7 +5,11 @@ NIXPACKS_BUILD_CMD = "cd dog-writer/backend && pip install -r requirements.txt"
 nixPkgs = ['python311', 'python311Packages.pip']
 
 [phases.install]
-cmds = ['cd dog-writer/backend', 'pip install -r requirements.txt']
+cmds = [
+  'cd dog-writer/backend',
+  'python -m venv .venv',
+  '.venv/bin/pip install -r requirements.txt'
+]
 
 [start]
-cmd = 'cd dog-writer/backend && python -m uvicorn app:app --host 0.0.0.0 --port $PORT' 
+cmd = 'cd dog-writer/backend && .venv/bin/python -m uvicorn app:app --host 0.0.0.0 --port $PORT' 
