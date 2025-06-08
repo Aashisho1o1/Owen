@@ -1,0 +1,12 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "npm run preview -- --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/"
+healthcheckTimeout = 60
+
+[variables]
+NODE_VERSION = "18"
+VITE_API_URL = "https://owen-production.up.railway.app"
+RAILWAY_SERVICE_NAME = "owen-ai-frontend" 
