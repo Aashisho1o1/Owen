@@ -2,7 +2,7 @@
 NIXPACKS_BUILD_CMD = "cd dog-writer/backend && pip install -r requirements.txt"
 
 [phases.setup]
-nixPkgs = ['python311', 'pip']
+nixPkgs = ['python311', 'python311Packages.pip']
 
 [phases.install]
 cmds = ['cd dog-writer/backend', 'pip install -r requirements.txt']
