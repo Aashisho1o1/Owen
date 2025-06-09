@@ -176,6 +176,17 @@ async def test_openai():
         print(f"[ERROR] OpenAI test failed: {e}")
         return {"error": str(e)}
 
+@app.get("/api/test/deployed")
+async def test_deployed():
+    """Simple test to verify new code is deployed"""
+    return {
+        "deployed": True,
+        "branch": "refactor/backend-modular", 
+        "timestamp": datetime.now().isoformat(),
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "message": "New code successfully deployed!"
+    }
+
 @app.get("/api/debug/env")
 async def debug_env():
     """Debug endpoint to check environment variables"""
