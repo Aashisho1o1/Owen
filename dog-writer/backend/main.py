@@ -5,6 +5,7 @@ Railway-optimized minimal version
 
 import os
 import json
+import openai
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -12,6 +13,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+# Configure OpenAI
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Configure basic setup
 app = FastAPI(
@@ -140,22 +144,50 @@ async def detailed_status():
 # Basic chat endpoints
 @app.post("/api/chat/message", response_model=ChatResponse)
 async def chat_message(chat: ChatMessage):
-    """Send a message to AI (demo mode)"""
-    # Simulate AI response for now
-    responses = [
-        f"Hello! I received your message: '{chat.message}'. I'm Owen AI Writer, ready to help you create amazing content!",
-        f"Great question about: '{chat.message}'. As your AI writing assistant, I can help you develop this idea further.",
-        f"I see you mentioned: '{chat.message}'. Let me help you craft compelling content around this topic.",
-        f"Thanks for your input: '{chat.message}'. I'm here to assist with all your writing needs!"
-    ]
-    
-    import random
-    ai_response = random.choice(responses)
-    
-    return ChatResponse(
-        dialogue_response=ai_response,
-        thinking_trail=None
-    )
+    """Send a message to AI with real LLM integration"""
+    try:
+        # Use OpenAI if API key is available
+        if os.getenv("OPENAI_API_KEY"):
+            # Create persona-specific system prompt
+            system_prompt = f"""You are {chat.author_persona}, a master writer and mentor. 
+            You're helping a writer improve their craft. Be encouraging, insightful, and true to {chat.author_persona}'s style and philosophy.
+            
+            Focus area: {chat.help_focus}
+            Editor text context: {chat.editor_text[:500] if chat.editor_text else 'No text provided'}
+            
+            Provide specific, actionable advice that would improve the writing."""
+            
+            # Call OpenAI API
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": chat.message}
+                ],
+                max_tokens=300,
+                temperature=0.7
+            )
+            
+            ai_response = response.choices[0].message.content.strip()
+            
+            return ChatResponse(
+                dialogue_response=ai_response,
+                thinking_trail=f"Used OpenAI GPT-3.5-turbo with {chat.author_persona} persona"
+            )
+        
+        else:
+            # Fallback to demo response if no API key
+            return ChatResponse(
+                dialogue_response=f"Demo response: {chat.message} (Add OpenAI API key for real AI responses)",
+                thinking_trail="Demo mode - no API key configured"
+            )
+            
+    except Exception as e:
+        print(f"Error in chat_message: {e}")
+        return ChatResponse(
+            dialogue_response=f"I apologize, but I encountered an error. As {chat.author_persona} would say, let's try again with a different approach.",
+            thinking_trail=f"Error: {str(e)}"
+        )
 
 @app.get("/api/chat/basic")
 async def basic_chat():
