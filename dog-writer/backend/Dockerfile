@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PORT=8000
 
 # Set working directory
 WORKDIR /app
@@ -30,5 +31,5 @@ USER appuser
 # Expose port (Railway will override this)
 EXPOSE 8000
 
-# Start command - Railway will use PORT environment variable
-CMD ["sh", "-c", "python -m uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"] 
+# Start command with proper environment variable handling
+CMD python -m uvicorn app:app --host 0.0.0.0 --port $PORT 
