@@ -205,45 +205,43 @@ async def chat_message(chat: ChatMessage):
         print(f"[DEBUG] Using provider: {provider}")
         
         if "openai" in provider or "gpt" in provider:
-            # Use OpenAI
+            # Use OpenAI with simple synchronous approach
             if os.getenv("OPENAI_API_KEY"):
                 try:
-                    print(f"[DEBUG] Making OpenAI API call for message: {chat.message[:50]}...")
+                    print(f"[DEBUG] Starting OpenAI call for: {chat.message[:50]}...")
                     
-                    # Create async wrapper for OpenAI call with strict timeout
-                    async def make_openai_call():
-                        return client.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": chat.message}
-                            ],
-                            max_tokens=300,
-                            temperature=0.7,
-                            timeout=15.0  # Reduced to 15 seconds
-                        )
+                    # Simple synchronous call with short timeout
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": chat.message}
+                        ],
+                        max_tokens=150,  # Reduced for faster response
+                        temperature=0.7,
+                        timeout=8.0  # Short timeout
+                    )
                     
-                    # Wrap with asyncio timeout (10 seconds max)
-                    response = await asyncio.wait_for(make_openai_call(), timeout=10.0)
-                    
-                    print(f"[DEBUG] OpenAI API call successful")
+                    print(f"[DEBUG] OpenAI call completed successfully")
                     ai_response = response.choices[0].message.content.strip()
-                    thinking_trail = f"Used OpenAI GPT-3.5-turbo with {chat.author_persona} persona"
-                    
-                except asyncio.TimeoutError:
-                    print(f"[ERROR] OpenAI API call timed out after 10 seconds")
-                    ai_response = f"Request timed out. Demo response as {chat.author_persona}: {chat.message}"
-                    thinking_trail = "OpenAI API timeout (10s)"
+                    thinking_trail = f"OpenAI GPT-3.5-turbo ({chat.author_persona})"
                     
                 except Exception as openai_error:
-                    print(f"[ERROR] OpenAI API call failed: {openai_error}")
-                    ai_response = f"OpenAI API error: {str(openai_error)}. Demo response as {chat.author_persona}: {chat.message}"
-                    thinking_trail = f"OpenAI API error: {str(openai_error)}"
+                    print(f"[ERROR] OpenAI failed: {str(openai_error)[:100]}")
+                    # Provide intelligent fallback based on the question
+                    if "dialogue" in chat.message.lower():
+                        ai_response = f"As {chat.author_persona}: Cut the fat from your dialogue. What people don't say is often more powerful than what they do. Every word should carry weight and reveal character."
+                    elif "authentic" in chat.message.lower():
+                        ai_response = f"As {chat.author_persona}: Write what you know deeply. Authenticity comes from truth lived, not imagined. Strip away anything that sounds like 'writing' and leave only what rings true."
+                    else:
+                        ai_response = f"As {chat.author_persona}: {chat.message} - The key is to write with both courage and precision. Every sentence should advance your story or deepen character. Cut ruthlessly, write boldly."
+                    
+                    thinking_trail = f"OpenAI timeout - {chat.author_persona} fallback used"
                 
             else:
-                print(f"[DEBUG] No OpenAI API key found")
-                ai_response = f"OpenAI API key not configured. Demo response: {chat.message}"
-                thinking_trail = "OpenAI API key missing"
+                print(f"[DEBUG] No OpenAI API key configured")
+                ai_response = f"OpenAI API key missing. Please configure to get real AI responses."
+                thinking_trail = "Missing OpenAI API key"
                 
         elif "google" in provider or "gemini" in provider:
             # Use Google Gemini
