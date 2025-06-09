@@ -143,6 +143,19 @@ async def detailed_status():
         }
     }
 
+@app.get("/api/debug/env")
+async def debug_env():
+    """Debug endpoint to check environment variables"""
+    return {
+        "openai_key_exists": bool(os.getenv("OPENAI_API_KEY")),
+        "openai_key_length": len(os.getenv("OPENAI_API_KEY", "")),
+        "google_key_exists": bool(os.getenv("GOOGLE_API_KEY")),
+        "google_key_length": len(os.getenv("GOOGLE_API_KEY", "")),
+        "anthropic_key_exists": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "anthropic_key_length": len(os.getenv("ANTHROPIC_API_KEY", "")),
+        "timestamp": datetime.now().isoformat()
+    }
+
 # Basic chat endpoints
 @app.post("/api/chat/message", response_model=ChatResponse)
 async def chat_message(chat: ChatMessage):
