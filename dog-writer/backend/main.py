@@ -5,7 +5,7 @@ Railway-optimized minimal version
 
 import os
 import json
-import openai
+from openai import OpenAI
 import google.generativeai as genai
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # Configure AI providers
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Configure basic setup
@@ -176,7 +176,7 @@ async def chat_message(chat: ChatMessage):
         if "openai" in provider or "gpt" in provider:
             # Use OpenAI
             if os.getenv("OPENAI_API_KEY"):
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": system_prompt},
