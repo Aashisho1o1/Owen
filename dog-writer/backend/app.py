@@ -5,6 +5,7 @@ Railway-optimized minimal version
 
 import os
 import json
+import random
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -49,7 +50,7 @@ class ChatMessage(BaseModel):
 
 class ChatResponse(BaseModel):
     dialogue_response: str
-    thinking_trail: str = None
+    thinking_trail: Optional[str] = None
 
 # Root endpoints
 @app.get("/")
@@ -141,21 +142,27 @@ async def detailed_status():
 @app.post("/api/chat/message", response_model=ChatResponse)
 async def chat_message(chat: ChatMessage):
     """Send a message to AI (demo mode)"""
-    # Simulate AI response for now
-    responses = [
-        f"Hello! I received your message: '{chat.message}'. I'm Owen AI Writer, ready to help you create amazing content!",
-        f"Great question about: '{chat.message}'. As your AI writing assistant, I can help you develop this idea further.",
-        f"I see you mentioned: '{chat.message}'. Let me help you craft compelling content around this topic.",
-        f"Thanks for your input: '{chat.message}'. I'm here to assist with all your writing needs!"
-    ]
-    
-    import random
-    ai_response = random.choice(responses)
-    
-    return ChatResponse(
-        dialogue_response=ai_response,
-        thinking_trail=None
-    )
+    try:
+        # Simulate AI response for now
+        responses = [
+            f"Hello! I received your message: '{chat.message}'. I'm Owen AI Writer, ready to help you create amazing content!",
+            f"Great question about: '{chat.message}'. As your AI writing assistant, I can help you develop this idea further.",
+            f"I see you mentioned: '{chat.message}'. Let me help you craft compelling content around this topic.",
+            f"Thanks for your input: '{chat.message}'. I'm here to assist with all your writing needs!"
+        ]
+        
+        ai_response = random.choice(responses)
+        
+        return ChatResponse(
+            dialogue_response=ai_response,
+            thinking_trail=None
+        )
+    except Exception as e:
+        print(f"Error in chat_message: {e}")
+        return ChatResponse(
+            dialogue_response=f"I apologize, but I encountered an error processing your message: '{chat.message}'. This is a demo response from Owen AI Writer.",
+            thinking_trail=f"Error: {str(e)}"
+        )
 
 @app.get("/api/chat/basic")
 async def basic_chat():
