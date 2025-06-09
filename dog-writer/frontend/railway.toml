@@ -8,5 +8,5 @@ healthcheckTimeout = 60
 
 [variables]
 NODE_VERSION = "18"
-VITE_API_URL = "https://owen-production.up.railway.app"
+VITE_API_URL = "https://owen-production-9235.up.railway.app"
 RAILWAY_SERVICE_NAME = "owen-ai-frontend" 
