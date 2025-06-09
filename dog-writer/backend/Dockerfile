@@ -23,6 +23,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy and make startup script executable
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash appuser
 RUN chown -R appuser:appuser /app
@@ -31,5 +35,5 @@ USER appuser
 # Expose port (Railway will override this)
 EXPOSE 8000
 
-# Start command with proper environment variable handling
-CMD python -m uvicorn app:app --host 0.0.0.0 --port $PORT 
+# Use startup script
+CMD ["/app/start.sh"] 
