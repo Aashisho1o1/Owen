@@ -5,6 +5,7 @@ Railway-optimized minimal version
 
 import os
 import json
+import asyncio
 from openai import OpenAI
 import google.generativeai as genai
 from datetime import datetime
@@ -207,24 +208,35 @@ async def chat_message(chat: ChatMessage):
             if os.getenv("OPENAI_API_KEY"):
                 try:
                     print(f"[DEBUG] Making OpenAI API call for message: {chat.message[:50]}...")
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": chat.message}
-                        ],
-                        max_tokens=300,
-                        temperature=0.7,
-                        timeout=30.0  # 30 second timeout
-                    )
+                    
+                    # Create async wrapper for OpenAI call with strict timeout
+                    async def make_openai_call():
+                        return client.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": chat.message}
+                            ],
+                            max_tokens=300,
+                            temperature=0.7,
+                            timeout=15.0  # Reduced to 15 seconds
+                        )
+                    
+                    # Wrap with asyncio timeout (10 seconds max)
+                    response = await asyncio.wait_for(make_openai_call(), timeout=10.0)
                     
                     print(f"[DEBUG] OpenAI API call successful")
                     ai_response = response.choices[0].message.content.strip()
                     thinking_trail = f"Used OpenAI GPT-3.5-turbo with {chat.author_persona} persona"
                     
+                except asyncio.TimeoutError:
+                    print(f"[ERROR] OpenAI API call timed out after 10 seconds")
+                    ai_response = f"Request timed out. Demo response as {chat.author_persona}: {chat.message}"
+                    thinking_trail = "OpenAI API timeout (10s)"
+                    
                 except Exception as openai_error:
                     print(f"[ERROR] OpenAI API call failed: {openai_error}")
-                    ai_response = f"OpenAI API error: {str(openai_error)}. Falling back to demo response as {chat.author_persona}: {chat.message}"
+                    ai_response = f"OpenAI API error: {str(openai_error)}. Demo response as {chat.author_persona}: {chat.message}"
                     thinking_trail = f"OpenAI API error: {str(openai_error)}"
                 
             else:
@@ -274,7 +286,7 @@ async def chat_message(chat: ChatMessage):
         duration = (datetime.now() - start_time).total_seconds()
         print(f"[ERROR] Chat request failed after {duration} seconds: {e}")
         return ChatResponse(
-            dialogue_response=f"I apologize, but I encountered an error after {duration:.1f} seconds. As {chat.author_persona} would say, let's try again with a different approach.",
+            dialogue_response=f"I apologize, but I encountered an error after {duration} seconds. As {chat.author_persona} would say, let's try again with a different approach.",
             thinking_trail=f"Error after {duration:.1f}s: {str(e)}"
         )
 
@@ -336,6 +348,37 @@ async def create_session():
         "message": "Session creation ready",
         "note": "Implement authentication to enable real sessions"
     }
+
+@app.post("/api/chat/demo")
+async def chat_demo(chat: ChatMessage):
+    """Immediate demo response - no AI API calls"""
+    # Quick Hemingway-style responses based on the question
+    if "dialogue" in chat.message.lower():
+        responses = [
+            "Cut the fat. Real dialogue is what people don't say, not what they do. Show the tension underneath.",
+            "Make every word count. If it doesn't advance the story or reveal character, kill it.",
+            "People don't say what they mean. They dance around it. Write the dance, not the meaning."
+        ]
+    elif "authentic" in chat.message.lower():
+        responses = [
+            "Write what you know, feel what you write. Authenticity comes from truth, not tricks.",
+            "The best writing is rewriting. Strip away everything that sounds like writing.",
+            "Show, don't tell. Let the reader feel the weight of what isn't said."
+        ]
+    else:
+        responses = [
+            "Write with the heart of a poet and the discipline of a soldier. Every word must earn its place.",
+            "The first draft is garbage. The magic happens when you throw away what you don't need.",
+            "Write standing up. It keeps you honest about what matters."
+        ]
+    
+    import random
+    ai_response = random.choice(responses)
+    
+    return ChatResponse(
+        dialogue_response=f"As {chat.author_persona}, I'd say: {ai_response}",
+        thinking_trail="Demo mode - instant response"
+    )
 
 # Error handler
 @app.exception_handler(Exception)
