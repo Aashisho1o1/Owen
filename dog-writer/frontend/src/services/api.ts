@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -106,47 +106,47 @@ export interface MangaScriptResponseFE {
 
 const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
-    const response = await axios.post<ChatResponse>(`${API_URL}/chat`, request);
+    const response = await axios.post<ChatResponse>(`${API_URL}/api/chat/message`, request);
     return response.data;
   },
   
   analyzeWriting: async (request: WritingSampleRequest): Promise<WritingSampleResponse> => {
-    const response = await axios.post<WritingSampleResponse>(`${API_URL}/chat/analyze-writing`, request);
+    const response = await axios.post<WritingSampleResponse>(`${API_URL}/api/chat/analyze-writing`, request);
     return response.data;
   },
   
   submitFeedback: async (request: UserFeedbackRequest): Promise<{ status: string; message: string }> => {
-    const response = await axios.post<{ status: string; message: string }>(`${API_URL}/chat/feedback`, request);
+    const response = await axios.post<{ status: string; message: string }>(`${API_URL}/api/chat/feedback`, request);
     return response.data;
   },
   
   completeOnboarding: async (request: OnboardingRequest): Promise<OnboardingResponse> => {
-    const response = await axios.post<OnboardingResponse>(`${API_URL}/chat/onboarding`, request);
+    const response = await axios.post<OnboardingResponse>(`${API_URL}/api/chat/onboarding`, request);
     return response.data;
   },
   
   getUserPreferences: async (): Promise<{ status: string; preferences?: UserPreferences; message?: string }> => {
-    const response = await axios.get<{ status: string; preferences?: UserPreferences; message?: string }>(`${API_URL}/chat/preferences`);
+    const response = await axios.get<{ status: string; preferences?: UserPreferences; message?: string }>(`${API_URL}/api/chat/preferences`);
     return response.data;
   },
   
   getStyleOptions: async (): Promise<{ english_variants: any[] }> => {
-    const response = await axios.get<{ english_variants: any[] }>(`${API_URL}/chat/style-options`);
+    const response = await axios.get<{ english_variants: any[] }>(`${API_URL}/api/chat/style-options`);
     return response.data;
   },
   
   createCheckpoint: async (request: CheckpointRequest): Promise<CheckpointResponse> => {
-    const response = await axios.post<CheckpointResponse>(`${API_URL}/checkpoint`, request);
+    const response = await axios.post<CheckpointResponse>(`${API_URL}/api/checkpoint`, request);
     return response.data;
   },
   
   healthCheck: async (): Promise<{ status: string }> => {
-    const response = await axios.get<{ status: string }>(`${API_URL}/health`);
+    const response = await axios.get<{ status: string }>(`${API_URL}/api/health`);
     return response.data;
   },
 
   generateMangaScript: async (request: MangaStoryRequest): Promise<MangaScriptResponseFE> => {
-    const response = await axios.post<MangaScriptResponseFE>(`${API_URL}/manga/generate_script`, request);
+    const response = await axios.post<MangaScriptResponseFE>(`${API_URL}/api/manga/generate_script`, request);
     return response.data;
   },
 };
