@@ -7,6 +7,7 @@ DEPLOYMENT TRIGGER: Force redeploy with timeout fixes
 import os
 import json
 import asyncio
+from dotenv import load_dotenv
 from openai import OpenAI
 import google.generativeai as genai
 from datetime import datetime
@@ -17,9 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Configure AI providers
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+if os.getenv("GEMINI_API_KEY"):
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Configure basic setup
 app = FastAPI(
@@ -80,7 +85,7 @@ async def read_root():
         "api_keys_configured": {
             "openai": bool(os.getenv("OPENAI_API_KEY")),
             "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
-            "google": bool(os.getenv("GOOGLE_API_KEY"))
+            "google": bool(os.getenv("GEMINI_API_KEY"))
         },
         "frontend_connected": True,
         "timestamp": datetime.now().isoformat()
@@ -111,7 +116,7 @@ async def api_health():
         "ai_providers": {
             "openai": bool(os.getenv("OPENAI_API_KEY")),
             "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
-            "google": bool(os.getenv("GOOGLE_API_KEY"))
+            "google": bool(os.getenv("GEMINI_API_KEY"))
         }
     }
 
@@ -141,7 +146,7 @@ async def detailed_status():
         "api_keys_status": {
             "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
             "anthropic_configured": bool(os.getenv("ANTHROPIC_API_KEY")),
-            "google_configured": bool(os.getenv("GOOGLE_API_KEY"))
+            "google_configured": bool(os.getenv("GEMINI_API_KEY"))
         }
     }
 
@@ -176,8 +181,8 @@ async def debug_env():
     return {
         "openai_key_exists": bool(os.getenv("OPENAI_API_KEY")),
         "openai_key_length": len(os.getenv("OPENAI_API_KEY", "")),
-        "google_key_exists": bool(os.getenv("GOOGLE_API_KEY")),
-        "google_key_length": len(os.getenv("GOOGLE_API_KEY", "")),
+        "google_key_exists": bool(os.getenv("GEMINI_API_KEY")),
+        "google_key_length": len(os.getenv("GEMINI_API_KEY", "")),
         "anthropic_key_exists": bool(os.getenv("ANTHROPIC_API_KEY")),
         "anthropic_key_length": len(os.getenv("ANTHROPIC_API_KEY", "")),
         "timestamp": datetime.now().isoformat()
@@ -245,26 +250,41 @@ async def chat_message(chat: ChatMessage):
                 
         elif "google" in provider or "gemini" in provider:
             # Use Google Gemini
-            if os.getenv("GOOGLE_API_KEY"):
-                model = genai.GenerativeModel('gemini-pro')
-                
-                # Create full prompt for Gemini
-                full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
-                
-                response = model.generate_content(
-                    full_prompt,
-                    generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=300,
-                        temperature=0.7,
+            if os.getenv("GEMINI_API_KEY"):
+                try:
+                    print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
+                    
+                    model = genai.GenerativeModel('gemini-pro')
+                    
+                    # Create full prompt for Gemini
+                    full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
+                    
+                    response = model.generate_content(
+                        full_prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            max_output_tokens=150,
+                            temperature=0.7,
+                        )
                     )
-                )
-                
-                ai_response = response.text.strip()
-                thinking_trail = f"Used Google Gemini Pro with {chat.author_persona} persona"
+                    
+                    print(f"[DEBUG] Gemini call completed successfully")
+                    ai_response = response.text.strip()
+                    thinking_trail = f"Google Gemini Pro ({chat.author_persona})"
+                    
+                except Exception as gemini_error:
+                    print(f"[ERROR] Gemini failed: {str(gemini_error)[:100]}")
+                    # Provide intelligent fallback
+                    if "dialogue" in chat.message.lower():
+                        ai_response = f"As {chat.author_persona}: Make dialogue serve the story. Cut empty words, show character through what they don't say."
+                    else:
+                        ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight."
+                    
+                    thinking_trail = f"Gemini timeout - {chat.author_persona} fallback used"
                 
             else:
-                ai_response = f"Google API key not configured. Demo response: {chat.message}"
-                thinking_trail = "Google API key missing"
+                print(f"[DEBUG] No Gemini API key configured")
+                ai_response = f"Gemini API key missing. Please configure to get real AI responses."
+                thinking_trail = "Missing Gemini API key"
                 
         elif "anthropic" in provider or "claude" in provider:
             # Placeholder for Anthropic (would need anthropic library)
