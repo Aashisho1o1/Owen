@@ -60,6 +60,7 @@ const Controls: React.FC = () => {
   ];
 
   const llmOptions = [
+    'OpenAI GPT',
     'Google Gemini',
     'Anthropic Claude'
   ];
