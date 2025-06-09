@@ -38,12 +38,18 @@ app.add_middleware(
 # Pydantic models
 class ChatMessage(BaseModel):
     message: str
-    provider: str = "openai"
+    editor_text: str = ""
+    author_persona: str = "Ernest Hemingway"
+    help_focus: str = "general"
+    chat_history: list = []
+    llm_provider: str = "openai"
+    user_preferences: dict = {}
+    feedback_on_previous: str = ""
+    english_variant: str = "US"
 
 class ChatResponse(BaseModel):
-    response: str
-    provider: str
-    timestamp: str
+    dialogue_response: str
+    thinking_trail: str = None
 
 # Root endpoints
 @app.get("/")
@@ -147,9 +153,8 @@ async def chat_message(chat: ChatMessage):
     ai_response = random.choice(responses)
     
     return ChatResponse(
-        response=ai_response,
-        provider=chat.provider,
-        timestamp=datetime.now().isoformat()
+        dialogue_response=ai_response,
+        thinking_trail=None
     )
 
 @app.get("/api/chat/basic")
