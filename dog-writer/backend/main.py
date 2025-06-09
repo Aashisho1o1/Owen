@@ -143,6 +143,31 @@ async def detailed_status():
         }
     }
 
+@app.get("/api/test/openai")
+async def test_openai():
+    """Test OpenAI API connection"""
+    try:
+        if not os.getenv("OPENAI_API_KEY"):
+            return {"error": "No OpenAI API key configured"}
+        
+        print("[DEBUG] Testing OpenAI API connection...")
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "Say hello in exactly 5 words."}],
+            max_tokens=20,
+            timeout=10.0
+        )
+        
+        return {
+            "success": True,
+            "response": response.choices[0].message.content,
+            "model": response.model,
+            "usage": response.usage.total_tokens if response.usage else "N/A"
+        }
+    except Exception as e:
+        print(f"[ERROR] OpenAI test failed: {e}")
+        return {"error": str(e)}
+
 @app.get("/api/debug/env")
 async def debug_env():
     """Debug endpoint to check environment variables"""
@@ -160,6 +185,9 @@ async def debug_env():
 @app.post("/api/chat/message", response_model=ChatResponse)
 async def chat_message(chat: ChatMessage):
     """Send a message to AI with multi-provider LLM integration"""
+    start_time = datetime.now()
+    print(f"[DEBUG] Chat request started at {start_time} for provider: {chat.llm_provider}")
+    
     try:
         # Create persona-specific system prompt
         system_prompt = f"""You are {chat.author_persona}, a master writer and mentor. 
@@ -172,24 +200,35 @@ async def chat_message(chat: ChatMessage):
         
         # Determine which provider to use based on llm_provider
         provider = chat.llm_provider.lower()
+        print(f"[DEBUG] Using provider: {provider}")
         
         if "openai" in provider or "gpt" in provider:
             # Use OpenAI
             if os.getenv("OPENAI_API_KEY"):
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": chat.message}
-                    ],
-                    max_tokens=300,
-                    temperature=0.7
-                )
-                
-                ai_response = response.choices[0].message.content.strip()
-                thinking_trail = f"Used OpenAI GPT-3.5-turbo with {chat.author_persona} persona"
+                try:
+                    print(f"[DEBUG] Making OpenAI API call for message: {chat.message[:50]}...")
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": chat.message}
+                        ],
+                        max_tokens=300,
+                        temperature=0.7,
+                        timeout=30.0  # 30 second timeout
+                    )
+                    
+                    print(f"[DEBUG] OpenAI API call successful")
+                    ai_response = response.choices[0].message.content.strip()
+                    thinking_trail = f"Used OpenAI GPT-3.5-turbo with {chat.author_persona} persona"
+                    
+                except Exception as openai_error:
+                    print(f"[ERROR] OpenAI API call failed: {openai_error}")
+                    ai_response = f"OpenAI API error: {str(openai_error)}. Falling back to demo response as {chat.author_persona}: {chat.message}"
+                    thinking_trail = f"OpenAI API error: {str(openai_error)}"
                 
             else:
+                print(f"[DEBUG] No OpenAI API key found")
                 ai_response = f"OpenAI API key not configured. Demo response: {chat.message}"
                 thinking_trail = "OpenAI API key missing"
                 
@@ -232,10 +271,11 @@ async def chat_message(chat: ChatMessage):
         )
         
     except Exception as e:
-        print(f"Error in chat_message: {e}")
+        duration = (datetime.now() - start_time).total_seconds()
+        print(f"[ERROR] Chat request failed after {duration} seconds: {e}")
         return ChatResponse(
-            dialogue_response=f"I apologize, but I encountered an error. As {chat.author_persona} would say, let's try again with a different approach.",
-            thinking_trail=f"Error: {str(e)}"
+            dialogue_response=f"I apologize, but I encountered an error after {duration:.1f} seconds. As {chat.author_persona} would say, let's try again with a different approach.",
+            thinking_trail=f"Error after {duration:.1f}s: {str(e)}"
         )
 
 @app.get("/api/chat/basic")
