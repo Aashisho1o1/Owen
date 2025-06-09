@@ -139,28 +139,31 @@ async def detailed_status():
     }
 
 # Basic chat endpoints
+@app.get("/api/test/simple")
+async def simple_test():
+    """Simple test endpoint"""
+    return {"message": "Simple test works!"}
+
+@app.post("/api/test/echo")
+async def echo_test(data: dict):
+    """Echo test endpoint"""
+    return {"received": data, "response": "Echo works!"}
+
 @app.post("/api/chat/message", response_model=ChatResponse)
 async def chat_message(chat: ChatMessage):
     """Send a message to AI (demo mode)"""
     try:
-        # Simulate AI response for now
-        responses = [
-            f"Hello! I received your message: '{chat.message}'. I'm Owen AI Writer, ready to help you create amazing content!",
-            f"Great question about: '{chat.message}'. As your AI writing assistant, I can help you develop this idea further.",
-            f"I see you mentioned: '{chat.message}'. Let me help you craft compelling content around this topic.",
-            f"Thanks for your input: '{chat.message}'. I'm here to assist with all your writing needs!"
-        ]
-        
-        ai_response = random.choice(responses)
+        # Very simple response
+        simple_response = f"Demo response to: {chat.message}"
         
         return ChatResponse(
-            dialogue_response=ai_response,
-            thinking_trail=None
+            dialogue_response=simple_response,
+            thinking_trail="Demo mode"
         )
     except Exception as e:
         print(f"Error in chat_message: {e}")
         return ChatResponse(
-            dialogue_response=f"I apologize, but I encountered an error processing your message: '{chat.message}'. This is a demo response from Owen AI Writer.",
+            dialogue_response="Fallback demo response from Owen AI Writer",
             thinking_trail=f"Error: {str(e)}"
         )
 
