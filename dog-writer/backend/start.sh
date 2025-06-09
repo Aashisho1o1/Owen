@@ -1,5 +1,10 @@
 #!/bin/bash
-cd /app/dog-writer/backend
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000} 
+set -e
+
+# Set default port if not provided
+PORT=${PORT:-8000}
+
+echo "Starting Owen AI Backend on port $PORT"
+
+# Start uvicorn with the port
+exec python -m uvicorn app:app --host 0.0.0.0 --port "$PORT" 
