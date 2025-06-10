@@ -92,10 +92,11 @@ class ChatResponse(BaseModel):
 async def read_root():
     """Root endpoint with system status"""
     return {
-        "message": "Owen AI Writer is running successfully!",
+        "message": "✅ LATEST CODE DEPLOYED - GEMINI TIMEOUT FIXED!",
         "status": "ok",
         "mode": "full",
         "version": "2.0.0",
+        "deployment_timestamp": "2025-01-21-FINAL-GEMINI-FIX",
         "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
         "features": {
             "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"],
