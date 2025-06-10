@@ -245,7 +245,8 @@ async def chat_message(chat: ChatMessage):
                 thinking_trail = "OpenAI not available"
                 
         elif "google" in provider or "gemini" in provider:
-            # Use Google Gemini
+            # Use Google Gemini - CONSISTENT NAMING FIX
+            print(f"[DEBUG] Detected Gemini provider: '{chat.llm_provider}' -> '{provider}'")
             if genai_available and os.getenv("GEMINI_API_KEY"):
                 try:
                     print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
