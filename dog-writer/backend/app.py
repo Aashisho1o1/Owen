@@ -23,6 +23,7 @@ load_dotenv()
 # Configure AI providers with error handling
 client = None
 genai_available = False
+anthropic_client = None
 
 try:
     from openai import OpenAI
@@ -31,10 +32,10 @@ try:
         print("[INFO] OpenAI client configured successfully")
     else:
         print("[WARNING] OPENAI_API_KEY not found")
-except ImportError as e:
-    print(f"[WARNING] OpenAI not available: {e}")
+except ImportError:
+    print("[WARNING] OpenAI library not installed, skipping.")
 except Exception as e:
-    print(f"[WARNING] OpenAI configuration failed: {e}")
+    print(f"[ERROR] OpenAI configuration failed: {e}")
 
 try:
     import google.generativeai as genai
@@ -44,10 +45,22 @@ try:
         print("[INFO] Google Gemini configured successfully")
     else:
         print("[WARNING] GEMINI_API_KEY not found")
-except ImportError as e:
-    print(f"[WARNING] Google Generative AI not available: {e}")
+except ImportError:
+    print("[WARNING] Google Generative AI library not installed, skipping.")
 except Exception as e:
-    print(f"[WARNING] Google Gemini configuration failed: {e}")
+    print(f"[ERROR] Google Gemini configuration failed: {e}")
+
+try:
+    from anthropic import Anthropic
+    if os.getenv("ANTHROPIC_API_KEY"):
+        anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        print("[INFO] Anthropic client configured successfully")
+    else:
+        print("[WARNING] ANTHROPIC_API_KEY not found")
+except ImportError:
+    print("[WARNING] Anthropic library not installed, skipping.")
+except Exception as e:
+    print(f"[ERROR] Anthropic configuration failed: {e}")
 
 # Configure basic setup
 app = FastAPI(
@@ -299,10 +312,42 @@ async def chat_message(chat: ChatMessage):
                 thinking_trail = "Gemini not available"
                 
         elif "anthropic" in provider or "claude" in provider:
-            # Placeholder for Anthropic (would need anthropic library)
-            ai_response = f"Anthropic integration coming soon. Demo response as {chat.author_persona}: {chat.message}"
-            thinking_trail = "Anthropic integration in development"
-            
+            # Use Anthropic Claude
+            if anthropic_client and os.getenv("ANTHROPIC_API_KEY"):
+                try:
+                    print(f"[DEBUG] Starting Anthropic call for: {chat.message[:50]}...")
+                    
+                    # Anthropic uses a different message format
+                    message = anthropic_client.messages.create(
+                        model="claude-3-sonnet-20240229", # A powerful and cost-effective model
+                        max_tokens=250, # Increased tokens slightly for more detailed responses
+                        temperature=0.7,
+                        system=system_prompt,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": chat.message
+                            }
+                        ]
+                    )
+                    
+                    print(f"[DEBUG] Anthropic call completed successfully")
+                    ai_response = message.content[0].text
+                    thinking_trail = f"Anthropic Claude 3 Sonnet ({chat.author_persona})"
+
+                except Exception as anthropic_error:
+                    print(f"[ERROR] Anthropic failed: {str(anthropic_error)[:100]}")
+                    # Provide an intelligent fallback
+                    if "pacing" in chat.message.lower():
+                         ai_response = f"As {chat.author_persona}: Pacing is the rhythm of your story. Vary your sentence length. Short, sharp sentences for action. Longer, flowing sentences for reflection. Control the reader's heartbeat."
+                    else:
+                        ai_response = f"As {chat.author_persona}: The best tool is the one that tells the truth. {chat.message} - Be direct. Be honest. Get to the point."
+                    thinking_trail = f"Anthropic timeout - {chat.author_persona} fallback used"
+            else:
+                print(f"[DEBUG] Anthropic not available")
+                ai_response = f"Anthropic not available. Please configure API key to get real AI responses."
+                thinking_trail = "Anthropic not available"
+
         else:
             # Default fallback
             ai_response = f"Unknown provider '{chat.llm_provider}'. Demo response as {chat.author_persona}: {chat.message}"
