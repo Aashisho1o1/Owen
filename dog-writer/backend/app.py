@@ -92,11 +92,11 @@ class ChatResponse(BaseModel):
 async def read_root():
     """Root endpoint with system status"""
     return {
-        "message": "✅ LATEST CODE DEPLOYED - GEMINI TIMEOUT FIXED!",
+        "message": "🚀 NUCLEAR REDEPLOY - GEMINI TIMEOUT 120s FIXED! 🚀",
         "status": "ok",
         "mode": "full",
         "version": "2.0.0",
-        "deployment_timestamp": "2025-01-21-FINAL-GEMINI-FIX",
+        "deployment_timestamp": "2025-01-21-NUCLEAR-REBUILD",
         "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
         "features": {
             "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"],

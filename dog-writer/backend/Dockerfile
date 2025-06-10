@@ -1,3 +1,4 @@
+# FORCE COMPLETE REBUILD - Cache bust timestamp: 2025-01-21-15:45
 FROM python:3.11-slim
 
 # Set environment variables
