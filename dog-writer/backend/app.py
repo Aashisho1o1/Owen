@@ -210,7 +210,7 @@ async def chat_message(chat: ChatMessage):
                 try:
                     print(f"[DEBUG] Starting OpenAI call for: {chat.message[:50]}...")
                     
-                    # Simple synchronous call with short timeout
+                    # Simple synchronous call with reasonable timeout
                     response = client.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
@@ -219,7 +219,7 @@ async def chat_message(chat: ChatMessage):
                         ],
                         max_tokens=150,  # Reduced for faster response
                         temperature=0.7,
-                        timeout=8.0  # Short timeout
+                        timeout=120.0  # 2 minutes - patient for LLM responses
                     )
                     
                     print(f"[DEBUG] OpenAI call completed successfully")
@@ -249,23 +249,35 @@ async def chat_message(chat: ChatMessage):
                 try:
                     print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
                     
-                    model = genai.GenerativeModel('gemini-pro')
-                    
-                    # Create full prompt for Gemini
-                    full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
-                    
-                    response = model.generate_content(
-                        full_prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            max_output_tokens=150,
-                            temperature=0.7,
+                    # Add timeout wrapper for Gemini
+                    async def _gemini_call():
+                        model = genai.GenerativeModel('gemini-pro')
+                        
+                        # Create full prompt for Gemini
+                        full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
+                        
+                        response = model.generate_content(
+                            full_prompt,
+                            generation_config=genai.types.GenerationConfig(
+                                max_output_tokens=150,
+                                temperature=0.7,
+                            )
                         )
-                    )
+                        return response.text.strip()
                     
-                    print(f"[DEBUG] Gemini call completed successfully")
-                    ai_response = response.text.strip()
-                    thinking_trail = f"Google Gemini Pro ({chat.author_persona})"
-                    
+                    # Run with timeout
+                    try:
+                        ai_response = await asyncio.wait_for(_gemini_call(), timeout=120.0)  # 2 minutes
+                        print(f"[DEBUG] Gemini call completed successfully")
+                        thinking_trail = f"Google Gemini Pro ({chat.author_persona})"
+                    except asyncio.TimeoutError:
+                        print(f"[WARNING] Gemini call timed out after 120 seconds")
+                        if "dialogue" in chat.message.lower():
+                            ai_response = f"As {chat.author_persona}: Make dialogue serve the story. Cut empty words, show character through what they don't say."
+                        else:
+                            ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight."
+                        thinking_trail = f"Gemini timeout after 2min - {chat.author_persona} fallback used"
+                
                 except Exception as gemini_error:
                     print(f"[ERROR] Gemini failed: {str(gemini_error)[:100]}")
                     # Provide intelligent fallback
