@@ -24,7 +24,6 @@ load_dotenv()
 client = None
 genai_available = False
 anthropic_client = None
-anthropic_prompts = None
 
 try:
     from openai import OpenAI
@@ -52,11 +51,10 @@ except Exception as e:
     print(f"[ERROR] Google Gemini configuration failed: {e}")
 
 try:
-    from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
+    import anthropic
     if os.getenv("ANTHROPIC_API_KEY"):
-        anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        anthropic_prompts = {"human": HUMAN_PROMPT, "ai": AI_PROMPT}
-        print("[INFO] Anthropic client configured successfully for legacy API")
+        anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        print("[INFO] Anthropic client configured successfully")
     else:
         print("[WARNING] ANTHROPIC_API_KEY not found")
 except ImportError:
@@ -147,7 +145,6 @@ async def api_health():
     """Extended API health check"""
     return {
         "status": "healthy",
-        "message": "DEPLOYMENT_MARKER: ANTHROPIC_LEGACY_FIX_V3",
         "service": "Owen AI Backend",
         "version": "2.0.0",
         "mode": "full",
@@ -315,25 +312,28 @@ async def chat_message(chat: ChatMessage):
                 thinking_trail = "Gemini not available"
                 
         elif "anthropic" in provider or "claude" in provider:
-            # Use Anthropic Claude with legacy completions API
-            if anthropic_client and anthropic_prompts and os.getenv("ANTHROPIC_API_KEY"):
+            # Use Anthropic Claude with modern messages API
+            if anthropic_client and os.getenv("ANTHROPIC_API_KEY"):
                 try:
-                    print(f"[DEBUG] Starting Anthropic legacy call for: {chat.message[:50]}...")
+                    print(f"[DEBUG] Starting Anthropic call for: {chat.message[:50]}...")
                     
-                    # The legacy API uses a single prompt string, not a message list
-                    # We will simulate the conversation for the prompt.
-                    # NOTE: This is a simplified history for the legacy model.
-                    legacy_prompt = f"{anthropic_prompts['human']} {system_prompt}\n\n{chat.message} {anthropic_prompts['ai']}"
-
-                    completion = anthropic_client.completions.create(
-                        model="claude-2.1",  # A model compatible with the older API
-                        max_tokens_to_sample=300, # Legacy param name
-                        prompt=legacy_prompt,
+                    # Create the message for Anthropic Claude (modern API)
+                    response = anthropic_client.messages.create(
+                        model="claude-3-sonnet-20240229",
+                        max_tokens=250,
+                        temperature=0.7,
+                        system=system_prompt,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": chat.message
+                            }
+                        ]
                     )
                     
-                    print(f"[DEBUG] Anthropic legacy call completed successfully")
-                    ai_response = completion.completion
-                    thinking_trail = f"Anthropic Claude 2.1 (Legacy API) ({chat.author_persona})"
+                    print(f"[DEBUG] Anthropic call completed successfully")
+                    ai_response = response.content[0].text
+                    thinking_trail = f"Anthropic Claude 3 Sonnet ({chat.author_persona})"
 
                 except Exception as anthropic_error:
                     print(f"[ERROR] Anthropic failed: {str(anthropic_error)[:100]}")
@@ -342,7 +342,7 @@ async def chat_message(chat: ChatMessage):
                          ai_response = f"As {chat.author_persona}: Pacing is the rhythm of your story. Vary your sentence length. Short, sharp sentences for action. Longer, flowing sentences for reflection. Control the reader's heartbeat."
                     else:
                         ai_response = f"As {chat.author_persona}: The best tool is the one that tells the truth. {chat.message} - Be direct. Be honest. Get to the point."
-                    thinking_trail = f"Anthropic legacy timeout - {chat.author_persona} fallback used"
+                    thinking_trail = f"Anthropic API error - {chat.author_persona} fallback used"
             else:
                 print(f"[DEBUG] Anthropic not available")
                 ai_response = f"Anthropic not available. Please configure API key to get real AI responses."
