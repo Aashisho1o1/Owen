@@ -25,45 +25,42 @@ client = None
 genai_available = False
 anthropic_client = None
 
-# TEMPORARILY DISABLED FOR TESTING
-# try:
-#     from openai import OpenAI
-#     if os.getenv("OPENAI_API_KEY"):
-#         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-#         print("[INFO] OpenAI client configured successfully")
-#     else:
-#         print("[WARNING] OPENAI_API_KEY not found")
-# except ImportError:
-#     print("[WARNING] OpenAI library not installed, skipping.")
-# except Exception as e:
-#     print(f"[ERROR] OpenAI configuration failed: {e}")
+try:
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+    if client:
+        print("[INFO] OpenAI client configured successfully")
+    else:
+        print("[WARNING] OPENAI_API_KEY not found")
+except ImportError:
+    print("[WARNING] OpenAI library not installed, skipping.")
+except Exception as e:
+    print(f"[ERROR] OpenAI configuration failed: {e}")
 
-# try:
-#     import google.generativeai as genai
-#     if os.getenv("GEMINI_API_KEY"):
-#         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-#         genai_available = True
-#         print("[INFO] Google Gemini configured successfully")
-#     else:
-#         print("[WARNING] GEMINI_API_KEY not found")
-# except ImportError:
-#     print("[WARNING] Google Generative AI library not installed, skipping.")
-# except Exception as e:
-#     print(f"[ERROR] Google Gemini configuration failed: {e}")
+try:
+    import google.generativeai as genai
+    if os.getenv("GEMINI_API_KEY"):
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        genai_available = True
+        print("[INFO] Google Gemini configured successfully")
+    else:
+        print("[WARNING] GEMINI_API_KEY not found")
+except ImportError:
+    print("[WARNING] Google Generative AI library not installed, skipping.")
+except Exception as e:
+    print(f"[ERROR] Google Gemini configuration failed: {e}")
 
-# try:
-#     import anthropic
-#     if os.getenv("ANTHROPIC_API_KEY"):
-#         anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-#         print("[INFO] Anthropic client configured successfully")
-#     else:
-#         print("[WARNING] ANTHROPIC_API_KEY not found")
-# except ImportError:
-#     print("[WARNING] Anthropic library not installed, skipping.")
-# except Exception as e:
-#     print(f"[ERROR] Anthropic configuration failed: {e}")
-
-print("[INFO] MINIMAL TEST MODE: AI libraries disabled for deployment testing")
+try:
+    import anthropic
+    anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY")) if os.getenv("ANTHROPIC_API_KEY") else None
+    if anthropic_client:
+        print("[INFO] Anthropic client configured successfully")
+    else:
+        print("[WARNING] ANTHROPIC_API_KEY not found")
+except ImportError:
+    print("[WARNING] Anthropic library not installed, skipping.")
+except Exception as e:
+    print(f"[ERROR] Anthropic configuration failed: {e}")
 
 # Configure basic setup
 app = FastAPI(
@@ -109,12 +106,18 @@ async def read_root():
     """Root endpoint with system status"""
     return {
         "status": "OK",
-        "message": "🚀 MINIMAL TEST MODE - NO AI LIBRARIES 🚀",
+        "message": "🚀 Owen AI Writer - Full AI Integration Restored! 🚀",
         "service": "Owen AI Writer",
-        "mode": "minimal_test",
+        "mode": "full",
         "version": "2.0.0",
-        "deployment_timestamp": "2025-01-21-MINIMAL-TEST",
+        "deployment_timestamp": "2025-01-21-FULL-RESTORE",
         "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
+        "features": {
+            "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"],
+            "openai_configured": bool(client),
+            "anthropic_configured": bool(anthropic_client),
+            "gemini_configured": genai_available
+        },
         "health": "healthy",
         "frontend_connected": True,
         "timestamp": datetime.now().isoformat()
@@ -196,23 +199,122 @@ async def chat_message(chat: ChatMessage):
     start_time = datetime.now()
     print(f"[DEBUG] Chat request started at {start_time} for provider: {chat.llm_provider}")
     
-    # MINIMAL TEST MODE: Return static responses
     try:
+        # Create persona-specific system prompt
+        system_prompt = f"""You are {chat.author_persona}, a master writer and mentor. 
+        You're helping a writer improve their craft. Be encouraging, insightful, and true to {chat.author_persona}'s style and philosophy.
+        
+        Focus area: {chat.help_focus}
+        Editor text context: {chat.editor_text[:500] if chat.editor_text else 'No text provided'}
+        
+        Provide specific, actionable advice that would improve the writing."""
+        
+        # Determine which provider to use based on llm_provider
         provider = chat.llm_provider.lower()
-        print(f"[DEBUG] Using provider: {provider} (MINIMAL TEST MODE)")
+        print(f"[DEBUG] Using provider: {provider}")
         
         if "openai" in provider or "gpt" in provider:
-            ai_response = f"MINIMAL TEST MODE: As {chat.author_persona}: Your message '{chat.message[:50]}...' - OpenAI provider would respond here."
-            thinking_trail = f"Static OpenAI response ({chat.author_persona})"
+            # Use OpenAI
+            if client:
+                try:
+                    print(f"[DEBUG] Starting OpenAI call for: {chat.message[:50]}...")
+                    
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": chat.message}
+                        ],
+                        max_tokens=150,
+                        temperature=0.7,
+                        timeout=8.0
+                    )
+                    
+                    print(f"[DEBUG] OpenAI call completed successfully")
+                    ai_response = response.choices[0].message.content.strip()
+                    thinking_trail = f"OpenAI GPT-3.5-turbo ({chat.author_persona})"
+                    
+                except Exception as openai_error:
+                    print(f"[ERROR] OpenAI failed: {str(openai_error)[:100]}")
+                    ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and courage."
+                    thinking_trail = f"OpenAI error - {chat.author_persona} fallback used"
+                
+            else:
+                print(f"[DEBUG] OpenAI not available")
+                ai_response = f"OpenAI not available. Please configure API key."
+                thinking_trail = "OpenAI not available"
+                
         elif "google" in provider or "gemini" in provider:
-            ai_response = f"MINIMAL TEST MODE: As {chat.author_persona}: Your message '{chat.message[:50]}...' - Gemini provider would respond here."
-            thinking_trail = f"Static Gemini response ({chat.author_persona})"
+            # Use Google Gemini
+            if genai_available:
+                try:
+                    print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
+                    
+                    def _gemini_call():
+                        model = genai.GenerativeModel('gemini-1.5-pro')
+                        full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
+                        response = model.generate_content(
+                            full_prompt,
+                            generation_config=genai.types.GenerationConfig(
+                                max_output_tokens=150,
+                                temperature=0.7,
+                            )
+                        )
+                        return response.text.strip()
+                    
+                    ai_response = await asyncio.wait_for(
+                        asyncio.to_thread(_gemini_call), 
+                        timeout=8.0
+                    )
+                    print(f"[DEBUG] Gemini call completed successfully")
+                    thinking_trail = f"Google Gemini Pro ({chat.author_persona})"
+                    
+                except Exception as gemini_error:
+                    print(f"[ERROR] Gemini failed: {str(gemini_error)[:100]}")
+                    ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth."
+                    thinking_trail = f"Gemini error - {chat.author_persona} fallback used"
+                
+            else:
+                print(f"[DEBUG] Gemini not available")
+                ai_response = f"Gemini not available. Please configure API key."
+                thinking_trail = "Gemini not available"
+                
         elif "anthropic" in provider or "claude" in provider:
-            ai_response = f"MINIMAL TEST MODE: As {chat.author_persona}: Your message '{chat.message[:50]}...' - Anthropic provider would respond here."
-            thinking_trail = f"Static Anthropic response ({chat.author_persona})"
+            # Use Anthropic Claude
+            if anthropic_client:
+                try:
+                    print(f"[DEBUG] Starting Anthropic call for: {chat.message[:50]}...")
+                    
+                    response = anthropic_client.messages.create(
+                        model="claude-3-sonnet-20240229",
+                        max_tokens=250,
+                        temperature=0.7,
+                        system=system_prompt,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": chat.message
+                            }
+                        ]
+                    )
+                    
+                    print(f"[DEBUG] Anthropic call completed successfully")
+                    ai_response = response.content[0].text
+                    thinking_trail = f"Anthropic Claude 3 Sonnet ({chat.author_persona})"
+
+                except Exception as anthropic_error:
+                    print(f"[ERROR] Anthropic failed: {str(anthropic_error)[:100]}")
+                    ai_response = f"As {chat.author_persona}: {chat.message} - Be direct. Be honest."
+                    thinking_trail = f"Anthropic error - {chat.author_persona} fallback used"
+            else:
+                print(f"[DEBUG] Anthropic not available")
+                ai_response = f"Anthropic not available. Please configure API key."
+                thinking_trail = "Anthropic not available"
+
         else:
-            ai_response = f"MINIMAL TEST MODE: Unknown provider '{chat.llm_provider}'. Demo response as {chat.author_persona}: {chat.message}"
-            thinking_trail = f"Static unknown provider response: {chat.llm_provider}"
+            # Default fallback
+            ai_response = f"Unknown provider '{chat.llm_provider}'. Demo response as {chat.author_persona}: {chat.message}"
+            thinking_trail = f"Unknown provider: {chat.llm_provider}"
         
         return ChatResponse(
             dialogue_response=ai_response,
@@ -223,7 +325,7 @@ async def chat_message(chat: ChatMessage):
         duration = (datetime.now() - start_time).total_seconds()
         print(f"[ERROR] Chat request failed after {duration} seconds: {e}")
         return ChatResponse(
-            dialogue_response=f"MINIMAL TEST MODE: Error occurred after {duration} seconds. As {chat.author_persona} would say, let's try again with a different approach.",
+            dialogue_response=f"I apologize, but I encountered an error. As {chat.author_persona} would say, let's try again.",
             thinking_trail=f"Error after {duration:.1f}s: {str(e)}"
         )
 
