@@ -147,6 +147,7 @@ async def api_health():
     """Extended API health check"""
     return {
         "status": "healthy",
+        "message": "DEPLOYMENT_MARKER: ANTHROPIC_LEGACY_FIX_V3",
         "service": "Owen AI Backend",
         "version": "2.0.0",
         "mode": "full",
