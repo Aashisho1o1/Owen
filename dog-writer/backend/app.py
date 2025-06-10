@@ -253,7 +253,7 @@ async def chat_message(chat: ChatMessage):
                     
                     # Run Gemini call in thread pool with timeout
                     def _gemini_call():
-                        model = genai.GenerativeModel('gemini-pro')
+                        model = genai.GenerativeModel('gemini-1.5-pro')
                         
                         # Create full prompt for Gemini
                         full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
