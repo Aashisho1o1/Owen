@@ -312,7 +312,7 @@ async def chat_message(chat: ChatMessage):
             dialogue_response=ai_response,
             thinking_trail=thinking_trail
         )
-        
+
     except Exception as e:
         duration = (datetime.now() - start_time).total_seconds()
         print(f"[ERROR] Chat request failed after {duration} seconds: {e}")
