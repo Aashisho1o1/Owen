@@ -108,25 +108,14 @@ class ChatResponse(BaseModel):
 async def read_root():
     """Root endpoint with system status"""
     return {
-        "message": "🚀 NUCLEAR REDEPLOY - GEMINI TIMEOUT 120s FIXED! 🚀",
-        "status": "ok",
-        "mode": "full",
+        "status": "OK",
+        "message": "🚀 MINIMAL TEST MODE - NO AI LIBRARIES 🚀",
+        "service": "Owen AI Writer",
+        "mode": "minimal_test",
         "version": "2.0.0",
-        "deployment_timestamp": "2025-01-21-NUCLEAR-REBUILD",
+        "deployment_timestamp": "2025-01-21-MINIMAL-TEST",
         "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
-        "features": {
-            "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"],
-            "security": "JWT Ready",
-            "database": "SQLite Ready",
-            "voice": "Text-to-Speech Ready",
-            "manga": "AI Generation Ready",
-            "sessions": "Session Management Ready"
-        },
-        "api_keys_configured": {
-            "openai": bool(os.getenv("OPENAI_API_KEY")),
-            "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
-            "google": bool(os.getenv("GEMINI_API_KEY"))
-        },
+        "health": "healthy",
         "frontend_connected": True,
         "timestamp": datetime.now().isoformat()
     }
