@@ -249,8 +249,8 @@ async def chat_message(chat: ChatMessage):
                 try:
                     print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
                     
-                    # Add timeout wrapper for Gemini
-                    async def _gemini_call():
+                    # Run Gemini call in thread pool with timeout
+                    def _gemini_call():
                         model = genai.GenerativeModel('gemini-pro')
                         
                         # Create full prompt for Gemini
@@ -265,9 +265,12 @@ async def chat_message(chat: ChatMessage):
                         )
                         return response.text.strip()
                     
-                    # Run with timeout
+                    # Run synchronous call in thread pool with timeout
                     try:
-                        ai_response = await asyncio.wait_for(_gemini_call(), timeout=120.0)  # 2 minutes
+                        ai_response = await asyncio.wait_for(
+                            asyncio.to_thread(_gemini_call), 
+                            timeout=120.0  # 2 minutes
+                        )
                         print(f"[DEBUG] Gemini call completed successfully")
                         thinking_trail = f"Google Gemini Pro ({chat.author_persona})"
                     except asyncio.TimeoutError:
