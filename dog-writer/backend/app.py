@@ -51,9 +51,9 @@ except Exception as e:
     print(f"[ERROR] Google Gemini configuration failed: {e}")
 
 try:
-    from anthropic import Anthropic
+    import anthropic
     if os.getenv("ANTHROPIC_API_KEY"):
-        anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         print("[INFO] Anthropic client configured successfully")
     else:
         print("[WARNING] ANTHROPIC_API_KEY not found")
@@ -317,10 +317,10 @@ async def chat_message(chat: ChatMessage):
                 try:
                     print(f"[DEBUG] Starting Anthropic call for: {chat.message[:50]}...")
                     
-                    # Anthropic uses a different message format
-                    message = anthropic_client.messages.create(
-                        model="claude-3-sonnet-20240229", # A powerful and cost-effective model
-                        max_tokens=250, # Increased tokens slightly for more detailed responses
+                    # Create the message for Anthropic Claude
+                    response = anthropic_client.messages.create(
+                        model="claude-3-sonnet-20240229",
+                        max_tokens=250,
                         temperature=0.7,
                         system=system_prompt,
                         messages=[
@@ -332,7 +332,7 @@ async def chat_message(chat: ChatMessage):
                     )
                     
                     print(f"[DEBUG] Anthropic call completed successfully")
-                    ai_response = message.content[0].text
+                    ai_response = response.content[0].text
                     thinking_trail = f"Anthropic Claude 3 Sonnet ({chat.author_persona})"
 
                 except Exception as anthropic_error:
