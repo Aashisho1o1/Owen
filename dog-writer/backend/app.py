@@ -9,8 +9,6 @@ import os
 import json
 import asyncio
 from dotenv import load_dotenv
-from openai import OpenAI
-import google.generativeai as genai
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -22,10 +20,34 @@ from pydantic import BaseModel
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure AI providers
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
-if os.getenv("GEMINI_API_KEY"):
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Configure AI providers with error handling
+client = None
+genai_available = False
+
+try:
+    from openai import OpenAI
+    if os.getenv("OPENAI_API_KEY"):
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        print("[INFO] OpenAI client configured successfully")
+    else:
+        print("[WARNING] OPENAI_API_KEY not found")
+except ImportError as e:
+    print(f"[WARNING] OpenAI not available: {e}")
+except Exception as e:
+    print(f"[WARNING] OpenAI configuration failed: {e}")
+
+try:
+    import google.generativeai as genai
+    if os.getenv("GEMINI_API_KEY"):
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        genai_available = True
+        print("[INFO] Google Gemini configured successfully")
+    else:
+        print("[WARNING] GEMINI_API_KEY not found")
+except ImportError as e:
+    print(f"[WARNING] Google Generative AI not available: {e}")
+except Exception as e:
+    print(f"[WARNING] Google Gemini configuration failed: {e}")
 
 # Configure basic setup
 app = FastAPI(
@@ -184,7 +206,7 @@ async def chat_message(chat: ChatMessage):
         
         if "openai" in provider or "gpt" in provider:
             # Use OpenAI with simple synchronous approach
-            if os.getenv("OPENAI_API_KEY"):
+            if client and os.getenv("OPENAI_API_KEY"):
                 try:
                     print(f"[DEBUG] Starting OpenAI call for: {chat.message[:50]}...")
                     
@@ -217,13 +239,13 @@ async def chat_message(chat: ChatMessage):
                     thinking_trail = f"OpenAI timeout - {chat.author_persona} fallback used"
                 
             else:
-                print(f"[DEBUG] No OpenAI API key configured")
-                ai_response = f"OpenAI API key missing. Please configure to get real AI responses."
-                thinking_trail = "Missing OpenAI API key"
+                print(f"[DEBUG] OpenAI not available")
+                ai_response = f"OpenAI not available. Please configure API key to get real AI responses."
+                thinking_trail = "OpenAI not available"
                 
         elif "google" in provider or "gemini" in provider:
             # Use Google Gemini
-            if os.getenv("GEMINI_API_KEY"):
+            if genai_available and os.getenv("GEMINI_API_KEY"):
                 try:
                     print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
                     
@@ -255,9 +277,9 @@ async def chat_message(chat: ChatMessage):
                     thinking_trail = f"Gemini timeout - {chat.author_persona} fallback used"
                 
             else:
-                print(f"[DEBUG] No Gemini API key configured")
-                ai_response = f"Gemini API key missing. Please configure to get real AI responses."
-                thinking_trail = "Missing Gemini API key"
+                print(f"[DEBUG] Gemini not available")
+                ai_response = f"Gemini not available. Please configure API key to get real AI responses."
+                thinking_trail = "Gemini not available"
                 
         elif "anthropic" in provider or "claude" in provider:
             # Placeholder for Anthropic (would need anthropic library)
