@@ -2,7 +2,7 @@
 Owen AI Writer - Backend API
 Railway-optimized minimal version
 DEPLOYMENT TRIGGER: Force redeploy with timeout fixes
-FRESH DEPLOY: 2025-06-09 19:22 - GEMINI_API_KEY fix deployed
+FRESH DEPLOY: 2025-01-21 14:30 - FINAL GEMINI TIMEOUT FIX
 """
 
 import os
