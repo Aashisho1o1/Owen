@@ -6,7 +6,7 @@ python-dotenv==1.0.0
 
 # Optional AI integrations (when API keys are provided)
 openai==1.58.1
-anthropic==0.39.0
+# anthropic==0.39.0  # TEMPORARILY COMMENTED OUT FOR DEPLOYMENT
 google-generativeai==0.3.2
 httpx==0.27.0
 
