@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+import httpx
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,14 +28,22 @@ anthropic_client = None
 
 try:
     from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
-    if client:
-        print("[INFO] OpenAI client configured successfully")
+    if os.getenv("OPENAI_API_KEY"):
+        # Explicitly create an httpx client with no proxies
+        http_client = httpx.Client(proxies=None)
+        client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            http_client=http_client
+        )
+        print("[INFO] OpenAI client configured successfully with custom HTTP client")
     else:
+        client = None
         print("[WARNING] OPENAI_API_KEY not found")
 except ImportError:
+    client = None
     print("[WARNING] OpenAI library not installed, skipping.")
 except Exception as e:
+    client = None
     print(f"[ERROR] OpenAI configuration failed: {e}")
 
 try:
@@ -52,14 +61,22 @@ except Exception as e:
 
 try:
     import anthropic
-    anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY")) if os.getenv("ANTHROPIC_API_KEY") else None
-    if anthropic_client:
-        print("[INFO] Anthropic client configured successfully")
+    if os.getenv("ANTHROPIC_API_KEY"):
+        # Explicitly create an httpx client with no proxies
+        http_client = httpx.Client(proxies=None)
+        anthropic_client = anthropic.Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            http_client=http_client
+        )
+        print("[INFO] Anthropic client configured successfully with custom HTTP client")
     else:
+        anthropic_client = None
         print("[WARNING] ANTHROPIC_API_KEY not found")
 except ImportError:
+    anthropic_client = None
     print("[WARNING] Anthropic library not installed, skipping.")
 except Exception as e:
+    anthropic_client = None
     print(f"[ERROR] Anthropic configuration failed: {e}")
 
 # Configure basic setup
