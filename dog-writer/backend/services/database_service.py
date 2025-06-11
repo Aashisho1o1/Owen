@@ -162,9 +162,28 @@ class DatabaseService:
     def init_database(self):
         """Initialize database with optimized and secure schema"""
         schema_queries = [
+            # User accounts table for authentication
+            '''CREATE TABLE IF NOT EXISTS user_accounts (
+                user_id TEXT PRIMARY KEY,  -- UUID for user identification
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,  -- bcrypt hash
+                display_name TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_login TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                email_verified BOOLEAN DEFAULT FALSE,
+                -- Constraints
+                CHECK(length(username) >= 3 AND length(username) <= 50),
+                CHECK(length(email) >= 5 AND length(email) <= 254),
+                CHECK(length(display_name) <= 100)
+            )''',
+            
             # User profiles table with proper indexing and constraints
             '''CREATE TABLE IF NOT EXISTS user_profiles (
                 user_id_hash TEXT PRIMARY KEY,  -- Hashed for privacy
+                user_id TEXT NOT NULL,  -- Direct reference to user_accounts
                 english_variant TEXT DEFAULT 'standard' CHECK(english_variant IN ('standard', 'indian', 'british', 'american')),
                 writing_style_profile TEXT,  -- Encrypted JSON string
                 onboarding_completed BOOLEAN DEFAULT FALSE,
@@ -177,7 +196,8 @@ class DatabaseService:
                 -- Constraints
                 CHECK(length(writing_type) <= 100),
                 CHECK(length(feedback_style) <= 100),
-                CHECK(length(primary_goal) <= 500)
+                CHECK(length(primary_goal) <= 500),
+                FOREIGN KEY (user_id) REFERENCES user_accounts (user_id) ON DELETE CASCADE
             )''',
             
             # User feedback table with constraints
@@ -244,6 +264,9 @@ class DatabaseService:
             'CREATE INDEX IF NOT EXISTS idx_daily_stats_user_date ON daily_writing_stats(user_id_hash, date)',
             'CREATE INDEX IF NOT EXISTS idx_feedback_user ON user_feedback(user_id_hash)',
             'CREATE INDEX IF NOT EXISTS idx_feedback_timestamp ON user_feedback(timestamp)',
+            'CREATE INDEX IF NOT EXISTS idx_user_accounts_username ON user_accounts(username)',
+            'CREATE INDEX IF NOT EXISTS idx_user_accounts_email ON user_accounts(email)',
+            'CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id)',
         ]
         
         with self.get_connection() as conn:
@@ -273,10 +296,10 @@ class DatabaseService:
             
             query = '''
                 INSERT INTO user_profiles (
-                    user_id_hash, english_variant, writing_style_profile,
+                    user_id_hash, user_id, english_variant, writing_style_profile,
                     onboarding_completed, user_corrections, writing_type,
                     feedback_style, primary_goal, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id_hash) DO UPDATE SET
                     english_variant = excluded.english_variant,
                     writing_style_profile = excluded.writing_style_profile,
@@ -290,6 +313,7 @@ class DatabaseService:
             
             self._execute_query(query, (
                 user_id_hash,
+                user_id,
                 preferences.english_variant,
                 writing_style_profile,
                 preferences.onboarding_completed,
@@ -770,6 +794,229 @@ class DatabaseService:
             insights.append("🌟 Every writer's journey is unique - keep writing!")
         
         return insights
+
+    # ============= USER AUTHENTICATION =============
+    
+    def create_user_account(self, username: str, email: str, password_hash: str, 
+                           display_name: Optional[str] = None) -> Optional[str]:
+        """Create a new user account and return user_id"""
+        try:
+            user_id = str(uuid.uuid4())
+            query = '''
+                INSERT INTO user_accounts (
+                    user_id, username, email, password_hash, display_name
+                ) VALUES (?, ?, ?, ?, ?)
+            '''
+            
+            self._execute_query(query, (user_id, username, email, password_hash, display_name))
+            
+            # Create default user profile
+            self._create_default_user_profile(user_id)
+            
+            logger.info(f"Created user account: {username}")
+            return user_id
+            
+        except Exception as e:
+            logger.error(f"Error creating user account: {e}")
+            return None
+    
+    def _create_default_user_profile(self, user_id: str):
+        """Create default user profile for new user"""
+        try:
+            user_id_hash = self._hash_user_id(user_id)
+            query = '''
+                INSERT INTO user_profiles (
+                    user_id_hash, user_id, english_variant, onboarding_completed
+                ) VALUES (?, ?, ?, ?)
+            '''
+            
+            self._execute_query(query, (user_id_hash, user_id, 'standard', False))
+            
+        except Exception as e:
+            logger.error(f"Error creating default user profile: {e}")
+    
+    def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Get user account by username"""
+        try:
+            query = '''
+                SELECT user_id, username, email, password_hash, display_name, 
+                       created_at, last_login, is_active, email_verified
+                FROM user_accounts 
+                WHERE username = ? AND is_active = TRUE
+            '''
+            
+            row = self._execute_query(query, (username.lower(),), fetch='one')
+            
+            if row:
+                return {
+                    'user_id': row['user_id'],
+                    'username': row['username'],
+                    'email': row['email'],
+                    'password_hash': row['password_hash'],
+                    'display_name': row['display_name'],
+                    'created_at': row['created_at'],
+                    'last_login': row['last_login'],
+                    'is_active': bool(row['is_active']),
+                    'email_verified': bool(row['email_verified'])
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting user by username: {e}")
+            return None
+    
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Get user account by email"""
+        try:
+            query = '''
+                SELECT user_id, username, email, password_hash, display_name, 
+                       created_at, last_login, is_active, email_verified
+                FROM user_accounts 
+                WHERE email = ? AND is_active = TRUE
+            '''
+            
+            row = self._execute_query(query, (email.lower(),), fetch='one')
+            
+            if row:
+                return {
+                    'user_id': row['user_id'],
+                    'username': row['username'],
+                    'email': row['email'],
+                    'password_hash': row['password_hash'],
+                    'display_name': row['display_name'],
+                    'created_at': row['created_at'],
+                    'last_login': row['last_login'],
+                    'is_active': bool(row['is_active']),
+                    'email_verified': bool(row['email_verified'])
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting user by email: {e}")
+            return None
+    
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user account by user_id"""
+        try:
+            query = '''
+                SELECT user_id, username, email, display_name, 
+                       created_at, last_login, is_active, email_verified
+                FROM user_accounts 
+                WHERE user_id = ? AND is_active = TRUE
+            '''
+            
+            row = self._execute_query(query, (user_id,), fetch='one')
+            
+            if row:
+                return {
+                    'user_id': row['user_id'],
+                    'username': row['username'],
+                    'email': row['email'],
+                    'display_name': row['display_name'],
+                    'created_at': row['created_at'],
+                    'last_login': row['last_login'],
+                    'is_active': bool(row['is_active']),
+                    'email_verified': bool(row['email_verified'])
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting user by ID: {e}")
+            return None
+    
+    def update_user_last_login(self, user_id: str) -> bool:
+        """Update user's last login timestamp"""
+        try:
+            query = '''
+                UPDATE user_accounts 
+                SET last_login = ?, updated_at = ?
+                WHERE user_id = ?
+            '''
+            
+            now = datetime.now().isoformat()
+            self._execute_query(query, (now, now, user_id))
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating last login: {e}")
+            return False
+    
+    def change_user_password(self, user_id: str, new_password_hash: str) -> bool:
+        """Change user's password"""
+        try:
+            query = '''
+                UPDATE user_accounts 
+                SET password_hash = ?, updated_at = ?
+                WHERE user_id = ?
+            '''
+            
+            now = datetime.now().isoformat()
+            self._execute_query(query, (new_password_hash, now, user_id))
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error changing password: {e}")
+            return False
+    
+    def update_user_profile_info(self, user_id: str, display_name: Optional[str] = None, 
+                                email: Optional[str] = None) -> bool:
+        """Update user profile information"""
+        try:
+            updates = []
+            params = []
+            
+            if display_name is not None:
+                updates.append("display_name = ?")
+                params.append(display_name)
+            
+            if email is not None:
+                updates.append("email = ?")
+                params.append(email.lower())
+            
+            if not updates:
+                return True
+            
+            updates.append("updated_at = ?")
+            params.append(datetime.now().isoformat())
+            params.append(user_id)
+            
+            query = f'''
+                UPDATE user_accounts 
+                SET {", ".join(updates)}
+                WHERE user_id = ?
+            '''
+            
+            self._execute_query(query, params)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating user profile: {e}")
+            return False
+    
+    def username_exists(self, username: str) -> bool:
+        """Check if username already exists"""
+        try:
+            query = 'SELECT 1 FROM user_accounts WHERE username = ?'
+            result = self._execute_query(query, (username.lower(),), fetch='one')
+            return result is not None
+            
+        except Exception as e:
+            logger.error(f"Error checking username existence: {e}")
+            return False
+    
+    def email_exists(self, email: str) -> bool:
+        """Check if email already exists"""
+        try:
+            query = 'SELECT 1 FROM user_accounts WHERE email = ?'
+            result = self._execute_query(query, (email.lower(),), fetch='one')
+            return result is not None
+            
+        except Exception as e:
+            logger.error(f"Error checking email existence: {e}")
+            return False
 
 # Global instance for easy access
 db_service = DatabaseService() 

@@ -34,17 +34,28 @@ class AuthService:
     """
     
     def __init__(self):
-        self.secret_key = os.getenv('JWT_SECRET_KEY') or self._generate_secret_key()
+        # 🔒 SECURITY REQUIREMENT: JWT_SECRET_KEY must be set in environment
+        self.secret_key = os.getenv('JWT_SECRET_KEY')
+        if not self.secret_key:
+            raise ValueError(
+                "JWT_SECRET_KEY environment variable is required for security. "
+                "Generate a secure key using: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+            )
+        
+        # Validate secret key strength
+        if len(self.secret_key) < 32:
+            raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
+        
         self.algorithm = 'HS256'
         self.access_token_expire_minutes = 30
         self.refresh_token_expire_days = 7
         
-        if not os.getenv('JWT_SECRET_KEY'):
-            logger.warning("JWT_SECRET_KEY not found in environment. Using generated key.")
+        logger.info("Authentication service initialized with secure JWT configuration")
     
     def _generate_secret_key(self) -> str:
         """Generate a cryptographically secure secret key"""
-        return secrets.token_urlsafe(32)
+        # This method is kept for utility but not used in production
+        return secrets.token_urlsafe(64)
     
     def hash_password(self, password: str) -> str:
         """Hash password using bcrypt with salt"""

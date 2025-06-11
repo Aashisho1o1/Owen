@@ -1,10 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Editor from './components/Editor';
 import ChatPane from './components/ChatPane';
 import Controls from './components/Controls';
 import WritingTimer from './components/WritingTimer';
+import AuthModal from './components/AuthModal';
+import UserProfileModal from './components/UserProfileModal';
 import MangaStudioPage from './pages/MangaStudioPage';
 import './App.css';
 
@@ -25,15 +28,28 @@ const VoiceToTextPage: React.FC = () => {
   );
 };
 
-// Clean navigation component
+// Enhanced navigation component with authentication
 const Navigation: React.FC = () => {
   const location = useLocation();
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   
   const navItems = [
     { path: '/', label: 'Writer\'s Desk', icon: '✍️' },
     { path: '/manga', label: 'Manga Studio', icon: '🎨' },
     { path: '/voice', label: 'Voice to Text', icon: '🎤' },
   ];
+
+  const handleAuthClick = (mode: 'login' | 'register') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfileModal(true);
+  };
 
   return (
     <nav className="main-navigation">
@@ -54,6 +70,60 @@ const Navigation: React.FC = () => {
           </Link>
         ))}
       </div>
+
+      {/* Authentication section */}
+      <div className="nav-auth">
+        {isLoading ? (
+          <div className="nav-auth-loading">
+            <div className="loading-spinner"></div>
+          </div>
+        ) : isAuthenticated && user ? (
+          // Authenticated user menu
+          <div className="nav-user-menu">
+            <button 
+              className="nav-user-button"
+              onClick={handleProfileClick}
+              title={`Signed in as ${user.display_name || user.username}`}
+            >
+              <div className="nav-user-avatar">
+                {(user.display_name || user.username).charAt(0).toUpperCase()}
+              </div>
+              <span className="nav-user-name">
+                {user.display_name || user.username}
+              </span>
+            </button>
+          </div>
+        ) : (
+          // Unauthenticated user buttons
+          <div className="nav-auth-buttons">
+            <button
+              className="nav-auth-button secondary"
+              onClick={() => handleAuthClick('login')}
+            >
+              Sign In
+            </button>
+            <button
+              className="nav-auth-button primary"
+              onClick={() => handleAuthClick('register')}
+            >
+              Get Started
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </nav>
   );
 };
@@ -61,10 +131,14 @@ const Navigation: React.FC = () => {
 // Full Writers Desk with single-pane layout and toggleable chat
 const WritersDesk: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [editorContent, setEditorContent] = useState('');
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
+  };
+
+  const handleTextHighlighted = (selectedText: string) => {
+    console.log('Text highlighted:', selectedText);
   };
 
   return (
@@ -74,7 +148,11 @@ const WritersDesk: React.FC = () => {
         {/* Main Editor Panel - Text content at the top */}
         <div className="editor-panel">
           <div className="editor-container">
-            <Editor ref={editorRef} />
+            <Editor 
+              content={editorContent} 
+              onChange={setEditorContent} 
+              onTextHighlighted={handleTextHighlighted} 
+            />
           </div>
         </div>
 
@@ -137,18 +215,20 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   return (
-    <AppProvider>
-      <Router>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<WritersDesk />} />
-            <Route path="/manga" element={<MangaStudioPage />} />
-            <Route path="/voice" element={<VoiceToTextPage />} />
-            <Route path="*" element={<WritersDesk />} />
-          </Routes>
-        </AppLayout>
-      </Router>
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Router>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<WritersDesk />} />
+              <Route path="/manga" element={<MangaStudioPage />} />
+              <Route path="/voice" element={<VoiceToTextPage />} />
+              <Route path="*" element={<WritersDesk />} />
+            </Routes>
+          </AppLayout>
+        </Router>
+      </AppProvider>
+    </AuthProvider>
   );
 };
 
