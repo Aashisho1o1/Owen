@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Paragraph from '@tiptap/extension-paragraph';
 import React, { useCallback, useEffect, useState, forwardRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
+import { grammarService, GrammarIssue, GrammarCheckResult } from '../services/grammarService';
 
 interface EditorProps {
   content?: string;
@@ -30,6 +31,12 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
   const [fontSize, setFontSize] = useState('16px');
   const [fontFamily, setFontFamily] = useState('Inter');
   
+  // Grammar checking state - restored but simplified
+  const [grammarIssues, setGrammarIssues] = useState<GrammarIssue[]>([]);
+  const [isCheckingGrammar, setIsCheckingGrammar] = useState(false);
+  const [hoveredIssue, setHoveredIssue] = useState<GrammarIssue | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -39,8 +46,112 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       onChange(newContent);
+      
+      // Subtle grammar checking on content change
+      handleGrammarCheck(editor.getText());
     },
   });
+
+  // Grammar checking function - restored
+  const handleGrammarCheck = useCallback((text: string) => {
+    if (!text.trim() || text.length < 10) {
+      setGrammarIssues([]);
+      return;
+    }
+    
+    setIsCheckingGrammar(true);
+    
+    grammarService.checkRealTimeDebounced(text, (result: GrammarCheckResult) => {
+      setGrammarIssues(result.issues);
+      setIsCheckingGrammar(false);
+    });
+  }, []);
+
+  // Apply grammar suggestion
+  const applySuggestion = useCallback((issue: GrammarIssue, suggestion: string) => {
+    if (!editor) return;
+    
+    const currentText = editor.getText();
+    const beforeText = currentText.substring(0, issue.start);
+    const afterText = currentText.substring(issue.end);
+    const newText = beforeText + suggestion + afterText;
+    
+    editor.commands.setContent(newText);
+    setGrammarIssues(prev => prev.filter(i => i !== issue));
+    setHoveredIssue(null);
+  }, [editor]);
+
+  // Handle mouse events for grammar highlighting
+  useEffect(() => {
+    if (!editor) return;
+
+    const editorElement = editor.view.dom;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = editorElement.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Find if cursor is over a grammar issue
+      const hoveredElement = e.target as HTMLElement;
+      if (hoveredElement.classList.contains('grammar-error')) {
+        const issueIndex = parseInt(hoveredElement.dataset.issueIndex || '0');
+        const issue = grammarIssues[issueIndex];
+        if (issue) {
+          setHoveredIssue(issue);
+          setTooltipPosition({ x: e.clientX, y: e.clientY });
+        }
+      } else {
+        setHoveredIssue(null);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setHoveredIssue(null);
+    };
+
+    editorElement.addEventListener('mousemove', handleMouseMove);
+    editorElement.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      editorElement.removeEventListener('mousemove', handleMouseMove);
+      editorElement.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [editor, grammarIssues]);
+
+  // Apply grammar highlighting to the editor content
+  useEffect(() => {
+    if (!editor || grammarIssues.length === 0) return;
+
+    const editorText = editor.getText();
+    let highlightedHTML = editorText;
+
+    // Sort issues by start position (reverse order to maintain positions)
+    const sortedIssues = [...grammarIssues].sort((a, b) => b.start - a.start);
+
+    sortedIssues.forEach((issue, index) => {
+      const beforeText = highlightedHTML.substring(0, issue.start);
+      const issueText = highlightedHTML.substring(issue.start, issue.end);
+      const afterText = highlightedHTML.substring(issue.end);
+
+      const severityClass = `grammar-${issue.severity}`;
+      const wrappedText = `<span class="grammar-error ${severityClass}" data-issue-index="${grammarIssues.indexOf(issue)}">${issueText}</span>`;
+      
+      highlightedHTML = beforeText + wrappedText + afterText;
+    });
+
+    // Only update if content has changed
+    if (editor.getHTML() !== highlightedHTML) {
+      const currentSelection = editor.state.selection;
+      editor.commands.setContent(highlightedHTML, false);
+      // Restore selection if possible
+      try {
+        editor.commands.setTextSelection(currentSelection);
+      } catch (e) {
+        // Selection restoration failed, that's ok
+      }
+    }
+  }, [grammarIssues, editor]);
 
   // Update editor content when the content prop changes
   useEffect(() => {
@@ -52,7 +163,6 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
   // Set up placeholder effect
   useEffect(() => {
     if (editor && editor.isEmpty) {
-      // Add placeholder class to the editor
       document.querySelector('.ProseMirror')?.classList.add('is-empty');
     }
   }, [editor]);
@@ -108,12 +218,46 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     <div className="editor-container" ref={ref}>
       <div className="editor-header">
         <h2>Text Content</h2>
-        <p className="selection-hint">Highlight text to discuss with the AI</p>
+        <p className="selection-hint">
+          Highlight text to discuss with the AI
+          {isCheckingGrammar && <span className="grammar-checking"> • Checking grammar...</span>}
+        </p>
       </div>
       
       <div className="editor-content">
         <EditorContent editor={editor} />
       </div>
+
+      {/* Grammar Tooltip - appears on hover */}
+      {hoveredIssue && (
+        <div 
+          className="grammar-tooltip"
+          style={{
+            position: 'fixed',
+            left: tooltipPosition.x + 10,
+            top: tooltipPosition.y - 10,
+            zIndex: 1000
+          }}
+        >
+          <div className="tooltip-content">
+            <div className="tooltip-message">{hoveredIssue.message}</div>
+            {hoveredIssue.suggestions.length > 0 && (
+              <div className="tooltip-suggestions">
+                {hoveredIssue.suggestions.slice(0, 3).map((suggestion, index) => (
+                  <button
+                    key={index}
+                    className="suggestion-button"
+                    onClick={() => applySuggestion(hoveredIssue, suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="tooltip-source">{hoveredIssue.source}</div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .editor-container {
@@ -150,6 +294,11 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
           font-style: italic;
         }
         
+        .grammar-checking {
+          color: var(--accent-blue);
+          font-weight: 500;
+        }
+        
         .editor-content {
           flex: 1;
           padding: 20px;
@@ -170,6 +319,82 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
           float: left;
           height: 0;
           pointer-events: none;
+        }
+        
+        /* Grammar Error Highlighting - Subtle like Grammarly */
+        .grammar-error {
+          border-bottom: 2px dotted;
+          cursor: pointer;
+          position: relative;
+        }
+        
+        .grammar-error.grammar-error {
+          border-bottom-color: #ef4444;
+        }
+        
+        .grammar-error.grammar-warning {
+          border-bottom-color: #f59e0b;
+        }
+        
+        .grammar-error.grammar-info {
+          border-bottom-color: #3b82f6;
+        }
+        
+        .grammar-error:hover {
+          background-color: rgba(59, 130, 246, 0.1);
+          border-radius: 2px;
+        }
+        
+        /* Grammar Tooltip */
+        .grammar-tooltip {
+          background: var(--bg-primary);
+          border: 1px solid var(--border-primary);
+          border-radius: 8px;
+          box-shadow: var(--shadow-lg);
+          max-width: 300px;
+          animation: fadeIn 0.2s ease-out;
+        }
+        
+        .tooltip-content {
+          padding: 12px;
+        }
+        
+        .tooltip-message {
+          font-size: 0.875rem;
+          color: var(--text-primary);
+          margin-bottom: 8px;
+          line-height: 1.4;
+        }
+        
+        .tooltip-suggestions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-bottom: 8px;
+        }
+        
+        .suggestion-button {
+          padding: 4px 8px;
+          background: var(--accent-blue);
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .suggestion-button:hover {
+          background: var(--accent-blue-hover);
+        }
+        
+        .tooltip-source {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          text-align: right;
+          margin-top: 4px;
+          border-top: 1px solid var(--border-light);
+          padding-top: 4px;
         }
         
         .ProseMirror p {
@@ -262,6 +487,11 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
         
         .editor-content::-webkit-scrollbar-thumb:hover {
           background: var(--text-muted);
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
