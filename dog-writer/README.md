@@ -84,4 +84,6 @@ An AI-powered collaborative writing assistant that allows users to write text an
 - User authentication
 - Persistent storage of checkpoints
 - More author personas
-- Enhanced editor features 
+- Enhanced editor features
+
+<!-- Test commit to verify connection to OwenWrites organization repository. --> 
