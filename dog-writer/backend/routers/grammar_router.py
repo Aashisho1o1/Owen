@@ -1,50 +1,85 @@
 """
-Grammar Checking Router
+Grammar Checking Router - SECURE VERSION
 
 Provides real-time and comprehensive grammar checking endpoints
-with cost optimization and performance monitoring.
+with cost optimization, performance monitoring, and security features.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 import json
 import asyncio
 from typing import Dict, Any
 from dataclasses import asdict
+import logging
 
 from models.schemas import GrammarCheckRequest, GrammarCheckResponse
-from services.grammar_service import grammar_service
-from services.auth_service import get_current_user_id
+from services.grammar_service import grammar_service, SecurityError
+from services.auth_service import get_current_user_id, get_optional_user_id
 from services.validation_service import input_validator
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/grammar", tags=["grammar"])
 
+def get_client_ip(request: Request) -> str:
+    """Extract client IP for rate limiting and logging"""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
 @router.post("/check", response_model=GrammarCheckResponse)
 async def check_grammar(
-    request: GrammarCheckRequest,
-    user_id: str = Depends(get_current_user_id)
+    request: Request,
+    grammar_request: GrammarCheckRequest,
+    user_id: str = Depends(get_optional_user_id)  # Optional auth for public access
 ):
     """
-    Check grammar and spelling in text
+    Check grammar and spelling in text with security validation
     
     Supports two modes:
     - real_time: Fast checking with LanguageTool + local spellcheck (<200ms)
     - comprehensive: LLM-based analysis for complex issues (2-5s)
+    
+    Security features:
+    - Input validation and sanitization
+    - Rate limiting per IP/user
+    - Request size limits
+    - Malicious content detection
     """
+    client_ip = get_client_ip(request)
+    
     try:
-        # Validate input
-        validated_text = input_validator.validate_text_input(request.text)
+        # Validate input using our security service
+        validated_text = input_validator.validate_text_input(grammar_request.text)
         
-        # Choose checking method
-        if request.check_type == "real_time":
-            result = await grammar_service.check_real_time(
-                validated_text, 
-                request.language
+        # Additional grammar-specific validation
+        if len(validated_text) > 50000:  # Grammar service limit
+            raise HTTPException(
+                status_code=413,
+                detail="Text too long for grammar checking. Maximum 50,000 characters allowed."
             )
-        else:  # comprehensive
+        
+        # Log request for monitoring
+        logger.info(
+            f"Grammar check request: user={user_id or 'anonymous'}, "
+            f"ip={client_ip}, type={grammar_request.check_type}, "
+            f"length={len(validated_text)}"
+        )
+        
+        # Choose checking method based on request type
+        if grammar_request.check_type == "real_time":
+            result = await grammar_service.check_real_time(validated_text)
+        elif grammar_request.check_type == "comprehensive":
             result = await grammar_service.check_comprehensive(
                 validated_text,
-                request.context
+                grammar_request.context
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid check_type. Must be 'real_time' or 'comprehensive'"
             )
         
         # Convert to response format
@@ -55,7 +90,7 @@ async def check_grammar(
                 "issue_type": issue.issue_type,
                 "severity": issue.severity.value,
                 "message": issue.message,
-                "suggestions": issue.suggestions,
+                "suggestions": issue.suggestions[:5],  # Limit suggestions
                 "confidence": issue.confidence,
                 "source": issue.source
             }
@@ -71,8 +106,26 @@ async def check_grammar(
             cached=result.cached
         )
         
+    except SecurityError as e:
+        logger.warning(
+            f"Security violation in grammar check: user={user_id or 'anonymous'}, "
+            f"ip={client_ip}, error={str(e)}"
+        )
+        raise HTTPException(status_code=400, detail="Input validation failed")
+    
+    except ValueError as e:
+        logger.warning(f"Invalid input in grammar check: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid input format")
+    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Grammar check failed: {str(e)}")
+        logger.error(
+            f"Grammar check failed: user={user_id or 'anonymous'}, "
+            f"ip={client_ip}, error={str(e)}"
+        )
+        raise HTTPException(
+            status_code=500, 
+            detail="Grammar check service temporarily unavailable"
+        )
 
 @router.post("/check-stream")
 async def check_grammar_stream(

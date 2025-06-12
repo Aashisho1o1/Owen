@@ -43,6 +43,8 @@ class InputValidator:
         r'onload\s*=',               # Event handlers
         r'onerror\s*=',
         r'onclick\s*=',
+        r'onmouseover\s*=',
+        r'onfocus\s*=',
         r'eval\s*\(',                # Code execution
         r'setTimeout\s*\(',
         r'setInterval\s*\(',
@@ -57,9 +59,17 @@ class InputValidator:
         r'UPDATE\s+.*SET',
         r'UNION\s+SELECT',
         r'OR\s+1\s*=\s*1',
+        r'AND\s+1\s*=\s*1',
+        r';\s*--',                   # SQL comments
+        r'/\*.*\*/',                 # SQL block comments
+        r'<iframe[^>]*>',            # Iframe injection
+        r'<object[^>]*>',            # Object injection
+        r'<embed[^>]*>',             # Embed injection
+        r'data:text/html',           # Data URI XSS
+        r'data:application/javascript', # Data URI script injection
     ]
     
-    # Prompt injection patterns
+    # Prompt injection patterns (enhanced)
     PROMPT_INJECTION_PATTERNS = [
         r'ignore\s+previous\s+instructions',
         r'forget\s+everything',
@@ -69,7 +79,22 @@ class InputValidator:
         r'pretend\s+to\s+be',
         r'act\s+as\s+if',
         r'roleplay\s+as',
+        r'override\s+your\s+instructions',
+        r'disregard\s+your\s+programming',
+        r'you\s+are\s+now\s+a',
+        r'from\s+now\s+on\s+you\s+are',
+        r'simulate\s+being',
+        r'behave\s+like',
+        r'respond\s+as\s+if',
     ]
+    
+    # Common weak passwords to reject
+    WEAK_PASSWORDS = {
+        'password', 'password123', '123456', '123456789', 'qwerty',
+        'abc123', 'password1', 'admin', 'letmein', 'welcome',
+        'monkey', '1234567890', 'dragon', 'master', 'shadow',
+        'superman', 'michael', 'football', 'baseball', 'liverpool'
+    }
     
     def __init__(self):
         self.max_text_length = 10000  # Maximum text input length

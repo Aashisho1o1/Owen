@@ -29,13 +29,8 @@ genai_available = False
 try:
     from openai import OpenAI
     if os.getenv("OPENAI_API_KEY"):
-        # Explicitly create an httpx client with no proxies
-        http_client = httpx.Client(proxies=None)
-        client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            http_client=http_client
-        )
-        print("[INFO] OpenAI client configured successfully with custom HTTP client")
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        print("[INFO] OpenAI client configured successfully")
     else:
         client = None
         print("[WARNING] OPENAI_API_KEY not found")
@@ -90,7 +85,36 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS configuration
+# Security Headers Middleware
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+    
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    
+    # Content Security Policy (basic)
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https://api.languagetool.org https://api.openai.com https://generativelanguage.googleapis.com; "
+        "font-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    response.headers["Content-Security-Policy"] = csp
+    
+    return response
+
+# CORS configuration with enhanced security
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -106,8 +130,18 @@ app.add_middleware(
         "http://localhost:8080",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=[
+        "Content-Type", 
+        "Authorization", 
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers"
+    ],
+    expose_headers=["X-Total-Count", "X-Rate-Limit-Remaining"],
+    max_age=86400,  # 24 hours
 )
 
 # Pydantic models

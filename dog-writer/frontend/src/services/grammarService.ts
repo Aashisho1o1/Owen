@@ -1,10 +1,11 @@
 /**
- * Grammar Checking Service
+ * Grammar Checking Service - SECURE VERSION
  * 
  * Provides real-time grammar and spelling checking with speculative execution:
  * - Fast checks for immediate feedback (typing)
  * - Comprehensive checks for final review
  * - Smart caching and debouncing
+ * - Security: Input validation, XSS prevention, secure token handling
  */
 
 interface GrammarIssue {
@@ -25,18 +26,126 @@ interface GrammarCheckResult {
   check_type: 'real_time' | 'comprehensive';
   processing_time_ms: number;
   cached: boolean;
-  overall_score?: number;
-  style_notes?: string;
 }
+
+// Security constants
+const MAX_TEXT_LENGTH = 50000;
+const MAX_CACHE_SIZE = 500;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const DEBOUNCE_DELAY = 500; // 500ms
 
 class GrammarService {
   private cache = new Map<string, { result: GrammarCheckResult; timestamp: number }>();
   private debounceTimers = new Map<string, NodeJS.Timeout>();
   private lastChecks = new Map<string, number>();
   
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  private readonly DEBOUNCE_DELAY = 500; // 500ms
-  private readonly API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  private readonly CACHE_TTL = CACHE_TTL;
+  private readonly DEBOUNCE_DELAY = DEBOUNCE_DELAY;
+  private readonly MAX_TEXT_LENGTH = MAX_TEXT_LENGTH;
+  private readonly API_BASE_URL = this.getApiBaseUrl();
+
+  /**
+   * Get API base URL from environment with fallback
+   */
+  private getApiBaseUrl(): string {
+    // Try multiple environment variable names for flexibility
+    return (
+      process.env.REACT_APP_API_URL ||
+      process.env.VITE_API_URL ||
+      import.meta.env?.VITE_API_URL ||
+      'http://localhost:8000'
+    );
+  }
+
+  /**
+   * Validate and sanitize input text
+   */
+  private validateInput(text: string): string {
+    if (typeof text !== 'string') {
+      throw new Error('Input must be a string');
+    }
+
+    if (text.length > this.MAX_TEXT_LENGTH) {
+      throw new Error(`Text too long. Maximum ${this.MAX_TEXT_LENGTH} characters allowed`);
+    }
+
+    // Basic sanitization - remove null bytes and normalize whitespace
+    const sanitized = text
+      .replace(/\0/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .trim();
+
+    // Check for suspicious patterns
+    const suspiciousPatterns = [
+      /<script[^>]*>/i,
+      /javascript:/i,
+      /vbscript:/i,
+      /onload\s*=/i,
+      /onerror\s*=/i,
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(sanitized)) {
+        console.warn('Suspicious pattern detected in input');
+        throw new Error('Input contains potentially malicious content');
+      }
+    }
+
+    return sanitized;
+  }
+
+  /**
+   * Get secure headers for API requests
+   */
+  private getSecureHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest', // CSRF protection
+    };
+
+    // Add authentication token if available
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Get authentication token from secure storage
+   */
+  private getAuthToken(): string | null {
+    try {
+      // Try multiple token storage keys for compatibility
+      return (
+        localStorage.getItem('owen_access_token') ||
+        localStorage.getItem('access_token') ||
+        sessionStorage.getItem('access_token') ||
+        null
+      );
+    } catch (error) {
+      console.error('Error accessing token storage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Manage cache size to prevent memory issues
+   */
+  private manageCacheSize(): void {
+    if (this.cache.size > MAX_CACHE_SIZE) {
+      // Remove oldest entries (simple LRU)
+      const entries = Array.from(this.cache.entries());
+      entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+      
+      const removeCount = Math.floor(entries.length * 0.2); // Remove 20%
+      for (let i = 0; i < removeCount; i++) {
+        this.cache.delete(entries[i][0]);
+      }
+    }
+  }
 
   /**
    * Real-time grammar checking (fast, for typing feedback)

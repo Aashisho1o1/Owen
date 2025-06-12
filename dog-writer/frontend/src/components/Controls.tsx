@@ -1,12 +1,15 @@
 /**
- * Controls Component - Redesigned
+ * Controls Component - Redesigned with Settings and Authentication
  * 
  * Minimal icon-based controls for writing preferences and settings.
- * Uses the new design system for consistent styling.
+ * Now includes theme settings and authentication access.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
+import SettingsModal from './SettingsModal';
+import AuthModal from './AuthModal';
 
 const Controls: React.FC = () => {
   const {
@@ -22,8 +25,13 @@ const Controls: React.FC = () => {
     updateEnglishVariant
   } = useAppContext();
 
+  const { isAuthenticated, user } = useAuth();
+
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -106,6 +114,21 @@ const Controls: React.FC = () => {
   const handleTimerToggle = () => {
     setTimerActive(!timerActive);
     // Here you could integrate with the actual writing timer functionality
+  };
+
+  const handleAuthClick = () => {
+    if (isAuthenticated) {
+      // If authenticated, show settings modal (profile will be in settings)
+      setShowSettingsModal(true);
+    } else {
+      // If not authenticated, show auth modal
+      setAuthMode('login');
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleSettingsClick = () => {
+    setShowSettingsModal(true);
   };
 
   return (
@@ -264,7 +287,58 @@ const Controls: React.FC = () => {
             <div className="control-tooltip">Save</div>
           </button>
         </div>
+
+        {/* NEW: Settings Icon */}
+        <div className="control-action-group">
+          <button
+            className="control-action-button"
+            onClick={handleSettingsClick}
+            title="Settings"
+            aria-label="Settings"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">⚙️</span>
+            </div>
+            <div className="control-tooltip">Settings</div>
+          </button>
+        </div>
+
+        {/* NEW: Sign In/Sign Up Icon */}
+        <div className="control-action-group">
+          <button
+            className={`control-action-button ${isAuthenticated ? 'authenticated' : ''}`}
+            onClick={handleAuthClick}
+            title={isAuthenticated ? `Signed in as ${user?.display_name || user?.username}` : "Sign In/Up"}
+            aria-label={isAuthenticated ? "User Profile" : "Sign In/Up"}
+          >
+            <div className="control-button-content">
+              {isAuthenticated ? (
+                <span className="control-icon user-avatar">
+                  {(user?.display_name || user?.username || 'U').charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <span className="control-icon">👤</span>
+              )}
+            </div>
+            <div className="control-tooltip">
+              {isAuthenticated ? "Profile" : "Sign In/Up"}
+            </div>
+          </button>
+        </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
     </div>
   );
 };

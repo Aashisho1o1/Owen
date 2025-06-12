@@ -1,5 +1,5 @@
 """
-Speculative Grammar Checking Service - COST OPTIMIZED
+Speculative Grammar Checking Service - COST OPTIMIZED & SECURE
 
 Multi-tier approach:
 Tier 1: Local spellcheck (FREE, instant)
@@ -7,6 +7,7 @@ Tier 2: LanguageTool Free API (FREE, 20 req/min limit)
 Tier 3: LLM comprehensive check (PAID, for final review)
 
 Smart caching and request management to stay within free limits.
+Security features: Input validation, cache limits, rate limiting.
 """
 
 import re
@@ -23,6 +24,11 @@ from functools import lru_cache
 import os
 
 logger = logging.getLogger(__name__)
+
+# Security constants
+MAX_TEXT_LENGTH = 50000  # Maximum text length to prevent DoS
+MAX_CACHE_SIZE = 1000    # Maximum cache entries
+MAX_CACHE_MEMORY_MB = 100  # Maximum cache memory usage
 
 class CheckType(Enum):
     REAL_TIME = "real_time"
@@ -57,6 +63,10 @@ class GrammarCheckResult:
     timestamp: float
     word_count: int
     cached: bool = False
+
+class SecurityError(Exception):
+    """Custom exception for security-related errors"""
+    pass
 
 class RateLimiter:
     """Rate limiter for LanguageTool API to stay within free limits"""
@@ -118,6 +128,10 @@ class GrammarService:
         self.llm_check_threshold = 2000  # Minimum chars for LLM checking
         self.batch_size = 5000  # Characters per LLM batch
         
+        # Security settings
+        self.max_text_length = MAX_TEXT_LENGTH
+        self.max_cache_size = MAX_CACHE_SIZE
+        
         # Local spelling dictionary (expanded)
         self.common_misspellings = {
             # Original ones
@@ -160,8 +174,52 @@ class GrammarService:
             'comprehensive_checks': 0,
             'cache_hits': 0,
             'api_calls': 0,
-            'average_response_time': 0
+            'average_response_time': 0,
+            'security_blocks': 0
         }
+    
+    def _validate_input(self, text: str) -> str:
+        """Validate and sanitize input text for security"""
+        if not isinstance(text, str):
+            raise SecurityError("Input must be a string")
+        
+        if len(text) > self.max_text_length:
+            raise SecurityError(f"Text too long. Maximum {self.max_text_length} characters allowed")
+        
+        # Basic sanitization - remove null bytes and control characters
+        sanitized = text.replace('\x00', '').replace('\r\n', '\n').replace('\r', '\n')
+        
+        # Check for suspicious patterns that might indicate injection attempts
+        suspicious_patterns = [
+            r'<script[^>]*>',
+            r'javascript:',
+            r'vbscript:',
+            r'onload\s*=',
+            r'onerror\s*=',
+        ]
+        
+        for pattern in suspicious_patterns:
+            if re.search(pattern, sanitized, re.IGNORECASE):
+                logger.warning(f"Suspicious pattern detected in input: {pattern}")
+                self.metrics['security_blocks'] += 1
+                raise SecurityError("Input contains potentially malicious content")
+        
+        return sanitized.strip()
+    
+    def _manage_cache_size(self):
+        """Manage cache size to prevent memory exhaustion"""
+        if len(self.cache) > self.max_cache_size:
+            # Remove oldest entries (simple LRU)
+            sorted_cache = sorted(
+                self.cache.items(), 
+                key=lambda x: x[1].timestamp
+            )
+            # Remove oldest 20% of entries
+            remove_count = len(sorted_cache) // 5
+            for i in range(remove_count):
+                del self.cache[sorted_cache[i][0]]
+            
+            logger.info(f"Cache cleaned: removed {remove_count} entries")
     
     def _generate_text_hash(self, text: str) -> str:
         """Generate hash for caching"""
