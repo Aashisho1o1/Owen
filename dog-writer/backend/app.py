@@ -126,10 +126,10 @@ async def add_request_id(request: Request, call_next):
 
 # Security Headers Middleware
 @app.middleware("http")
-async def add_security_headers(request, call_next):
+async def add_security_headers(request: Request, call_next):
     """Add comprehensive security headers to all responses"""
     response = await call_next(request)
-    
+
     # Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
     
@@ -157,28 +157,26 @@ async def add_security_headers(request, call_next):
     # Content Security Policy (Enhanced)
     csp_directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Needed for some frontend frameworks
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "img-src 'self' data:",
         "font-src 'self' https://fonts.gstatic.com",
-        "img-src 'self' data: https: blob:",
-        "connect-src 'self' https://api.languagetool.org https://api.openai.com https://generativelanguage.googleapis.com",
-        "media-src 'self'",
+        "connect-src 'self'",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
-        "frame-ancestors 'none'",
-        "upgrade-insecure-requests"
+        "frame-ancestors 'none'"
     ]
     response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
     
-    # Additional security headers
-    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    # Cross-Origin Isolation
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
-    
-    # Server information hiding
-    response.headers.pop("Server", None)
+
+    # Server information hiding (FIXED)
+    if "Server" in response.headers:
+        del response.headers["Server"]
     
     return response
 
