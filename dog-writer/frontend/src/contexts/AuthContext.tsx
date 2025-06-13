@@ -1,5 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from 'react';
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 // Types for authentication
 interface UserProfile {
@@ -12,7 +20,7 @@ interface UserProfile {
     english_variant: string;
     onboarding_completed: boolean;
     user_corrections: string[];
-    writing_style_profile?: any;
+    writing_style_profile?: Record<string, unknown>;
     writing_type?: string;
     feedback_style?: string;
     primary_goal?: string;
@@ -84,7 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Token management
   // 🔒 SECURITY NOTE: localStorage is vulnerable to XSS attacks
   // In production, consider using httpOnly cookies for refresh tokens
-  const getStoredTokens = (): AuthTokens | null => {
+  const getStoredTokens = useCallback((): AuthTokens | null => {
     try {
       const accessToken = localStorage.getItem('owen_access_token');
       const refreshToken = localStorage.getItem('owen_refresh_token');
@@ -100,13 +108,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
       }
       return null;
-    } catch (error) {
-      console.error('Error getting stored tokens:', error);
+    } catch (err) {
+      logger.error('Error getting stored tokens:', err);
       return null;
     }
-  };
+  }, []);
 
-  const storeTokens = (tokens: AuthTokens) => {
+  const storeTokens = useCallback((tokens: AuthTokens) => {
     try {
       localStorage.setItem('owen_access_token', tokens.access_token);
       localStorage.setItem('owen_refresh_token', tokens.refresh_token);
@@ -115,110 +123,147 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Set axios default auth header
       api.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
-    } catch (error) {
-      console.error('Error storing tokens:', error);
+    } catch (err) {
+      logger.error('Error storing tokens:', err);
     }
-  };
+  }, []);
 
-  const clearTokens = () => {
+  const clearTokens = useCallback(() => {
     try {
       localStorage.removeItem('owen_access_token');
       localStorage.removeItem('owen_refresh_token');
       localStorage.removeItem('owen_token_type');
       localStorage.removeItem('owen_expires_in');
       delete api.defaults.headers.common['Authorization'];
-    } catch (error) {
-      console.error('Error clearing tokens:', error);
+    } catch (err) {
+      logger.error('Error clearing tokens:', err);
     }
-  };
-
-  // Set up axios interceptor for token refresh
-  useEffect(() => {
-    const setupInterceptors = () => {
-      // Request interceptor to add auth header
-      api.interceptors.request.use(
-        (config) => {
-          const tokens = getStoredTokens();
-          if (tokens) {
-            config.headers['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
-          }
-          return config;
-        },
-        (error) => Promise.reject(error)
-      );
-
-      // Response interceptor for token refresh
-      api.interceptors.response.use(
-        (response) => response,
-        async (error) => {
-          const originalRequest = error.config;
-
-          if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-
-            const success = await refreshToken();
-            if (success) {
-              const tokens = getStoredTokens();
-              if (tokens) {
-                originalRequest.headers['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
-                return api(originalRequest);
-              }
-            } else {
-              logout();
-            }
-          }
-
-          return Promise.reject(error);
-        }
-      );
-    };
-
-    setupInterceptors();
   }, []);
 
-  // Initialize authentication state
-  useEffect(() => {
-    const initializeAuth = async () => {
-      setIsLoading(true);
-      try {
-        const tokens = getStoredTokens();
-        if (tokens) {
-          // Try to get user profile to verify token validity
-          const success = await loadUserProfile();
-          if (!success) {
-            // Token might be expired, try refresh
-            const refreshSuccess = await refreshToken();
-            if (refreshSuccess) {
-              await loadUserProfile();
-            } else {
-              clearTokens();
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        clearTokens();
-      }
-      setIsLoading(false);
-    };
+  const logout = useCallback(() => {
+    // Call logout endpoint (fire-and-forget)
+    api.post('/api/auth/logout').catch(() => {});
 
-    initializeAuth();
-  }, []);
+    // Clear local state and storage
+    clearTokens();
+    setUser(null);
+    setIsAuthenticated(false);
+    setError(null);
 
-  const loadUserProfile = async (): Promise<boolean> => {
+    logger.log('User logged out');
+  }, [clearTokens]);
+
+  const loadUserProfile = useCallback(async (): Promise<boolean> => {
     try {
       const response = await api.get('/api/auth/profile');
       setUser(response.data);
       setIsAuthenticated(true);
       setError(null);
       return true;
-    } catch (error) {
-      console.error('Error loading user profile:', error);
+    } catch (err) {
+      logger.error('Error loading user profile:', err);
       setUser(null);
       setIsAuthenticated(false);
       return false;
     }
-  };
+  }, []);
+
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    const tokens = getStoredTokens();
+    if (!tokens?.refresh_token) {
+      return false;
+    }
+
+    try {
+      const response = await api.post('/api/auth/refresh', {
+        refresh_token: tokens.refresh_token,
+      });
+
+      const { access_token, token_type, expires_in } = response.data;
+      
+      // Update stored tokens (keep the same refresh token)
+      storeTokens({
+        access_token,
+        refresh_token: tokens.refresh_token,
+        token_type,
+        expires_in,
+      });
+
+      return true;
+    } catch (err) {
+      logger.error('Token refresh error:', err);
+      // If refresh fails, log the user out as the session is invalid
+      logout();
+      return false;
+    }
+  }, [getStoredTokens, storeTokens, logout]);
+
+  // Set up axios interceptor for token refresh
+  useEffect(() => {
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => response,
+      async (err) => {
+        const originalRequest = err.config;
+
+        if (err.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          const success = await refreshToken();
+          if (success) {
+            const newTokens = getStoredTokens();
+            if (newTokens) {
+              originalRequest.headers['Authorization'] = `${newTokens.token_type} ${newTokens.access_token}`;
+              return api(originalRequest);
+            }
+          }
+        }
+
+        return Promise.reject(err);
+      }
+    );
+
+    const requestInterceptor = api.interceptors.request.use(
+      (config) => {
+        const tokens = getStoredTokens();
+        if (tokens && !config.headers['Authorization']) {
+          config.headers['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Cleanup interceptors on unmount
+    return () => {
+      api.interceptors.response.eject(responseInterceptor);
+      api.interceptors.request.eject(requestInterceptor);
+    };
+  }, [refreshToken, getStoredTokens]);
+
+  // Initialize authentication state
+  useEffect(() => {
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      const tokens = getStoredTokens();
+      if (tokens) {
+        // Try to get user profile to verify token validity
+        const success = await loadUserProfile();
+        if (!success) {
+          // Token might be expired, try refresh
+          const refreshSuccess = await refreshToken();
+          if (refreshSuccess) {
+            await loadUserProfile();
+          } else {
+            // If refresh fails, clear tokens and log out
+            clearTokens();
+          }
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initializeAuth();
+  }, [getStoredTokens, loadUserProfile, refreshToken, clearTokens]);
 
   const login = async (data: LoginData): Promise<boolean> => {
     setIsLoading(true);
@@ -235,12 +280,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(userProfile);
       setIsAuthenticated(true);
       
-      console.log('Login successful:', userProfile.username);
+      logger.log('Login successful', { username: userProfile.username });
       return true;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Login failed. Please try again.';
+    } catch (err) {
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? err.response.data.detail
+          : 'Login failed. Please try again.';
       setError(errorMessage);
-      console.error('Login error:', error);
+      logger.error('Login error:', err);
       return false;
     } finally {
       setIsLoading(false);
@@ -262,29 +310,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(userProfile);
       setIsAuthenticated(true);
       
-      console.log('Registration successful:', userProfile.username);
+      logger.log('Registration successful', { username: userProfile.username });
       return true;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Registration failed. Please try again.';
+    } catch (err) {
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? err.response.data.detail
+          : 'Registration failed. Please try again.';
       setError(errorMessage);
-      console.error('Registration error:', error);
+      logger.error('Registration error:', err);
       return false;
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    // Call logout endpoint (fire-and-forget)
-    api.post('/api/auth/logout').catch(() => {}); 
-    
-    // Clear local state and storage
-    clearTokens();
-    setUser(null);
-    setIsAuthenticated(false);
-    setError(null);
-    
-    console.log('User logged out');
   };
 
   const updateProfile = async (data: { display_name?: string; email?: string }): Promise<boolean> => {
@@ -293,12 +331,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await api.put('/api/auth/profile', data);
       setUser(response.data);
-      console.log('Profile updated successfully');
+      logger.log('Profile updated successfully');
       return true;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Failed to update profile.';
+    } catch (err) {
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? err.response.data.detail
+          : 'Failed to update profile.';
       setError(errorMessage);
-      console.error('Profile update error:', error);
+      logger.error('Profile update error:', err);
       return false;
     }
   };
@@ -311,40 +352,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         current_password: currentPassword,
         new_password: newPassword,
       });
-      console.log('Password changed successfully');
+      logger.log('Password changed successfully');
       return true;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Failed to change password.';
+    } catch (err) {
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? err.response.data.detail
+          : 'Failed to change password.';
       setError(errorMessage);
-      console.error('Password change error:', error);
-      return false;
-    }
-  };
-
-  const refreshToken = async (): Promise<boolean> => {
-    try {
-      const tokens = getStoredTokens();
-      if (!tokens?.refresh_token) {
-        return false;
-      }
-
-      const response = await api.post('/api/auth/refresh', {
-        refresh_token: tokens.refresh_token,
-      });
-
-      const { access_token, token_type, expires_in } = response.data;
-      
-      // Update stored tokens (keep the same refresh token)
-      storeTokens({
-        access_token,
-        refresh_token: tokens.refresh_token,
-        token_type,
-        expires_in,
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Token refresh error:', error);
+      logger.error('Password change error:', err);
       return false;
     }
   };

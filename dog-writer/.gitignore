@@ -176,4 +176,7 @@ build/
 # Local History for Visual Studio Code
 .history/
 
-# End of https://www.toptal.com/developers/gitignore/api/python,react,vscode 
+# End of https://www.toptal.com/developers/gitignore/api/python,react,vscode
+
+# Custom Ignores
+dog-writer-backup/ 
