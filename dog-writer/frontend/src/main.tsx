@@ -2,9 +2,15 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { ThemeProvider } from './contexts/ThemeContext'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  </React.StrictMode>
+)
+
+  </React.StrictMode>
 )

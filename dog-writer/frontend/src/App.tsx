@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import Editor from './components/Editor';
 import ChatPane from './components/ChatPane';
 import Controls from './components/Controls';
@@ -89,13 +88,37 @@ const Navigation: React.FC = () => {
 const WritersDesk: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [editorContent, setEditorContent] = useState('');
+  const [selection, setSelection] = useState<{ top: number; left: number; text: string } | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
   };
 
   const handleTextHighlighted = (selectedText: string) => {
-    console.log('Text highlighted:', selectedText);
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !selectedText) {
+      setSelection(null);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    if (editorRef.current) {
+      const editorRect = editorRef.current.getBoundingClientRect();
+      setSelection({
+        top: rect.top - editorRect.top + rect.height,
+        left: rect.left - editorRect.left + rect.width / 2,
+        text: selectedText,
+      });
+    }
+  };
+  
+  const handleAiSubmit = () => {
+    // Logic to submit the selection.text to the AI
+    console.log('Submitting to AI:', selection?.text);
+    setSelection(null); // Hide button after submit
+    setIsChatOpen(true); // Open chat
   };
 
   return (
@@ -110,12 +133,21 @@ const WritersDesk: React.FC = () => {
           {/* Document Help Banner */}
           <DocumentHelp />
           
-          <div className="editor-container">
+          <div className="editor-container" ref={editorRef}>
             <Editor 
               content={editorContent} 
               onChange={setEditorContent} 
               onTextHighlighted={handleTextHighlighted} 
             />
+             {selection && (
+              <div 
+                className="floating-ai-button" 
+                style={{ top: selection.top, left: selection.left }}
+                onClick={handleAiSubmit}
+              >
+                Ask AI
+              </div>
+            )}
           </div>
         </div>
 
@@ -178,22 +210,20 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppProvider>
-          <Router>
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={<WritersDesk />} />
-                <Route path="/manga" element={<MangaStudioPage />} />
-                <Route path="/voice" element={<VoiceToTextPage />} />
-                <Route path="*" element={<WritersDesk />} />
-              </Routes>
-            </AppLayout>
-          </Router>
-        </AppProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Router>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<WritersDesk />} />
+              <Route path="/manga" element={<MangaStudioPage />} />
+              <Route path="/voice" element={<VoiceToTextPage />} />
+              <Route path="*" element={<WritersDesk />} />
+            </Routes>
+          </AppLayout>
+        </Router>
+      </AppProvider>
+    </AuthProvider>
   );
 };
 

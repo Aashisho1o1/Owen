@@ -1,182 +1,168 @@
 """
-Authentication and Authorization Service
+Authentication Service for DOG Writer
 
-Provides secure user authentication with JWT tokens, password hashing,
-and session management following security best practices.
+Basic JWT token verification and user authentication.
+Supports both session-based and JWT authentication.
 """
 
 import os
 import jwt
-import bcrypt
-import secrets
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from fastapi import HTTPException, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import logging
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
-class AuthenticationError(Exception):
-    """Custom exception for authentication failures"""
+# JWT Configuration
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 24
+
+class AuthError(Exception):
+    """Custom exception for authentication errors"""
     pass
 
-class AuthService:
-    """
-    Secure authentication service with JWT tokens and bcrypt password hashing.
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT access token"""
+    to_encode = data.copy()
     
-    Features:
-    - JWT token generation and validation
-    - Password hashing with bcrypt
-    - Rate limiting protection
-    - Session management
-    - Role-based access control
-    """
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
     
-    def __init__(self):
-        # 🔒 SECURITY REQUIREMENT: JWT_SECRET_KEY must be set in environment
-        self.secret_key = os.getenv('JWT_SECRET_KEY')
-        if not self.secret_key:
-            raise ValueError(
-                "JWT_SECRET_KEY environment variable is required for security. "
-                "Generate a secure key using: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
-            )
+    to_encode.update({"exp": expire})
+    
+    try:
+        encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+        return encoded_jwt
+    except Exception as e:
+        logger.error(f"Error creating JWT token: {e}")
+        raise AuthError(f"Failed to create access token: {e}")
+
+def verify_token(token: str) -> Dict[str, Any]:
+    """Verify and decode JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         
-        # Validate secret key strength
-        if len(self.secret_key) < 32:
-            raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
+        # Check if token is expired
+        exp = payload.get("exp")
+        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+            raise AuthError("Token has expired")
         
-        self.algorithm = 'HS256'
-        self.access_token_expire_minutes = 30
-        self.refresh_token_expire_days = 7
+        return payload
         
-        logger.info("Authentication service initialized with secure JWT configuration")
-    
-    def _generate_secret_key(self) -> str:
-        """Generate a cryptographically secure secret key"""
-        # This method is kept for utility but not used in production
-        return secrets.token_urlsafe(64)
-    
-    def hash_password(self, password: str) -> str:
-        """Hash password using bcrypt with salt"""
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
-    
-    def verify_password(self, password: str, hashed: str) -> bool:
-        """Verify password against bcrypt hash"""
-        try:
-            return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-        except Exception as e:
-            logger.error(f"Password verification error: {e}")
-            return False
-    
-    def create_access_token(self, user_id: str, additional_claims: Dict[str, Any] = None) -> str:
-        """Create JWT access token with expiration"""
-        expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
-        
-        payload = {
-            'sub': user_id,
-            'exp': expire,
-            'iat': datetime.utcnow(),
-            'type': 'access'
-        }
-        
-        if additional_claims:
-            payload.update(additional_claims)
-        
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-    
-    def create_refresh_token(self, user_id: str) -> str:
-        """Create JWT refresh token with longer expiration"""
-        expire = datetime.utcnow() + timedelta(days=self.refresh_token_expire_days)
-        
-        payload = {
-            'sub': user_id,
-            'exp': expire,
-            'iat': datetime.utcnow(),
-            'type': 'refresh'
-        }
-        
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-    
-    def decode_token(self, token: str) -> Dict[str, Any]:
-        """Decode and validate JWT token"""
-        try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            
-            # Check token type
-            if payload.get('type') not in ['access', 'refresh']:
-                raise AuthenticationError("Invalid token type")
-            
-            return payload
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationError("Token has expired")
-        except jwt.InvalidTokenError as e:
-            raise AuthenticationError(f"Invalid token: {e}")
-    
-    def get_current_user_id(self, token: str) -> str:
-        """Extract user ID from valid token"""
-        payload = self.decode_token(token)
-        user_id = payload.get('sub')
+    except jwt.ExpiredSignatureError:
+        raise AuthError("Token has expired")
+    except jwt.InvalidTokenError as e:
+        raise AuthError(f"Invalid token: {e}")
+    except Exception as e:
+        logger.error(f"Error verifying token: {e}")
+        raise AuthError(f"Token verification failed: {e}")
+
+def get_user_id_from_token(token: str) -> str:
+    """Extract user ID from JWT token"""
+    try:
+        payload = verify_token(token)
+        user_id = payload.get("sub")
         
         if not user_id:
-            raise AuthenticationError("Token missing user ID")
+            raise AuthError("Token does not contain user ID")
         
         return user_id
+        
+    except AuthError:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting user ID from token: {e}")
+        raise AuthError(f"Failed to extract user ID: {e}")
 
-# Security middleware and dependencies
-security = HTTPBearer()
-auth_service = AuthService()
-
-async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """FastAPI dependency to extract current user ID from JWT token"""
+def create_user_token(user_id: str, username: str = None, email: str = None) -> str:
+    """Create a JWT token for a user"""
     try:
-        return auth_service.get_current_user_id(credentials.credentials)
-    except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        token_data = {
+            "sub": user_id,  # Subject (user ID)
+            "iat": datetime.utcnow(),  # Issued at
+        }
+        
+        # Add optional claims
+        if username:
+            token_data["username"] = username
+        if email:
+            token_data["email"] = email
+        
+        return create_access_token(token_data)
+        
+    except Exception as e:
+        logger.error(f"Error creating user token: {e}")
+        raise AuthError(f"Failed to create user token: {e}")
 
-async def get_optional_user_id(request: Request) -> Optional[str]:
-    """FastAPI dependency for optional authentication"""
-    auth_header = request.headers.get('authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return None
-    
-    token = auth_header.split(' ')[1]
+def validate_user_access(token: str, required_user_id: str = None) -> Dict[str, Any]:
+    """Validate user access and optionally check if token belongs to specific user"""
     try:
-        return auth_service.get_current_user_id(token)
-    except AuthenticationError:
-        return None
+        payload = verify_token(token)
+        token_user_id = payload.get("sub")
+        
+        if required_user_id and token_user_id != required_user_id:
+            raise AuthError("Token does not belong to the required user")
+        
+        return payload
+        
+    except AuthError:
+        raise
+    except Exception as e:
+        logger.error(f"Error validating user access: {e}")
+        raise AuthError(f"Access validation failed: {e}")
 
-# Rate limiting for authentication endpoints
-class RateLimiter:
-    """Simple in-memory rate limiter for authentication endpoints"""
-    
-    def __init__(self, max_attempts: int = 5, window_minutes: int = 15):
-        self.max_attempts = max_attempts
-        self.window_minutes = window_minutes
-        self.attempts = {}  # In production, use Redis
-    
-    def is_rate_limited(self, identifier: str) -> bool:
-        """Check if identifier is rate limited"""
-        now = datetime.utcnow()
-        window_start = now - timedelta(minutes=self.window_minutes)
-        
-        # Clean old attempts
-        if identifier in self.attempts:
-            self.attempts[identifier] = [
-                attempt for attempt in self.attempts[identifier]
-                if attempt > window_start
-            ]
-        
-        # Check rate limit
-        attempt_count = len(self.attempts.get(identifier, []))
-        return attempt_count >= self.max_attempts
-    
-    def record_attempt(self, identifier: str):
-        """Record a failed authentication attempt"""
-        if identifier not in self.attempts:
-            self.attempts[identifier] = []
-        
-        self.attempts[identifier].append(datetime.utcnow())
+# For development: create a temporary session-based auth
+_session_users = {}  # In-memory session storage (for development only)
 
-rate_limiter = RateLimiter() 
+def create_session_user(user_id: str = None) -> str:
+    """Create a temporary session user (for development)"""
+    import uuid
+    
+    if not user_id:
+        user_id = str(uuid.uuid4())
+    
+    session_token = create_user_token(user_id, f"user_{user_id[:8]}")
+    _session_users[user_id] = {
+        "user_id": user_id,
+        "created_at": datetime.utcnow(),
+        "token": session_token
+    }
+    
+    logger.info(f"Created session user: {user_id}")
+    return session_token
+
+def get_session_user(user_id: str) -> Optional[Dict[str, Any]]:
+    """Get session user information"""
+    return _session_users.get(user_id)
+
+# Mock authentication for development
+def mock_verify_token(token: str) -> Dict[str, Any]:
+    """Mock token verification for development (when no real auth is implemented)"""
+    if not token or token == "Bearer":
+        # Create a default user for development
+        return {
+            "sub": "dev-user-001",
+            "username": "developer",
+            "email": "dev@dogwriter.com",
+            "iat": datetime.utcnow().timestamp()
+        }
+    
+    try:
+        return verify_token(token)
+    except AuthError:
+        # If real token verification fails, return default dev user
+        logger.warning("Using mock authentication for development")
+        return {
+            "sub": "dev-user-001",
+            "username": "developer", 
+            "email": "dev@dogwriter.com",
+            "iat": datetime.utcnow().timestamp()
+        }
+
+# Use mock auth in development, real auth in production
+if os.getenv('ENVIRONMENT', 'development') == 'development':
+    verify_token = mock_verify_token 

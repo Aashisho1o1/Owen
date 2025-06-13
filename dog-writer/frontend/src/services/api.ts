@@ -114,6 +114,111 @@ export interface Document {
   user_id: string;
   is_favorite?: boolean;
   word_count?: number;
+  folder_id?: string;
+  tags?: string[];
+  document_type?: 'novel' | 'chapter' | 'character_sheet' | 'outline' | 'notes';
+  series_id?: string;
+  chapter_number?: number;
+  status?: 'draft' | 'revision' | 'final' | 'published';
+}
+
+export interface DocumentVersion {
+  id: string;
+  document_id: string;
+  version_number: number;
+  content: string;
+  title: string;
+  created_at: string;
+  word_count: number;
+  change_summary: string;
+  is_auto_save: boolean;
+}
+
+export interface DocumentFolder {
+  id: string;
+  name: string;
+  parent_id?: string;
+  user_id: string;
+  created_at: string;
+  color?: string;
+  icon?: string;
+  document_count?: number;
+}
+
+export interface DocumentSeries {
+  id: string;
+  name: string;
+  description?: string;
+  user_id: string;
+  created_at: string;
+  document_count?: number;
+  total_word_count?: number;
+  status?: 'planning' | 'writing' | 'editing' | 'complete';
+}
+
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  content: string;
+  document_type: string;
+  is_system: boolean;
+  user_id?: string;
+  preview_text: string;
+}
+
+export interface WritingGoal {
+  id: string;
+  user_id: string;
+  goal_type: 'daily' | 'weekly' | 'monthly' | 'project';
+  target_words: number;
+  current_words: number;
+  start_date: string;
+  end_date?: string;
+  document_id?: string;
+  series_id?: string;
+}
+
+export interface WritingSession {
+  id: string;
+  user_id: string;
+  document_id: string;
+  start_time: string;
+  end_time?: string;
+  words_written: number;
+  time_spent_minutes: number;
+  session_type: 'writing' | 'editing' | 'planning';
+}
+
+export interface ExportRequest {
+  document_id: string;
+  format: 'pdf' | 'docx' | 'epub' | 'txt' | 'html';
+  include_metadata?: boolean;
+  custom_styling?: any;
+}
+
+export interface SearchRequest {
+  query: string;
+  document_ids?: string[];
+  folder_ids?: string[];
+  series_ids?: string[];
+  tags?: string[];
+  document_types?: string[];
+  date_range?: {
+    start: string;
+    end: string;
+  };
+  content_only?: boolean;
+}
+
+export interface SearchResult {
+  document_id: string;
+  document_title: string;
+  matches: {
+    content: string;
+    context: string;
+    position: number;
+  }[];
+  relevance_score: number;
 }
 
 export interface CreateDocumentRequest {
@@ -203,6 +308,181 @@ const api = {
 
   deleteDocument: async (id: string): Promise<{ success: boolean; message: string }> => {
     const response = await axios.delete<{ success: boolean; message: string }>(`${API_URL}/api/documents/${id}`);
+    return response.data;
+  },
+
+  // VERSION MANAGEMENT
+  getDocumentVersions: async (documentId: string): Promise<DocumentVersion[]> => {
+    const response = await axios.get<DocumentVersion[]>(`${API_URL}/api/documents/${documentId}/versions`);
+    return response.data;
+  },
+
+  restoreDocumentVersion: async (documentId: string, versionId: string): Promise<Document> => {
+    const response = await axios.post<Document>(`${API_URL}/api/documents/${documentId}/versions/${versionId}/restore`);
+    return response.data;
+  },
+
+  compareVersions: async (documentId: string, version1: string, version2: string): Promise<any> => {
+    const response = await axios.get(`${API_URL}/api/documents/${documentId}/versions/compare?v1=${version1}&v2=${version2}`);
+    return response.data;
+  },
+
+  // FOLDER MANAGEMENT
+  getFolders: async (): Promise<DocumentFolder[]> => {
+    const response = await axios.get<DocumentFolder[]>(`${API_URL}/api/folders`);
+    return response.data;
+  },
+
+  createFolder: async (name: string, parentId?: string, color?: string): Promise<DocumentFolder> => {
+    const response = await axios.post<DocumentFolder>(`${API_URL}/api/folders`, {
+      name,
+      parent_id: parentId,
+      color
+    });
+    return response.data;
+  },
+
+  updateFolder: async (folderId: string, updates: Partial<DocumentFolder>): Promise<DocumentFolder> => {
+    const response = await axios.put<DocumentFolder>(`${API_URL}/api/folders/${folderId}`, updates);
+    return response.data;
+  },
+
+  deleteFolder: async (folderId: string, moveDocumentsTo?: string): Promise<{ success: boolean }> => {
+    const response = await axios.delete(`${API_URL}/api/folders/${folderId}`, {
+      data: { move_documents_to: moveDocumentsTo }
+    });
+    return response.data;
+  },
+
+  // SERIES MANAGEMENT
+  getSeries: async (): Promise<DocumentSeries[]> => {
+    const response = await axios.get<DocumentSeries[]>(`${API_URL}/api/series`);
+    return response.data;
+  },
+
+  createSeries: async (name: string, description?: string): Promise<DocumentSeries> => {
+    const response = await axios.post<DocumentSeries>(`${API_URL}/api/series`, {
+      name,
+      description
+    });
+    return response.data;
+  },
+
+  updateSeries: async (seriesId: string, updates: Partial<DocumentSeries>): Promise<DocumentSeries> => {
+    const response = await axios.put<DocumentSeries>(`${API_URL}/api/series/${seriesId}`, updates);
+    return response.data;
+  },
+
+  deleteSeries: async (seriesId: string): Promise<{ success: boolean }> => {
+    const response = await axios.delete(`${API_URL}/api/series/${seriesId}`);
+    return response.data;
+  },
+
+  // TEMPLATES
+  getTemplates: async (): Promise<DocumentTemplate[]> => {
+    const response = await axios.get<DocumentTemplate[]>(`${API_URL}/api/templates`);
+    return response.data;
+  },
+
+  createDocumentFromTemplate: async (templateId: string, title: string, folderId?: string): Promise<Document> => {
+    const response = await axios.post<Document>(`${API_URL}/api/documents/from-template`, {
+      template_id: templateId,
+      title,
+      folder_id: folderId
+    });
+    return response.data;
+  },
+
+  // ADVANCED SEARCH
+  searchDocuments: async (searchRequest: SearchRequest): Promise<SearchResult[]> => {
+    const response = await axios.post<SearchResult[]>(`${API_URL}/api/search`, searchRequest);
+    return response.data;
+  },
+
+  // EXPORT FUNCTIONALITY
+  exportDocument: async (exportRequest: ExportRequest): Promise<Blob> => {
+    const response = await axios.post(`${API_URL}/api/export`, exportRequest, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  // WRITING ANALYTICS
+  getWritingGoals: async (): Promise<WritingGoal[]> => {
+    const response = await axios.get<WritingGoal[]>(`${API_URL}/api/goals`);
+    return response.data;
+  },
+
+  createWritingGoal: async (goal: Omit<WritingGoal, 'id' | 'user_id' | 'current_words'>): Promise<WritingGoal> => {
+    const response = await axios.post<WritingGoal>(`${API_URL}/api/goals`, goal);
+    return response.data;
+  },
+
+  getWritingSessions: async (documentId?: string, dateRange?: { start: string; end: string }): Promise<WritingSession[]> => {
+    const params = new URLSearchParams();
+    if (documentId) params.append('document_id', documentId);
+    if (dateRange) {
+      params.append('start_date', dateRange.start);
+      params.append('end_date', dateRange.end);
+    }
+    
+    const response = await axios.get<WritingSession[]>(`${API_URL}/api/sessions?${params}`);
+    return response.data;
+  },
+
+  getWritingStats: async (period: 'week' | 'month' | 'year'): Promise<any> => {
+    const response = await axios.get(`${API_URL}/api/stats/writing?period=${period}`);
+    return response.data;
+  },
+
+  // BACKUP & SYNC
+  createBackup: async (): Promise<{ backup_id: string; download_url: string }> => {
+    const response = await axios.post(`${API_URL}/api/backup`);
+    return response.data;
+  },
+
+  restoreFromBackup: async (backupId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await axios.post(`${API_URL}/api/backup/${backupId}/restore`);
+    return response.data;
+  },
+
+  // COLLABORATION
+  shareDocument: async (documentId: string, email: string, permission: 'view' | 'comment' | 'edit'): Promise<any> => {
+    const response = await axios.post(`${API_URL}/api/documents/${documentId}/share`, {
+      email,
+      permission
+    });
+    return response.data;
+  },
+
+  getDocumentShares: async (documentId: string): Promise<any[]> => {
+    const response = await axios.get(`${API_URL}/api/documents/${documentId}/shares`);
+    return response.data;
+  },
+
+  // ENHANCED DOCUMENT OPERATIONS
+  duplicateDocument: async (documentId: string, newTitle?: string): Promise<Document> => {
+    const response = await axios.post<Document>(`${API_URL}/api/documents/${documentId}/duplicate`, {
+      new_title: newTitle
+    });
+    return response.data;
+  },
+
+  moveDocument: async (documentId: string, folderId?: string, seriesId?: string): Promise<Document> => {
+    const response = await axios.put<Document>(`${API_URL}/api/documents/${documentId}/move`, {
+      folder_id: folderId,
+      series_id: seriesId
+    });
+    return response.data;
+  },
+
+  addDocumentTags: async (documentId: string, tags: string[]): Promise<Document> => {
+    const response = await axios.post<Document>(`${API_URL}/api/documents/${documentId}/tags`, { tags });
+    return response.data;
+  },
+
+  getDocumentAnalytics: async (documentId: string): Promise<any> => {
+    const response = await axios.get(`${API_URL}/api/documents/${documentId}/analytics`);
     return response.data;
   },
 };

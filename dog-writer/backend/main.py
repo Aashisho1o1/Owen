@@ -499,3 +499,73 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") 
+# Session endpoints (placeholder)
+@app.get("/api/sessions")
+async def get_sessions():
+    """Get user sessions"""
+    return {
+        "sessions": [],
+        "message": "Session management ready",
+        "note": "Implement authentication to enable persistent sessions"
+    }
+
+@app.post("/api/sessions")
+async def create_session():
+    """Create new session"""
+    return {
+        "id": "demo-session-123",
+        "title": "Demo Session",
+        "created_at": datetime.now().isoformat(),
+        "message": "Session creation ready",
+        "note": "Implement authentication to enable real sessions"
+    }
+
+@app.post("/api/chat/demo")
+async def chat_demo(chat: ChatMessage):
+    """Immediate demo response - no AI API calls"""
+    # Quick Hemingway-style responses based on the question
+    if "dialogue" in chat.message.lower():
+        responses = [
+            "Cut the fat. Real dialogue is what people don't say, not what they do. Show the tension underneath.",
+            "Make every word count. If it doesn't advance the story or reveal character, kill it.",
+            "People don't say what they mean. They dance around it. Write the dance, not the meaning."
+        ]
+    elif "authentic" in chat.message.lower():
+        responses = [
+            "Write what you know, feel what you write. Authenticity comes from truth, not tricks.",
+            "The best writing is rewriting. Strip away everything that sounds like writing.",
+            "Show, don't tell. Let the reader feel the weight of what isn't said."
+        ]
+    else:
+        responses = [
+            "Write with the heart of a poet and the discipline of a soldier. Every word must earn its place.",
+            "The first draft is garbage. The magic happens when you throw away what you don't need.",
+            "Write standing up. It keeps you honest about what matters."
+        ]
+    
+    import random
+    ai_response = random.choice(responses)
+    
+    return ChatResponse(
+        dialogue_response=f"As {chat.author_persona}, I'd say: {ai_response}",
+        thinking_trail="Demo mode - instant response"
+    )
+
+# Error handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Global exception handler"""
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "message": "An unexpected error occurred",
+            "service": "Owen AI Writer",
+            "timestamp": datetime.now().isoformat()
+        }
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") 
