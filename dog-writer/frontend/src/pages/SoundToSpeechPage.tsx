@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { logger } from '../utils/logger';
 
 // This component is now properly named SoundToSpeechPage
 const SoundToSpeechPage: React.FC = () => {
@@ -51,7 +52,7 @@ const SoundToSpeechPage: React.FC = () => {
         mediaRecorderRef.current.start();
         setIsRecording(true);
       } catch (err) {
-        console.error("Error accessing microphone:", err);
+        logger.error("Error accessing microphone:", err);
         alert('Microphone access denied or not available.');
       }
     } else {

@@ -3,6 +3,7 @@ import { ChatMessage } from '../services/api';
 import { useApiHealth } from '../hooks/useApiHealth';
 import { useChat } from '../hooks/useChat';
 import { useEditor } from '../hooks/useEditor';
+import { logger } from '../utils/logger';
 
 interface WritingStyleProfile {
   formality?: string;
@@ -125,7 +126,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await originalCheckApiConnection();
       return true;
     } catch (error) {
-      console.error('API connection check failed:', error);
+      logger.error('API connection check failed:', error);
       return false;
     }
   };
@@ -177,7 +178,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }
     } catch (error) {
-      console.error('Error loading user preferences:', error);
+      logger.error('Error loading user preferences:', error);
     }
   };
 
@@ -190,7 +191,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setEnglishVariants(data.english_variants);
       }
     } catch (error) {
-      console.error('Error loading style options:', error);
+      logger.error('Error loading style options:', error);
     }
   };
 
@@ -221,7 +222,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         await loadUserPreferences();
       }
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      logger.error('Error submitting feedback:', error);
     }
   };
 
@@ -251,7 +252,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       return null;
     } catch (error) {
-      console.error('Error analyzing writing sample:', error);
+      logger.error('Error analyzing writing sample:', error);
       return null;
     }
   };
@@ -273,7 +274,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setShowOnboarding(false);
       }
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      logger.error('Error completing onboarding:', error);
     }
   };
 

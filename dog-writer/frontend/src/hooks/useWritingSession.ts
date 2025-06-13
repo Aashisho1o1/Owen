@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { logger } from '../utils/logger';
 
 interface WritingSessionState {
   sessionId: string | null;
@@ -74,7 +75,7 @@ export const useWritingSession = (
       const data = await response.json();
       
       if (data.success) {
-        console.log('Session ended:', data.session_summary);
+        logger.log('Session ended:', data.session_summary);
         
         // Reset state
         setSessionState(prev => ({
@@ -92,7 +93,7 @@ export const useWritingSession = (
         return data.session_summary;
       }
     } catch (error) {
-      console.error('Error ending session:', error);
+      logger.error('Error ending session:', error);
     }
     return null;
   }, [sessionState.sessionId, sessionState.currentActiveSeconds, editorRef]);
@@ -153,7 +154,7 @@ export const useWritingSession = (
         })
       });
     } catch (error) {
-      console.error('Error recording activity:', error);
+      logger.error('Error recording activity:', error);
     }
 
     // Start activity bridge timer for thinking pauses
@@ -265,9 +266,11 @@ export const useWritingSession = (
    */
 
   const startSession = useCallback(async () => {
+    if (sessionState.sessionId) return; // Prevent starting a new session
+
+    logger.log('🎬 Starting writing session...');
+
     try {
-      console.log('🎬 Starting writing session...');
-      
       const response = await fetch('/api/sessions/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -276,51 +279,49 @@ export const useWritingSession = (
         })
       });
 
-      console.log('📡 Session start response status:', response.status);
-      
+      logger.log('📡 Session start response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('📝 Session start response data:', data);
-      
-      if (data.success) {
-        const now = new Date();
-        sessionStartRef.current = now;
+      logger.log('📝 Session start response data:', data);
+
+      if (data.success && data.session_id) {
+        const startTime = new Date();
+        sessionStartRef.current = startTime;
         totalKeystrokesRef.current = 0;
 
         setSessionState(prev => ({
           ...prev,
           sessionId: data.session_id,
           isActive: true,
-          sessionStartTime: now.toISOString(),
-          lastActivityTime: now.toISOString(),
+          sessionStartTime: startTime.toISOString(),
+          lastActivityTime: startTime.toISOString(),
           currentActiveSeconds: 0,
           currentFocusScore: 0,
           keystrokes: 0
         }));
 
-        // Start session end timer (auto-end after 30 minutes of inactivity)
+        // Set up auto-ending for the session
+        if (sessionEndTimer.current) clearTimeout(sessionEndTimer.current);
         sessionEndTimer.current = setTimeout(() => {
-          console.log('⏰ Session auto-ending due to inactivity');
+          logger.log('⏰ Session auto-ending due to inactivity');
           endSession();
         }, fullConfig.sessionEndTimeout);
-
-        console.log(`✅ Writing session started successfully: ${data.session_id}`);
+        
+        logger.log(`✅ Writing session started successfully: ${data.session_id}`);
         return data.session_id;
       } else {
-        throw new Error(data.message || 'Unknown error from server');
+        throw new Error(data.message || 'Failed to start session');
       }
     } catch (error) {
-      console.error('❌ Error starting session:', error);
-      
-      // Show a user-friendly error message
-      alert(`Failed to start writing session: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
-      return null;
+      logger.error('❌ Error starting session:', error);
+      setSessionState(prev => ({ ...prev, isActive: false })); // Reset on failure
     }
-  }, [editorRef, fullConfig.sessionEndTimeout, endSession]);
+    return null;
+  }, [sessionState.sessionId, fullConfig.sessionEndTimeout, endSession]);
 
   /**
    * LIVE TIMER UPDATES
@@ -343,7 +344,7 @@ export const useWritingSession = (
         isActive: data.is_active
       }));
     } catch (error) {
-      console.error('Error updating live timer:', error);
+      logger.error('Error updating live timer:', error);
     }
   }, [sessionState.sessionId]);
 

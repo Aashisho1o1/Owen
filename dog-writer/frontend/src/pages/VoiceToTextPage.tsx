@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { logger } from '../utils/logger';
 
 const VoiceToTextPage: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
@@ -37,7 +38,7 @@ const VoiceToTextPage: React.FC = () => {
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        logger.error('Speech recognition error:', event.error);
         setIsListening(false);
       };
 
@@ -72,7 +73,7 @@ const VoiceToTextPage: React.FC = () => {
       await navigator.clipboard.writeText(transcript);
       // Could add a toast notification here
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      logger.error('Failed to copy to clipboard:', err);
     }
   };
 

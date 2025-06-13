@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { logger } from '../utils/logger';
 
 export interface UseEditorOptions {
   initialContent?: string;
@@ -22,7 +23,7 @@ export const useEditor = ({
 
   const handleTextHighlighted = useCallback((text: string) => {
     setHighlightedText(text);
-    console.log("Text Highlighted in useEditor:", text);
+    logger.log("Text Highlighted in useEditor:", { text });
     // Potentially, this could also trigger other actions, 
     // like passing the text to a chat context or an analysis service.
   }, []);

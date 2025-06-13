@@ -3,6 +3,7 @@ import api, { MangaPageFE, MangaScriptResponseFE } from '../services/api';
 import MangaDisplay from '../components/MangaDisplay';
 import '../App.css'; // Assuming some shared styles might be in App.css or a global one
 import { useAppContext } from '../contexts/AppContext';
+import { logger } from '../utils/logger';
 
 const MangaStudioPage: React.FC = () => {
   const { editorContent, authorPersona } = useAppContext();
@@ -43,7 +44,7 @@ const MangaStudioPage: React.FC = () => {
         setMangaError("Received an unexpected response from the manga generator.");
       }
     } catch (error: any) { // Use any for error type in catch for now
-      console.error('Error generating manga:', error);
+      logger.error('Error generating manga:', error);
       if (error.response && error.response.data) {
         const errorDetail = error.response.data.error || error.response.data.detail || JSON.stringify(error.response.data);
         setMangaError(`API error generating manga: ${error.response.status} - ${errorDetail}`);

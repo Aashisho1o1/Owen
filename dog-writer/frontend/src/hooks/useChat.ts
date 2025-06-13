@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api, { ChatMessage, ChatRequest, ChatResponse, UserPreferences } from '../services/api';
+import { logger } from '../utils/logger';
 
 interface ApiErrorData {
   error?: string;
@@ -146,7 +147,7 @@ export const useChat = ({
       setThinkingTrail(response.thinking_trail || null);
 
     } catch (error) {
-      console.error('Error sending message in useChat:', error);
+      logger.error('Error sending message in useChat:', error);
       const assistantErrorMessage = 'Sorry, I encountered an error. Please try again.';
       setMessages(prev => [
         ...prev,
@@ -169,10 +170,10 @@ export const useChat = ({
   }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious]);
 
   const handleSaveCheckpoint = useCallback(async () => {
-    console.log("Save Checkpoint clicked");
+    logger.log("Save Checkpoint clicked");
     try {
       await api.createCheckpoint({ editor_text: editorContent, chat_history: messages });
-      console.log("Checkpoint saved successfully.");
+      logger.log("Checkpoint saved successfully.");
     } catch (error) {
       const typedError = error as ApiError;
       let specificApiError = `Error saving checkpoint: ${typedError.message || 'Unknown error'}`;

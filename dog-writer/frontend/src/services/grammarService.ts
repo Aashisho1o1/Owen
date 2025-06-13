@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger';
+
 /**
  * Grammar Checking Service - SECURE VERSION
  * 
@@ -87,7 +89,7 @@ class GrammarService {
 
     for (const pattern of suspiciousPatterns) {
       if (pattern.test(sanitized)) {
-        console.warn('Suspicious pattern detected in input');
+        logger.warn('Suspicious pattern detected in input');
         throw new Error('Input contains potentially malicious content');
       }
     }
@@ -126,7 +128,7 @@ class GrammarService {
         null
       );
     } catch (error) {
-      console.error('Error accessing token storage:', error);
+      logger.error('Error accessing token storage:', error);
       return null;
     }
   }
@@ -194,7 +196,7 @@ class GrammarService {
       return result;
       
     } catch (error) {
-      console.error('Real-time grammar check failed:', error);
+      logger.error('Real-time grammar check failed:', error);
       return this.getEmptyResult(text, 'real_time');
     }
   }
@@ -240,7 +242,7 @@ class GrammarService {
       return result;
       
     } catch (error) {
-      console.error('Comprehensive grammar check failed:', error);
+      logger.error('Comprehensive grammar check failed:', error);
       return this.getEmptyResult(text, 'comprehensive');
     }
   }
@@ -253,7 +255,7 @@ class GrammarService {
     onUpdate: (issues: GrammarIssue[], type: string) => void
   ): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/grammar/check-stream`, {
+      const response = await fetch(`${this.API_BASE_URL}/api/grammar/stream-check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -269,37 +271,30 @@ class GrammarService {
         throw new Error('No response body');
       }
       
+      // Handle stream data
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       
       while (true) {
         const { done, value } = await reader.read();
-        
         if (done) break;
         
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n\n');
         
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(6));
-              
-              if (data.type === 'complete') {
-                return;
-              } else if (data.type === 'error') {
-                throw new Error(data.message);
-              } else if (data.issues) {
-                onUpdate(data.issues, data.type);
-              }
+              const data = JSON.parse(line.substring(6));
+              onUpdate(data.issues, data.type);
             } catch (e) {
-              console.error('Error parsing stream data:', e);
+              logger.error('Error parsing stream data:', e);
             }
           }
         }
       }
     } catch (error) {
-      console.error('Streaming grammar check failed:', error);
+      logger.error('Streaming grammar check failed:', error);
     }
   }
   

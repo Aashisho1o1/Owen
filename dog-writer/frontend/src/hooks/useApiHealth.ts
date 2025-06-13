@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import { logger } from '../utils/logger';
 
 export interface UseApiHealthReturn {
   apiGlobalError: string | null;
@@ -15,9 +16,9 @@ export const useApiHealth = (): UseApiHealthReturn => {
     try {
       await api.healthCheck();
       setApiGlobalError(null);
-      console.log("API health check successful from useApiHealth.");
+      logger.log("API health check successful from useApiHealth.");
     } catch (error) {
-      console.error('API health check failed in useApiHealth:', error);
+      logger.error('API health check failed in useApiHealth:', error);
       // It's often better to let the consuming component/service decide on the exact user-facing message
       // For now, we'll set a generic one.
       setApiGlobalError('Could not connect to the backend API. Please ensure the server is running and accessible.');

@@ -10,6 +10,7 @@
 
 import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { debounce } from '../utils/performance';
+import { logger } from '../utils/logger';
 
 interface UseOptimizedStateOptions<T> {
   debounceMs?: number;
@@ -49,7 +50,7 @@ export function useOptimizedState<T>(
 
       // Validate state if validator provided
       if (validator && !validator(newState)) {
-        console.warn('State validation failed, update rejected');
+        logger.warn('State validation failed, update rejected');
         return;
       }
 
@@ -66,7 +67,7 @@ export function useOptimizedState<T>(
         try {
           listener(newState);
         } catch (error) {
-          console.error('Error in state listener:', error);
+          logger.error('Error in state listener:', error);
         }
       });
 
