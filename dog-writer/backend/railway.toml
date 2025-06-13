@@ -9,5 +9,10 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
 [variables]
-RAILWAY_SERVICE_NAME = "owen-backend-fixed"
-JWT_SECRET_KEY = "dummy-secret-key-for-now-please-change-me-later-for-real-security" 
+RAILWAY_SERVICE_NAME = "owen-backend-security-hardened"
+# SECURITY: Use the generated JWT secret key
+JWT_SECRET_KEY = "sjET45OrI_zC-MVMlUdR5PGtt2zIbbU0Q3GoCUNi4mqMzdWzle3C2w5xGYSS3oe_8FGI8w_6YW5SzhpPyznF3w"
+# Security settings
+SECURITY_LEVEL = "strict"
+RATE_LIMITING_ENABLED = "true"
+SECURITY_MONITORING_ENABLED = "true" 
