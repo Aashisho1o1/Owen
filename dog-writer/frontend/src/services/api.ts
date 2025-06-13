@@ -104,6 +104,35 @@ export interface MangaScriptResponseFE {
   error?: string | null;
 }
 
+// Document Management Interfaces
+export interface Document {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  is_favorite?: boolean;
+  word_count?: number;
+}
+
+export interface CreateDocumentRequest {
+  title: string;
+  content?: string;
+}
+
+export interface UpdateDocumentRequest {
+  id: string;
+  title?: string;
+  content?: string;
+  is_favorite?: boolean;
+}
+
+export interface DocumentsResponse {
+  documents: Document[];
+  total: number;
+}
+
 const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
     const response = await axios.post<ChatResponse>(`${API_URL}/api/chat/message`, request);
@@ -147,6 +176,33 @@ const api = {
 
   generateMangaScript: async (request: MangaStoryRequest): Promise<MangaScriptResponseFE> => {
     const response = await axios.post<MangaScriptResponseFE>(`${API_URL}/api/manga/generate_script`, request);
+    return response.data;
+  },
+
+  // Document Management APIs
+  getDocuments: async (): Promise<DocumentsResponse> => {
+    const response = await axios.get<DocumentsResponse>(`${API_URL}/api/documents`);
+    return response.data;
+  },
+
+  getDocument: async (id: string): Promise<Document> => {
+    const response = await axios.get<Document>(`${API_URL}/api/documents/${id}`);
+    return response.data;
+  },
+
+  createDocument: async (request: CreateDocumentRequest): Promise<Document> => {
+    const response = await axios.post<Document>(`${API_URL}/api/documents`, request);
+    return response.data;
+  },
+
+  updateDocument: async (request: UpdateDocumentRequest): Promise<Document> => {
+    const { id, ...updateData } = request;
+    const response = await axios.put<Document>(`${API_URL}/api/documents/${id}`, updateData);
+    return response.data;
+  },
+
+  deleteDocument: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const response = await axios.delete<{ success: boolean; message: string }>(`${API_URL}/api/documents/${id}`);
     return response.data;
   },
 };

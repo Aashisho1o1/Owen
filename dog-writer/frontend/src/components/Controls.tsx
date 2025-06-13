@@ -10,6 +10,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import SettingsModal from './SettingsModal';
 import AuthModal from './AuthModal';
+import DocumentManager from './DocumentManager';
 
 const Controls: React.FC = () => {
   const {
@@ -22,7 +23,8 @@ const Controls: React.FC = () => {
     handleSaveCheckpoint,
     userPreferences,
     englishVariants,
-    updateEnglishVariant
+    updateEnglishVariant,
+    documentManager
   } = useAppContext();
 
   const { isAuthenticated, user } = useAuth();
@@ -31,6 +33,7 @@ const Controls: React.FC = () => {
   const [timerActive, setTimerActive] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showDocumentManager, setShowDocumentManager] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -300,6 +303,26 @@ const Controls: React.FC = () => {
           </button>
         </div>
 
+        {/* Document Manager Button */}
+        <div className="control-action-group">
+          <button
+            className={`control-action-button ${showDocumentManager ? 'active' : ''}`}
+            onClick={() => setShowDocumentManager(true)}
+            title="Manage Documents"
+            aria-label="Manage Documents"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">📄</span>
+              {documentManager.hasUnsavedChanges && (
+                <div className="unsaved-indicator" title="Unsaved changes">•</div>
+              )}
+            </div>
+            <div className="control-tooltip">
+              Documents{documentManager.isSaving && ' (saving...)'}
+            </div>
+          </button>
+        </div>
+
         {/* NEW: Settings Icon */}
         <div className="control-action-group">
           <button
@@ -351,6 +374,70 @@ const Controls: React.FC = () => {
         onClose={() => setShowAuthModal(false)}
         initialMode={authMode}
       />
+
+      {/* Document Manager Modal */}
+      {showDocumentManager && (
+        <div className="modal-overlay" onClick={() => setShowDocumentManager(false)}>
+          <div className="modal-content document-modal" onClick={(e) => e.stopPropagation()}>
+            <DocumentManager
+              onDocumentSelect={(doc) => {
+                documentManager.loadDocument(doc.id);
+                setShowDocumentManager(false);
+              }}
+              onClose={() => setShowDocumentManager(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 8px;
+          max-width: 600px;
+          width: 100%;
+          max-height: 90vh;
+          overflow: hidden;
+        }
+
+        .document-modal {
+          max-width: 700px;
+        }
+
+        .unsaved-indicator {
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          width: 8px;
+          height: 8px;
+          background: #ef4444;
+          border-radius: 50%;
+          color: white;
+          font-size: 12px;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .control-button-content {
+          position: relative;
+        }
+      `}</style>
     </div>
   );
 };

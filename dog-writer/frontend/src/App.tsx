@@ -9,6 +9,8 @@ import Controls from './components/Controls';
 import WritingTimer from './components/WritingTimer';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
+import DocumentTitleBar from './components/DocumentTitleBar';
+import DocumentHelp from './components/DocumentHelp';
 import MangaStudioPage from './pages/MangaStudioPage';
 import './App.css';
 
@@ -102,6 +104,12 @@ const WritersDesk: React.FC = () => {
       <div className={`writing-interface ${isChatOpen ? 'with-chat' : 'editor-only'}`}>
         {/* Main Editor Panel - Text content at the top */}
         <div className="editor-panel">
+          {/* Document Title Bar */}
+          <DocumentTitleBar />
+          
+          {/* Document Help Banner */}
+          <DocumentHelp />
+          
           <div className="editor-container">
             <Editor 
               content={editorContent} 

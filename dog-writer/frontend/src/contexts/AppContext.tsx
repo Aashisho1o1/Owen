@@ -3,6 +3,7 @@ import { ChatMessage } from '../services/api';
 import { useApiHealth } from '../hooks/useApiHealth';
 import { useChat } from '../hooks/useChat';
 import { useEditor } from '../hooks/useEditor';
+import { useDocuments } from '../hooks/useDocuments';
 import { logger } from '../utils/logger';
 
 interface WritingStyleProfile {
@@ -84,6 +85,26 @@ interface AppContextType {
   submitFeedback: (originalMessage: string, aiResponse: string, feedback: string, type: string) => Promise<void>;
   analyzeWritingSample: (sample: string) => Promise<WritingStyleProfile | null>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
+
+  // Document Management
+  documentManager: {
+    documents: any[];
+    currentDocument: any | null;
+    isLoading: boolean;
+    isSaving: boolean;
+    hasUnsavedChanges: boolean;
+    error: string | null;
+    loadDocuments: () => Promise<void>;
+    loadDocument: (id: string) => Promise<void>;
+    createDocument: (title: string, content?: string) => Promise<any | null>;
+    saveDocument: (title?: string, content?: string) => Promise<boolean>;
+    deleteDocument: (id: string) => Promise<boolean>;
+    toggleFavorite: (id: string) => Promise<boolean>;
+    setCurrentContent: (content: string) => void;
+    setCurrentTitle: (title: string) => void;
+    clearError: () => void;
+    getWordCount: (content?: string) => number;
+  };
 }
 
 // Create the context with a default value
@@ -137,6 +158,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     highlightedText,
     handleTextHighlighted,
   } = useEditor({});
+
+  // Document management hook
+  const documentHook = useDocuments({ autoSaveDelay: 2000 });
+
+  // Sync editor content with current document
+  useEffect(() => {
+    if (documentHook.currentDocument && !documentHook.hasUnsavedChanges) {
+      setEditorContent(documentHook.currentDocument.content);
+    }
+  }, [documentHook.currentDocument, documentHook.hasUnsavedChanges, setEditorContent]);
+
+  // Sync editor changes with document auto-save
+  useEffect(() => {
+    if (documentHook.currentDocument) {
+      documentHook.setCurrentContent(editorContent);
+    }
+  }, [editorContent, documentHook.currentDocument, documentHook.setCurrentContent]);
 
   const {
     messages,
@@ -325,6 +363,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     submitFeedback,
     analyzeWritingSample,
     completeOnboarding,
+
+    // Document Management
+    documentManager: {
+      documents: documentHook.documents,
+      currentDocument: documentHook.currentDocument,
+      isLoading: documentHook.isLoading,
+      isSaving: documentHook.isSaving,
+      hasUnsavedChanges: documentHook.hasUnsavedChanges,
+      error: documentHook.error,
+      loadDocuments: documentHook.loadDocuments,
+      loadDocument: documentHook.loadDocument,
+      createDocument: documentHook.createDocument,
+      saveDocument: documentHook.saveDocument,
+      deleteDocument: documentHook.deleteDocument,
+      toggleFavorite: documentHook.toggleFavorite,
+      setCurrentContent: documentHook.setCurrentContent,
+      setCurrentTitle: documentHook.setCurrentTitle,
+      clearError: documentHook.clearError,
+      getWordCount: documentHook.getWordCount,
+    },
   }), [
     authorPersona, helpFocus, selectedLLM,
     editorContent, highlightedText,
@@ -334,7 +392,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setEditorContent, handleTextHighlighted,
     handleSendMessage, checkApiConnection, handleSaveCheckpoint,
     userPreferences, englishVariants, feedbackOnPrevious, showOnboarding,
-    loadUserPreferences, updateEnglishVariant, submitFeedback, analyzeWritingSample, completeOnboarding
+    loadUserPreferences, updateEnglishVariant, submitFeedback, analyzeWritingSample, completeOnboarding,
+    // Document management dependencies
+    documentHook.documents, documentHook.currentDocument, documentHook.isLoading, 
+    documentHook.isSaving, documentHook.hasUnsavedChanges, documentHook.error,
+    documentHook.loadDocuments, documentHook.loadDocument, documentHook.createDocument,
+    documentHook.saveDocument, documentHook.deleteDocument, documentHook.toggleFavorite,
+    documentHook.setCurrentContent, documentHook.setCurrentTitle, documentHook.clearError,
+    documentHook.getWordCount
   ]);
 
   return (

@@ -3,6 +3,8 @@ Owen AI Writer - Backend API
 Railway-optimized minimal version
 DEPLOYMENT TRIGGER: Force redeploy with timeout fixes
 FRESH DEPLOY: 2025-06-09 19:22 - GEMINI_API_KEY fix deployed
+Document Management API added - 2025-06-09
+Analytics System Integration - 2025-06-13
 """
 
 import os
@@ -13,11 +15,19 @@ from openai import OpenAI
 import google.generativeai as genai
 from datetime import datetime
 from typing import Optional, Dict, Any, List
+import logging
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+# Import document routes
+from routes.documents import router as documents_router
+
+# Import analytics routes and middleware
+from routes.analytics import router as analytics_router
+from middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,12 +37,58 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KE
 if os.getenv("GEMINI_API_KEY"):
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Configure basic setup
 app = FastAPI(
     title="Owen AI Writer",
-    description="Advanced AI Writing Assistant",
-    version="2.0.0"
+    description="Advanced AI Writing Assistant with Document Management and Analytics",
+    version="2.2.0"
 )
+
+# Add Analytics Middleware (before CORS)
+try:
+    # Analytics middleware for tracking user behavior
+    analytics_middleware = create_analytics_middleware(
+        exclude_paths=["/health", "/api/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"]
+    )
+    app.add_middleware(analytics_middleware)
+    
+    # Writing session middleware for detailed writing analytics
+    writing_middleware = create_writing_session_middleware()
+    app.add_middleware(writing_middleware)
+    
+    ANALYTICS_ENABLED = True
+    logger.info("Analytics middleware enabled successfully")
+    
+except Exception as e:
+    logger.error(f"Failed to enable analytics middleware: {e}")
+    ANALYTICS_ENABLED = False
+
+# Include document management routes
+try:
+    logger.info("Attempting to include document router...")
+    app.include_router(documents_router)
+    DOCUMENT_ROUTES_LOADED = True
+    logger.info("Document router included successfully.")
+except NameError:
+    logger.error("Failed to include document router because 'documents_router' is not defined.")
+    DOCUMENT_ROUTES_LOADED = False
+except Exception as e:
+    logger.error(f"An unexpected error occurred while including document router: {e}")
+    DOCUMENT_ROUTES_LOADED = False
+
+# Include analytics routes
+try:
+    logger.info("Attempting to include analytics router...")
+    app.include_router(analytics_router)
+    ANALYTICS_ROUTES_LOADED = True
+    logger.info("Analytics router included successfully.")
+except Exception as e:
+    logger.error(f"Failed to include analytics router: {e}")
+    ANALYTICS_ROUTES_LOADED = False
 
 # CORS configuration
 app.add_middleware(
@@ -72,22 +128,36 @@ async def read_root():
     return {
         "message": "Owen AI Writer is running successfully!",
         "status": "ok",
-        "mode": "full",
-        "version": "2.0.0",
-        "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
+        "mode": "full_analytics" if (DOCUMENT_ROUTES_LOADED and ANALYTICS_ROUTES_LOADED) else "document_management" if DOCUMENT_ROUTES_LOADED else "basic",
+        "version": "2.2.0",
+        "environment": os.getenv("RAILWAY_ENVIRONMENT", "development"),
         "features": {
-            "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"],
+            "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"] if client else ["Partially disabled"],
             "security": "JWT Ready",
             "database": "SQLite Ready",
-            "voice": "Text-to-Speech Ready",
-            "manga": "AI Generation Ready",
+            "document_management": "Active" if DOCUMENT_ROUTES_LOADED else "Failed to load",
+            "analytics": "Active" if ANALYTICS_ROUTES_LOADED else "Failed to load",
+            "writing_analytics": "NLP-powered insights" if ANALYTICS_ENABLED else "Disabled",
+            "privacy_compliance": "GDPR & CCPA compliant" if ANALYTICS_ENABLED else "N/A",
+            "voice": "Text-to-Speech Ready" if client else "Unavailable",
+            "manga": "AI Generation Ready" if client else "Unavailable",
             "sessions": "Session Management Ready"
         },
         "api_keys_configured": {
             "openai": bool(os.getenv("OPENAI_API_KEY")),
             "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
-            "google": bool(os.getenv("GEMINI_API_KEY"))
+            "google": bool(os.getenv("GEMINI_API_KEY")),
+            "posthog": bool(os.getenv("POSTHOG_API_KEY")),
+            "mixpanel": bool(os.getenv("MIXPANEL_TOKEN"))
         },
+        "analytics_status": {
+            "middleware_enabled": ANALYTICS_ENABLED,
+            "routes_loaded": ANALYTICS_ROUTES_LOADED,
+            "privacy_compliant": True,
+            "real_time_tracking": ANALYTICS_ENABLED,
+            "writing_insights": ANALYTICS_ENABLED
+        },
+        "document_routes_loaded": DOCUMENT_ROUTES_LOADED,
         "frontend_connected": True,
         "timestamp": datetime.now().isoformat()
     }
