@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Editor from './components/Editor';
 import ChatPane from './components/ChatPane';
@@ -29,13 +29,11 @@ const VoiceToTextPage: React.FC = () => {
   );
 };
 
-// Enhanced navigation component with authentication
+// Enhanced navigation component
 const Navigation: React.FC = () => {
   const location = useLocation();
-  const { isAuthenticated, user, isLoading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   
   const navItems = [
     { path: '/', label: 'Writer\'s Desk', icon: '✍️' },
@@ -43,81 +41,37 @@ const Navigation: React.FC = () => {
     { path: '/voice', label: 'Voice to Text', icon: '🎤' },
   ];
 
-  const handleAuthClick = (mode: 'login' | 'register') => {
-    setAuthMode(mode);
-    setShowAuthModal(true);
-  };
-
-  const handleProfileClick = () => {
-    setShowProfileModal(true);
-  };
-
   return (
     <nav className="main-navigation">
-      <div className="nav-brand">
-        <h1 className="brand-text">Owen</h1>
-        <span className="brand-tagline">AI Writing Companion</span>
+      {/* First Row - Brand */}
+      <div className="nav-brand-row">
+        <div className="nav-brand">
+          <h1 className="brand-text">Owen</h1>
+          <span className="brand-tagline">Your AI Writing Companion</span>
+        </div>
       </div>
       
-      <div className="nav-links">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </Link>
-        ))}
-      </div>
-
-      {/* Authentication section */}
-      <div className="nav-auth">
-        {isLoading ? (
-          <div className="nav-auth-loading">
-            <div className="loading-spinner"></div>
-          </div>
-        ) : isAuthenticated && user ? (
-          // Authenticated user menu
-          <div className="nav-user-menu">
-            <button 
-              className="nav-user-button"
-              onClick={handleProfileClick}
-              title={`Signed in as ${user.display_name || user.username}`}
+      {/* Second Row - Navigation Links */}
+      <div className="nav-links-row">
+        <div className="nav-links">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
             >
-              <div className="nav-user-avatar">
-                {(user.display_name || user.username).charAt(0).toUpperCase()}
-              </div>
-              <span className="nav-user-name">
-                {user.display_name || user.username}
-              </span>
-            </button>
-          </div>
-        ) : (
-          // Unauthenticated user buttons
-          <div className="nav-auth-buttons">
-            <button
-              className="nav-auth-button secondary"
-              onClick={() => handleAuthClick('login')}
-            >
-              Sign In
-            </button>
-            <button
-              className="nav-auth-button primary"
-              onClick={() => handleAuthClick('register')}
-            >
-              Get Started
-            </button>
-          </div>
-        )}
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Authentication Modal */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        initialMode={authMode}
+        initialMode="login"
       />
 
       {/* User Profile Modal */}

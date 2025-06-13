@@ -1702,4 +1702,134 @@
   .chat-toggle-button span:not(.nav-icon) {
     display: none;
   }
+}
+
+/* ============= ENHANCED CHAT INTERFACE ============= */
+
+.welcome-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border-radius: var(--rounded-xl);
+  margin: 1rem;
+  border: 1px solid var(--border-light);
+}
+
+.welcome-avatar {
+  width: 48px;
+  height: 48px;
+  background-color: var(--primary-500);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.welcome-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.welcome-content p {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 400px;
+}
+
+.conversation-starters h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.starter-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.starter-question-button {
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rounded-lg);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.starter-question-button:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--primary-300);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============= ENHANCED CONTROLS ============= */
+
+.controls-container.expanded {
+  width: 280px;
+}
+
+.expanded-dropdown {
+  min-width: 240px;
+  max-width: 280px;
+}
+
+.dropdown-header {
+  padding: 0.75rem 1rem 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-secondary);
+}
+
+.dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.option-icon {
+  font-size: 1rem;
+  opacity: 0.7;
+  min-width: 16px;
+}
+
+.option-text {
+  flex: 1;
+  text-align: left;
+}
+
+.selected-indicator {
+  font-size: 0.875rem;
+  color: var(--success-500);
+  font-weight: 600;
+  min-width: 16px;
+}
+
+.dropdown-option.selected .selected-indicator {
+  color: white;
+}
+
+.dropdown-option.selected .option-icon {
+  opacity: 1;
 } 

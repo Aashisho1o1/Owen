@@ -132,7 +132,7 @@ const Controls: React.FC = () => {
   };
 
   return (
-    <div className="controls-container" ref={containerRef}>
+    <div className={`controls-container ${activeDropdown ? 'expanded' : ''}`} ref={containerRef}>
       <div className="controls-left">
         
         {/* Author Persona */}
@@ -150,7 +150,8 @@ const Controls: React.FC = () => {
             <div className="control-tooltip">Author</div>
           </button>
           {activeDropdown === 'persona' && (
-            <div className="control-dropdown" role="menu">
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">Choose Author Persona</div>
               {authorPersonas.map((persona) => (
                 <button
                   key={persona}
@@ -158,7 +159,9 @@ const Controls: React.FC = () => {
                   onClick={() => handleSelection('persona', persona)}
                   role="menuitem"
                 >
-                  {persona}
+                  <span className="option-icon">✍️</span>
+                  <span className="option-text">{persona}</span>
+                  {authorPersona === persona && <span className="selected-indicator">✓</span>}
                 </button>
               ))}
             </div>
@@ -180,7 +183,8 @@ const Controls: React.FC = () => {
             <div className="control-tooltip">Focus</div>
           </button>
           {activeDropdown === 'focus' && (
-            <div className="control-dropdown" role="menu">
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">Writing Focus</div>
               {helpFocuses.map((focus) => (
                 <button
                   key={focus}
@@ -188,7 +192,9 @@ const Controls: React.FC = () => {
                   onClick={() => handleSelection('focus', focus)}
                   role="menuitem"
                 >
-                  {focus}
+                  <span className="option-icon">🎯</span>
+                  <span className="option-text">{focus}</span>
+                  {helpFocus === focus && <span className="selected-indicator">✓</span>}
                 </button>
               ))}
             </div>
@@ -210,7 +216,8 @@ const Controls: React.FC = () => {
             <div className="control-tooltip">English</div>
           </button>
           {activeDropdown === 'english' && (
-            <div className="control-dropdown" role="menu">
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">English Variant</div>
               {englishVariants.map((variant) => (
                 <button
                   key={variant.value}
@@ -218,7 +225,9 @@ const Controls: React.FC = () => {
                   onClick={() => handleSelection('english', variant.value)}
                   role="menuitem"
                 >
-                  {variant.label}
+                  <span className="option-icon">🌍</span>
+                  <span className="option-text">{variant.label}</span>
+                  {userPreferences.english_variant === variant.value && <span className="selected-indicator">✓</span>}
                 </button>
               ))}
             </div>
@@ -240,7 +249,8 @@ const Controls: React.FC = () => {
             <div className="control-tooltip">AI Model</div>
           </button>
           {activeDropdown === 'model' && (
-            <div className="control-dropdown" role="menu">
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">AI Model</div>
               {llmOptions.map((model) => (
                 <button
                   key={model}
@@ -248,7 +258,9 @@ const Controls: React.FC = () => {
                   onClick={() => handleSelection('model', model)}
                   role="menuitem"
                 >
-                  {model}
+                  <span className="option-icon">🤖</span>
+                  <span className="option-text">{model}</span>
+                  {selectedLLM === model && <span className="selected-indicator">✓</span>}
                 </button>
               ))}
             </div>

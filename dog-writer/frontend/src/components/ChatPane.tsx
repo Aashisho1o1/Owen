@@ -95,6 +95,58 @@ const ChatPane: React.FC = () => {
       
       {/* Messages Container */}
       <div className="messages-container">
+        {/* Welcome Message - Show when no messages */}
+        {messages.length === 0 && (
+          <div className="welcome-message">
+            <div className="welcome-avatar">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div className="welcome-content">
+              <h3>Hello! I'm {authorPersona}</h3>
+              <p>I'm here to help you with your writing, focusing on <strong>{helpFocus.toLowerCase()}</strong>. 
+                 You can highlight text in your document to get specific feedback, or ask me general questions about writing.</p>
+              <div className="conversation-starters">
+                <h4>Here are some ways I can help:</h4>
+                <div className="starter-questions">
+                  {suggestedQuestions.length > 0 ? suggestedQuestions.map((question, index) => (
+                    <button
+                      key={index}
+                      className="starter-question-button"
+                      onClick={() => handleSendMessageWrapper(question)}
+                    >
+                      {question}
+                    </button>
+                  )) : (
+                    <>
+                      <button
+                        className="starter-question-button"
+                        onClick={() => handleSendMessageWrapper(`How would ${authorPersona} approach ${helpFocus.toLowerCase()}?`)}
+                      >
+                        How would you approach {helpFocus.toLowerCase()}?
+                      </button>
+                      <button
+                        className="starter-question-button"
+                        onClick={() => handleSendMessageWrapper("What writing techniques should I focus on today?")}
+                      >
+                        What writing techniques should I focus on?
+                      </button>
+                      <button
+                        className="starter-question-button"
+                        onClick={() => handleSendMessageWrapper("Can you help me brainstorm ideas?")}
+                      >
+                        Can you help me brainstorm ideas?
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Highlighted Text Display */}
         {highlightedText && (
           <div className="highlighted-text-box">
