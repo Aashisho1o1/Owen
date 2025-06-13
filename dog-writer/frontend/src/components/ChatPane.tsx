@@ -1,8 +1,8 @@
 /**
- * ChatPane Component - Refactored
+ * ChatPane Component - Enhanced Conversational Q&A Setup
  * 
- * Main chat interface that orchestrates smaller, focused components.
- * Reduced from 656 lines to ~150 lines through proper component composition.
+ * Main chat interface with improved highlighted text integration,
+ * contextual conversation starters, and better visual presentation.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -26,6 +26,7 @@ const ChatPane: React.FC = () => {
 
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [contextualPrompts, setContextualPrompts] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Generate suggested questions based on help focus and author persona
@@ -33,32 +34,55 @@ const ChatPane: React.FC = () => {
     const questions: {[key: string]: string[]} = {
       "Dialogue Writing": [
         `How would ${authorPersona} improve this dialogue?`,
-        `How can I make this conversation more authentic?`,
-        `What dialogue techniques would strengthen this exchange?`
+        `What makes dialogue sound authentic and natural?`,
+        `How can I develop distinct character voices?`,
+        `What dialogue techniques does ${authorPersona} use?`
       ],
       "Scene Description": [
-        `How would ${authorPersona} enhance this scene description?`,
-        `What sensory details could improve this setting?`,
-        `How can I make this scene more vivid?`
+        `How would ${authorPersona} enhance this scene?`,
+        `What sensory details would strengthen this setting?`,
+        `How can I create more vivid imagery?`,
+        `What's ${authorPersona}'s approach to setting description?`
       ],
       "Plot Development": [
         `How would ${authorPersona} develop this plot point?`,
         `What narrative techniques would strengthen this section?`,
-        `How can I build more tension in this passage?`
+        `How can I build more tension here?`,
+        `What's missing from this story development?`
       ],
       "Character Introduction": [
-        `How would ${authorPersona} introduce this character better?`,
+        `How would ${authorPersona} introduce this character?`,
         `What character details would make this more compelling?`,
-        `How can I establish this character's voice more distinctly?`
+        `How can I establish this character's voice more distinctly?`,
+        `What character development techniques should I use?`
       ],
       "Overall Tone": [
-        `How would ${authorPersona} adjust the tone of this passage?`,
-        `What stylistic changes would make this more consistent with ${authorPersona}'s voice?`,
-        `How can I modify the mood of this section?`
+        `How would ${authorPersona} adjust the tone here?`,
+        `What stylistic changes would improve consistency?`,
+        `How can I modify the mood of this section?`,
+        `What tone should I aim for in this piece?`
       ]
     };
 
     setSuggestedQuestions(questions[focus] || questions["Overall Tone"]);
+  }, [authorPersona]);
+
+  // Generate contextual prompts when text is highlighted
+  const generateContextualPrompts = useCallback((text: string, focus: string) => {
+    if (!text) {
+      setContextualPrompts([]);
+      return;
+    }
+
+    const prompts = [
+      `Analyze this text in the style of ${authorPersona}`,
+      `How would ${authorPersona} rewrite this passage?`,
+      `What specific improvements would you make to this text?`,
+      `Critique this writing focusing on ${focus.toLowerCase()}`,
+      `What writing techniques are used here and how can they be improved?`
+    ];
+
+    setContextualPrompts(prompts);
   }, [authorPersona]);
 
   // Auto-scroll to bottom when messages change
@@ -66,16 +90,34 @@ const ChatPane: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamText]);
 
-  // Generate suggested questions when text is highlighted
+  // Generate suggestions when focus changes
+  useEffect(() => {
+    generateSuggestedQuestions(helpFocus);
+  }, [helpFocus, generateSuggestedQuestions]);
+
+  // Generate contextual prompts when text is highlighted
   useEffect(() => {
     if (highlightedText) {
-      generateSuggestedQuestions(helpFocus);
+      generateContextualPrompts(highlightedText, helpFocus);
+    } else {
+      setContextualPrompts([]);
     }
-  }, [highlightedText, helpFocus, generateSuggestedQuestions]);
+  }, [highlightedText, helpFocus, generateContextualPrompts]);
 
   const handleSendMessageWrapper = (message: string) => {
     console.log("Sending message:", message);
     handleSendMessage(message);
+  };
+
+  const handleQuickQuestion = (questionTemplate: string) => {
+    let finalMessage = questionTemplate;
+    
+    // If there's highlighted text, include it in the context
+    if (highlightedText) {
+      finalMessage = `${questionTemplate}\n\nSelected text: "${highlightedText}"`;
+    }
+    
+    handleSendMessageWrapper(finalMessage);
   };
 
   const toggleThinkingTrail = () => {
@@ -86,10 +128,10 @@ const ChatPane: React.FC = () => {
     <div className="chat-container">
       {/* Chat Header */}
       <div className="chat-header">
-        <h2>AI Author Chat</h2>
+        <h2>💬 AI Writing Assistant</h2>
         <div className="header-info">
-          <span className="author-persona">with {authorPersona}</span>
-          <span className="help-focus">Focus: {helpFocus}</span>
+          <span className="author-persona">✍️ with {authorPersona}</span>
+          <span className="help-focus">🎯 Focus: {helpFocus}</span>
         </div>
       </div>
       
@@ -99,59 +141,60 @@ const ChatPane: React.FC = () => {
         {messages.length === 0 && (
           <div className="welcome-message">
             <div className="welcome-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
             <div className="welcome-content">
               <h3>Hello! I'm {authorPersona}</h3>
-              <p>I'm here to help you with your writing, focusing on <strong>{helpFocus.toLowerCase()}</strong>. 
-                 You can highlight text in your document to get specific feedback, or ask me general questions about writing.</p>
-              <div className="conversation-starters">
-                <h4>Here are some ways I can help:</h4>
-                <div className="starter-questions">
-                  {suggestedQuestions.length > 0 ? suggestedQuestions.map((question, index) => (
-                    <button
-                      key={index}
-                      className="starter-question-button"
-                      onClick={() => handleSendMessageWrapper(question)}
-                    >
-                      {question}
-                    </button>
-                  )) : (
-                    <>
+              <p>I'm here to help you perfect your writing, focusing on <strong>{helpFocus.toLowerCase()}</strong>. 
+                 Highlight text in your document to get specific feedback, or ask me general questions about writing craft.</p>
+              
+              {/* Show general conversation starters when no text is highlighted */}
+              {!highlightedText && (
+                <div className="conversation-starters">
+                  <h4>✨ Let's start the conversation:</h4>
+                  <div className="starter-questions">
+                    {suggestedQuestions.map((question, index) => (
                       <button
+                        key={index}
                         className="starter-question-button"
-                        onClick={() => handleSendMessageWrapper(`How would ${authorPersona} approach ${helpFocus.toLowerCase()}?`)}
+                        onClick={() => handleSendMessageWrapper(question)}
                       >
-                        How would you approach {helpFocus.toLowerCase()}?
+                        {question}
                       </button>
-                      <button
-                        className="starter-question-button"
-                        onClick={() => handleSendMessageWrapper("What writing techniques should I focus on today?")}
-                      >
-                        What writing techniques should I focus on?
-                      </button>
-                      <button
-                        className="starter-question-button"
-                        onClick={() => handleSendMessageWrapper("Can you help me brainstorm ideas?")}
-                      >
-                        Can you help me brainstorm ideas?
-                      </button>
-                    </>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
         
-        {/* Highlighted Text Display */}
+        {/* Enhanced Highlighted Text Display with Contextual Prompts */}
         {highlightedText && (
           <div className="highlighted-text-box">
-            <div className="highlighted-title">Selected Text:</div>
-            <div className="highlighted-content">{highlightedText}</div>
+            <div className="highlighted-title">📝 Selected Text for Analysis:</div>
+            <div className="highlighted-content">"{highlightedText}"</div>
+            
+            {/* Contextual prompts for highlighted text */}
+            {contextualPrompts.length > 0 && (
+              <div className="contextual-prompts">
+                <div className="contextual-prompts-title">💡 Ask me about this text:</div>
+                <div className="contextual-prompts-list">
+                  {contextualPrompts.map((prompt, index) => (
+                    <button
+                      key={index}
+                      className="contextual-prompt-button"
+                      onClick={() => handleQuickQuestion(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         
@@ -193,11 +236,11 @@ const ChatPane: React.FC = () => {
         onToggleVisibility={toggleThinkingTrail}
       />
 
-      {/* Chat Input */}
+      {/* Enhanced Chat Input */}
       <ChatInput 
         onSendMessage={handleSendMessageWrapper}
         isDisabled={isStreaming || isThinking}
-        suggestedQuestions={suggestedQuestions}
+        suggestedQuestions={highlightedText ? contextualPrompts : suggestedQuestions}
         highlightedText={highlightedText || undefined}
       />
     </div>

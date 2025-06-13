@@ -1,8 +1,8 @@
 /**
- * ChatInput Component
+ * ChatInput Component - Enhanced Conversational Interface
  * 
  * Handles user input for chat messages with keyboard shortcuts,
- * suggested questions, and proper form validation.
+ * contextual suggested questions, and improved visual feedback.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -31,7 +31,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [message]);
 
-  // Focus textarea when component mounts
+  // Focus textarea when component mounts or becomes enabled
   useEffect(() => {
     if (textareaRef.current && !isDisabled) {
       textareaRef.current.focus();
@@ -43,6 +43,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if (message.trim() && !isDisabled) {
       onSendMessage(message.trim());
       setMessage('');
+      // Refocus the textarea after sending
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 100);
     }
   };
 
@@ -58,15 +64,30 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setMessage(question);
     if (textareaRef.current) {
       textareaRef.current.focus();
+      // Move cursor to end
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.setSelectionRange(question.length, question.length);
+        }
+      }, 0);
     }
+  };
+
+  const getPlaceholderText = () => {
+    if (highlightedText) {
+      return "Ask about the selected text or type your own question...";
+    }
+    return "Type your writing question here...";
   };
 
   return (
     <div className="chat-input-container">
       {/* Suggested Questions */}
-      {suggestedQuestions.length > 0 && highlightedText && (
+      {suggestedQuestions.length > 0 && (
         <div className="suggested-questions">
-          <div className="suggested-questions-title">Suggested questions:</div>
+          <div className="suggested-questions-title">
+            {highlightedText ? "Quick questions about your selection:" : "Suggested questions:"}
+          </div>
           <div className="suggested-questions-list">
             {suggestedQuestions.map((question, index) => (
               <button
@@ -74,6 +95,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 className="suggested-question-button"
                 onClick={() => handleSuggestedQuestion(question)}
                 disabled={isDisabled}
+                title={`Click to use this question: ${question}`}
               >
                 {question}
               </button>
@@ -90,21 +112,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              highlightedText 
-                ? "Ask about the selected text..." 
-                : "Type your message here..."
-            }
+            placeholder={getPlaceholderText()}
             disabled={isDisabled}
             className="chat-textarea"
             rows={1}
             maxLength={2000}
+            aria-label="Type your writing question"
           />
           <button
             type="submit"
             disabled={!message.trim() || isDisabled}
             className="send-button"
             title="Send message (Ctrl+Enter)"
+            aria-label="Send message"
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
