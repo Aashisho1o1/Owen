@@ -52,9 +52,11 @@ def main():
     # Set restrictive permissions on the file
     import os
     os.chmod(env_file_path, 0o600)
+    os.chmod(encryption_key_path, 0o600)
     
     print(f"✅ Secure environment variables have been written to '{env_file_path}'.")
-    print("   Please ensure this file is stored securely and not committed to version control.\n")
+    print(f"✅ Encryption key has been written to '{encryption_key_path}'.")
+    print("   Please ensure these files are stored securely and not committed to version control.\n")
     
     print("⚠️  IMPORTANT SECURITY NOTES:")
     print("- Keep the .env file and .env.key secure and never commit them to git")
