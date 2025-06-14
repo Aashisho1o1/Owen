@@ -243,8 +243,8 @@ async def test_openai():
             "usage": response.usage.total_tokens if response.usage else "N/A"
         }
     except Exception as e:
-        print(f"[ERROR] OpenAI test failed: {e}")
-        return {"error": str(e)}
+        logging.error(f"[ERROR] OpenAI test failed: {e}", exc_info=True)
+        return {"error": "An internal error occurred while testing the OpenAI API. Please try again later."}
 
 @app.get("/api/test/deployed")
 async def test_deployed():
