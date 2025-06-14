@@ -1,7 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { AppProvider } from './contexts/AppContext';
-import { AuthProvider } from './contexts/AuthContext';
 import Editor from './components/Editor';
 import ChatPane from './components/ChatPane';
 import Controls from './components/Controls';
@@ -210,20 +208,16 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <Router>
-          <AppLayout>
-            <Routes>
-              <Route path="/" element={<WritersDesk />} />
-              <Route path="/manga" element={<MangaStudioPage />} />
-              <Route path="/voice" element={<VoiceToTextPage />} />
-              <Route path="*" element={<WritersDesk />} />
-            </Routes>
-          </AppLayout>
-        </Router>
-      </AppProvider>
-    </AuthProvider>
+    <Router>
+      <AppLayout>
+        <Routes>
+          <Route path="/" element={<WritersDesk />} />
+          <Route path="/manga" element={<MangaStudioPage />} />
+          <Route path="/voice" element={<VoiceToTextPage />} />
+          <Route path="*" element={<WritersDesk />} />
+        </Routes>
+      </AppLayout>
+    </Router>
   );
 };
 
