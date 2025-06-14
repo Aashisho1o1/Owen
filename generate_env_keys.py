@@ -28,36 +28,30 @@ def main():
     db_encryption_key = generate_encryption_key()
     session_secret = generate_session_secret()
     
-    print("Copy these values to your Railway environment variables:\n")
+    # Write keys to a secure .env file
+    env_file_path = ".env"
+    with open(env_file_path, "w") as env_file:
+        env_file.write(f"JWT_SECRET_KEY={jwt_secret}\n")
+        env_file.write(f"DB_ENCRYPTION_KEY={db_encryption_key}\n")
+        env_file.write(f"SESSION_SECRET={session_secret}\n")
     
-    print("🔑 JWT_SECRET_KEY:")
-    print(f"   {jwt_secret}\n")
+    # Set restrictive permissions on the file
+    import os
+    os.chmod(env_file_path, 0o600)
     
-    print("🔒 DB_ENCRYPTION_KEY:")
-    print(f"   {db_encryption_key}\n")
+    print(f"✅ Secure environment variables have been written to '{env_file_path}'.")
+    print("   Please ensure this file is stored securely and not committed to version control.\n")
     
-    print("🎫 SESSION_SECRET:")
-    print(f"   {session_secret}\n")
-    
-    print("=" * 60)
-    print("Railway Commands to Set Environment Variables:")
-    print("=" * 60)
-    
-    print(f'railway env set JWT_SECRET_KEY="{jwt_secret}"')
-    print(f'railway env set DB_ENCRYPTION_KEY="{db_encryption_key}"')
-    print(f'railway env set SESSION_SECRET="{session_secret}"')
-    
-    print("\n⚠️  IMPORTANT SECURITY NOTES:")
-    print("- Keep these keys secret and never commit them to git")
+    print("⚠️  IMPORTANT SECURITY NOTES:")
+    print("- Keep the .env file secure and never commit it to git")
     print("- Use different keys for development and production")
     print("- Store these keys in a secure password manager")
     print("- Regenerate keys if compromised")
     
     print("\n🚀 Next Steps:")
-    print("1. Copy the Railway commands above")
-    print("2. Run them in your backend service directory")
-    print("3. Add your API keys (OpenAI, Anthropic, Google)")
-    print("4. Deploy with 'railway up'")
+    print("1. Use the .env file to configure your environment")
+    print("2. Add your API keys (OpenAI, Anthropic, Google)")
+    print("3. Deploy with 'railway up'")
 
 if __name__ == "__main__":
     main() 
