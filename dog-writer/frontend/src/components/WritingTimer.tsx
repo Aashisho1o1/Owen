@@ -1,5 +1,8 @@
 import React from 'react';
 import { useWritingSession } from '../hooks/useWritingSession';
+import { useAuth } from '../contexts/AuthContext';
+import { analyticsService } from '../services/analyticsService';
+import '../styles/timer.css';
 
 interface WritingTimerProps {
   editorRef?: React.RefObject<HTMLDivElement | null>;

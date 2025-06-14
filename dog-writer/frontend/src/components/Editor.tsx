@@ -4,6 +4,9 @@ import Paragraph from '@tiptap/extension-paragraph';
 import React, { useCallback, useEffect, useState, forwardRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { grammarService, GrammarIssue, GrammarCheckResult } from '../services/grammarService';
+import { usePopper } from 'react-popper';
+import { useAuth } from '../contexts/AuthContext';
+import '../styles/editor.css';
 
 interface EditorProps {
   content?: string;
@@ -230,26 +233,18 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
 
       {/* Grammar Tooltip - appears on hover */}
       {hoveredIssue && (
-        <div 
-          className="grammar-tooltip"
-          style={{
-            position: 'fixed',
-            left: tooltipPosition.x + 10,
-            top: tooltipPosition.y - 10,
-            zIndex: 1000
-          }}
-        >
+        <div ref={tooltipRef} className="grammar-tooltip" style={tooltipStyle}>
           <div className="tooltip-content">
             <div className="tooltip-message">{hoveredIssue.message}</div>
-            {hoveredIssue.suggestions.length > 0 && (
+            {hoveredIssue.suggestions && hoveredIssue.suggestions.length > 0 && (
               <div className="tooltip-suggestions">
-                {hoveredIssue.suggestions.slice(0, 3).map((suggestion, index) => (
+                {hoveredIssue.suggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     className="suggestion-button"
-                    onClick={() => applySuggestion(hoveredIssue, suggestion)}
+                    onClick={() => handleSuggestionClick(suggestion.value)}
                   >
-                    {suggestion}
+                    {suggestion.value}
                   </button>
                 ))}
               </div>
@@ -258,242 +253,6 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
           </div>
         </div>
       )}
-
-      <style>{`
-        .editor-container {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          border-radius: var(--rounded-xl);
-          overflow: hidden;
-          background-color: var(--editor-bg);
-          border: 1px solid var(--border-primary);
-        }
-        
-        .editor-header {
-          padding: 16px 20px;
-          border-bottom: 1px solid var(--border-primary);
-          background-color: var(--bg-secondary);
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 8px;
-        }
-        
-        .editor-header h2 {
-          margin: 0;
-          font-size: 1.125rem;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-        
-        .selection-hint {
-          margin: 0;
-          font-size: 0.875rem;
-          color: var(--text-secondary);
-          font-style: italic;
-        }
-        
-        .grammar-checking {
-          color: var(--accent-blue);
-          font-weight: 500;
-        }
-        
-        .editor-content {
-          flex: 1;
-          padding: 20px;
-          background-color: var(--editor-content-bg);
-          overflow-y: auto;
-        }
-        
-        .ProseMirror {
-          outline: none;
-          color: var(--text-primary);
-          line-height: 1.6;
-          min-height: 300px;
-        }
-        
-        .ProseMirror.is-empty:before {
-          color: var(--text-muted);
-          content: "Start writing your story...";
-          float: left;
-          height: 0;
-          pointer-events: none;
-        }
-        
-        /* Grammar Error Highlighting - Subtle like Grammarly */
-        .grammar-error {
-          border-bottom: 2px dotted;
-          cursor: pointer;
-          position: relative;
-        }
-        
-        .grammar-error.grammar-error {
-          border-bottom-color: #ef4444;
-        }
-        
-        .grammar-error.grammar-warning {
-          border-bottom-color: #f59e0b;
-        }
-        
-        .grammar-error.grammar-info {
-          border-bottom-color: #3b82f6;
-        }
-        
-        .grammar-error:hover {
-          background-color: rgba(59, 130, 246, 0.1);
-          border-radius: 2px;
-        }
-        
-        /* Grammar Tooltip */
-        .grammar-tooltip {
-          background: var(--bg-primary);
-          border: 1px solid var(--border-primary);
-          border-radius: 8px;
-          box-shadow: var(--shadow-lg);
-          max-width: 300px;
-          animation: fadeIn 0.2s ease-out;
-        }
-        
-        .tooltip-content {
-          padding: 12px;
-        }
-        
-        .tooltip-message {
-          font-size: 0.875rem;
-          color: var(--text-primary);
-          margin-bottom: 8px;
-          line-height: 1.4;
-        }
-        
-        .tooltip-suggestions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4px;
-          margin-bottom: 8px;
-        }
-        
-        .suggestion-button {
-          padding: 4px 8px;
-          background: var(--accent-blue);
-          color: white;
-          border: none;
-          border-radius: 4px;
-          font-size: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        
-        .suggestion-button:hover {
-          background: var(--accent-blue-hover);
-        }
-        
-        .tooltip-source {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          text-align: right;
-          margin-top: 4px;
-          border-top: 1px solid var(--border-light);
-          padding-top: 4px;
-        }
-        
-        .ProseMirror p {
-          margin: 0 0 1em 0;
-        }
-        
-        .ProseMirror h1,
-        .ProseMirror h2,
-        .ProseMirror h3,
-        .ProseMirror h4,
-        .ProseMirror h5,
-        .ProseMirror h6 {
-          color: var(--text-primary);
-          margin: 1.5em 0 0.5em 0;
-          font-weight: 600;
-        }
-        
-        .ProseMirror h1 { font-size: 2em; }
-        .ProseMirror h2 { font-size: 1.5em; }
-        .ProseMirror h3 { font-size: 1.25em; }
-        
-        .ProseMirror ul,
-        .ProseMirror ol {
-          color: var(--text-primary);
-          padding-left: 1.5em;
-        }
-        
-        .ProseMirror li {
-          margin: 0.25em 0;
-        }
-        
-        .ProseMirror blockquote {
-          border-left: 3px solid var(--accent-blue);
-          padding-left: 1em;
-          margin-left: 0;
-          font-style: italic;
-          color: var(--text-secondary);
-        }
-        
-        .ProseMirror code {
-          background-color: var(--bg-tertiary);
-          color: var(--text-primary);
-          padding: 0.2em 0.4em;
-          border-radius: 3px;
-          font-size: 0.9em;
-        }
-        
-        .ProseMirror pre {
-          background-color: var(--bg-tertiary);
-          color: var(--text-primary);
-          padding: 1em;
-          border-radius: 6px;
-          overflow-x: auto;
-        }
-        
-        .ProseMirror pre code {
-          background: none;
-          padding: 0;
-        }
-        
-        /* Selection highlighting */
-        .ProseMirror ::selection {
-          background-color: var(--accent-blue);
-          color: white;
-        }
-        
-        .ProseMirror::-moz-selection {
-          background-color: var(--accent-blue);
-          color: white;
-        }
-        
-        /* Focus styles */
-        .editor-container:focus-within {
-          box-shadow: 0 0 0 2px var(--accent-blue);
-        }
-        
-        /* Scrollbar styling */
-        .editor-content::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        .editor-content::-webkit-scrollbar-track {
-          background: var(--bg-secondary);
-        }
-        
-        .editor-content::-webkit-scrollbar-thumb {
-          background: var(--border-secondary);
-          border-radius: 4px;
-        }
-        
-        .editor-content::-webkit-scrollbar-thumb:hover {
-          background: var(--text-muted);
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 });
