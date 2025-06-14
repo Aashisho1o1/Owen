@@ -28,24 +28,24 @@ def main():
     db_encryption_key = generate_encryption_key()
     session_secret = generate_session_secret()
     
-    print("Copy these values to your Railway environment variables:\n")
+    print("Writing secure environment variables to '.env' file...\n")
     
-    print("🔑 JWT_SECRET_KEY:")
-    print(f"   {jwt_secret}\n")
+    with open(".env", "w") as env_file:
+        env_file.write(f"JWT_SECRET_KEY={jwt_secret}\n")
+        env_file.write(f"DB_ENCRYPTION_KEY={db_encryption_key}\n")
+        env_file.write(f"SESSION_SECRET={session_secret}\n")
     
-    print("🔒 DB_ENCRYPTION_KEY:")
-    print(f"   {db_encryption_key}\n")
-    
-    print("🎫 SESSION_SECRET:")
-    print(f"   {session_secret}\n")
+    print("✅ Secure environment variables have been written to '.env'.")
+    print("Please copy the values from the '.env' file to your Railway environment variables.")
+    print("Ensure the '.env' file is stored securely and not committed to version control.\n")
     
     print("=" * 60)
     print("Railway Commands to Set Environment Variables:")
     print("=" * 60)
     
-    print(f'railway env set JWT_SECRET_KEY="{jwt_secret}"')
-    print(f'railway env set DB_ENCRYPTION_KEY="{db_encryption_key}"')
-    print(f'railway env set SESSION_SECRET="{session_secret}"')
+    print('railway env set JWT_SECRET_KEY="<value from .env>"')
+    print('railway env set DB_ENCRYPTION_KEY="<value from .env>"')
+    print('railway env set SESSION_SECRET="<value from .env>"')
     
     print("\n⚠️  IMPORTANT SECURITY NOTES:")
     print("- Keep these keys secret and never commit them to git")
