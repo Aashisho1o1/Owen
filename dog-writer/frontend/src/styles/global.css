@@ -1,0 +1,53 @@
+/* 
+   GLOBAL STYLESHEET
+   - Base element styling
+   - CSS variables for theming
+   - Utility classes
+*/
+
+:root {
+  /* Light Theme (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-muted: #6c757d;
+  --border-primary: #dee2e6;
+  --border-secondary: #ced4da;
+  --border-light: #f1f3f5;
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #2563eb;
+  --editor-bg: #ffffff;
+  --editor-content-bg: #ffffff;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  --rounded-xl: 0.75rem;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #242424;
+  --bg-tertiary: #333333;
+  --text-primary: #f8f9fa;
+  --text-secondary: #ced4da;
+  --text-muted: #9ca3af;
+  --border-primary: #4b5563;
+  --border-secondary: #6b7280;
+  --border-light: #374151;
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #60a5fa;
+  --editor-bg: #242424;
+  --editor-content-bg: #1a1a1a;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+} 
