@@ -108,22 +108,6 @@ const Controls: React.FC = () => {
     setActiveDropdown(null);
   };
 
-  const getDisplayValue = (type: string) => {
-    switch (type) {
-      case 'persona':
-        return authorPersona.split(' ')[0]; // First name only
-      case 'focus':
-        return helpFocus.split(' ')[0]; // First word only
-      case 'english':
-        const variant = englishVariants.find(v => v.value === userPreferences.english_variant);
-        return variant?.label.split(' ')[0] || 'US'; // First word only
-      case 'model':
-        return selectedLLM.split(' ')[0]; // First word only
-      default:
-        return '';
-    }
-  };
-
   return (
     <div className={`controls-container ${activeDropdown ? 'expanded' : ''}`} ref={containerRef}>
       <div className="controls-left">

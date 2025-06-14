@@ -319,11 +319,16 @@ class DocumentService:
                         value = self._serialize_tags(value)
                     elif field == 'content' and value != current_doc.content:
                         updates['word_count'] = self._calculate_word_count(value)
-                        update_fields.append('word_count = ?')
-                        update_values.append(updates['word_count'])
+                        # Add word_count to allowed fields for this update
+                        if 'word_count' not in [f.split(' = ?')[0] for f in update_fields]:
+                            update_fields.append('word_count = ?')
+                            update_values.append(updates['word_count'])
                     
                     update_fields.append(f'{field} = ?')
                     update_values.append(value)
+                else:
+                    logger.warning(f"Attempted to update disallowed field: {field}")
+                    continue
             
             if not update_fields:
                 return current_doc
@@ -332,7 +337,18 @@ class DocumentService:
             update_values.append(datetime.now().isoformat())
             update_values.append(document_id)
             
-            query = f"UPDATE documents SET {', '.join(update_fields)} WHERE id = ?"
+            # Fixed: Validate all field names against allowlist before building query
+            safe_update_fields = []
+            for field_clause in update_fields:
+                field_name = field_clause.split(' = ?')[0]
+                # Include 'updated_at' as it's always safe and added by us
+                if field_name in allowed_fields or field_name in {'updated_at', 'word_count'}:
+                    safe_update_fields.append(field_clause)
+                else:
+                    logger.error(f"Unauthorized field in UPDATE query: {field_name}")
+                    raise DocumentError(f"Unauthorized field update attempted: {field_name}")
+            
+            query = f"UPDATE documents SET {', '.join(safe_update_fields)} WHERE id = ?"
             self._execute_query(query, tuple(update_values))
             
             if 'content' in updates or 'title' in updates:
@@ -372,20 +388,33 @@ class DocumentService:
                           series_id: str = None, document_type: str = None) -> List[Document]:
         """Get all documents for a user with optional filtering"""
         try:
-            conditions = ["user_id = ?"]
+            # Fixed: Use predefined conditions instead of dynamic string building
+            base_query = "SELECT * FROM documents WHERE user_id = ?"
             params = [user_id]
             
+            # Build WHERE clause safely with predefined conditions
+            additional_conditions = []
             if folder_id:
-                conditions.append("folder_id = ?")
+                additional_conditions.append("folder_id = ?")
                 params.append(folder_id)
             if series_id:
-                conditions.append("series_id = ?")
+                additional_conditions.append("series_id = ?")
                 params.append(series_id)
             if document_type:
-                conditions.append("document_type = ?")
+                # Validate document_type against allowed values
+                allowed_types = {'novel', 'chapter', 'character_sheet', 'outline', 'notes'}
+                if document_type not in allowed_types:
+                    logger.warning(f"Invalid document_type filter: {document_type}")
+                    raise DocumentError(f"Invalid document type: {document_type}")
+                additional_conditions.append("document_type = ?")
                 params.append(document_type)
             
-            query = f"SELECT * FROM documents WHERE {' AND '.join(conditions)} ORDER BY updated_at DESC"
+            # Safely build the final query
+            if additional_conditions:
+                query = f"{base_query} AND {' AND '.join(additional_conditions)} ORDER BY updated_at DESC"
+            else:
+                query = f"{base_query} ORDER BY updated_at DESC"
+                
             rows = self._execute_query(query, tuple(params), fetch='all')
             
             documents = []

@@ -5,7 +5,7 @@
       "reason": "syntax error while parsing AST from file"
     }
   ],
-  "generated_at": "2025-06-14T13:23:53Z",
+  "generated_at": "2025-06-14T14:16:25Z",
   "metrics": {
     "./__init__.py": {
       "CONFIDENCE.HIGH": 0,
@@ -47,15 +47,15 @@
       "skipped_tests": 0
     },
     "./main.py": {
-      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 1,
+      "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 1,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 412,
+      "loc": 402,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -255,15 +255,15 @@
       "skipped_tests": 0
     },
     "./services/analytics_service.py": {
-      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 1,
+      "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 367,
+      "loc": 371,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -289,29 +289,29 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 1,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 818,
+      "loc": 827,
       "nosec": 0,
       "skipped_tests": 0
     },
     "./services/document_service.py": {
       "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 2,
+      "CONFIDENCE.LOW": 1,
       "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
       "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 2,
+      "SEVERITY.MEDIUM": 1,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 397,
+      "loc": 417,
       "nosec": 0,
       "skipped_tests": 0
     },
     "./services/grammar_service.py": {
-      "CONFIDENCE.HIGH": 1,
+      "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 1,
+      "SEVERITY.HIGH": 0,
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
@@ -520,44 +520,24 @@
       "skipped_tests": 0
     },
     "_totals": {
-      "CONFIDENCE.HIGH": 3,
-      "CONFIDENCE.LOW": 3,
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 2,
       "CONFIDENCE.MEDIUM": 2,
       "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 1,
-      "SEVERITY.LOW": 3,
-      "SEVERITY.MEDIUM": 4,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 3,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 7324,
+      "loc": 7347,
       "nosec": 0,
       "skipped_tests": 0
     }
   },
   "results": [
     {
-      "code": "476     import random\n477     ai_response = random.choice(responses)\n478     \n",
-      "col_offset": 18,
-      "end_col_offset": 42,
-      "filename": "./main.py",
-      "issue_confidence": "HIGH",
-      "issue_cwe": {
-        "id": 330,
-        "link": "https://cwe.mitre.org/data/definitions/330.html"
-      },
-      "issue_severity": "LOW",
-      "issue_text": "Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
-      "line_number": 477,
-      "line_range": [
-        477
-      ],
-      "more_info": "https://bandit.readthedocs.io/en/1.7.5/blacklists/blacklist_calls.html#b311-random",
-      "test_id": "B311",
-      "test_name": "blacklist"
-    },
-    {
-      "code": "500     port = int(os.getenv(\"PORT\", 8000))\n501     uvicorn.run(app, host=\"0.0.0.0\", port=port, log_level=\"info\") \n",
-      "col_offset": 26,
-      "end_col_offset": 35,
+      "code": "494     if os.getenv(\"ALLOW_ALL_INTERFACES\", \"false\").lower() == \"true\":\n495         host = \"0.0.0.0\"\n496         logger.warning(\"Binding to all interfaces (0.0.0.0) - ensure this is intended for production\")\n",
+      "col_offset": 15,
+      "end_col_offset": 24,
       "filename": "./main.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
@@ -566,34 +546,13 @@
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Possible binding to all interfaces.",
-      "line_number": 501,
+      "line_number": 495,
       "line_range": [
-        501
+        495
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b104_hardcoded_bind_all_interfaces.html",
       "test_id": "B104",
       "test_name": "hardcoded_bind_all_interfaces"
-    },
-    {
-      "code": "110                     batch.append(event)\n111                 except:\n112                     pass\n113                 \n",
-      "col_offset": 16,
-      "end_col_offset": 24,
-      "filename": "./services/analytics_service.py",
-      "issue_confidence": "HIGH",
-      "issue_cwe": {
-        "id": 703,
-        "link": "https://cwe.mitre.org/data/definitions/703.html"
-      },
-      "issue_severity": "LOW",
-      "issue_text": "Try, Except, Pass detected.",
-      "line_number": 111,
-      "line_range": [
-        111,
-        112
-      ],
-      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b110_try_except_pass.html",
-      "test_id": "B110",
-      "test_name": "try_except_pass"
     },
     {
       "code": "144     \"\"\"Mock token verification for development (when no real auth is implemented)\"\"\"\n145     if not token or token == \"Bearer\":\n146         # Create a default user for development\n",
@@ -616,7 +575,7 @@
       "test_name": "hardcoded_password_string"
     },
     {
-      "code": "985             \n986             query = f'''\n987                 UPDATE user_accounts \n988                 SET {\", \".join(updates)}\n989                 WHERE user_id = ?\n990             '''\n991             \n",
+      "code": "998             \n999             query = f'''\n1000                 UPDATE user_accounts \n1001                 SET {\", \".join(safe_update_fields)}\n1002                 WHERE user_id = ?\n1003             '''\n1004             \n",
       "col_offset": 24,
       "end_col_offset": 20,
       "filename": "./services/database_service.py",
@@ -627,20 +586,20 @@
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Possible SQL injection vector through string-based query construction.",
-      "line_number": 986,
+      "line_number": 999,
       "line_range": [
-        986,
-        987,
-        988,
-        989,
-        990
+        999,
+        1000,
+        1001,
+        1002,
+        1003
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
       "test_id": "B608",
       "test_name": "hardcoded_sql_expressions"
     },
     {
-      "code": "334             \n335             query = f\"UPDATE documents SET {', '.join(update_fields)} WHERE id = ?\"\n336             self._execute_query(query, tuple(update_values))\n",
+      "code": "350             \n351             query = f\"UPDATE documents SET {', '.join(safe_update_fields)} WHERE id = ?\"\n352             self._execute_query(query, tuple(update_values))\n",
       "col_offset": 22,
       "end_col_offset": 43,
       "filename": "./services/document_service.py",
@@ -651,53 +610,13 @@
       },
       "issue_severity": "MEDIUM",
       "issue_text": "Possible SQL injection vector through string-based query construction.",
-      "line_number": 335,
+      "line_number": 351,
       "line_range": [
-        335
+        351
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
       "test_id": "B608",
       "test_name": "hardcoded_sql_expressions"
-    },
-    {
-      "code": "387             \n388             query = f\"SELECT * FROM documents WHERE {' AND '.join(conditions)} ORDER BY updated_at DESC\"\n389             rows = self._execute_query(query, tuple(params), fetch='all')\n",
-      "col_offset": 22,
-      "end_col_offset": 52,
-      "filename": "./services/document_service.py",
-      "issue_confidence": "LOW",
-      "issue_cwe": {
-        "id": 89,
-        "link": "https://cwe.mitre.org/data/definitions/89.html"
-      },
-      "issue_severity": "MEDIUM",
-      "issue_text": "Possible SQL injection vector through string-based query construction.",
-      "line_number": 388,
-      "line_range": [
-        388
-      ],
-      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
-      "test_id": "B608",
-      "test_name": "hardcoded_sql_expressions"
-    },
-    {
-      "code": "225         \"\"\"Generate hash for caching\"\"\"\n226         return hashlib.md5(text.encode()).hexdigest()\n227     \n",
-      "col_offset": 15,
-      "end_col_offset": 41,
-      "filename": "./services/grammar_service.py",
-      "issue_confidence": "HIGH",
-      "issue_cwe": {
-        "id": 327,
-        "link": "https://cwe.mitre.org/data/definitions/327.html"
-      },
-      "issue_severity": "HIGH",
-      "issue_text": "Use of weak MD5 hash for security. Consider usedforsecurity=False",
-      "line_number": 226,
-      "line_range": [
-        226
-      ],
-      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b324_hashlib.html",
-      "test_id": "B324",
-      "test_name": "hashlib"
     }
   ]
 }

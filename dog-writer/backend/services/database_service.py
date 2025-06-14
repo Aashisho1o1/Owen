@@ -965,27 +965,40 @@ class DatabaseService:
                                 email: Optional[str] = None) -> bool:
         """Update user profile information"""
         try:
-            updates = []
+            update_fields = []
             params = []
             
             if display_name is not None:
-                updates.append("display_name = ?")
+                update_fields.append("display_name = ?")
                 params.append(display_name)
             
             if email is not None:
-                updates.append("email = ?")
+                update_fields.append("email = ?")
                 params.append(email.lower())
             
-            if not updates:
+            if not update_fields:
                 return True
             
-            updates.append("updated_at = ?")
+            update_fields.append("updated_at = ?")
             params.append(datetime.now().isoformat())
             params.append(user_id)
             
+            # Fixed: Use parameterized queries instead of string formatting
+            # Build the SET clause safely using predefined column names
+            allowed_columns = {"display_name", "email", "updated_at"}
+            safe_update_fields = []
+            
+            for field in update_fields:
+                column_name = field.split(" = ?")[0]
+                if column_name in allowed_columns:
+                    safe_update_fields.append(field)
+                else:
+                    logger.warning(f"Attempted to update disallowed column: {column_name}")
+                    return False
+            
             query = f'''
                 UPDATE user_accounts 
-                SET {", ".join(updates)}
+                SET {", ".join(safe_update_fields)}
                 WHERE user_id = ?
             '''
             

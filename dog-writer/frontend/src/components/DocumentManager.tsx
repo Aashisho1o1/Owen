@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
-import { Document, DocumentFolder, DocumentSeries } from '../services/api';
+import { Document } from '../types/document';
 import './DocumentManager.css';
 
 interface DocumentManagerProps {
@@ -23,8 +23,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ onDocumentSelect, onC
     versions,
     searchResults,
     writingStats,
-    writingSessions,
-    currentDocument,
     isLoading,
     isLoadingVersions,
     isSearching,
@@ -36,7 +34,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ onDocumentSelect, onC
     deleteFolder,
     deleteSeries,
     duplicateDocument,
-    moveDocument,
     searchDocuments,
     clearSearch,
     createFromTemplate,
@@ -44,14 +41,11 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ onDocumentSelect, onC
     loadVersions,
     restoreVersion,
     loadWritingStats,
-    shareDocument,
     getDocumentsByFolder,
     getDocumentsBySeries,
     getFolderTree,
     getRecentDocuments,
-    getTotalWordCount,
-    getWordCount,
-    refreshAll
+    getTotalWordCount
   } = useDocuments();
 
   const [viewMode, setViewMode] = useState<ViewMode>('documents');
@@ -64,7 +58,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ onDocumentSelect, onC
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showSeriesModal, setShowSeriesModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState('');
@@ -340,9 +333,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ onDocumentSelect, onC
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setSelectedDocumentId(doc.id); setShowExportModal(true); }}>
                           📤 Export
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedDocumentId(doc.id); setShowShareModal(true); }}>
-                          🔗 Share
                         </button>
                       </div>
                     </div>

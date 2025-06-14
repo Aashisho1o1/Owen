@@ -1,0 +1,1317 @@
+{
+    "report_meta": {
+        "scan_target": "environment",
+        "scanned": [
+            "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages/setuptools/_vendor",
+            "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages"
+        ],
+        "policy_file": null,
+        "policy_file_source": "local",
+        "api_key": false,
+        "local_database_path": null,
+        "safety_version": "2.3.5",
+        "timestamp": "2025-06-13 21:04:17",
+        "packages_found": 121,
+        "vulnerabilities_found": 27,
+        "vulnerabilities_ignored": 0,
+        "remediations_recommended": 0,
+        "telemetry": {
+            "os_type": "Darwin",
+            "os_release": "24.5.0",
+            "os_description": "macOS-15.5-arm64-arm-64bit-Mach-O",
+            "python_version": "3.13.2",
+            "safety_command": "check",
+            "safety_options": {
+                "json": {
+                    "--json": 1
+                }
+            },
+            "safety_version": "2.3.5",
+            "safety_source": "cli"
+        },
+        "git": {
+            "branch": "last-check",
+            "tag": "",
+            "commit": "e4b8293ff6a038764144d155d56a21b49c52bec9",
+            "dirty": true,
+            "origin": "https://github.com/OwenWrites/Owen.git"
+        },
+        "project": null,
+        "json_version": 1
+    },
+    "scanned_packages": {
+        "deprecated": {
+            "name": "deprecated",
+            "version": "1.2.18"
+        },
+        "gitpython": {
+            "name": "gitpython",
+            "version": "3.1.44"
+        },
+        "jinja2": {
+            "name": "jinja2",
+            "version": "3.1.2"
+        },
+        "markupsafe": {
+            "name": "markupsafe",
+            "version": "3.0.2"
+        },
+        "pyjwt": {
+            "name": "pyjwt",
+            "version": "2.8.0"
+        },
+        "pyyaml": {
+            "name": "pyyaml",
+            "version": "6.0.2"
+        },
+        "aiofiles": {
+            "name": "aiofiles",
+            "version": "23.2.1"
+        },
+        "aiohappyeyeballs": {
+            "name": "aiohappyeyeballs",
+            "version": "2.6.1"
+        },
+        "aiohttp": {
+            "name": "aiohttp",
+            "version": "3.9.1"
+        },
+        "aiosignal": {
+            "name": "aiosignal",
+            "version": "1.3.2"
+        },
+        "annotated-types": {
+            "name": "annotated-types",
+            "version": "0.7.0"
+        },
+        "anyio": {
+            "name": "anyio",
+            "version": "3.7.1"
+        },
+        "attrs": {
+            "name": "attrs",
+            "version": "25.3.0"
+        },
+        "backoff": {
+            "name": "backoff",
+            "version": "2.2.1"
+        },
+        "bandit": {
+            "name": "bandit",
+            "version": "1.7.5"
+        },
+        "bcrypt": {
+            "name": "bcrypt",
+            "version": "4.2.1"
+        },
+        "bleach": {
+            "name": "bleach",
+            "version": "6.2.0"
+        },
+        "cachetools": {
+            "name": "cachetools",
+            "version": "5.5.2"
+        },
+        "certifi": {
+            "name": "certifi",
+            "version": "2025.4.26"
+        },
+        "cffi": {
+            "name": "cffi",
+            "version": "1.17.1"
+        },
+        "charset-normalizer": {
+            "name": "charset-normalizer",
+            "version": "3.4.2"
+        },
+        "click": {
+            "name": "click",
+            "version": "8.2.1"
+        },
+        "cryptography": {
+            "name": "cryptography",
+            "version": "41.0.7"
+        },
+        "distro": {
+            "name": "distro",
+            "version": "1.9.0"
+        },
+        "dparse": {
+            "name": "dparse",
+            "version": "0.6.4"
+        },
+        "ecdsa": {
+            "name": "ecdsa",
+            "version": "0.19.1"
+        },
+        "fastapi": {
+            "name": "fastapi",
+            "version": "0.104.1"
+        },
+        "frozenlist": {
+            "name": "frozenlist",
+            "version": "1.7.0"
+        },
+        "gitdb": {
+            "name": "gitdb",
+            "version": "4.0.12"
+        },
+        "google-ai-generativelanguage": {
+            "name": "google-ai-generativelanguage",
+            "version": "0.6.15"
+        },
+        "google-api-core": {
+            "name": "google-api-core",
+            "version": "2.25.1rc0"
+        },
+        "google-api-python-client": {
+            "name": "google-api-python-client",
+            "version": "2.172.0"
+        },
+        "google-auth": {
+            "name": "google-auth",
+            "version": "2.40.3"
+        },
+        "google-auth-httplib2": {
+            "name": "google-auth-httplib2",
+            "version": "0.2.0"
+        },
+        "google-generativeai": {
+            "name": "google-generativeai",
+            "version": "0.8.5"
+        },
+        "googleapis-common-protos": {
+            "name": "googleapis-common-protos",
+            "version": "1.70.0"
+        },
+        "grpcio": {
+            "name": "grpcio",
+            "version": "1.73.0"
+        },
+        "grpcio-status": {
+            "name": "grpcio-status",
+            "version": "1.62.3"
+        },
+        "h11": {
+            "name": "h11",
+            "version": "0.16.0"
+        },
+        "httpcore": {
+            "name": "httpcore",
+            "version": "1.0.9"
+        },
+        "httplib2": {
+            "name": "httplib2",
+            "version": "0.22.0"
+        },
+        "httptools": {
+            "name": "httptools",
+            "version": "0.6.4"
+        },
+        "httpx": {
+            "name": "httpx",
+            "version": "0.28.1"
+        },
+        "idna": {
+            "name": "idna",
+            "version": "3.10"
+        },
+        "iniconfig": {
+            "name": "iniconfig",
+            "version": "2.1.0"
+        },
+        "jiter": {
+            "name": "jiter",
+            "version": "0.10.0"
+        },
+        "joblib": {
+            "name": "joblib",
+            "version": "1.5.1"
+        },
+        "limits": {
+            "name": "limits",
+            "version": "5.2.0"
+        },
+        "markdown-it-py": {
+            "name": "markdown-it-py",
+            "version": "3.0.0"
+        },
+        "mdurl": {
+            "name": "mdurl",
+            "version": "0.1.2"
+        },
+        "multidict": {
+            "name": "multidict",
+            "version": "6.4.4"
+        },
+        "nltk": {
+            "name": "nltk",
+            "version": "3.9.1"
+        },
+        "openai": {
+            "name": "openai",
+            "version": "1.86.0"
+        },
+        "packaging": {
+            "name": "packaging",
+            "version": "21.3"
+        },
+        "passlib": {
+            "name": "passlib",
+            "version": "1.7.4"
+        },
+        "pbr": {
+            "name": "pbr",
+            "version": "6.1.1"
+        },
+        "pip": {
+            "name": "pip",
+            "version": "25.1.1"
+        },
+        "pluggy": {
+            "name": "pluggy",
+            "version": "1.6.0"
+        },
+        "posthog": {
+            "name": "posthog",
+            "version": "4.10.0"
+        },
+        "pre-commit-hooks": {
+            "name": "pre-commit-hooks",
+            "version": "5.0.0"
+        },
+        "propcache": {
+            "name": "propcache",
+            "version": "0.3.2"
+        },
+        "proto-plus": {
+            "name": "proto-plus",
+            "version": "1.26.1"
+        },
+        "protobuf": {
+            "name": "protobuf",
+            "version": "4.25.8"
+        },
+        "psutil": {
+            "name": "psutil",
+            "version": "6.1.0"
+        },
+        "pyasn1": {
+            "name": "pyasn1",
+            "version": "0.6.1"
+        },
+        "pyasn1-modules": {
+            "name": "pyasn1-modules",
+            "version": "0.4.2"
+        },
+        "pycparser": {
+            "name": "pycparser",
+            "version": "2.22"
+        },
+        "pydantic": {
+            "name": "pydantic",
+            "version": "2.10.6"
+        },
+        "pydantic-core": {
+            "name": "pydantic-core",
+            "version": "2.27.2"
+        },
+        "pygments": {
+            "name": "pygments",
+            "version": "2.19.1"
+        },
+        "pyparsing": {
+            "name": "pyparsing",
+            "version": "3.2.3"
+        },
+        "pyphen": {
+            "name": "pyphen",
+            "version": "0.17.2"
+        },
+        "pytest": {
+            "name": "pytest",
+            "version": "8.3.4"
+        },
+        "pytest-asyncio": {
+            "name": "pytest-asyncio",
+            "version": "0.25.0"
+        },
+        "python-dateutil": {
+            "name": "python-dateutil",
+            "version": "2.9.0.post0"
+        },
+        "python-dotenv": {
+            "name": "python-dotenv",
+            "version": "1.0.0"
+        },
+        "python-jose": {
+            "name": "python-jose",
+            "version": "3.3.0"
+        },
+        "python-multipart": {
+            "name": "python-multipart",
+            "version": "0.0.6"
+        },
+        "redis": {
+            "name": "redis",
+            "version": "5.0.1"
+        },
+        "regex": {
+            "name": "regex",
+            "version": "2024.11.6"
+        },
+        "requests": {
+            "name": "requests",
+            "version": "2.31.0"
+        },
+        "rich": {
+            "name": "rich",
+            "version": "14.0.0"
+        },
+        "rsa": {
+            "name": "rsa",
+            "version": "4.9.1"
+        },
+        "ruamel.yaml": {
+            "name": "ruamel.yaml",
+            "version": "0.18.14"
+        },
+        "ruamel.yaml.clib": {
+            "name": "ruamel.yaml.clib",
+            "version": "0.2.12"
+        },
+        "safety": {
+            "name": "safety",
+            "version": "2.3.5"
+        },
+        "setuptools": {
+            "name": "setuptools",
+            "version": "80.9.0"
+        },
+        "six": {
+            "name": "six",
+            "version": "1.17.0"
+        },
+        "slowapi": {
+            "name": "slowapi",
+            "version": "0.1.9"
+        },
+        "smmap": {
+            "name": "smmap",
+            "version": "5.0.2"
+        },
+        "sniffio": {
+            "name": "sniffio",
+            "version": "1.3.1"
+        },
+        "starlette": {
+            "name": "starlette",
+            "version": "0.27.0"
+        },
+        "stevedore": {
+            "name": "stevedore",
+            "version": "5.4.1"
+        },
+        "textblob": {
+            "name": "textblob",
+            "version": "0.18.0"
+        },
+        "textstat": {
+            "name": "textstat",
+            "version": "0.7.4"
+        },
+        "tqdm": {
+            "name": "tqdm",
+            "version": "4.67.1"
+        },
+        "typing-extensions": {
+            "name": "typing-extensions",
+            "version": "4.14.0"
+        },
+        "uritemplate": {
+            "name": "uritemplate",
+            "version": "4.2.0"
+        },
+        "urllib3": {
+            "name": "urllib3",
+            "version": "2.4.0"
+        },
+        "uvicorn": {
+            "name": "uvicorn",
+            "version": "0.24.0"
+        },
+        "uvloop": {
+            "name": "uvloop",
+            "version": "0.21.0"
+        },
+        "vadersentiment": {
+            "name": "vadersentiment",
+            "version": "3.3.2"
+        },
+        "watchfiles": {
+            "name": "watchfiles",
+            "version": "1.0.5"
+        },
+        "webencodings": {
+            "name": "webencodings",
+            "version": "0.5.1"
+        },
+        "websockets": {
+            "name": "websockets",
+            "version": "15.0.1"
+        },
+        "wrapt": {
+            "name": "wrapt",
+            "version": "1.17.2"
+        },
+        "yarl": {
+            "name": "yarl",
+            "version": "1.20.1"
+        },
+        "autocommand": {
+            "name": "autocommand",
+            "version": "2.2.2"
+        },
+        "backports.tarfile": {
+            "name": "backports.tarfile",
+            "version": "1.2.0"
+        },
+        "importlib-metadata": {
+            "name": "importlib-metadata",
+            "version": "8.0.0"
+        },
+        "inflect": {
+            "name": "inflect",
+            "version": "7.3.1"
+        },
+        "jaraco.collections": {
+            "name": "jaraco.collections",
+            "version": "5.1.0"
+        },
+        "jaraco.context": {
+            "name": "jaraco.context",
+            "version": "5.3.0"
+        },
+        "jaraco.functools": {
+            "name": "jaraco.functools",
+            "version": "4.0.1"
+        },
+        "jaraco.text": {
+            "name": "jaraco.text",
+            "version": "3.12.1"
+        },
+        "more-itertools": {
+            "name": "more-itertools",
+            "version": "10.3.0"
+        },
+        "platformdirs": {
+            "name": "platformdirs",
+            "version": "4.2.2"
+        },
+        "tomli": {
+            "name": "tomli",
+            "version": "2.0.1"
+        },
+        "typeguard": {
+            "name": "typeguard",
+            "version": "4.3.0"
+        },
+        "wheel": {
+            "name": "wheel",
+            "version": "0.45.1"
+        },
+        "zipp": {
+            "name": "zipp",
+            "version": "3.19.2"
+        }
+    },
+    "affected_packages": {
+        "jinja2": {
+            "name": "jinja2",
+            "version": "3.1.2",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "pyjwt": {
+            "name": "pyjwt",
+            "version": "2.8.0",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "aiohttp": {
+            "name": "aiohttp",
+            "version": "3.9.1",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "anyio": {
+            "name": "anyio",
+            "version": "3.7.1",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "bandit": {
+            "name": "bandit",
+            "version": "1.7.5",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "cryptography": {
+            "name": "cryptography",
+            "version": "41.0.7",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "ecdsa": {
+            "name": "ecdsa",
+            "version": "0.19.1",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "python-jose": {
+            "name": "python-jose",
+            "version": "3.3.0",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "python-multipart": {
+            "name": "python-multipart",
+            "version": "0.0.6",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "requests": {
+            "name": "requests",
+            "version": "2.31.0",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        },
+        "starlette": {
+            "name": "starlette",
+            "version": "0.27.0",
+            "found": "/Users/aahishsunar/Desktop/DOG/.venv/lib/python3.13/site-packages",
+            "insecure_versions": [],
+            "secure_versions": [],
+            "latest_version_without_known_vulnerabilities": null,
+            "latest_version": null,
+            "more_info_url": "https://data.safetycli.com"
+        }
+    },
+    "announcements": [],
+    "vulnerabilities": [
+        {
+            "vulnerability_id": "76378",
+            "package_name": "jinja2",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.1.5",
+            "all_vulnerable_specs": [
+                "<3.1.5"
+            ],
+            "analyzed_version": "3.1.2",
+            "advisory": "An oversight in how the Jinja sandboxed environment detects calls to str.format allows an attacker who controls the content of a template to execute arbitrary Python code. To exploit the vulnerability, an attacker needs to control the content of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates. Jinja's sandbox does catch calls to str.format and ensures they don't escape the sandbox. However, it's possible to store a reference to a malicious string's format method, then pass that to a filter that calls it. No such filters are built-in to Jinja, but could be present through custom filters in an application. After the fix, such indirect calls are also handled by the sandbox.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-56326",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/76378/f17"
+        },
+        {
+            "vulnerability_id": "74735",
+            "package_name": "jinja2",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.1.5",
+            "all_vulnerable_specs": [
+                "<3.1.5"
+            ],
+            "analyzed_version": "3.1.2",
+            "advisory": "A vulnerability in the Jinja compiler allows an attacker who can control both the content and filename of a template to execute arbitrary Python code, bypassing Jinja's sandbox protections. To exploit this vulnerability, an attacker must have the ability to manipulate both the template's filename and its contents. The risk depends on the application's specific use case. This issue affects applications that render untrusted templates where the attacker can determine the template filename, potentially leading to severe security breaches.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-56201",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/74735/f17"
+        },
+        {
+            "vulnerability_id": "75976",
+            "package_name": "jinja2",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.1.6",
+            "all_vulnerable_specs": [
+                "<3.1.6"
+            ],
+            "analyzed_version": "3.1.2",
+            "advisory": "Prior to 3.1.6, an oversight in how the Jinja sandboxed environment interacts with the |attr filter allows an attacker that controls the content of a template to execute arbitrary Python code. To exploit the vulnerability, an attacker needs to control the content of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates. Jinja's sandbox does catch calls to str.format and ensures they don't escape the sandbox. However, it's possible to use the |attr filter to get a reference to a string's plain format method, bypassing the sandbox. After the fix, the |attr filter no longer bypasses the environment's attribute lookup. This vulnerability is fixed in 3.1.6.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2025-27516",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/75976/f17"
+        },
+        {
+            "vulnerability_id": "64227",
+            "package_name": "jinja2",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.1.3",
+            "all_vulnerable_specs": [
+                "<3.1.3"
+            ],
+            "analyzed_version": "3.1.2",
+            "advisory": "Jinja is an extensible templating engine. Special placeholders in the template allow writing code similar to Python syntax. It is possible to inject arbitrary HTML attributes into the rendered HTML template, potentially leading to Cross-Site Scripting (XSS). The Jinja `xmlattr` filter can be abused to inject arbitrary HTML attribute keys and values, bypassing the auto escaping mechanism and potentially leading to XSS. It may also be possible to bypass attribute validation checks if they are blacklist-based.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-22195",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/64227/f17"
+        },
+        {
+            "vulnerability_id": "71591",
+            "package_name": "jinja2",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.1.4",
+            "all_vulnerable_specs": [
+                "<3.1.4"
+            ],
+            "analyzed_version": "3.1.2",
+            "advisory": "Jinja is an extensible templating engine. The `xmlattr` filter in affected versions of Jinja accepts keys containing non-attribute characters. XML/HTML attributes cannot contain spaces, `/`, `>`, or `=`, as each would then be interpreted as starting a separate attribute. If an application accepts keys (as opposed to only values) as user input, and renders these in pages that other users see as well, an attacker could use this to inject other attributes and perform XSS. The fix for CVE-2024-22195 only addressed spaces but not other characters. Accepting keys as user input is now explicitly considered an unintended use case of the `xmlattr` filter, and code that does so without otherwise validating the input should be flagged as insecure, regardless of Jinja version. Accepting _values_ as user input continues to be safe.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-34064",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/71591/f17"
+        },
+        {
+            "vulnerability_id": "74429",
+            "package_name": "pyjwt",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<2.10.1",
+            "all_vulnerable_specs": [
+                "<2.10.1"
+            ],
+            "analyzed_version": "2.8.0",
+            "advisory": "Affected versions of pyjwt are vulnerable to Partial Comparison (CWE-187). This flaw allows attackers to bypass issuer (iss) verification by providing partial matches, potentially granting unauthorized access. The vulnerability arises in the decode method of api_jwt.py, where issuer validation incorrectly treats strings as sequences, leading to partial matches (e.g., \"abc\" being accepted for \"__abc__\"). Exploiting this requires crafting JWTs with partially matching iss claims, which is straightforward.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-53861",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/74429/f17"
+        },
+        {
+            "vulnerability_id": "74380",
+            "package_name": "aiohttp",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.10.2",
+            "all_vulnerable_specs": [
+                "<3.10.2"
+            ],
+            "analyzed_version": "3.9.1",
+            "advisory": "Affected versions of aiohttp are vulnerable to Directory Traversal (CWE-22). This allows attackers to access sensitive files outside the intended directory by exploiting symbolic links with compressed file extensions. The vulnerability exists in the FileResponse class where stat() is used instead of lstat(), causing the server to follow symlinks when checking for compressed file variants. To mitigate, update aiohttp to include the fix or modify the code to use lstat() and ensure only regular files are served.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-42367",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/74380/f17"
+        },
+        {
+            "vulnerability_id": "64642",
+            "package_name": "aiohttp",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">1.0.5,<3.9.2",
+            "all_vulnerable_specs": [
+                ">1.0.5,<3.9.2"
+            ],
+            "analyzed_version": "3.9.1",
+            "advisory": "The vulnerability lies in the improper configuration of static resource resolution when aiohttp is used as a web server. It occurs when the follow_symlinks option is enabled without proper validation, leading to directory traversal vulnerabilities. Unauthorized access to arbitrary files on the system could potentially occur. The affected versions are >1.0.5, and the issue was patched in version 3.9.2. As a workaround, it is advised to disable the follow_symlinks option outside of a restricted local development environment, especially in a server accepting requests from remote users. Using a reverse proxy server to handle static resources is also recommended.\r\nhttps://github.com/aio-libs/aiohttp/commit/1c335944d6a8b1298baf179b7c0b3069f10c514b",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-23334",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/64642/f17"
+        },
+        {
+            "vulnerability_id": "74251",
+            "package_name": "aiohttp",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.10.11",
+            "all_vulnerable_specs": [
+                "<3.10.11"
+            ],
+            "analyzed_version": "3.9.1",
+            "advisory": "Affected versions of aiohttp are vulnerable to HTTP Request Smuggling (CWE-444). This vulnerability allows attackers to inject malicious HTTP messages by including line feeds (LF) in chunk extensions, potentially bypassing security controls and executing unauthorized actions. The attack vector involves sending specially crafted chunked HTTP requests to exploit the improper parsing in the HttpPayloadParser class. To mitigate, upgrade to aiohttp version which validates chunk extensions by rejecting any containing unexpected LFs, thereby preventing request smuggling attacks.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-52304",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/74251/f17"
+        },
+        {
+            "vulnerability_id": "74252",
+            "package_name": "aiohttp",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.10.11",
+            "all_vulnerable_specs": [
+                "<3.10.11"
+            ],
+            "analyzed_version": "3.9.1",
+            "advisory": "Affected versions of aiohttp are vulnerable to Middleware Cache Pollution. This vulnerability allows attackers to potentially interfere with middleware handling by exploiting cached middleware associated with system routes. The impact includes possible bypassing of security middleware or unintended access to internal routes. The attack vector involves crafting requests that target system routes, causing the middleware cache to store and reuse inappropriate middleware configurations. The vulnerable methods are _build_middlewares and the middleware caching mechanism in web_app.py. To mitigate, upgrade to aiohttp version, which prevents system routes from polluting the middleware cache by excluding SystemRoute instances from caching.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-52303",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/74252/f17"
+        },
+        {
+            "vulnerability_id": "70630",
+            "package_name": "aiohttp",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.9.4",
+            "all_vulnerable_specs": [
+                "<3.9.4"
+            ],
+            "analyzed_version": "3.9.1",
+            "advisory": "aiohttp is an asynchronous HTTP client/server framework for asyncio and Python. A XSS vulnerability exists on index pages for static file handling. This vulnerability is fixed in 3.9.4. We have always recommended using a reverse proxy server (e.g. nginx) for serving static files. Users following the recommendation are unaffected. Other users can disable `show_index` if unable to upgrade. See CVE-2024-27306.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-27306",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/70630/f17"
+        },
+        {
+            "vulnerability_id": "71545",
+            "package_name": "aiohttp",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<3.9.4",
+            "all_vulnerable_specs": [
+                "<3.9.4"
+            ],
+            "analyzed_version": "3.9.1",
+            "advisory": "Affected versions of `aiohttp` are vulnerable to an infinite loop condition. This occurs when an attacker sends a specially crafted POST (multipart/form-data) request. Upon processing, the `aiohttp` server enters an infinite loop, preventing it from processing further requests. This results in a denial-of-service (DoS) attack, allowing an attacker to stop the application from serving requests after a single request. Users are advised to upgrade to version 3.9.4 or manually apply a patch to their systems as per the linked GHSA instructions.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-30251",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/71545/f17"
+        },
+        {
+            "vulnerability_id": "71199",
+            "package_name": "anyio",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<4.4.0",
+            "all_vulnerable_specs": [
+                "<4.4.0"
+            ],
+            "analyzed_version": "3.7.1",
+            "advisory": "Anyio version 4.4.0 addresses a thread race condition in `_eventloop.get_asynclib()` that caused crashes when multiple event loops of the same backend were running in separate threads and simultaneously attempted to use AnyIO for the first time. This fix ensures more stable and reliable performance in multi-threaded environments.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/71199/f17"
+        },
+        {
+            "vulnerability_id": "64484",
+            "package_name": "bandit",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<1.7.7",
+            "all_vulnerable_specs": [
+                "<1.7.7"
+            ],
+            "analyzed_version": "1.7.5",
+            "advisory": "Bandit 1.7.7 identifies the str.replace method as a potential risk for SQL injection because it can be misused in constructing SQL queries, potentially enabling the execution of arbitrary SQL code.\r\nhttps://github.com/PyCQA/bandit/pull/1044/commits/d909043ba20853c90a7cad4a5b58a180f6937bf8",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/64484/f17"
+        },
+        {
+            "vulnerability_id": "65278",
+            "package_name": "cryptography",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<42.0.0",
+            "all_vulnerable_specs": [
+                "<42.0.0"
+            ],
+            "analyzed_version": "41.0.7",
+            "advisory": "Affected versions of Cryptography may allow a remote attacker to decrypt captured messages in TLS servers that use RSA key exchanges, which may lead to exposure of confidential or sensitive data.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2023-50782",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/65278/f17"
+        },
+        {
+            "vulnerability_id": "65212",
+            "package_name": "cryptography",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=35.0.0,<42.0.2",
+            "all_vulnerable_specs": [
+                ">=35.0.0,<42.0.2"
+            ],
+            "analyzed_version": "41.0.7",
+            "advisory": "Versions of Cryptograph starting from 35.0.0 are susceptible to a security flaw in the POLY1305 MAC algorithm on PowerPC CPUs, which allows an attacker to disrupt the application's state. This disruption might result in false calculations or cause a denial of service. The vulnerability's exploitation hinges on the attacker's ability to alter the algorithm's application and the dependency of the software on non-volatile XMM registers.\r\nhttps://github.com/pyca/cryptography/commit/89d0d56fb104ac4e0e6db63d78fc22b8c53d27e9",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2023-6129",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/65212/f17"
+        },
+        {
+            "vulnerability_id": "65647",
+            "package_name": "cryptography",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<42.0.5",
+            "all_vulnerable_specs": [
+                "<42.0.5"
+            ],
+            "analyzed_version": "41.0.7",
+            "advisory": "Cryptography version 42.0.5 introduces a limit on the number of name constraint checks during X.509 path validation to prevent denial of service attacks.\r\nhttps://github.com/pyca/cryptography/commit/4be53bf20cc90cbac01f5f94c5d1aecc5289ba1f",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/65647/f17"
+        },
+        {
+            "vulnerability_id": "66704",
+            "package_name": "cryptography",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=38.0.0,<42.0.4",
+            "all_vulnerable_specs": [
+                ">=38.0.0,<42.0.4"
+            ],
+            "analyzed_version": "41.0.7",
+            "advisory": "cryptography is a package designed to expose cryptographic primitives and recipes to Python developers. Starting in version 38.0.0 and before version 42.0.4, if `pkcs12.serialize_key_and_certificates` is called with both a certificate whose public key did not match the provided private key and an `encryption_algorithm` with `hmac_hash` set (via `PrivateFormat.PKCS12.encryption_builder().hmac_hash(...)`, then a NULL pointer dereference would occur, crashing the Python process. This has been resolved in version 42.0.4, the first version in which a `ValueError` is properly raised.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-26130",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/66704/f17"
+        },
+        {
+            "vulnerability_id": "64459",
+            "package_name": "ecdsa",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=0",
+            "all_vulnerable_specs": [
+                ">=0"
+            ],
+            "analyzed_version": "0.19.1",
+            "advisory": "The python-ecdsa library, which implements ECDSA cryptography in Python, is vulnerable to the Minerva attack (CVE-2024-23342). This vulnerability arises because scalar multiplication is not performed in constant time, affecting ECDSA signatures, key generation, and ECDH operations. ECDSA signature verification remains unaffected. The project maintainers have stated that there is no plan to release a fix for this vulnerability, citing their security policy:\r\n\"As stated in the security policy, side-channel vulnerabilities are outside the scope of the project. This is not due to a lack of interest in side-channel secure implementations but rather because the main goal of the project is to be pure Python. Implementing side-channel-free code in pure Python is impossible. Therefore, we do not plan to release a fix for this vulnerability.\"\r\nNOTE: The specs we include in this advisory differ from the publicly available on other sources. That's because research by Safety CLI Cybersecurity Team confirms that there is no plan to address this vulnerability.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-23342",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/64459/f17"
+        },
+        {
+            "vulnerability_id": "64396",
+            "package_name": "ecdsa",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=0",
+            "all_vulnerable_specs": [
+                ">=0"
+            ],
+            "analyzed_version": "0.19.1",
+            "advisory": "Ecdsa does not protects against side-channel attacks. This is because Python does not provide side-channel secure primitives (with the exception of hmac.compare_digest()), making side-channel secure programming impossible. For a sophisticated attacker observing just one operation with a private key will be sufficient to completely reconstruct the private key.\r\nhttps://pypi.org/project/ecdsa/#Security",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/64396/f17"
+        },
+        {
+            "vulnerability_id": "70716",
+            "package_name": "python-jose",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=0",
+            "all_vulnerable_specs": [
+                ">=0"
+            ],
+            "analyzed_version": "3.3.0",
+            "advisory": "Affected versions of Python-jose allow attackers to cause a denial of service (resource consumption) during a decode via a crafted JSON Web Encryption (JWE) token with a high compression ratio, aka a \"JWT bomb.\" This is similar to CVE-2024-21319.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-33664",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/70716/f17"
+        },
+        {
+            "vulnerability_id": "70715",
+            "package_name": "python-jose",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=0",
+            "all_vulnerable_specs": [
+                ">=0"
+            ],
+            "analyzed_version": "3.3.0",
+            "advisory": "Affected versions of Python-jose have a algorithm confusion vulnerability with OpenSSH ECDSA keys and other key formats. This is similar to CVE-2022-29217.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-33663",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/70715/f17"
+        },
+        {
+            "vulnerability_id": "66706",
+            "package_name": "python-multipart",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": ">=0,<0.0.7",
+            "all_vulnerable_specs": [
+                ">=0,<0.0.7"
+            ],
+            "analyzed_version": "0.0.6",
+            "advisory": "A vulnerability in versions of python-multipart before 0.0.7 involves a Regular Expression Denial of Service (ReDoS) triggered by custom Content-Type headers. This issue allows an attacker to cause a significant consumption of system resources while processing such headers, effectively preventing the processing of other requests. This ReDoS vulnerability stems from the way regular expressions evaluate certain input patterns, which can lead to extensive backtracking, thereby causing the application to slow down significantly, consuming a disproportionate amount of CPU time and facilitating a denial of service condition.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/66706/f17"
+        },
+        {
+            "vulnerability_id": "74427",
+            "package_name": "python-multipart",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<0.0.18",
+            "all_vulnerable_specs": [
+                "<0.0.18"
+            ],
+            "analyzed_version": "0.0.6",
+            "advisory": "Affected versions of python-multipart are vulnerable to Allocation of Resources Without Limits or Throttling (CWE-770). An attacker can send specially crafted multipart/form-data requests containing excessive CR (\\r) or LF (\\n) characters before the first boundary or after the last boundary. This can lead to uncontrolled CPU usage and high memory consumption, causing the processing thread or event loop in ASGI applications to stall, resulting in a denial of service (DoS). The vulnerability exists in the MultipartParser's handling of line breaks around boundaries, where it processes each CRLF byte individually and logs warnings for each occurrence. To exploit this, an attacker simply needs to send large amounts of malformed multipart data with numerous CRLF characters. Upgrading to version 0.0.19 resolves this issue by preventing excessive resource allocation and logging when CRLF bytes are present.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-53981",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/74427/f17"
+        },
+        {
+            "vulnerability_id": "71064",
+            "package_name": "requests",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<2.32.2",
+            "all_vulnerable_specs": [
+                "<2.32.2"
+            ],
+            "analyzed_version": "2.31.0",
+            "advisory": "Affected versions of Requests, when making requests through a Requests `Session`, if the first request is made with `verify=False` to disable cert verification, all subsequent requests to the same host will continue to ignore cert verification regardless of changes to the value of `verify`. This behavior will continue for the lifecycle of the connection in the connection pool. Requests 2.32.0 fixes the issue, but versions 2.32.0 and 2.32.1 were yanked due to conflicts with CVE-2024-35195 mitigation.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-35195",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/71064/f17"
+        },
+        {
+            "vulnerability_id": "68094",
+            "package_name": "starlette",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<=0.36.1",
+            "all_vulnerable_specs": [
+                "<=0.36.1"
+            ],
+            "analyzed_version": "0.27.0",
+            "advisory": "When using form data, `python-multipart` employs a Regular Expression to parse the HTTP `Content-Type` header. This creates a vulnerability where an attacker can send a specially crafted `Content-Type` option, causing significant CPU resource consumption and indefinitely stalling the server by locking the main event loop, rendering the server unable to process further requests. This issue particularly affects FastAPI servers parsing form data, leading to a Denial of Service (DoS) condition when the number of malicious requests exceeds the number of available server workers. However, this vulnerability does not impact the processing of JSON data through the `/submit_json` endpoint. It is specific to a defined set of versions of FastAPI and `python-multipart` when handling form data.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": null,
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/68094/f17"
+        },
+        {
+            "vulnerability_id": "73725",
+            "package_name": "starlette",
+            "ignored": {},
+            "ignored_reason": null,
+            "ignored_expires": null,
+            "vulnerable_spec": "<0.40.0",
+            "all_vulnerable_specs": [
+                "<0.40.0"
+            ],
+            "analyzed_version": "0.27.0",
+            "advisory": "Affected versions of the Starlette framework are vulnerable to Denial of Service (DoS) attacks due to the lack of restrictions on multipart part sizes. The vulnerability resides in the MultiPartParser class, which previously did not enforce size limits on incoming data. This issue is mitigated by introducing a max_part_size constraint and raises exceptions when limits are exceeded.",
+            "is_transitive": false,
+            "published_date": null,
+            "fixed_versions": [],
+            "closest_versions_without_known_vulnerabilities": [],
+            "resources": [],
+            "CVE": "CVE-2024-47874",
+            "severity": null,
+            "affected_versions": [],
+            "more_info_url": "https://data.safetycli.com/v/73725/f17"
+        }
+    ],
+    "ignored_vulnerabilities": [],
+    "remediations": {
+        "jinja2": {
+            "current_version": "3.1.2",
+            "vulnerabilities_found": 5,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=3.1.2"
+        },
+        "pyjwt": {
+            "current_version": "2.8.0",
+            "vulnerabilities_found": 1,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=2.8.0"
+        },
+        "aiohttp": {
+            "current_version": "3.9.1",
+            "vulnerabilities_found": 6,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=3.9.1"
+        },
+        "anyio": {
+            "current_version": "3.7.1",
+            "vulnerabilities_found": 1,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=3.7.1"
+        },
+        "bandit": {
+            "current_version": "1.7.5",
+            "vulnerabilities_found": 1,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=1.7.5"
+        },
+        "cryptography": {
+            "current_version": "41.0.7",
+            "vulnerabilities_found": 4,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=41.0.7"
+        },
+        "ecdsa": {
+            "current_version": "0.19.1",
+            "vulnerabilities_found": 2,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=0.19.1"
+        },
+        "python-jose": {
+            "current_version": "3.3.0",
+            "vulnerabilities_found": 2,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=3.3.0"
+        },
+        "python-multipart": {
+            "current_version": "0.0.6",
+            "vulnerabilities_found": 2,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=0.0.6"
+        },
+        "requests": {
+            "current_version": "2.31.0",
+            "vulnerabilities_found": 1,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=2.31.0"
+        },
+        "starlette": {
+            "current_version": "0.27.0",
+            "vulnerabilities_found": 2,
+            "recommended_version": null,
+            "other_recommended_versions": [],
+            "more_info_url": "https://data.safetycli.com/?from=0.27.0"
+        }
+    }
+}

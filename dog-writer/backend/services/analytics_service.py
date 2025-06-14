@@ -108,8 +108,15 @@ class AnalyticsService:
                 try:
                     event = self.event_queue.get(timeout=1.0)
                     batch.append(event)
-                except:
-                    pass
+                except (ValueError, TypeError, KeyError) as e:
+                    # Fixed: Specific exception handling instead of bare except
+                    # Log the specific error for better debugging and security
+                    logger.warning(f"Failed to process analytics event: {e}")
+                    continue
+                except Exception as e:
+                    # Catch any other unexpected exceptions
+                    logger.error(f"Unexpected error processing analytics event: {e}")
+                    continue
                 
                 # Flush batch if conditions are met
                 current_time = time.time()
