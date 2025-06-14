@@ -280,7 +280,6 @@ body {
   border-radius: var(--rounded-xl);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-primary);
-  position: relative;
 }
 
 /* Chat Panel */
@@ -386,7 +385,7 @@ body {
 }
 
 .controls-container.expanded {
-  width: 520px;
+  width: 380px;
 }
 
 .controls-left {
@@ -498,26 +497,25 @@ body {
   border: 1px solid var(--border-primary);
   border-radius: var(--rounded-lg);
   box-shadow: var(--shadow-lg);
-  min-width: 280px;
+  min-width: 200px;
   z-index: 1000;
   animation: fadeIn 0.2s ease-out;
 }
 
 .expanded-dropdown {
-  min-width: 360px;
-  max-width: 450px;
+  min-width: 240px;
+  max-width: 280px;
   width: max-content;
 }
 
 .dropdown-header {
-  padding: 1rem 1.25rem 0.75rem 1.25rem;
-  font-size: 0.8rem;
+  padding: 0.75rem 1rem 0.5rem 1rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border-light);
-  background-color: var(--bg-tertiary);
 }
 
 @keyframes fadeIn {
@@ -533,18 +531,17 @@ body {
 
 .dropdown-option {
   width: 100%;
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   border: none;
   background: none;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  line-height: 1.4;
+  gap: 0.75rem;
 }
 
 .dropdown-option:first-child {
@@ -603,7 +600,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  z-index: 40;
+  z-index: 50;
 }
 
 .chat-toggle-button:hover {
@@ -614,7 +611,6 @@ body {
 
 .chat-toggle-button.active {
   background-color: var(--accent-red);
-  bottom: 6rem;
 }
 
 /* Writing Timer Float */
@@ -748,25 +744,5 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.floating-ai-button {
-  position: absolute;
-  transform: translateX(-50%);
-  background-color: var(--accent-blue);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  box-shadow: var(--shadow-lg);
-  cursor: pointer;
-  z-index: 50;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s ease-in-out;
-  white-space: nowrap;
-}
-
-.floating-ai-button:hover {
-  background-color: var(--accent-blue-hover);
-  transform: translateX(-50%) scale(1.05);
+} 
 } 
