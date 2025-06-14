@@ -83,7 +83,10 @@ class AnalyticsService {
   }
 
   private generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const randomBytes = new Uint32Array(1);
+    window.crypto.getRandomValues(randomBytes);
+    const randomSuffix = randomBytes[0].toString(36);
+    return `session_${Date.now()}_${randomSuffix}`;
   }
 
   private initializeTracking(): void {
