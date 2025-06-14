@@ -7,7 +7,7 @@ Handles all Google Gemini API interactions with error handling and response proc
 import json
 import asyncio
 import google.generativeai as genai
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 
 from .base_service import BaseLLMService, LLMError, log_api_error, clean_json_response
 
@@ -20,48 +20,41 @@ class GeminiService(BaseLLMService):
             genai.configure(api_key=self.api_key)
             self.model = genai.GenerativeModel('gemini-1.5-pro')
     
-    async def generate_text(self, prompt: str, **kwargs) -> str:
-        """Generate text using Gemini"""
+    async def _make_api_call(self, api_call_func: Callable, error_context: str, **kwargs):
+        """Generic helper to make Gemini API calls"""
         if not self.available:
-            raise LLMError("Gemini service not available - missing API key")
+            raise LLMError(f"Gemini service not available - {error_context}")
         
         try:
-            # Gemini API is synchronous, so we run it in a thread
-            def _generate():
-                response = self.model.generate_content(prompt)
-                return response.text
-            
-            result = await asyncio.to_thread(_generate)
+            result = await asyncio.to_thread(api_call_func)
             return result
-            
         except Exception as e:
-            log_api_error("Gemini", e, "text generation")
-            raise LLMError(f"Gemini text generation failed: {str(e)}")
+            log_api_error("Gemini", e, error_context)
+            raise LLMError(f"Gemini {error_context} failed: {str(e)}")
+
+    async def generate_text(self, prompt: str, **kwargs) -> str:
+        """Generate text using Gemini"""
+        def _generate():
+            response = self.model.generate_content(prompt)
+            return response.text
+        
+        return await self._make_api_call(_generate, "text generation")
     
     async def generate_structured(self, prompt: str, schema: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Generate structured JSON data using Gemini"""
-        if not self.available:
-            raise LLMError("Gemini service not available - missing API key")
+        structured_prompt = f"{prompt}\n\nRespond with valid JSON only, no additional text."
+        
+        def _generate():
+            response = self.model.generate_content(structured_prompt)
+            return response.text
+        
+        result = await self._make_api_call(_generate, "structured generation")
+        cleaned_result = clean_json_response(result)
         
         try:
-            # Add JSON formatting instruction to prompt
-            structured_prompt = f"{prompt}\n\nRespond with valid JSON only, no additional text."
-            
-            def _generate():
-                response = self.model.generate_content(structured_prompt)
-                return response.text
-            
-            result = await asyncio.to_thread(_generate)
-            cleaned_result = clean_json_response(result)
-            
-            try:
-                return json.loads(cleaned_result)
-            except json.JSONDecodeError as e:
-                raise LLMError(f"Invalid JSON response from Gemini: {str(e)}")
-            
-        except Exception as e:
-            log_api_error("Gemini", e, "structured generation")
-            raise LLMError(f"Gemini structured generation failed: {str(e)}")
+            return json.loads(cleaned_result)
+        except json.JSONDecodeError as e:
+            raise LLMError(f"Invalid JSON response from Gemini: {str(e)}")
     
     async def analyze_writing_style(self, writing_sample: str) -> Dict[str, Any]:
         """Analyze writing style using Gemini's advanced language understanding"""
@@ -72,31 +65,19 @@ class GeminiService(BaseLLMService):
     
     async def generate_with_conversation_history(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """Generate response with conversation history"""
-        if not self.available:
-            raise LLMError("Gemini service not available - missing API key")
-        
-        try:
+        def _generate():
             # Convert messages to Gemini format
             chat = self.model.start_chat(history=[])
-            
-            # Add conversation history (except the last message)
             for message in messages[:-1]:
                 if message['role'] == 'user':
                     chat.send_message(message['content'])
             
             # Generate response to the last message
             last_message = messages[-1]['content']
-            
-            def _generate():
-                response = chat.send_message(last_message)
-                return response.text
-            
-            result = await asyncio.to_thread(_generate)
-            return result
-            
-        except Exception as e:
-            log_api_error("Gemini", e, "conversation generation")
-            raise LLMError(f"Gemini conversation generation failed: {str(e)}")
+            response = chat.send_message(last_message)
+            return response.text
+        
+        return await self._make_api_call(_generate, "conversation generation")
 
 # Global instance
 gemini_service = GeminiService() 
