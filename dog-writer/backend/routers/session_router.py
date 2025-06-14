@@ -435,5 +435,5 @@ async def cleanup_inactive_sessions():
         }
         
     except Exception as e:
-        print(f"Error cleaning up sessions: {e}")
-        return {"success": False, "message": str(e)} 
+        print(f"Error cleaning up sessions: {e}")  # Replace with proper logging in follow-ups
+        return {"success": False, "message": "An internal error occurred during cleanup."}
