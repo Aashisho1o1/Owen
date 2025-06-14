@@ -498,14 +498,14 @@ body {
   border: 1px solid var(--border-primary);
   border-radius: var(--rounded-lg);
   box-shadow: var(--shadow-lg);
-  min-width: 200px;
+  min-width: 320px;
   z-index: 1000;
   animation: fadeIn 0.2s ease-out;
 }
 
 .expanded-dropdown {
-  min-width: 240px;
-  max-width: 280px;
+  min-width: 320px;
+  max-width: 400px;
 }
 
 .dropdown-header {
@@ -600,7 +600,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  z-index: 50;
+  z-index: 40;
 }
 
 .chat-toggle-button:hover {
@@ -611,6 +611,7 @@ body {
 
 .chat-toggle-button.active {
   background-color: var(--accent-red);
+  bottom: 6rem;
 }
 
 /* Writing Timer Float */
