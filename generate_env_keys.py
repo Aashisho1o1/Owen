@@ -28,12 +28,26 @@ def main():
     db_encryption_key = generate_encryption_key()
     session_secret = generate_session_secret()
     
-    # Write keys to a secure .env file
+    # Generate encryption key for .env file
+    env_encryption_key = Fernet.generate_key()
+    cipher = Fernet(env_encryption_key)
+    
+    # Encrypt sensitive data
+    encrypted_jwt_secret = cipher.encrypt(jwt_secret.encode()).decode()
+    encrypted_db_encryption_key = cipher.encrypt(db_encryption_key.encode()).decode()
+    encrypted_session_secret = cipher.encrypt(session_secret.encode()).decode()
+    
+    # Write encrypted keys to a secure .env file
     env_file_path = ".env"
     with open(env_file_path, "w") as env_file:
-        env_file.write(f"JWT_SECRET_KEY={jwt_secret}\n")
-        env_file.write(f"DB_ENCRYPTION_KEY={db_encryption_key}\n")
-        env_file.write(f"SESSION_SECRET={session_secret}\n")
+        env_file.write(f"JWT_SECRET_KEY={encrypted_jwt_secret}\n")
+        env_file.write(f"DB_ENCRYPTION_KEY={encrypted_db_encryption_key}\n")
+        env_file.write(f"SESSION_SECRET={encrypted_session_secret}\n")
+    
+    # Save encryption key securely (instructions provided to user)
+    encryption_key_path = ".env.key"
+    with open(encryption_key_path, "w") as key_file:
+        key_file.write(env_encryption_key.decode())
     
     # Set restrictive permissions on the file
     import os
@@ -43,7 +57,7 @@ def main():
     print("   Please ensure this file is stored securely and not committed to version control.\n")
     
     print("⚠️  IMPORTANT SECURITY NOTES:")
-    print("- Keep the .env file secure and never commit it to git")
+    print("- Keep the .env file and .env.key secure and never commit them to git")
     print("- Use different keys for development and production")
     print("- Store these keys in a secure password manager")
     print("- Regenerate keys if compromised")
