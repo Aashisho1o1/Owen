@@ -8,10 +8,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import SettingsModal from './SettingsModal';
-import AuthModal from './AuthModal';
-import DocumentManager from './DocumentManager';
-import WritingAnalytics from './WritingAnalytics';
 
 const Controls: React.FC = () => {
   const {
@@ -24,19 +20,13 @@ const Controls: React.FC = () => {
     handleSaveCheckpoint,
     userPreferences,
     englishVariants,
-    updateEnglishVariant,
-    documentManager
+    updateEnglishVariant
   } = useAppContext();
 
   const { isAuthenticated, user } = useAuth();
 
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showDocumentManager, setShowDocumentManager] = useState(false);
-  const [showWritingAnalytics, setShowWritingAnalytics] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -96,6 +86,24 @@ const Controls: React.FC = () => {
       case 'model':
         setSelectedLLM(value);
         break;
+      case 'timer':
+        if (value === 'toggle') {
+          setTimerActive(!timerActive);
+        }
+        break;
+      case 'save':
+        if (value === 'checkpoint') {
+          handleSaveCheckpoint();
+        }
+        break;
+      case 'settings':
+        // Handle settings options here
+        console.log('Settings option:', value);
+        break;
+      case 'auth':
+        // Handle auth options here
+        console.log('Auth option:', value);
+        break;
     }
     setActiveDropdown(null);
   };
@@ -114,26 +122,6 @@ const Controls: React.FC = () => {
       default:
         return '';
     }
-  };
-
-  const handleTimerToggle = () => {
-    setTimerActive(!timerActive);
-    // Here you could integrate with the actual writing timer functionality
-  };
-
-  const handleAuthClick = () => {
-    if (isAuthenticated) {
-      // If authenticated, show settings modal (profile will be in settings)
-      setShowSettingsModal(true);
-    } else {
-      // If not authenticated, show auth modal
-      setAuthMode('login');
-      setShowAuthModal(true);
-    }
-  };
-
-  const handleSettingsClick = () => {
-    setShowSettingsModal(true);
   };
 
   return (
@@ -276,92 +264,149 @@ const Controls: React.FC = () => {
         <div className="controls-divider"></div>
 
         {/* Writing Timer Clock Icon */}
-        <div className="control-action-group">
+        <div className="control-icon-group">
           <button
-            className={`control-action-button ${timerActive ? 'active' : ''}`}
-            onClick={handleTimerToggle}
-            title={timerActive ? "Stop Writing Timer" : "Start Writing Timer"}
-            aria-label={timerActive ? "Stop Writing Timer" : "Start Writing Timer"}
+            className={`control-icon-button ${activeDropdown === 'timer' ? 'active' : ''} ${timerActive ? 'authenticated' : ''}`}
+            onClick={() => toggleDropdown('timer')}
+            title="Writing Timer Options"
+            aria-expanded={activeDropdown === 'timer'}
+            aria-haspopup="true"
           >
             <div className="control-button-content">
               <span className="control-icon">⏱️</span>
             </div>
             <div className="control-tooltip">Timer</div>
           </button>
+          {activeDropdown === 'timer' && (
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">Writing Timer</div>
+              <button
+                className={`dropdown-option ${timerActive ? 'selected' : ''}`}
+                onClick={() => handleSelection('timer', 'toggle')}
+                role="menuitem"
+              >
+                <span className="option-icon">⏱️</span>
+                <span className="option-text">{timerActive ? 'Stop Timer' : 'Start Timer'}</span>
+                {timerActive && <span className="selected-indicator">✓</span>}
+              </button>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('timer', 'reset')}
+                role="menuitem"
+              >
+                <span className="option-icon">🔄</span>
+                <span className="option-text">Reset Timer</span>
+              </button>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('timer', 'settings')}
+                role="menuitem"
+              >
+                <span className="option-icon">⚙️</span>
+                <span className="option-text">Timer Settings</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Save Checkpoint Button */}
-        <div className="control-action-group">
+        <div className="control-icon-group">
           <button
-            className="control-action-button"
-            onClick={handleSaveCheckpoint}
-            title="Save Checkpoint"
-            aria-label="Save Checkpoint"
+            className={`control-icon-button ${activeDropdown === 'save' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('save')}
+            title="Save Options"
+            aria-expanded={activeDropdown === 'save'}
+            aria-haspopup="true"
           >
             <div className="control-button-content">
               <span className="control-icon">💾</span>
             </div>
             <div className="control-tooltip">Save</div>
           </button>
+          {activeDropdown === 'save' && (
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">Save Options</div>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('save', 'checkpoint')}
+                role="menuitem"
+              >
+                <span className="option-icon">💾</span>
+                <span className="option-text">Save Checkpoint</span>
+              </button>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('save', 'auto')}
+                role="menuitem"
+              >
+                <span className="option-icon">🔄</span>
+                <span className="option-text">Auto-Save Settings</span>
+              </button>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('save', 'export')}
+                role="menuitem"
+              >
+                <span className="option-icon">📤</span>
+                <span className="option-text">Export Document</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Writing Analytics Button */}
-        <div className="control-action-group">
+        {/* Settings Icon */}
+        <div className="control-icon-group">
           <button
-            className={`control-action-button ${showWritingAnalytics ? 'active' : ''}`}
-            onClick={() => setShowWritingAnalytics(true)}
-            title="Writing Analytics"
-            aria-label="Writing Analytics"
-          >
-            <div className="control-button-content">
-              <span className="control-icon">📊</span>
-            </div>
-            <div className="control-tooltip">Analytics</div>
-          </button>
-        </div>
-
-        {/* Document Manager Button */}
-        <div className="control-action-group">
-          <button
-            className={`control-action-button ${showDocumentManager ? 'active' : ''}`}
-            onClick={() => setShowDocumentManager(true)}
-            title="Manage Documents"
-            aria-label="Manage Documents"
-          >
-            <div className="control-button-content">
-              <span className="control-icon">📄</span>
-              {documentManager.hasUnsavedChanges && (
-                <div className="unsaved-indicator" title="Unsaved changes">•</div>
-              )}
-            </div>
-            <div className="control-tooltip">
-              Documents{documentManager.isSaving && ' (saving...)'}
-            </div>
-          </button>
-        </div>
-
-        {/* NEW: Settings Icon */}
-        <div className="control-action-group">
-          <button
-            className="control-action-button"
-            onClick={handleSettingsClick}
-            title="Settings"
-            aria-label="Settings"
+            className={`control-icon-button ${activeDropdown === 'settings' ? 'active' : ''}`}
+            onClick={() => toggleDropdown('settings')}
+            title="Settings Options"
+            aria-expanded={activeDropdown === 'settings'}
+            aria-haspopup="true"
           >
             <div className="control-button-content">
               <span className="control-icon">⚙️</span>
             </div>
             <div className="control-tooltip">Settings</div>
           </button>
+          {activeDropdown === 'settings' && (
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">Settings</div>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('settings', 'preferences')}
+                role="menuitem"
+              >
+                <span className="option-icon">🎨</span>
+                <span className="option-text">Preferences</span>
+              </button>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('settings', 'theme')}
+                role="menuitem"
+              >
+                <span className="option-icon">🌙</span>
+                <span className="option-text">Theme Settings</span>
+              </button>
+              <button
+                className="dropdown-option"
+                onClick={() => handleSelection('settings', 'keyboard')}
+                role="menuitem"
+              >
+                <span className="option-icon">⌨️</span>
+                <span className="option-text">Keyboard Shortcuts</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* NEW: Sign In/Sign Up Icon */}
-        <div className="control-action-group">
+        {/* Sign In/Sign Up Icon */}
+        <div className="control-icon-group">
           <button
-            className={`control-action-button ${isAuthenticated ? 'authenticated' : ''}`}
-            onClick={handleAuthClick}
-            title={isAuthenticated ? `Signed in as ${user?.display_name || user?.username}` : "Sign In/Up"}
-            aria-label={isAuthenticated ? "User Profile" : "Sign In/Up"}
+            className={`control-icon-button ${activeDropdown === 'auth' ? 'active' : ''} ${isAuthenticated ? 'authenticated' : ''}`}
+            onClick={() => toggleDropdown('auth')}
+            title={isAuthenticated ? `Account: ${user?.display_name || user?.username}` : "Account Options"}
+            aria-expanded={activeDropdown === 'auth'}
+            aria-haspopup="true"
           >
             <div className="control-button-content">
               {isAuthenticated ? (
@@ -373,93 +418,63 @@ const Controls: React.FC = () => {
               )}
             </div>
             <div className="control-tooltip">
-              {isAuthenticated ? "Profile" : "Sign In/Up"}
+              {isAuthenticated ? "Account" : "Sign In/Up"}
             </div>
           </button>
+          {activeDropdown === 'auth' && (
+            <div className="control-dropdown expanded-dropdown" role="menu">
+              <div className="dropdown-header">{isAuthenticated ? 'Account' : 'Authentication'}</div>
+              {isAuthenticated ? (
+                <>
+                  <button
+                    className="dropdown-option"
+                    onClick={() => handleSelection('auth', 'profile')}
+                    role="menuitem"
+                  >
+                    <span className="option-icon">👤</span>
+                    <span className="option-text">View Profile</span>
+                  </button>
+                  <button
+                    className="dropdown-option"
+                    onClick={() => handleSelection('auth', 'settings')}
+                    role="menuitem"
+                  >
+                    <span className="option-icon">⚙️</span>
+                    <span className="option-text">Account Settings</span>
+                  </button>
+                  <button
+                    className="dropdown-option"
+                    onClick={() => handleSelection('auth', 'logout')}
+                    role="menuitem"
+                  >
+                    <span className="option-icon">🚪</span>
+                    <span className="option-text">Sign Out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="dropdown-option"
+                    onClick={() => handleSelection('auth', 'login')}
+                    role="menuitem"
+                  >
+                    <span className="option-icon">🔑</span>
+                    <span className="option-text">Sign In</span>
+                  </button>
+                  <button
+                    className="dropdown-option"
+                    onClick={() => handleSelection('auth', 'register')}
+                    role="menuitem"
+                  >
+                    <span className="option-icon">📝</span>
+                    <span className="option-text">Sign Up</span>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-      />
-
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode={authMode}
-      />
-
-      {/* Writing Analytics Modal */}
-      {showWritingAnalytics && (
-        <WritingAnalytics onClose={() => setShowWritingAnalytics(false)} />
-      )}
-
-      {/* Document Manager Modal */}
-      {showDocumentManager && (
-        <div className="modal-overlay" onClick={() => setShowDocumentManager(false)}>
-          <div className="modal-content document-modal" onClick={(e) => e.stopPropagation()}>
-            <DocumentManager
-              onDocumentSelect={(doc) => {
-                documentManager.setCurrentDocument(doc);
-                setShowDocumentManager(false);
-              }}
-              onClose={() => setShowDocumentManager(false)}
-            />
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 1000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-        }
-
-        .modal-content {
-          background: white;
-          border-radius: 8px;
-          max-width: 600px;
-          width: 100%;
-          max-height: 90vh;
-          overflow: hidden;
-        }
-
-        .document-modal {
-          max-width: 700px;
-        }
-
-        .unsaved-indicator {
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          width: 8px;
-          height: 8px;
-          background: #ef4444;
-          border-radius: 50%;
-          color: white;
-          font-size: 12px;
-          line-height: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .control-button-content {
-          position: relative;
-        }
-      `}</style>
     </div>
   );
 };
