@@ -386,7 +386,7 @@ body {
 }
 
 .controls-container.expanded {
-  width: 280px;
+  width: 520px;
 }
 
 .controls-left {
@@ -498,24 +498,26 @@ body {
   border: 1px solid var(--border-primary);
   border-radius: var(--rounded-lg);
   box-shadow: var(--shadow-lg);
-  min-width: 320px;
+  min-width: 280px;
   z-index: 1000;
   animation: fadeIn 0.2s ease-out;
 }
 
 .expanded-dropdown {
-  min-width: 320px;
-  max-width: 400px;
+  min-width: 360px;
+  max-width: 450px;
+  width: max-content;
 }
 
 .dropdown-header {
-  padding: 0.75rem 1rem 0.5rem 1rem;
-  font-size: 0.75rem;
+  padding: 1rem 1.25rem 0.75rem 1.25rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-tertiary);
 }
 
 @keyframes fadeIn {
@@ -531,17 +533,18 @@ body {
 
 .dropdown-option {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
   border: none;
   background: none;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+  line-height: 1.4;
 }
 
 .dropdown-option:first-child {
