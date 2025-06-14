@@ -183,3 +183,10 @@ dog-writer-backup/
 
 # Custom Ignores
 dog-writer-backup/ 
+
+# local reports
+duplicate-report/
+html-report/
+coverage/
+.tox/
+.nox/ 

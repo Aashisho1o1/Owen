@@ -13,6 +13,7 @@ from datetime import datetime
 
 from services.document_service import document_service, Document, DocumentVersion, DocumentError
 from services.auth_service import verify_token
+from utils.decorators import handle_exceptions
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 security = HTTPBearer()
@@ -114,6 +115,7 @@ def version_to_response(version: DocumentVersion) -> VersionResponse:
 # Document CRUD Endpoints
 
 @router.get("/", response_model=DocumentListResponse)
+@handle_exceptions()
 async def get_documents(
     user_id: str = Depends(get_current_user_id),
     folder_id: Optional[str] = Query(None),
@@ -123,105 +125,82 @@ async def get_documents(
     offset: int = Query(0, ge=0)
 ):
     """Get all documents for the authenticated user with optional filtering"""
-    try:
-        documents = document_service.get_user_documents(
-            user_id=user_id,
-            folder_id=folder_id,
-            series_id=series_id,
-            document_type=document_type
-        )
-        
-        # Apply pagination
-        total_count = len(documents)
-        paginated_docs = documents[offset:offset + limit]
-        
-        # Calculate total word count
-        total_words = sum(doc.word_count for doc in documents)
-        
-        return DocumentListResponse(
-            documents=[document_to_response(doc) for doc in paginated_docs],
-            total_count=total_count,
-            total_words=total_words
-        )
-        
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    documents = document_service.get_user_documents(
+        user_id=user_id,
+        folder_id=folder_id,
+        series_id=series_id,
+        document_type=document_type
+    )
+    
+    # Apply pagination
+    total_count = len(documents)
+    paginated_docs = documents[offset:offset + limit]
+    
+    # Calculate total word count
+    total_words = sum(doc.word_count for doc in documents)
+    
+    return DocumentListResponse(
+        documents=[document_to_response(doc) for doc in paginated_docs],
+        total_count=total_count,
+        total_words=total_words
+    )
 
 @router.get("/{document_id}", response_model=DocumentResponse)
+@handle_exceptions()
 async def get_document(
     document_id: str,
     user_id: str = Depends(get_current_user_id)
 ):
     """Get a specific document by ID"""
-    try:
-        document = document_service.get_document(document_id)
-        
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-        
-        # Verify ownership
-        if document.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-        
-        return document_to_response(document)
-        
-    except HTTPException:
-        raise
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    document = document_service.get_document(document_id)
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Verify ownership
+    if document.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return document_to_response(document)
 
 @router.post("/", response_model=DocumentResponse, status_code=201)
+@handle_exceptions()
 async def create_document(
     request: CreateDocumentRequest,
     user_id: str = Depends(get_current_user_id)
 ):
     """Create a new document"""
-    try:
-        document = document_service.create_document(
-            user_id=user_id,
-            title=request.title,
-            content=request.content,
-            document_type=request.document_type,
-            folder_id=request.folder_id,
-            series_id=request.series_id,
-            chapter_number=request.chapter_number
-        )
-        
-        return document_to_response(document)
-        
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    document = document_service.create_document(
+        user_id=user_id,
+        title=request.title,
+        content=request.content,
+        document_type=request.document_type,
+        folder_id=request.folder_id,
+        series_id=request.series_id,
+        chapter_number=request.chapter_number
+    )
+    
+    return document_to_response(document)
 
 @router.get("/stats/overview")
+@handle_exceptions()
 async def get_document_stats(
     user_id: str = Depends(get_current_user_id)
 ):
     """Get overview statistics for user's documents"""
-    try:
-        documents = document_service.get_user_documents(user_id)
-        
-        total_documents = len(documents)
-        total_words = sum(doc.word_count for doc in documents)
-        
-        # Group by document type
-        type_counts = {}
-        for doc in documents:
-            type_counts[doc.document_type] = type_counts.get(doc.document_type, 0) + 1
-        
-        return {
-            "total_documents": total_documents,
-            "total_words": total_words,
-            "document_types": type_counts,
-            "average_words_per_document": total_words // total_documents if total_documents > 0 else 0
-        }
-        
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error") 
+    documents = document_service.get_user_documents(user_id)
+    
+    total_documents = len(documents)
+    total_words = sum(doc.word_count for doc in documents)
+    
+    # Group by document type
+    type_counts = {}
+    for doc in documents:
+        type_counts[doc.document_type] = type_counts.get(doc.document_type, 0) + 1
+    
+    return {
+        "total_documents": total_documents,
+        "total_words": total_words,
+        "document_types": type_counts,
+        "average_words_per_document": total_words // total_documents if total_documents > 0 else 0
+    } 
