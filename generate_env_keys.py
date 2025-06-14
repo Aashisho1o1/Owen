@@ -30,10 +30,20 @@ def main():
     
     print("Writing secure environment variables to '.env' file...\n")
     
+    # Generate a master encryption key for encrypting sensitive data
+    master_key = Fernet.generate_key()
+    fernet = Fernet(master_key)
+    
+    # Encrypt sensitive data
+    encrypted_jwt_secret = fernet.encrypt(jwt_secret.encode()).decode()
+    encrypted_db_encryption_key = fernet.encrypt(db_encryption_key.encode()).decode()
+    encrypted_session_secret = fernet.encrypt(session_secret.encode()).decode()
+    
     with open(".env", "w") as env_file:
-        env_file.write(f"JWT_SECRET_KEY={jwt_secret}\n")
-        env_file.write(f"DB_ENCRYPTION_KEY={db_encryption_key}\n")
-        env_file.write(f"SESSION_SECRET={session_secret}\n")
+        env_file.write(f"MASTER_ENCRYPTION_KEY={master_key.decode()}\n")
+        env_file.write(f"JWT_SECRET_KEY={encrypted_jwt_secret}\n")
+        env_file.write(f"DB_ENCRYPTION_KEY={encrypted_db_encryption_key}\n")
+        env_file.write(f"SESSION_SECRET={encrypted_session_secret}\n")
     
     print("✅ Secure environment variables have been written to '.env'.")
     print("Please copy the values from the '.env' file to your Railway environment variables.")
