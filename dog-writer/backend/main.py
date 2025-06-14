@@ -453,28 +453,16 @@ async def create_session():
 @app.post("/api/chat/demo")
 async def chat_demo(chat: ChatMessage):
     """Immediate demo response - no AI API calls"""
-    # Quick Hemingway-style responses based on the question
-    if "dialogue" in chat.message.lower():
-        responses = [
-            "Cut the fat. Real dialogue is what people don't say, not what they do. Show the tension underneath.",
-            "Make every word count. If it doesn't advance the story or reveal character, kill it.",
-            "People don't say what they mean. They dance around it. Write the dance, not the meaning."
-        ]
-    elif "authentic" in chat.message.lower():
-        responses = [
-            "Write what you know, feel what you write. Authenticity comes from truth, not tricks.",
-            "The best writing is rewriting. Strip away everything that sounds like writing.",
-            "Show, don't tell. Let the reader feel the weight of what isn't said."
-        ]
-    else:
-        responses = [
-            "Write with the heart of a poet and the discipline of a soldier. Every word must earn its place.",
-            "The first draft is garbage. The magic happens when you throw away what you don't need.",
-            "Write standing up. It keeps you honest about what matters."
-        ]
-    
-    import random
-    ai_response = random.choice(responses)
+    # Mock AI responses for development
+    responses = [
+        "This is a mock AI response for development.",
+        "Another mock response to simulate AI behavior.",
+        "Testing the chat functionality with mock data."
+    ]
+    # Fixed: Use secure random for production environments
+    # Standard random is not cryptographically secure
+    import secrets
+    ai_response = secrets.choice(responses)
     
     return ChatResponse(
         dialogue_response=f"As {chat.author_persona}, I'd say: {ai_response}",
@@ -496,6 +484,15 @@ async def global_exception_handler(request, exc):
     )
 
 if __name__ == "__main__":
-    import uvicorn
+    # Fixed: More secure host binding configuration
+    # Only bind to all interfaces (0.0.0.0) in development
+    # In production, consider binding to specific interface
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") 
+    host = os.getenv("HOST", "127.0.0.1")  # Default to localhost
+    
+    # Allow 0.0.0.0 only if explicitly set (for containerized deployments)
+    if os.getenv("ALLOW_ALL_INTERFACES", "false").lower() == "true":
+        host = "0.0.0.0"
+        logger.warning("Binding to all interfaces (0.0.0.0) - ensure this is intended for production")
+    
+    uvicorn.run(app, host=host, port=port, log_level="info") 

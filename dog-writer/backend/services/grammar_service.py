@@ -223,7 +223,10 @@ class GrammarService:
     
     def _generate_text_hash(self, text: str) -> str:
         """Generate hash for caching"""
-        return hashlib.md5(text.encode()).hexdigest()
+        # Fixed: Replace weak MD5 with secure SHA-256
+        # MD5 is vulnerable to collision attacks and should not be used
+        # SHA-256 provides better security for cache key generation
+        return hashlib.sha256(text.encode('utf-8')).hexdigest()
     
     def _is_cache_valid(self, result: GrammarCheckResult) -> bool:
         """Check if cached result is still valid"""
