@@ -1,0 +1,139 @@
+name: "Branch-Specific Security Analysis"
+
+# Configure this workflow to run on specific branches only
+on:
+  push:
+    branches: 
+      - "last-check"  # Only run on last-check branch
+      # - "feature/security-*"  # Uncomment for feature branches
+      # - "develop"             # Uncomment for develop branch
+  pull_request:
+    branches: 
+      - "last-check"  # Only for PRs targeting last-check
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      target_branch:
+        description: 'Branch to scan'
+        required: false
+        default: 'last-check'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  codeql-targeted:
+    name: CodeQL Analysis (Branch-Specific)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript', 'python' ]
+
+    steps:
+    - name: Checkout specific branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.target_branch || github.ref }}
+        fetch-depth: 0
+
+    - name: Branch Info
+      run: |
+        echo "🔍 Scanning branch: $(git branch --show-current)"
+        echo "📋 Commit SHA: $(git rev-parse HEAD)"
+        echo "🏢 Repository: ${{ github.repository }}"
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Set up Node.js (for JavaScript)
+      if: matrix.language == 'javascript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: dog-writer/frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      if: matrix.language == 'javascript'
+      run: |
+        cd dog-writer/frontend
+        npm ci
+
+    - name: Set up Python (for Python)
+      if: matrix.language == 'python'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install backend dependencies
+      if: matrix.language == 'python'
+      run: |
+        cd dog-writer/backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}/branch:${{ github.ref_name }}"
+        upload: true
+
+  bandit-targeted:
+    name: Bandit Security Scan (Branch-Specific)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout specific branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.target_branch || github.ref }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Bandit
+      run: pip install bandit[toml]
+
+    - name: Run Bandit Security Scan
+      run: |
+        cd dog-writer/backend
+        echo "🔍 Running Bandit security scan on branch: ${{ github.ref_name }}"
+        bandit -r . -f json -o bandit-branch-report.json || true
+        bandit -r . -f txt || true
+
+    - name: Upload Bandit Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: bandit-branch-results-${{ github.ref_name }}
+        path: dog-writer/backend/bandit-branch-report.json
+
+  security-summary:
+    name: Security Summary (Branch-Specific)
+    runs-on: ubuntu-latest
+    needs: [codeql-targeted, bandit-targeted]
+    if: always()
+    steps:
+    - name: Security Scan Summary
+      run: |
+        echo "🔍 Security Analysis Complete for Branch: ${{ github.ref_name }}"
+        echo "📊 Results available in GitHub Security tab"
+        echo "📋 Branch-specific artifacts uploaded"
+        echo ""
+        echo "🎯 Scanned Components:"
+        echo "  ✅ CodeQL Analysis (JavaScript + Python)"
+        echo "  ✅ Bandit Static Analysis (Python)"
+        echo ""
+        echo "📁 View detailed results at:"
+        echo "  https://github.com/${{ github.repository }}/security"
