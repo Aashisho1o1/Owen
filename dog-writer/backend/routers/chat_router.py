@@ -274,7 +274,7 @@ async def complete_onboarding(
         print(f"Error completing onboarding: {e}")
         return OnboardingResponse(
             success=False,
-            message=str(e)
+            message="An internal error occurred while completing onboarding."
         )
 
 @router.get("/preferences")
@@ -300,7 +300,7 @@ async def get_user_preferences(user_id: str = Depends(get_current_user_id)):
         print(f"Error getting user preferences: {e}")
         return {
             "status": "error",
-            "message": str(e),
+            "message": "An internal error occurred while retrieving user preferences.",
             "preferences": None
         }
 
@@ -324,4 +324,4 @@ async def get_style_options():
         }
     except Exception as e:
         print(f"Error getting style options: {e}")
-        return {"error": str(e)} 
+        return {"error": "An internal error occurred while retrieving style options."} 
