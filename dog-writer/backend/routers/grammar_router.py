@@ -158,7 +158,8 @@ async def check_grammar_stream(
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
             
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            logger.exception("An error occurred during grammar checking.")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'An internal error has occurred.'})}\n\n"
     
     return StreamingResponse(generate_stream(), media_type="text/plain")
 
