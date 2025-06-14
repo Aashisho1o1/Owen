@@ -1,11 +1,11 @@
 # Core FastAPI dependencies
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+python-multipart==0.0.18
 python-dotenv==1.0.0
 
 # Authentication and Security
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 PyJWT==2.8.0
 bcrypt==4.2.1
@@ -23,7 +23,7 @@ bandit==1.7.5
 safety==2.3.5
 
 # HTTP requests
-requests==2.31.0
+requests==2.32.4
 
 # AI integrations (when API keys are provided)
 openai>=1.35.0
@@ -32,10 +32,10 @@ google-generativeai>=0.7.0
 
 # Additional utilities
 aiofiles==23.2.1
-jinja2==3.1.2
+jinja2==3.1.6
 
 # Grammar checking dependencies
-aiohttp==3.9.1
+aiohttp==3.10.11
 
 # Database Support (SQLite only for now - PostgreSQL can be added later)
 # SQLite (current) - keep for compatibility and development
