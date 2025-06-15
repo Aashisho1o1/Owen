@@ -11,9 +11,9 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from services.document_service import document_service, Document, DocumentVersion, DocumentError
-from services.auth_service import verify_token
-from utils.decorators import handle_exceptions
+from ..services.document_service import document_service, Document, DocumentVersion, DocumentError
+from ..services.auth_service import verify_token
+from ..utils.decorators import handle_exceptions
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 security = HTTPBearer()

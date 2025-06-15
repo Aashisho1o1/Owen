@@ -9,10 +9,10 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 
-from services.analytics_service import analytics_service
-from services.writing_analytics_service import writing_analytics_service
-from services.auth_service import verify_token
-from config.analytics_config import PrivacyLevel
+from ..services.analytics_service import analytics_service
+from ..services.writing_analytics_service import writing_analytics_service
+from ..services.auth_service import verify_token
+from ..config.analytics_config import PrivacyLevel
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 security = HTTPBearer()
