@@ -341,12 +341,17 @@ async def chat_message(chat: ChatMessage):
                     # Create full prompt for Gemini
                     full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
                     
-                    response = model.generate_content(
-                        full_prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            max_output_tokens=150,
-                            temperature=0.7,
-                        )
+                    # Run Gemini generation in a thread with a 15-second timeout to avoid long hangs
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            model.generate_content,
+                            full_prompt,
+                            generation_config=genai.types.GenerationConfig(
+                                max_output_tokens=150,
+                                temperature=0.7,
+                            )
+                        ),
+                        timeout=15  # seconds
                     )
                     
                     print(f"[DEBUG] Gemini call completed successfully")
