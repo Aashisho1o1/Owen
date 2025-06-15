@@ -204,6 +204,47 @@
   color: white;
 }
 
+/* Enhanced text selection feedback for AI discussion */
+.text-selected-for-ai {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.2) 100%);
+  border-bottom: 2px solid var(--accent-blue);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-blue);
+  text-decoration-style: wavy;
+  border-radius: 2px;
+  padding: 1px 2px;
+  animation: highlightPulse 0.3s ease-out;
+  position: relative;
+}
+
+.text-selected-for-ai::after {
+  content: '💬';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 12px;
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+}
+
+@keyframes highlightPulse {
+  0% {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(147, 197, 253, 0.4) 100%);
+    transform: scale(1.02);
+  }
+  100% {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.2) 100%);
+    transform: scale(1);
+  }
+}
+
 /* Focus styles */
 .editor-container:focus-within {
   box-shadow: 0 0 0 2px var(--accent-blue);

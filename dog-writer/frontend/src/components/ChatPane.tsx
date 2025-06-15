@@ -21,7 +21,10 @@ const ChatPane: React.FC = () => {
     authorPersona,
     isStreaming,
     streamText,
-    isThinking
+    isThinking,
+    chatApiError,
+    apiGlobalError,
+    checkApiConnection
   } = useAppContext();
 
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
@@ -195,6 +198,32 @@ const ChatPane: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* API Error Display */}
+        {(chatApiError || apiGlobalError) && (
+          <div className="chat-error-box">
+            <div className="error-icon">⚠️</div>
+            <div className="error-content">
+              <div className="error-title">Connection Issue</div>
+              <div className="error-message">
+                {chatApiError || apiGlobalError}
+              </div>
+              <button 
+                className="test-connection-button"
+                onClick={async () => {
+                  try {
+                    await checkApiConnection();
+                    handleSendMessageWrapper("Test connection - please respond with a simple greeting.");
+                  } catch (error) {
+                    console.error('Connection test failed:', error);
+                  }
+                }}
+              >
+                🔄 Test Connection
+              </button>
+            </div>
           </div>
         )}
         

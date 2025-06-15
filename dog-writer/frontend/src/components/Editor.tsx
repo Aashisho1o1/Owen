@@ -176,10 +176,69 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
       const { from, to } = editor.view.state.selection;
       const selectedText = editor.view.state.doc.textBetween(from, to, ' ');
       if (selectedText.trim()) {
+        // Clear any previous highlighting
+        clearSelectedTextHighlight();
+        
+        // Add visual feedback for selected text
+        addSelectedTextHighlight(from, to);
+        
         onTextHighlighted(selectedText);
+        
+        // Auto-clear selection highlighting after 5 seconds
+        setTimeout(() => {
+          clearSelectedTextHighlight();
+        }, 5000);
       }
+    } else {
+      // Clear highlighting when selection is cleared
+      clearSelectedTextHighlight();
     }
   }, [editor, onTextHighlighted]);
+
+  // Function to add visual highlight to selected text
+  const addSelectedTextHighlight = useCallback((from: number, to: number) => {
+    if (!editor) return;
+    
+    try {
+      const editorElement = editor.view.dom;
+      const selection = editor.view.state.selection;
+      
+      // Create a temporary class to highlight the selected text
+      const currentHTML = editor.getHTML();
+      const beforeText = editor.view.state.doc.textBetween(0, from, ' ');
+      const selectedText = editor.view.state.doc.textBetween(from, to, ' ');
+      const afterText = editor.view.state.doc.textBetween(to, editor.view.state.doc.content.size, ' ');
+      
+      const highlightedHTML = beforeText + 
+        `<span class="text-selected-for-ai">${selectedText}</span>` + 
+        afterText;
+      
+      // Update content while preserving cursor position
+      editor.commands.setContent(highlightedHTML, false);
+    } catch (error) {
+      console.warn('Could not add visual highlight:', error);
+    }
+  }, [editor]);
+
+  // Function to clear visual highlight
+  const clearSelectedTextHighlight = useCallback(() => {
+    if (!editor) return;
+    
+    try {
+      const editorElement = editor.view.dom;
+      const highlightedElements = editorElement.querySelectorAll('.text-selected-for-ai');
+      
+      highlightedElements.forEach(element => {
+        const parent = element.parentNode;
+        if (parent) {
+          parent.insertBefore(document.createTextNode(element.textContent || ''), element);
+          parent.removeChild(element);
+        }
+      });
+    } catch (error) {
+      console.warn('Could not clear visual highlight:', error);
+    }
+  }, [editor]);
   
   // Apply font size and family
   useEffect(() => {
@@ -196,8 +255,29 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     const onSelectionUpdate = () => {
       handleSelectionChange();
     };
+
+    // Handle mouseup events for better selection detection
+    const handleMouseUp = () => {
+      setTimeout(() => {
+        handleSelectionChange();
+      }, 10); // Small delay to ensure selection is finalized
+    };
+
+    // Handle keyboard selection (Shift + arrow keys)
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.shiftKey || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        setTimeout(() => {
+          handleSelectionChange();
+        }, 10);
+      }
+    };
     
     editor.on('selectionUpdate', onSelectionUpdate);
+    
+    // Add direct DOM event listeners for better selection detection
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener('mouseup', handleMouseUp);
+    editorElement.addEventListener('keyup', handleKeyUp);
     
     // Handle focus/blur for placeholder
     const handleTransaction = () => {
@@ -214,6 +294,8 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     return () => {
       editor.off('selectionUpdate', onSelectionUpdate);
       editor.off('transaction', handleTransaction);
+      editorElement.removeEventListener('mouseup', handleMouseUp);
+      editorElement.removeEventListener('keyup', handleKeyUp);
     };
   }, [editor, handleSelectionChange]);
 

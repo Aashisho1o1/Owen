@@ -2,6 +2,49 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Add axios interceptors for better error handling and logging
+axios.interceptors.request.use(
+  (config) => {
+    console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log('Request data:', config.data);
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+axios.interceptors.response.use(
+  (response) => {
+    console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
+    return response;
+  },
+  (error) => {
+    console.error('❌ Response Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    
+    // Enhanced error message for user
+    if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+      error.userMessage = 'Unable to connect to the server. Please check if the backend is running.';
+    } else if (error.response?.status === 500) {
+      error.userMessage = 'Server error occurred. Please try again later.';
+    } else if (error.response?.status === 404) {
+      error.userMessage = 'API endpoint not found. Please check your configuration.';
+    } else {
+      error.userMessage = error.response?.data?.detail || error.response?.data?.error || error.message;
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

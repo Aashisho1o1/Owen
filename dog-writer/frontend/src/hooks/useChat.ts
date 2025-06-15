@@ -146,23 +146,36 @@ export const useChat = ({
       }
       setThinkingTrail(response.thinking_trail || null);
 
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('Error sending message in useChat:', error);
-      const assistantErrorMessage = 'Sorry, I encountered an error. Please try again.';
+      
+      const typedError = error as ApiError & { userMessage?: string };
+      
+      // Use the enhanced error message from axios interceptor if available
+      const userFriendlyMessage = typedError.userMessage || 'Sorry, I encountered an error. Please try again.';
+      
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: assistantErrorMessage }
+        { role: 'assistant', content: userFriendlyMessage }
       ]);
       
-      const typedError = error as ApiError;
+      // Detailed error for debugging
       let specificApiError = `Error: ${typedError.message || 'Unknown error'}`;
       if (typedError.response && typedError.response.data) {
         const errorDetail = typedError.response.data.detail || typedError.response.data.error || JSON.stringify(typedError.response.data);
         specificApiError = `API error: ${typedError.response.status} - ${errorDetail}`;
       } else if (typedError.response) {
         specificApiError = `API error: ${typedError.response.status} - ${typedError.response.statusText}`;
+      } else if (typedError.message?.includes('Network Error')) {
+        specificApiError = 'Network error: Unable to connect to the server. Please check if the backend is running.';
       }
+      
       setApiError(specificApiError);
+      
+      // Also set global error if the error is connection-related
+      if (setApiGlobalError && (typedError.message?.includes('Network Error') || typedError.message?.includes('ECONNREFUSED'))) {
+        setApiGlobalError('Backend connection failed. Please ensure the server is running.');
+      }
       
       setIsThinking(false);
       setIsStreaming(false);
