@@ -55,7 +55,7 @@ app = FastAPI(
 
 # Import document routes
 try:
-    from .routes.documents import router as documents_router
+    from routes.documents import router as documents_router
     DOCUMENT_ROUTES_AVAILABLE = True
 except ImportError as e:
     logger.error(f"Failed to import document routes: {e}")
@@ -63,8 +63,8 @@ except ImportError as e:
 
 # Import analytics routes and middleware
 try:
-    from .routes.analytics import router as analytics_router
-    from .middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
+    from routes.analytics import router as analytics_router
+    from middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
     ANALYTICS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Analytics components not available (optional): {e}")
