@@ -23,22 +23,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-# Import document routes
-try:
-    from routes.documents import router as documents_router
-    DOCUMENT_ROUTES_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import document routes: {e}")
-    DOCUMENT_ROUTES_AVAILABLE = False
-
-# Import analytics routes and middleware
-try:
-    from routes.analytics import router as analytics_router
-    from middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
-    ANALYTICS_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"Analytics components not available (optional): {e}")
-    ANALYTICS_AVAILABLE = False
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -59,16 +46,29 @@ if os.getenv("GEMINI_API_KEY"):
 else:
     logger.warning("GEMINI_API_KEY not found in environment variables")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 # Configure basic setup
 app = FastAPI(
     title="Owen AI Writer",
     description="Advanced AI Writing Assistant with Document Management and Analytics",
     version="2.2.0"
 )
+
+# Import document routes
+try:
+    from .routes.documents import router as documents_router
+    DOCUMENT_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import document routes: {e}")
+    DOCUMENT_ROUTES_AVAILABLE = False
+
+# Import analytics routes and middleware
+try:
+    from .routes.analytics import router as analytics_router
+    from .middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
+    ANALYTICS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Analytics components not available (optional): {e}")
+    ANALYTICS_AVAILABLE = False
 
 # Add Analytics Middleware (before CORS)
 if ANALYTICS_AVAILABLE:
