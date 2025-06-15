@@ -341,7 +341,7 @@ async def chat_message(chat: ChatMessage):
                     # Create full prompt for Gemini
                     full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
                     
-                    # Run Gemini generation in a thread with a 15-second timeout to avoid long hangs
+                    # Run Gemini generation in a thread with a 150-second timeout to avoid long hangs
                     response = await asyncio.wait_for(
                         asyncio.to_thread(
                             model.generate_content,
@@ -351,7 +351,7 @@ async def chat_message(chat: ChatMessage):
                                 temperature=0.7,
                             )
                         ),
-                        timeout=15  # seconds
+                        timeout=150  # seconds
                     )
                     
                     print(f"[DEBUG] Gemini call completed successfully")
