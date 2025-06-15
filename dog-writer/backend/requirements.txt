@@ -1,62 +1,32 @@
-# Core FastAPI dependencies
+# Core FastAPI dependencies - Railway Optimized
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.18
 python-dotenv==1.0.0
 
-# Authentication and Security
-python-jose[cryptography]==3.4.0
-passlib[bcrypt]==1.7.4
+# Essential Security (minimal set)
 PyJWT==2.8.0
 bcrypt==4.2.1
-cryptography>=42.0.2
 
-# Input validation and sanitization
+# Input validation
 bleach==6.2.0
-
-# Security and Rate Limiting
-slowapi==0.1.9
-redis==5.0.1
-
-# Security scanning tools
-bandit==1.7.5
-safety==2.3.5
 
 # HTTP requests
 requests==2.32.4
 
-# AI integrations (when API keys are provided)
+# AI integrations (core only)
 openai>=1.35.0
-# anthropic==0.39.0  # TEMPORARILY COMMENTED OUT FOR DEPLOYMENT
 google-generativeai>=0.7.0
 
-# Additional utilities
+# Essential utilities
 aiofiles==23.2.1
 jinja2==3.1.6
 
-# Grammar checking dependencies
+# Basic async support
 aiohttp==3.10.11
 
-# Database Support (SQLite only for now - PostgreSQL can be added later)
-# SQLite (current) - keep for compatibility and development
-# Built-in with Python, no additional packages needed
-
-# PostgreSQL Support (commented out due to Python 3.13 compilation issues)
-# psycopg2-binary==2.9.9  # Enable when needed for PostgreSQL
-# sqlalchemy==2.0.23     # Enable for advanced ORM features if needed
-# alembic==1.13.1        # Enable for database migrations if needed
-
-# Development and Testing
-pytest==8.3.4
-pytest-asyncio==0.25.0
-
-# Analytics and User Behavior Tracking (2025 Latest)
-posthog==4.10.0
-
-# Basic Text Analytics (Python 3.13 compatible)
-textblob==0.18.0
-vaderSentiment==3.3.2
+# Minimal analytics
 textstat==0.7.4
 
-# Performance Monitoring
+# Performance monitoring (lightweight)
 psutil==6.1.0 

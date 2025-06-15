@@ -36,7 +36,7 @@ try:
     from middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
     ANALYTICS_AVAILABLE = True
 except ImportError as e:
-    logger.error(f"Failed to import analytics components: {e}")
+    logger.warning(f"Analytics components not available (optional): {e}")
     ANALYTICS_AVAILABLE = False
 
 # Load environment variables from .env file
