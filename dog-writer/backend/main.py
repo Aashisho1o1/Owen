@@ -16,6 +16,7 @@ import google.generativeai as genai
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import logging
+import uvicorn
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -588,11 +589,14 @@ async def global_exception_handler(request, exc):
     )
 
 if __name__ == "__main__":
+    # This section only runs when executing the file directly (local development)
+    # Railway uses the startCommand in railway.toml instead
+    
     # Fixed: More secure host binding configuration
     # Only bind to all interfaces (0.0.0.0) in development
     # In production, consider binding to specific interface
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")  # Railway needs 0.0.0.0
     
-    logger.info(f"Starting Owen AI Writer on {host}:{port}")
+    logger.info(f"Starting Owen AI Writer locally on {host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info") 
