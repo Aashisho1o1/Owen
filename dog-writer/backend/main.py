@@ -53,6 +53,23 @@ app = FastAPI(
     version="2.2.0"
 )
 
+@app.get("/api/health")
+async def api_health():
+    """Extended API health check"""
+    return {
+        "status": "healthy",
+        "service": "Owen AI Backend",
+        "version": "2.0.0",
+        "mode": "full",
+        "timestamp": datetime.now().isoformat(),
+        "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
+        "ai_providers": {
+            "openai": bool(os.getenv("OPENAI_API_KEY")),
+            "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
+            "google": bool(os.getenv("GEMINI_API_KEY"))
+        }
+    }
+
 # Import document routes
 try:
     from routes.documents import router as documents_router
@@ -203,23 +220,6 @@ async def health():
         "mode": "full",
         "port": os.getenv("PORT", "8000"),
         "timestamp": datetime.now().isoformat()
-    }
-
-@app.get("/api/health")
-async def api_health():
-    """Extended API health check"""
-    return {
-        "status": "healthy",
-        "service": "Owen AI Backend",
-        "version": "2.0.0",
-        "mode": "full",
-        "timestamp": datetime.now().isoformat(),
-        "environment": os.getenv("RAILWAY_ENVIRONMENT", "production"),
-        "ai_providers": {
-            "openai": bool(os.getenv("OPENAI_API_KEY")),
-            "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
-            "google": bool(os.getenv("GEMINI_API_KEY"))
-        }
     }
 
 @app.get("/api/status")
