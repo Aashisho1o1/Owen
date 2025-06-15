@@ -23,19 +23,40 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # Import document routes
-from routes.documents import router as documents_router
+try:
+    from routes.documents import router as documents_router
+    DOCUMENT_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import document routes: {e}")
+    DOCUMENT_ROUTES_AVAILABLE = False
 
 # Import analytics routes and middleware
-from routes.analytics import router as analytics_router
-from middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
+try:
+    from routes.analytics import router as analytics_router
+    from middleware.analytics_middleware import create_analytics_middleware, create_writing_session_middleware
+    ANALYTICS_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import analytics components: {e}")
+    ANALYTICS_AVAILABLE = False
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Configure AI providers
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+
+# Configure Gemini with better error handling
+GEMINI_CONFIGURED = False
 if os.getenv("GEMINI_API_KEY"):
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    try:
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        GEMINI_CONFIGURED = True
+        logger.info("Gemini API configured successfully")
+    except Exception as e:
+        logger.error(f"Failed to configure Gemini API: {e}")
+        GEMINI_CONFIGURED = False
+else:
+    logger.warning("GEMINI_API_KEY not found in environment variables")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,46 +70,55 @@ app = FastAPI(
 )
 
 # Add Analytics Middleware (before CORS)
-try:
-    # Analytics middleware for tracking user behavior
-    analytics_middleware = create_analytics_middleware(
-        exclude_paths=["/health", "/api/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"]
-    )
-    app.add_middleware(analytics_middleware)
-    
-    # Writing session middleware for detailed writing analytics
-    writing_middleware = create_writing_session_middleware()
-    app.add_middleware(writing_middleware)
-    
-    ANALYTICS_ENABLED = True
-    logger.info("Analytics middleware enabled successfully")
-    
-except Exception as e:
-    logger.error(f"Failed to enable analytics middleware: {e}")
+if ANALYTICS_AVAILABLE:
+    try:
+        # Analytics middleware for tracking user behavior
+        analytics_middleware = create_analytics_middleware(
+            exclude_paths=["/health", "/api/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"]
+        )
+        app.add_middleware(analytics_middleware)
+        
+        # Writing session middleware for detailed writing analytics
+        writing_middleware = create_writing_session_middleware()
+        app.add_middleware(writing_middleware)
+        
+        ANALYTICS_ENABLED = True
+        logger.info("Analytics middleware enabled successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to enable analytics middleware: {e}")
+        ANALYTICS_ENABLED = False
+else:
     ANALYTICS_ENABLED = False
+    logger.warning("Analytics components not available - running without analytics")
 
 # Include document management routes
-try:
-    logger.info("Attempting to include document router...")
-    app.include_router(documents_router)
-    DOCUMENT_ROUTES_LOADED = True
-    logger.info("Document router included successfully.")
-except NameError:
-    logger.error("Failed to include document router because 'documents_router' is not defined.")
+if DOCUMENT_ROUTES_AVAILABLE:
+    try:
+        logger.info("Attempting to include document router...")
+        app.include_router(documents_router)
+        DOCUMENT_ROUTES_LOADED = True
+        logger.info("Document router included successfully.")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while including document router: {e}")
+        DOCUMENT_ROUTES_LOADED = False
+else:
     DOCUMENT_ROUTES_LOADED = False
-except Exception as e:
-    logger.error(f"An unexpected error occurred while including document router: {e}")
-    DOCUMENT_ROUTES_LOADED = False
+    logger.warning("Document routes not available - running without document management")
 
 # Include analytics routes
-try:
-    logger.info("Attempting to include analytics router...")
-    app.include_router(analytics_router)
-    ANALYTICS_ROUTES_LOADED = True
-    logger.info("Analytics router included successfully.")
-except Exception as e:
-    logger.error(f"Failed to include analytics router: {e}")
+if ANALYTICS_AVAILABLE:
+    try:
+        logger.info("Attempting to include analytics router...")
+        app.include_router(analytics_router)
+        ANALYTICS_ROUTES_LOADED = True
+        logger.info("Analytics router included successfully.")
+    except Exception as e:
+        logger.error(f"Failed to include analytics router: {e}")
+        ANALYTICS_ROUTES_LOADED = False
+else:
     ANALYTICS_ROUTES_LOADED = False
+    logger.warning("Analytics routes not available - running without analytics endpoints")
 
 # CORS configuration
 app.add_middleware(
@@ -132,7 +162,7 @@ async def read_root():
         "version": "2.2.0",
         "environment": os.getenv("RAILWAY_ENVIRONMENT", "development"),
         "features": {
-            "ai_providers": ["OpenAI", "Anthropic", "Google Gemini"] if client else ["Partially disabled"],
+            "ai_providers": ["OpenAI", "Anthropic", "Google Gemini 2.5 Pro"] if client else ["Partially disabled"],
             "security": "JWT Ready",
             "database": "SQLite Ready",
             "document_management": "Active" if DOCUMENT_ROUTES_LOADED else "Failed to load",
@@ -265,10 +295,55 @@ async def debug_env():
         "openai_key_length": len(os.getenv("OPENAI_API_KEY", "")),
         "google_key_exists": bool(os.getenv("GEMINI_API_KEY")),
         "google_key_length": len(os.getenv("GEMINI_API_KEY", "")),
+        "gemini_configured": GEMINI_CONFIGURED,
         "anthropic_key_exists": bool(os.getenv("ANTHROPIC_API_KEY")),
         "anthropic_key_length": len(os.getenv("ANTHROPIC_API_KEY", "")),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
+        "google_generativeai_available": True  # Since we imported it successfully
     }
+
+@app.get("/api/test/gemini")
+async def test_gemini():
+    """Test Gemini 2.5 Pro API connection"""
+    try:
+        if not os.getenv("GEMINI_API_KEY"):
+            return {"error": "No Gemini API key configured"}
+        
+        if not GEMINI_CONFIGURED:
+            return {"error": "Gemini API configuration failed"}
+        
+        print("[DEBUG] Testing Gemini 2.5 Pro API connection...")
+        model = genai.GenerativeModel('gemini-2.5-pro')
+        
+        # Simple test prompt for advanced reasoning
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                model.generate_content,
+                "Explain the concept of literary voice in exactly 10 words.",
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=30,
+                    temperature=0.7,
+                    top_p=0.9,
+                    top_k=40,
+                )
+            ),
+            timeout=60.0
+        )
+        
+        return {
+            "success": True,
+            "response": response.text.strip(),
+            "model": "gemini-2.5-pro",
+            "configured": GEMINI_CONFIGURED,
+            "capabilities": "Advanced reasoning, complex thinking, enhanced creativity"
+        }
+    except asyncio.TimeoutError:
+        logging.error("[ERROR] Gemini 2.5 Pro test timeout")
+        return {"error": "Gemini 2.5 Pro API test timed out after 60 seconds"}
+    except Exception as e:
+        logging.error(f"[ERROR] Gemini 2.5 Pro test failed: {e}", exc_info=True)
+        return {"error": f"Gemini 2.5 Pro API test failed: {str(e)}"}
 
 # Basic chat endpoints
 @app.post("/api/chat/message", response_model=ChatResponse)
@@ -331,47 +406,71 @@ async def chat_message(chat: ChatMessage):
                 thinking_trail = "Missing OpenAI API key"
                 
         elif "google" in provider or "gemini" in provider:
-            # Use Google Gemini
-            if os.getenv("GEMINI_API_KEY"):
+            # Use Google Gemini 2.5 Pro - Most advanced thinking model
+            if GEMINI_CONFIGURED and os.getenv("GEMINI_API_KEY"):
                 try:
-                    print(f"[DEBUG] Starting Gemini call for: {chat.message[:50]}...")
+                    print(f"[DEBUG] Starting Gemini 2.5 Pro call for: {chat.message[:50]}...")
                     
-                    model = genai.GenerativeModel('gemini-pro')
+                    # Use the latest Gemini 2.5 Pro model with advanced reasoning
+                    model = genai.GenerativeModel('gemini-2.5-pro')
                     
-                    # Create full prompt for Gemini
-                    full_prompt = f"{system_prompt}\n\nUser question: {chat.message}"
+                    # Create enhanced prompt for advanced reasoning
+                    enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
+
+Context: {chat.editor_text[:1000] if chat.editor_text else 'No text provided'}
+Focus area: {chat.help_focus}
+
+User question: {chat.message}
+
+Please provide thoughtful, actionable advice that reflects {chat.author_persona}'s distinctive voice and philosophy. Use your advanced reasoning to analyze the writing context and provide specific, practical guidance."""
                     
-                    # Run Gemini generation in a thread with a 150-second timeout to avoid long hangs
+                    # Configure generation settings optimized for Gemini 2.5 Pro
+                    generation_config = genai.types.GenerationConfig(
+                        max_output_tokens=300,  # Increased for more detailed responses
+                        temperature=0.7,
+                        top_p=0.9,  # Enhanced creativity control
+                        top_k=40,   # Vocabulary diversity
+                    )
+                    
+                    # Run Gemini 2.5 Pro generation with extended timeout for complex reasoning
                     response = await asyncio.wait_for(
                         asyncio.to_thread(
                             model.generate_content,
-                            full_prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                max_output_tokens=150,
-                                temperature=0.7,
-                            )
+                            enhanced_prompt,
+                            generation_config=generation_config
                         ),
-                        timeout=150  # seconds
+                        timeout=180  # Extended timeout for advanced reasoning
                     )
                     
-                    print(f"[DEBUG] Gemini call completed successfully")
+                    print(f"[DEBUG] Gemini 2.5 Pro call completed successfully")
                     ai_response = response.text.strip()
-                    thinking_trail = f"Google Gemini Pro ({chat.author_persona})"
+                    thinking_trail = f"Google Gemini 2.5 Pro - Advanced Reasoning ({chat.author_persona})"
+                    
+                except asyncio.TimeoutError:
+                    print(f"[ERROR] Gemini 2.5 Pro timeout after 180 seconds")
+                    ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight and purpose."
+                    thinking_trail = f"Gemini 2.5 Pro timeout - {chat.author_persona} fallback used"
                     
                 except Exception as gemini_error:
-                    print(f"[ERROR] Gemini failed: {str(gemini_error)[:100]}")
-                    # Provide intelligent fallback
+                    print(f"[ERROR] Gemini 2.5 Pro failed: {str(gemini_error)[:100]}")
+                    # Provide intelligent fallback based on the question
                     if "dialogue" in chat.message.lower():
-                        ai_response = f"As {chat.author_persona}: Make dialogue serve the story. Cut empty words, show character through what they don't say."
+                        ai_response = f"As {chat.author_persona}: Make dialogue serve the story. Cut empty words, show character through what they don't say. Every line should advance plot or reveal character."
+                    elif "character" in chat.message.lower():
+                        ai_response = f"As {chat.author_persona}: Characters must be real people with contradictions, desires, and flaws. Show, don't tell. Let their actions reveal their nature."
                     else:
-                        ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight."
+                        ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight and serve the story."
                     
-                    thinking_trail = f"Gemini timeout - {chat.author_persona} fallback used"
+                    thinking_trail = f"Gemini 2.5 Pro error - {chat.author_persona} fallback used"
                 
             else:
-                print(f"[DEBUG] No Gemini API key configured")
-                ai_response = f"Gemini API key missing. Please configure to get real AI responses."
-                thinking_trail = "Missing Gemini API key"
+                print(f"[DEBUG] Gemini not properly configured or API key missing")
+                if not GEMINI_CONFIGURED:
+                    ai_response = f"Gemini 2.5 Pro API configuration failed. Please check your API key and try again."
+                    thinking_trail = "Gemini 2.5 Pro configuration error"
+                else:
+                    ai_response = f"Gemini 2.5 Pro API key missing. Please configure to get advanced AI responses."
+                    thinking_trail = "Missing Gemini 2.5 Pro API key"
                 
         elif "anthropic" in provider or "claude" in provider:
             # Placeholder for Anthropic (would need anthropic library)
@@ -410,7 +509,7 @@ async def basic_chat():
             "Secure authentication",
             "Real-time responses"
         ],
-        "next_steps": "Add your OpenAI, Anthropic, or Google API keys to enable full AI features",
+        "next_steps": "Add your OpenAI, Anthropic, or Google Gemini 2.5 Pro API keys to enable full AI features",
         "frontend_url": "https://owen-frontend-production.up.railway.app"
     }
 
@@ -493,11 +592,7 @@ if __name__ == "__main__":
     # Only bind to all interfaces (0.0.0.0) in development
     # In production, consider binding to specific interface
     port = int(os.getenv("PORT", 8000))
-    host = os.getenv("HOST", "127.0.0.1")  # Default to localhost
+    host = os.getenv("HOST", "0.0.0.0")  # Railway needs 0.0.0.0
     
-    # Allow 0.0.0.0 only if explicitly set (for containerized deployments)
-    if os.getenv("ALLOW_ALL_INTERFACES", "false").lower() == "true":
-        host = "0.0.0.0"
-        logger.warning("Binding to all interfaces (0.0.0.0) - ensure this is intended for production")
-    
+    logger.info(f"Starting Owen AI Writer on {host}:{port}")
     uvicorn.run(app, host=host, port=port, log_level="info") 

@@ -284,3 +284,39 @@ const ChatPane: React.FC = () => {
 };
 
 export default ChatPane; 
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <div className="message-content">
+              {streamText}
+              <span className="typing-cursor">|</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Auto-scroll anchor */}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Thinking Trail */}
+      <ThinkingTrail 
+        trail={thinkingTrail || undefined}
+        isThinking={isThinking}
+        isVisible={showThinkingTrail}
+        onToggleVisibility={toggleThinkingTrail}
+      />
+
+      {/* Enhanced Chat Input */}
+      <ChatInput 
+        onSendMessage={handleSendMessageWrapper}
+        isDisabled={isStreaming || isThinking}
+        suggestedQuestions={highlightedText ? contextualPrompts : suggestedQuestions}
+        highlightedText={highlightedText || undefined}
+      />
+    </div>
+  );
+};
+
+export default ChatPane; 
