@@ -288,6 +288,15 @@ async def test_deployed():
         "message": "New code successfully deployed!"
     }
 
+@app.get("/api/test/canary")
+async def test_canary():
+    """A unique endpoint to confirm if deployments are working correctly."""
+    return {
+        "status": "ok",
+        "message": "Canary deployment successful. The new code is live.",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.get("/api/debug/env")
 async def debug_env():
     """Debug endpoint to check environment variables"""
