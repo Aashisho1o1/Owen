@@ -108,8 +108,15 @@ const ChatPane: React.FC = () => {
   }, [highlightedText, helpFocus, generateContextualPrompts]);
 
   const handleSendMessageWrapper = (message: string) => {
-    console.log("Sending message:", message);
-    handleSendMessage(message);
+    let finalMessage = message;
+
+    // If there's highlighted text and it's not already in the message, include it for context
+    if (highlightedText && !message.includes(highlightedText)) {
+      finalMessage = `${message}\n\nSelected text: "${highlightedText}"`;
+    }
+
+    console.log("Sending message:", finalMessage);
+    handleSendMessage(finalMessage);
   };
 
   const handleQuickQuestion = (questionTemplate: string) => {
