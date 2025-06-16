@@ -87,6 +87,14 @@ except ImportError as e:
     logger.warning(f"Analytics components not available (optional): {e}")
     ANALYTICS_AVAILABLE = False
 
+# Import grammar routes
+try:
+    from routers.grammar_router import router as grammar_router
+    GRAMMAR_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import grammar routes: {e}")
+    GRAMMAR_ROUTES_AVAILABLE = False
+
 # Add Analytics Middleware (before CORS)
 if ANALYTICS_AVAILABLE:
     try:
@@ -138,6 +146,14 @@ else:
     ANALYTICS_ROUTES_LOADED = False
     logger.warning("Analytics routes not available - running without analytics endpoints")
 
+# Include grammar routes
+if GRAMMAR_ROUTES_AVAILABLE:
+    try:
+        app.include_router(grammar_router)
+        logger.info("Grammar router included successfully.")
+    except Exception as e:
+        logger.error(f"Failed to include grammar router: {e}")
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -146,7 +162,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:4173",
-        "*"  # Allow all origins for now
+      # Allow all origins for now
     ],
     allow_credentials=True,
     allow_methods=["*"],
