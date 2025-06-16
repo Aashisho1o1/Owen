@@ -27,6 +27,8 @@ export interface UseChatOptions {
   setApiGlobalError?: React.Dispatch<React.SetStateAction<string | null>>;
   userPreferences?: UserPreferences;
   feedbackOnPrevious?: string;
+  highlightedText?: string;
+  highlightedTextId?: string;
 }
 
 export interface UseChatReturn {
@@ -52,6 +54,8 @@ export const useChat = ({
   setApiGlobalError,
   userPreferences,
   feedbackOnPrevious,
+  highlightedText,
+  highlightedTextId,
 }: UseChatOptions): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
@@ -129,6 +133,8 @@ export const useChat = ({
         user_preferences: userPreferences,
         feedback_on_previous: feedbackOnPrevious,
         english_variant: userPreferences?.english_variant,
+        highlighted_text: highlightedText,
+        highlight_id: highlightedTextId,
       };
       
       const response: ChatResponse = await api.chat(requestData);
@@ -180,7 +186,7 @@ export const useChat = ({
       setIsThinking(false);
       setIsStreaming(false);
     }
-  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious]);
+  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId]);
 
   const handleSaveCheckpoint = useCallback(async () => {
     logger.log("Save Checkpoint clicked");

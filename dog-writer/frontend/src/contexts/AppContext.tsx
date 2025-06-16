@@ -62,6 +62,14 @@ interface AppContextType {
   editorContent: string;
   setEditorContent: (content: string) => void;
   
+  // Text highlighting for AI feedback
+  highlightedText: string;
+  setHighlightedText: (text: string) => void;
+  highlightedTextId: string | null;
+  setHighlightedTextId: (id: string | null) => void;
+  handleTextHighlighted: (text: string, highlightId?: string) => void;
+  clearTextHighlight: () => void;
+  
   // Chat state
   messages: ChatMessage[];
   handleSendMessage: (message: string) => Promise<void>;
@@ -174,6 +182,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [helpFocus, setHelpFocus] = useState('Dialogue Writing');
   const [selectedLLM, setSelectedLLM] = useState('Google Gemini');
 
+  // Text highlighting state
+  const [highlightedText, setHighlightedText] = useState<string>('');
+  const [highlightedTextId, setHighlightedTextId] = useState<string | null>(null);
+
   // New personalization state
   const [userPreferences, setUserPreferences] = useState<UserPreferences>({
     english_variant: 'standard',
@@ -212,9 +224,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const {
     editorContent,
     setEditorContent,
-    highlightedText,
     handleTextHighlighted,
   } = useEditor({});
+
+  // Text highlighting handlers
+  const handleTextHighlightedWithId = useCallback((text: string, highlightId?: string) => {
+    setHighlightedText(text);
+    setHighlightedTextId(highlightId || null);
+    
+    // Also call the editor's handler if it exists
+    if (handleTextHighlighted) {
+      handleTextHighlighted(text);
+    }
+    
+    logger.log('Text highlighted for AI feedback:', { text: text.substring(0, 50) + '...', highlightId });
+  }, [handleTextHighlighted]);
+
+  const clearTextHighlight = useCallback(() => {
+    setHighlightedText('');
+    setHighlightedTextId(null);
+    logger.log('Text highlight cleared');
+  }, []);
 
   // Document management hook
   const documentsHook = useDocuments();
@@ -251,6 +281,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Pass new personalization parameters
     userPreferences,
     feedbackOnPrevious,
+    // Pass highlighted text parameters
+    highlightedText,
+    highlightedTextId,
   });
 
   // Load user preferences and style options on mount
@@ -386,8 +419,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Editor state
     editorContent,
     setEditorContent,
+    
+    // Text highlighting for AI feedback
     highlightedText,
-    handleTextHighlighted,
+    setHighlightedText,
+    highlightedTextId,
+    setHighlightedTextId,
+    handleTextHighlighted: handleTextHighlightedWithId,
+    clearTextHighlight,
     
     // Chat state
     messages,
@@ -488,11 +527,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     },
   }), [
     authorPersona, helpFocus, selectedLLM,
-    editorContent, highlightedText,
+    editorContent, highlightedText, highlightedTextId,
     messages, thinkingTrail, isStreaming, streamText, isThinking, chatApiError,
     apiGlobalError,
     // Adding missing dependencies:
-    setEditorContent, handleTextHighlighted,
+    setEditorContent, handleTextHighlightedWithId, clearTextHighlight,
     handleSendMessage, checkApiConnection, handleSaveCheckpoint,
     userPreferences, englishVariants, feedbackOnPrevious, showOnboarding,
     loadUserPreferences, updateEnglishVariant, submitFeedback, analyzeWritingSample, completeOnboarding,

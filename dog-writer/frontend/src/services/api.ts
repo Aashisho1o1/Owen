@@ -63,6 +63,8 @@ export interface UserPreferences {
 export interface ChatRequest {
   message: string;
   editor_text: string;
+  highlighted_text?: string;
+  highlight_id?: string;
   author_persona: string;
   help_focus: string;
   chat_history: ChatMessage[];
@@ -279,6 +281,32 @@ export interface UpdateDocumentRequest {
 export interface DocumentsResponse {
   documents: Document[];
   total: number;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface UserProfile {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
 }
 
 const api = {
@@ -526,6 +554,25 @@ const api = {
 
   getDocumentAnalytics: async (documentId: string): Promise<any> => {
     const response = await axios.get(`${API_URL}/api/documents/${documentId}/analytics`);
+    return response.data;
+  },
+
+  // Auth APIs
+  login: async (request: LoginRequest): Promise<TokenResponse> => {
+    const response = await axios.post<TokenResponse>(`${API_URL}/api/auth/login`, request);
+    return response.data;
+  },
+
+  register: async (request: RegisterRequest): Promise<TokenResponse> => {
+    const response = await axios.post<TokenResponse>(`${API_URL}/api/auth/register`, request);
+    return response.data;
+  },
+
+  getUserProfile: async (): Promise<UserProfile> => {
+    const token = localStorage.getItem('accessToken');
+    const response = await axios.get<UserProfile>(`${API_URL}/api/auth/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     return response.data;
   },
 };

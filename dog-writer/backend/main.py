@@ -103,6 +103,24 @@ except ImportError as e:
     logger.error(f"Failed to import grammar routes: {e}")
     GRAMMAR_ROUTES_AVAILABLE = False
 
+# Import authentication routes
+try:
+    from routes.auth import router as auth_router
+    from init_db import init_database  # Import the initializer
+    AUTH_ROUTES_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import auth routes: {e}")
+    AUTH_ROUTES_AVAILABLE = False
+
+# Initialize the authentication database on startup
+if AUTH_ROUTES_AVAILABLE:
+    try:
+        logger.info("Initializing authentication database...")
+        init_database()
+        logger.info("Authentication database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize authentication database: {e}")
+
 # Add Analytics Middleware (before CORS)
 if ANALYTICS_AVAILABLE:
     try:
@@ -162,16 +180,20 @@ if GRAMMAR_ROUTES_AVAILABLE:
     except Exception as e:
         logger.error(f"Failed to include grammar router: {e}")
 
+# Include authentication routes
+if AUTH_ROUTES_AVAILABLE:
+    try:
+        app.include_router(auth_router)
+        logger.info("Authentication router included successfully.")
+    except Exception as e:
+        logger.error(f"Failed to include auth router: {e}")
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://owen-frontend-production.up.railway.app",
-        "https://web-production-44b3.up.railway.app", # Your current frontend
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:4173",
-        "*", # Fallback to allow all for now
+        "https://web-production-44b3.up.railway.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -182,6 +204,8 @@ app.add_middleware(
 class ChatMessage(BaseModel):
     message: str
     editor_text: str = ""
+    highlighted_text: str = ""  # New field for highlighted text
+    highlight_id: str = ""  # New field for highlight ID
     author_persona: str = "Ernest Hemingway"
     help_focus: str = "general"
     chat_history: list = []
@@ -440,14 +464,29 @@ async def chat_message(chat: ChatMessage):
     print(f"[DEBUG] Chat request started at {start_time} for provider: {chat.llm_provider}")
     
     try:
-        # Create persona-specific system prompt
-        system_prompt = f"""You are {chat.author_persona}, a master writer and mentor. 
-        You're helping a writer improve their craft. Be encouraging, insightful, and true to {chat.author_persona}'s style and philosophy.
-        
-        Focus area: {chat.help_focus}
-        Editor text context: {chat.editor_text[:500] if chat.editor_text else 'No text provided'}
-        
-        Provide specific, actionable advice that would improve the writing."""
+        # Create persona-specific system prompt with highlighted text support
+        if chat.highlighted_text:
+            # When user highlights specific text for feedback
+            system_prompt = f"""You are {chat.author_persona}, a master writer and mentor. 
+            You're helping a writer improve their craft. Be encouraging, insightful, and true to {chat.author_persona}'s style and philosophy.
+            
+            Focus area: {chat.help_focus}
+            Full editor context: {chat.editor_text[:500] if chat.editor_text else 'No text provided'}
+            
+            HIGHLIGHTED TEXT FOR SPECIFIC FEEDBACK: "{chat.highlighted_text}"
+            
+            The user has specifically highlighted the above text and wants your feedback on it. 
+            Focus your response on analyzing and improving this highlighted portion while considering the broader context.
+            Provide specific, actionable advice that would improve the highlighted writing."""
+        else:
+            # General writing advice without specific highlighted text
+            system_prompt = f"""You are {chat.author_persona}, a master writer and mentor. 
+            You're helping a writer improve their craft. Be encouraging, insightful, and true to {chat.author_persona}'s style and philosophy.
+            
+            Focus area: {chat.help_focus}
+            Editor text context: {chat.editor_text[:500] if chat.editor_text else 'No text provided'}
+            
+            Provide specific, actionable advice that would improve the writing."""
         
         # Determine which provider to use based on llm_provider
         provider = chat.llm_provider.lower()
@@ -501,8 +540,20 @@ async def chat_message(chat: ChatMessage):
                     # Use the latest Gemini 2.5 Pro model with advanced reasoning
                     model = genai.GenerativeModel(GEMINI_MODEL_ID)
                     
-                    # Create enhanced prompt for advanced reasoning
-                    enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
+                    # Create enhanced prompt for advanced reasoning with highlighted text support
+                    if chat.highlighted_text:
+                        enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
+
+Full Context: {chat.editor_text[:1000] if chat.editor_text else 'No text provided'}
+Focus area: {chat.help_focus}
+
+HIGHLIGHTED TEXT FOR SPECIFIC FEEDBACK: "{chat.highlighted_text}"
+
+User question: {chat.message}
+
+The user has specifically highlighted the above text for your analysis. Please provide thoughtful, actionable advice that reflects {chat.author_persona}'s distinctive voice and philosophy. Use your advanced reasoning to analyze this highlighted portion in the context of the broader writing and provide specific, practical guidance for improvement."""
+                    else:
+                        enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
 
 Context: {chat.editor_text[:1000] if chat.editor_text else 'No text provided'}
 Focus area: {chat.help_focus}

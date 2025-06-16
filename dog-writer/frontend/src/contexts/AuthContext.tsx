@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import { logger } from '../utils/logger';
+import api from '../services/api';
 
 // Types for authentication
 interface UserProfile {
@@ -72,7 +73,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-production-ea53.up.railway.app';
 
 // Configure axios instance
-const api = axios.create({
+const apiInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
   // 🔒 Security headers
@@ -122,7 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('owen_expires_in', tokens.expires_in.toString());
       
       // Set axios default auth header
-      api.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
+      apiInstance.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
     } catch (err) {
       logger.error('Error storing tokens:', err);
     }
@@ -134,7 +135,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('owen_refresh_token');
       localStorage.removeItem('owen_token_type');
       localStorage.removeItem('owen_expires_in');
-      delete api.defaults.headers.common['Authorization'];
+      delete apiInstance.defaults.headers.common['Authorization'];
     } catch (err) {
       logger.error('Error clearing tokens:', err);
     }
@@ -142,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(() => {
     // Call logout endpoint (fire-and-forget)
-    api.post('/api/auth/logout').catch(() => {});
+    apiInstance.post('/api/auth/logout').catch(() => {});
 
     // Clear local state and storage
     clearTokens();
@@ -155,7 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserProfile = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await api.get('/api/auth/profile');
+      const response = await apiInstance.get('/api/auth/profile');
       setUser(response.data);
       setIsAuthenticated(true);
       setError(null);
@@ -175,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      const response = await api.post('/api/auth/refresh', {
+      const response = await apiInstance.post('/api/auth/refresh', {
         refresh_token: tokens.refresh_token,
       });
 
@@ -200,7 +201,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Set up axios interceptor for token refresh
   useEffect(() => {
-    const responseInterceptor = api.interceptors.response.use(
+    const responseInterceptor = apiInstance.interceptors.response.use(
       (response) => response,
       async (err) => {
         const originalRequest = err.config;
@@ -213,7 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const newTokens = getStoredTokens();
             if (newTokens) {
               originalRequest.headers['Authorization'] = `${newTokens.token_type} ${newTokens.access_token}`;
-              return api(originalRequest);
+              return apiInstance(originalRequest);
             }
           }
         }
@@ -222,7 +223,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    const requestInterceptor = api.interceptors.request.use(
+    const requestInterceptor = apiInstance.interceptors.request.use(
       (config) => {
         const tokens = getStoredTokens();
         if (tokens && !config.headers['Authorization']) {
@@ -235,8 +236,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Cleanup interceptors on unmount
     return () => {
-      api.interceptors.response.eject(responseInterceptor);
-      api.interceptors.request.eject(requestInterceptor);
+      apiInstance.interceptors.response.eject(responseInterceptor);
+      apiInstance.interceptors.request.eject(requestInterceptor);
     };
   }, [refreshToken, getStoredTokens]);
 
@@ -270,7 +271,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.post('/api/auth/login', data);
+      const response = await apiInstance.post('/api/auth/login', data);
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       // Store tokens
@@ -300,7 +301,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.post('/api/auth/register', data);
+      const response = await apiInstance.post('/api/auth/register', data);
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       // Store tokens
@@ -329,7 +330,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.put('/api/auth/profile', data);
+      const response = await apiInstance.put('/api/auth/profile', data);
       setUser(response.data);
       logger.log('Profile updated successfully');
       return true;
@@ -348,7 +349,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      await api.post('/api/auth/change-password', {
+      await apiInstance.post('/api/auth/change-password', {
         current_password: currentPassword,
         new_password: newPassword,
       });
