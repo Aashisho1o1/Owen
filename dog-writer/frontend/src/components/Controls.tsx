@@ -8,6 +8,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
+import AuthModal from './AuthModal';
+import UserProfileModal from './UserProfileModal';
 
 const Controls: React.FC = () => {
   const {
@@ -23,11 +25,14 @@ const Controls: React.FC = () => {
     updateEnglishVariant
   } = useAppContext();
 
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -101,8 +106,24 @@ const Controls: React.FC = () => {
         console.log('Settings option:', value);
         break;
       case 'auth':
-        // Handle auth options here
-        console.log('Auth option:', value);
+        switch (value) {
+          case 'login':
+            setAuthMode('signin');
+            setShowAuthModal(true);
+            break;
+          case 'register':
+            setAuthMode('signup');
+            setShowAuthModal(true);
+            break;
+          case 'profile':
+            setShowProfileModal(true);
+            break;
+          case 'logout':
+            logout();
+            break;
+          default:
+            break;
+        }
         break;
     }
     setActiveDropdown(null);
@@ -459,6 +480,19 @@ const Controls: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import Editor from './components/Editor';
+import HighlightableEditor from './components/HighlightableEditor';
 import ChatPane from './components/ChatPane';
 import Controls from './components/Controls';
 import WritingTimer from './components/WritingTimer';
@@ -70,7 +70,7 @@ const Navigation: React.FC = () => {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        initialMode="login"
+        initialMode="signin"
       />
 
       {/* User Profile Modal */}
@@ -154,10 +154,10 @@ const WritersDesk: React.FC = () => {
           <DocumentHelp />
           
           <div className="editor-container" ref={editorRef}>
-            <Editor 
-              content={editorContent} 
-              onChange={setEditorContent} 
-              onTextHighlighted={handleTextHighlighted} 
+            <HighlightableEditor
+              content={editorContent}
+              onChange={setEditorContent}
+              onTextHighlighted={handleTextHighlighted}
             />
              {shouldShowFloatingButton && (
               <div 
