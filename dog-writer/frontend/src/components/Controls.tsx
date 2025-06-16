@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
 
 const Controls: React.FC = () => {
@@ -22,7 +21,9 @@ const Controls: React.FC = () => {
     handleSaveCheckpoint,
     userPreferences,
     englishVariants,
-    updateEnglishVariant
+    updateEnglishVariant,
+    setShowAuthModal,
+    setAuthMode,
   } = useAppContext();
 
   const { isAuthenticated, user, logout } = useAuth();
@@ -30,8 +31,6 @@ const Controls: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Close dropdown when clicking outside
@@ -481,18 +480,7 @@ const Controls: React.FC = () => {
         </div>
       </div>
 
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode={authMode}
-      />
-
-      {/* User Profile Modal */}
-      <UserProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-      />
+      {showProfileModal && <UserProfileModal onClose={() => setShowProfileModal(false)} />}
     </div>
   );
 };

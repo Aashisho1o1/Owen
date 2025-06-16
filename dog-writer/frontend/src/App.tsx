@@ -10,6 +10,10 @@ import DocumentTitleBar from './components/DocumentTitleBar';
 import DocumentHelp from './components/DocumentHelp';
 import MangaStudioPage from './pages/MangaStudioPage';
 import './App.css';
+import { AppProvider, useAppContext } from './contexts/AppContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useTheme } from './contexts/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Voice to Text Page
 const VoiceToTextPage: React.FC = () => {
@@ -270,7 +274,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { theme } = useTheme();
+  const { showAuthModal, authMode, setShowAuthModal } = useAppContext();
+
+  useEffect(() => {
+    document.body.className = `theme-${theme}`;
+  }, [theme]);
+
   return (
     <Router>
       <AppLayout>
@@ -281,7 +292,24 @@ const App: React.FC = () => {
           <Route path="*" element={<WritersDesk />} />
         </Routes>
       </AppLayout>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
     </Router>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AppProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
+    </AppProvider>
   );
 };
 

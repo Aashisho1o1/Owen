@@ -49,24 +49,24 @@ interface OnboardingData {
   english_variant: string;
 }
 
-interface AppContextType {
+export interface AppContextType {
   // Author and content settings
   authorPersona: string;
-  setAuthorPersona: (value: string) => void;
+  setAuthorPersona: React.Dispatch<React.SetStateAction<string>>;
   helpFocus: string;
-  setHelpFocus: (value: string) => void;
+  setHelpFocus: React.Dispatch<React.SetStateAction<string>>;
   selectedLLM: string;
-  setSelectedLLM: (value: string) => void;
+  setSelectedLLM: React.Dispatch<React.SetStateAction<string>>;
   
   // Editor state
   editorContent: string;
-  setEditorContent: (content: string) => void;
+  setEditorContent: React.Dispatch<React.SetStateAction<string>>;
   
   // Text highlighting for AI feedback
   highlightedText: string;
-  setHighlightedText: (text: string) => void;
+  setHighlightedText: React.Dispatch<React.SetStateAction<string>>;
   highlightedTextId: string | null;
-  setHighlightedTextId: (id: string | null) => void;
+  setHighlightedTextId: React.Dispatch<React.SetStateAction<string | null>>;
   handleTextHighlighted: (text: string, highlightId?: string) => void;
   clearTextHighlight: () => void;
   
@@ -84,7 +84,7 @@ interface AppContextType {
   checkApiConnection: () => Promise<boolean>;
   
   // Actions
-  handleSaveCheckpoint: () => Promise<void>;
+  handleSaveCheckpoint: () => void;
   
   // New personalization features
   userPreferences: UserPreferences;
@@ -170,6 +170,12 @@ interface AppContextType {
     getTotalWordCount: () => number;
     refreshAll: () => Promise<void>;
   };
+
+  // Auth Modal State
+  showAuthModal: boolean;
+  setShowAuthModal: React.Dispatch<React.SetStateAction<boolean>>;
+  authMode: 'signin' | 'signup';
+  setAuthMode: React.Dispatch<React.SetStateAction<'signin' | 'signup'>>;
 }
 
 // Create the context with a default value
@@ -202,6 +208,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const [feedbackOnPrevious, setFeedbackOnPrevious] = useState<string>('');
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+
+  // Auth Modal State
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   // Use our custom hooks
   const { 
@@ -407,7 +417,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Memoize the context value to prevent unnecessary renders
-  const contextValue = useMemo(() => ({
+  const contextValue: AppContextType = useMemo(() => ({
     // Author and content settings
     authorPersona,
     setAuthorPersona,
@@ -525,6 +535,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       getTotalWordCount: documentsHook.getTotalWordCount,
       refreshAll: documentsHook.refreshAll,
     },
+
+    // Auth Modal State
+    showAuthModal,
+    setShowAuthModal,
+    authMode,
+    setAuthMode,
   }), [
     authorPersona, helpFocus, selectedLLM,
     editorContent, highlightedText, highlightedTextId,
@@ -550,7 +566,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     documentsHook.shareDocument, documentsHook.setCurrentDocument, documentsHook.saveNow,
     documentsHook.getWordCount, documentsHook.getDocumentsByFolder,
     documentsHook.getDocumentsBySeries, documentsHook.getRecentDocuments,
-    documentsHook.getTotalWordCount, documentsHook.refreshAll
+    documentsHook.getTotalWordCount, documentsHook.refreshAll,
+    showAuthModal, authMode
   ]);
 
   return (
