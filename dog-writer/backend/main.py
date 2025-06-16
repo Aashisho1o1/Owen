@@ -369,7 +369,7 @@ async def test_gemini():
         return {"error": "Gemini 2.5 Pro API test timed out after 60 seconds"}
     except Exception as e:
         logging.error(f"[ERROR] Gemini 2.5 Pro test failed: {e}", exc_info=True)
-        return {"error": f"Gemini 2.5 Pro API test failed: {str(e)}"}
+        return {"error": "An internal error occurred. Please try again later."}
 
 # Basic chat endpoints
 @app.post("/api/chat/message", response_model=ChatResponse)
