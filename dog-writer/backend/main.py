@@ -194,6 +194,10 @@ app.add_middleware(
     allow_origins=[
         "https://owen-frontend-production.up.railway.app",
         "https://web-production-44b3.up.railway.app",
+        "http://localhost:3000",  # For local development
+        "http://localhost:5173",  # For Vite dev server
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -461,7 +465,9 @@ async def test_gemini():
 async def chat_message(chat: ChatMessage):
     """Send a message to AI with multi-provider LLM integration"""
     start_time = datetime.now()
-    print(f"[DEBUG] Chat request started at {start_time} for provider: {chat.llm_provider}")
+    request_id = f"req-{int(start_time.timestamp())}"
+    print(f"[DEBUG] {request_id} Chat request started at {start_time} for provider: {chat.llm_provider}")
+    print(f"[DEBUG] {request_id} Request data: message='{chat.message[:100]}...', persona={chat.author_persona}, focus={chat.help_focus}")
     
     try:
         # Create persona-specific system prompt with highlighted text support
