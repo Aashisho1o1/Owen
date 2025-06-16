@@ -35,8 +35,8 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   width: 100% !important;
-  max-width: 480px !important;
-  min-width: 400px !important;
+  max-width: 320px !important;
+  min-width: 280px !important;
   max-height: 90vh;
   overflow-y: auto;
   animation: authModalSlideIn 300ms ease-out;
@@ -54,25 +54,25 @@
   }
 }
 
-/* Force optimal width for readability without being too wide */
+/* Optimal compact width inspired by control dropdowns */
 @media (min-width: 640px) {
   .auth-modal {
-    max-width: 520px !important;
-    min-width: 440px !important;
+    max-width: 340px !important;
+    min-width: 300px !important;
   }
 }
 
 @media (min-width: 768px) {
   .auth-modal {
-    max-width: 560px !important;
-    min-width: 480px !important;
+    max-width: 360px !important;
+    min-width: 320px !important;
   }
 }
 
 @media (min-width: 1024px) {
   .auth-modal {
-    max-width: 600px !important;
-    min-width: 520px !important;
+    max-width: 380px !important;
+    min-width: 340px !important;
   }
 }
 
@@ -80,7 +80,7 @@
 
 .auth-modal-header {
   position: relative;
-  padding: var(--space-8) var(--space-8) var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-4);
   border-bottom: 1px solid var(--border-lighter);
   background: linear-gradient(135deg, var(--gray-50) 0%, var(--bg-elevated) 100%);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -124,7 +124,7 @@
 /* ============= AUTH MODAL CONTENT ============= */
 
 .auth-modal-content {
-  padding: var(--space-8) var(--space-12) var(--space-10);
+  padding: var(--space-6) var(--space-6) var(--space-6);
 }
 
 /* ============= AUTH FORM ============= */
@@ -459,13 +459,13 @@
   }
 
   .auth-modal {
-    max-width: 95vw !important; /* Use most of screen width on tablets */
-    min-width: 300px !important; /* Prevent it from being too narrow */
+    max-width: 300px !important; /* Compact but readable on tablets */
+    min-width: 260px !important;
     margin: 0 auto;
   }
 
   .auth-modal-header {
-    padding: var(--space-6) var(--space-8) var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-3);
   }
 
   .auth-modal-header h2 {
@@ -473,21 +473,21 @@
   }
 
   .auth-modal-content {
-    padding: var(--space-6) var(--space-8) var(--space-8);
+    padding: var(--space-5) var(--space-5) var(--space-5);
   }
 
   .auth-form {
-    gap: var(--space-5);
+    gap: var(--space-4);
   }
 
   .auth-form-input {
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-4) var(--space-4);
     font-size: var(--text-base);
     min-height: 48px;
   }
 
   .auth-form-submit {
-    padding: var(--space-4) var(--space-6);
+    padding: var(--space-4) var(--space-5);
     font-size: var(--text-base);
     min-height: 52px;
   }
@@ -499,13 +499,13 @@
   }
 
   .auth-modal {
-    max-width: 98vw !important; /* Use almost all screen width on mobile */
-    min-width: 280px !important; /* Minimum usable width */
+    max-width: 280px !important; /* Compact mobile size */
+    min-width: 240px !important;
     margin: 0 auto;
   }
 
   .auth-modal-header {
-    padding: var(--space-6) var(--space-6) var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-3);
   }
 
   .auth-modal-header h2 {
@@ -513,21 +513,21 @@
   }
 
   .auth-modal-content {
-    padding: var(--space-5) var(--space-6) var(--space-6);
+    padding: var(--space-4) var(--space-4) var(--space-4);
   }
 
   .auth-form {
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .auth-form-input {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3) var(--space-3);
     font-size: var(--text-base);
     min-height: 44px;
   }
 
   .auth-form-submit {
-    padding: var(--space-3) var(--space-6);
+    padding: var(--space-3) var(--space-4);
     font-size: var(--text-base);
     min-height: 48px;
   }
