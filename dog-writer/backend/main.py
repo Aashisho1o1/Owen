@@ -35,16 +35,37 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KE
 
 # Configure Gemini with better error handling
 GEMINI_CONFIGURED = False
-GEMINI_MODEL_ID = 'gemini-2.5-pro-preview-06-05'  # Current preview version from https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
-# Note: This will be updated to 'gemini-2.5-pro' when Google releases the GA version
+# Updated to use the correct model ID from official Google documentation
+# https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
+# https://ai.google.dev/gemini-api/docs/models
+GEMINI_MODEL_ID = 'gemini-2.5-pro-preview-06-05'  # Current preview version (June 5, 2025)
+# Alternative backup model ID in case the preview is unavailable
+GEMINI_FALLBACK_MODEL_ID = 'gemini-2.0-flash'  # Stable fallback model
 
+# Improved Gemini API configuration with detailed error logging
 if os.getenv("GEMINI_API_KEY"):
     try:
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        GEMINI_CONFIGURED = True
-        logger.info("Gemini API configured successfully")
-    except Exception as e:
-        logger.error(f"Failed to configure Gemini API: {e}")
+        
+        # Test the API key validity immediately
+        try:
+            # Quick test to validate API key
+            test_model = genai.GenerativeModel('gemini-2.0-flash')  # Use stable model for testing
+            test_response = test_model.generate_content(
+                "Test",
+                generation_config=genai.types.GenerationConfig(max_output_tokens=1)
+            )
+            GEMINI_CONFIGURED = True
+            logger.info("Gemini API configured and validated successfully")
+        except Exception as validation_error:
+            logger.error(f"Gemini API key validation failed: {validation_error}")
+            # Check if it's an API key issue specifically
+            if "API key" in str(validation_error).lower() or "expired" in str(validation_error).lower():
+                logger.error("⚠️  GEMINI API KEY IS EXPIRED OR INVALID - Please renew your API key at https://aistudio.google.com/app/apikey")
+            GEMINI_CONFIGURED = False
+            
+    except Exception as config_error:
+        logger.error(f"Failed to configure Gemini API: {config_error}")
         GEMINI_CONFIGURED = False
 else:
     logger.warning("GEMINI_API_KEY not found in environment variables")
@@ -335,54 +356,138 @@ async def debug_env():
 
 @app.get("/api/test/gemini")
 async def test_gemini():
-    """Test Gemini 2.5 Pro API connection"""
+    """Test Gemini 2.5 Pro API connection with comprehensive error handling"""
     try:
         if not os.getenv("GEMINI_API_KEY"):
-            return {"error": "No Gemini API key configured"}
+            return {
+                "error": "No Gemini API key configured",
+                "solution": "Add GEMINI_API_KEY environment variable",
+                "get_key_url": "https://aistudio.google.com/app/apikey"
+            }
         
         if not GEMINI_CONFIGURED:
-            return {"error": "Gemini API configuration failed"}
+            return {
+                "error": "Gemini API configuration failed during startup",
+                "details": "API key validation failed",
+                "solution": "Check if your API key is valid and not expired",
+                "get_key_url": "https://aistudio.google.com/app/apikey"
+            }
         
         print("[DEBUG] Testing Gemini 2.5 Pro API connection...")
         
-        # Use the correct preview model ID from Google Cloud documentation
-        # https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
-        model_id = GEMINI_MODEL_ID  # Current preview version as of June 2025
-        model = genai.GenerativeModel(model_id)
-        
-        # Simple test prompt for advanced reasoning
-        response = await asyncio.wait_for(
-            asyncio.to_thread(
-                model.generate_content,
-                "Explain the concept of literary voice in exactly 10 words.",
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=30,
-                    temperature=0.7,
-                    top_p=0.9,
-                    top_k=40,
+        # Step 1: Try with the primary Gemini 2.5 Pro model
+        try:
+            model = genai.GenerativeModel(GEMINI_MODEL_ID)
+            
+            # Simple test prompt optimized for 2.5 Pro's advanced reasoning
+            test_prompt = "What is 2+2? Respond with just the number."
+            
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    model.generate_content,
+                    test_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        max_output_tokens=10,
+                        temperature=0.1,
+                        top_p=0.9,
+                        top_k=40,
+                    )
+                ),
+                timeout=30.0  # Reduced timeout for testing
+            )
+            
+            return {
+                "success": True,
+                "response": response.text.strip(),
+                "model_used": GEMINI_MODEL_ID,
+                "status": "Gemini 2.5 Pro working perfectly",
+                "capabilities": "Advanced reasoning, multimodal understanding, enhanced coding",
+                "note": "Using current preview model (June 5, 2025 version)"
+            }
+            
+        except asyncio.TimeoutError:
+            print(f"[ERROR] Gemini 2.5 Pro timeout - trying fallback model")
+            # Step 2: Try fallback model if 2.5 Pro times out
+            try:
+                fallback_model = genai.GenerativeModel(GEMINI_FALLBACK_MODEL_ID)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        fallback_model.generate_content,
+                        "Test response",
+                        generation_config=genai.types.GenerationConfig(max_output_tokens=5)
+                    ),
+                    timeout=15.0
                 )
-            ),
-            timeout=60.0
-        )
-        
-        return {
-            "success": True,
-            "response": response.text.strip(),
-            "model": model_id,
-            "configured": GEMINI_CONFIGURED,
-            "capabilities": "Advanced reasoning, complex thinking, enhanced creativity",
-            "note": "Using preview model - will update to GA when available"
-        }
-    except asyncio.TimeoutError:
-        logging.error("[ERROR] Gemini 2.5 Pro test timeout")
-        return {"error": "Gemini 2.5 Pro API test timed out after 60 seconds"}
+                
+                return {
+                    "success": True,
+                    "response": response.text.strip(),
+                    "model_used": GEMINI_FALLBACK_MODEL_ID,
+                    "status": "Fallback model working",
+                    "note": f"Primary model {GEMINI_MODEL_ID} timed out, used {GEMINI_FALLBACK_MODEL_ID}",
+                    "recommendation": "Check Gemini 2.5 Pro model availability"
+                }
+                
+            except Exception as fallback_error:
+                return {
+                    "error": "Both primary and fallback models failed",
+                    "primary_model": GEMINI_MODEL_ID,
+                    "fallback_model": GEMINI_FALLBACK_MODEL_ID,
+                    "fallback_error": str(fallback_error)[:200],
+                    "solution": "Check API key validity and model availability"
+                }
+                
+        except Exception as primary_error:
+            error_str = str(primary_error).lower()
+            
+            # Specific error handling based on official troubleshooting guide
+            if "api key" in error_str and ("expired" in error_str or "invalid" in error_str):
+                return {
+                    "error": "API key expired or invalid",
+                    "details": "Your Gemini API key needs to be renewed",
+                    "solution": "Generate a new API key",
+                    "get_key_url": "https://aistudio.google.com/app/apikey",
+                    "model_attempted": GEMINI_MODEL_ID,
+                    "error_code": "API_KEY_INVALID"
+                }
+            elif "permission denied" in error_str:
+                return {
+                    "error": "Permission denied",
+                    "details": "API key doesn't have required permissions",
+                    "solution": "Check API key permissions in Google AI Studio",
+                    "model_attempted": GEMINI_MODEL_ID,
+                    "error_code": "PERMISSION_DENIED"
+                }
+            elif "not found" in error_str or "404" in error_str:
+                return {
+                    "error": "Model not found",
+                    "details": f"Model {GEMINI_MODEL_ID} may not be available in your region",
+                    "solution": "Try using a different model or check regional availability",
+                    "model_attempted": GEMINI_MODEL_ID,
+                    "error_code": "NOT_FOUND"
+                }
+            elif "rate limit" in error_str or "429" in error_str:
+                return {
+                    "error": "Rate limit exceeded",
+                    "details": "Too many requests per minute",
+                    "solution": "Wait and retry, or request quota increase",
+                    "model_attempted": GEMINI_MODEL_ID,
+                    "error_code": "RATE_LIMITED"
+                }
+            else:
+                return {
+                    "error": "Gemini 2.5 Pro test failed", 
+                    "details": str(primary_error)[:300],
+                    "model_attempted": GEMINI_MODEL_ID,
+                    "troubleshooting": "Check API key, model availability, and network connectivity",
+                    "docs_url": "https://ai.google.dev/gemini-api/docs/troubleshooting"
+                }
+
     except Exception as e:
-        logging.error(f"[ERROR] Gemini 2.5 Pro test failed: {e}", exc_info=True)
         return {
-            "error": "Gemini 2.5 Pro test failed", 
-            "details": str(e)[:200],  # Include first 200 chars of error for debugging
-            "model_attempted": model_id if 'model_id' in locals() else 'gemini-2.5-pro',
-            "troubleshooting": "Check API key and model availability"
+            "error": "Unexpected error during Gemini testing",
+            "details": str(e)[:200],
+            "solution": "Check system configuration and try again"
         }
 
 # Basic chat endpoints
@@ -451,12 +556,12 @@ async def chat_message(chat: ChatMessage):
                 try:
                     print(f"[DEBUG] Starting Gemini 2.5 Pro call for: {chat.message[:50]}...")
                     
-                    # Use the correct preview model ID from Google Cloud documentation
-                    model_id = GEMINI_MODEL_ID  # Current preview version as of June 2025
-                    model = genai.GenerativeModel(model_id)
-                    
-                    # Create enhanced prompt for advanced reasoning
-                    enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
+                    # Try primary model first
+                    try:
+                        model = genai.GenerativeModel(GEMINI_MODEL_ID)
+                        
+                        # Create enhanced prompt for advanced reasoning
+                        enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
 
 Context: {chat.editor_text[:1000] if chat.editor_text else 'No text provided'}
 Focus area: {chat.help_focus}
@@ -464,51 +569,83 @@ Focus area: {chat.help_focus}
 User question: {chat.message}
 
 Please provide thoughtful, actionable advice that reflects {chat.author_persona}'s distinctive voice and philosophy. Use your advanced reasoning to analyze the writing context and provide specific, practical guidance."""
-                    
-                    # Configure generation settings optimized for Gemini 2.5 Pro
-                    generation_config = genai.types.GenerationConfig(
-                        max_output_tokens=300,  # Increased for more detailed responses
-                        temperature=0.7,
-                        top_p=0.9,  # Enhanced creativity control
-                        top_k=40,   # Vocabulary diversity
-                    )
-                    
-                    # Run Gemini 2.5 Pro generation with extended timeout for complex reasoning
-                    response = await asyncio.wait_for(
-                        asyncio.to_thread(
-                            model.generate_content,
-                            enhanced_prompt,
-                            generation_config=generation_config
-                        ),
-                        timeout=180  # Extended timeout for advanced reasoning
-                    )
-                    
-                    print(f"[DEBUG] Gemini 2.5 Pro call completed successfully")
-                    ai_response = response.text.strip()
-                    thinking_trail = f"Google Gemini 2.5 Pro Preview ({model_id}) - Advanced Reasoning ({chat.author_persona})"
-                    
-                except asyncio.TimeoutError:
-                    print(f"[ERROR] Gemini 2.5 Pro timeout after 180 seconds")
-                    ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight and purpose."
-                    thinking_trail = f"Gemini 2.5 Pro timeout - {chat.author_persona} fallback used"
-                    
+                        
+                        # Configure generation settings optimized for Gemini 2.5 Pro
+                        generation_config = genai.types.GenerationConfig(
+                            max_output_tokens=300,  # Increased for more detailed responses
+                            temperature=0.7,
+                            top_p=0.9,  # Enhanced creativity control
+                            top_k=40,   # Vocabulary diversity
+                        )
+                        
+                        # Run Gemini 2.5 Pro generation with reasonable timeout
+                        response = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                model.generate_content,
+                                enhanced_prompt,
+                                generation_config=generation_config
+                            ),
+                            timeout=60  # Reasonable timeout for chat responses
+                        )
+                        
+                        print(f"[DEBUG] Gemini 2.5 Pro call completed successfully")
+                        ai_response = response.text.strip()
+                        thinking_trail = f"Google Gemini 2.5 Pro Preview ({GEMINI_MODEL_ID}) - Advanced Reasoning ({chat.author_persona})"
+                        
+                    except (asyncio.TimeoutError, Exception) as primary_error:
+                        print(f"[DEBUG] Gemini 2.5 Pro failed, trying fallback: {str(primary_error)[:100]}")
+                        
+                        # Try fallback model
+                        try:
+                            fallback_model = genai.GenerativeModel(GEMINI_FALLBACK_MODEL_ID)
+                            
+                            # Simpler prompt for fallback model
+                            fallback_prompt = f"""You are {chat.author_persona}. 
+
+User question: {chat.message}
+
+Provide helpful writing advice in {chat.author_persona}'s style."""
+                            
+                            response = await asyncio.wait_for(
+                                asyncio.to_thread(
+                                    fallback_model.generate_content,
+                                    fallback_prompt,
+                                    generation_config=genai.types.GenerationConfig(
+                                        max_output_tokens=200,
+                                        temperature=0.7
+                                    )
+                                ),
+                                timeout=30
+                            )
+                            
+                            ai_response = response.text.strip()
+                            thinking_trail = f"Google {GEMINI_FALLBACK_MODEL_ID} (fallback) - {chat.author_persona}"
+                            
+                        except Exception as fallback_error:
+                            print(f"[ERROR] Both Gemini models failed: {str(fallback_error)[:100]}")
+                            
+                            # Intelligent fallback based on the question type
+                            if "dialogue" in chat.message.lower():
+                                ai_response = f"As {chat.author_persona}: Make dialogue serve the story. Cut empty words, show character through what they don't say. Every line should advance plot or reveal character."
+                            elif "character" in chat.message.lower():
+                                ai_response = f"As {chat.author_persona}: Characters must be real people with contradictions, desires, and flaws. Show, don't tell. Let their actions reveal their nature."
+                            elif "voice" in chat.message.lower():
+                                ai_response = f"As {chat.author_persona}: Voice is the writer's fingerprint. Find yours through truth and precision. Write as only you can write."
+                            else:
+                                ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight and serve the story."
+                            
+                            thinking_trail = f"Gemini models unavailable - {chat.author_persona} intelligent fallback used"
+                
                 except Exception as gemini_error:
-                    print(f"[ERROR] Gemini 2.5 Pro failed: {str(gemini_error)[:100]}")
-                    # Provide intelligent fallback based on the question
-                    if "dialogue" in chat.message.lower():
-                        ai_response = f"As {chat.author_persona}: Make dialogue serve the story. Cut empty words, show character through what they don't say. Every line should advance plot or reveal character."
-                    elif "character" in chat.message.lower():
-                        ai_response = f"As {chat.author_persona}: Characters must be real people with contradictions, desires, and flaws. Show, don't tell. Let their actions reveal their nature."
-                    else:
-                        ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight and serve the story."
-                    
-                    thinking_trail = f"Gemini 2.5 Pro error - {chat.author_persona} fallback used"
+                    print(f"[ERROR] Gemini configuration error: {str(gemini_error)[:100]}")
+                    ai_response = f"As {chat.author_persona}: {chat.message} - Write with precision and truth. Every word should have weight and purpose."
+                    thinking_trail = f"Gemini configuration error - {chat.author_persona} fallback used"
                 
             else:
                 print(f"[DEBUG] Gemini not properly configured or API key missing")
                 if not GEMINI_CONFIGURED:
-                    ai_response = f"Gemini 2.5 Pro API configuration failed. Please check your API key and try again."
-                    thinking_trail = "Gemini 2.5 Pro configuration error"
+                    ai_response = f"Gemini 2.5 Pro API configuration failed. The API key may be expired. Please check your API key at https://aistudio.google.com/app/apikey"
+                    thinking_trail = "Gemini 2.5 Pro configuration error - API key validation failed"
                 else:
                     ai_response = f"Gemini 2.5 Pro API key missing. Please configure to get advanced AI responses."
                     thinking_trail = "Missing Gemini 2.5 Pro API key"
