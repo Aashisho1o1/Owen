@@ -751,11 +751,11 @@ async def debug_chat_validation(request_data: dict):
             }
         }
     except Exception as e:
+        logging.error(f"Exception occurred during chat validation: {e}", exc_info=True)
         return {
             "success": False,
-            "error": str(e),
-            "error_type": type(e).__name__,
-            "received_data": request_data
+            "error": "An internal error occurred during validation.",
+            "message": "Please contact support if the issue persists."
         }
 
 # Error handler
