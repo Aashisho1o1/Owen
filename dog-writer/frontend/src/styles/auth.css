@@ -35,8 +35,8 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   width: 100% !important;
-  max-width: 800px !important;
-  min-width: 600px !important;
+  max-width: 480px !important;
+  min-width: 400px !important;
   max-height: 90vh;
   overflow-y: auto;
   animation: authModalSlideIn 300ms ease-out;
@@ -54,25 +54,25 @@
   }
 }
 
-/* Force wider modal on all screen sizes */
+/* Force optimal width for readability without being too wide */
 @media (min-width: 640px) {
   .auth-modal {
-    max-width: 800px !important;
-    min-width: 600px !important;
+    max-width: 520px !important;
+    min-width: 440px !important;
   }
 }
 
 @media (min-width: 768px) {
   .auth-modal {
-    max-width: 900px !important;
-    min-width: 700px !important;
+    max-width: 560px !important;
+    min-width: 480px !important;
   }
 }
 
 @media (min-width: 1024px) {
   .auth-modal {
-    max-width: 1000px !important;
-    min-width: 800px !important;
+    max-width: 600px !important;
+    min-width: 520px !important;
   }
 }
 

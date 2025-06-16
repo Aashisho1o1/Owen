@@ -125,20 +125,63 @@ export const useChat = ({
     try {
       const requestData: ChatRequest = {
         message,
-        editor_text: editorContent,
+        editor_text: editorContent || "",
         author_persona: authorPersona,
         help_focus: helpFocus,
         chat_history: updatedMessages, // Send the latest messages including the current user message
         llm_provider: selectedLLM,
-        user_preferences: userPreferences,
-        feedback_on_previous: feedbackOnPrevious,
-        english_variant: userPreferences?.english_variant,
-        highlighted_text: highlightedText,
-        highlight_id: highlightedTextId,
+        user_preferences: userPreferences || {
+          english_variant: "US",
+          writing_style_profile: {},
+          onboarding_completed: false,
+          user_corrections: [],
+          writing_type: null,
+          feedback_style: null,
+          primary_goal: null
+        },
+        feedback_on_previous: feedbackOnPrevious || "",
+        english_variant: userPreferences?.english_variant || "US",
+        highlighted_text: highlightedText || "",
+        highlight_id: highlightedTextId || "",
       };
 
       console.log('📤 Sending chat request:', requestData);
+      console.log('📋 Request validation details:', {
+        messageType: typeof message,
+        messageLength: message?.length || 0,
+        editorTextType: typeof editorContent,
+        chatHistoryType: typeof updatedMessages,
+        chatHistoryLength: updatedMessages?.length || 0,
+        chatHistoryFirst: updatedMessages?.[0],
+        userPreferencesType: typeof userPreferences,
+        userPreferencesContent: userPreferences,
+        authorPersonaType: typeof authorPersona,
+        helpFocusType: typeof helpFocus,
+        llmProviderType: typeof selectedLLM
+      });
       
+      // Try to test the validation first
+      try {
+        console.log('🧪 Testing validation with debug endpoint first...');
+        const debugResponse = await fetch('https://backend-production-41ee.up.railway.app/api/debug/chat-validation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData)
+        });
+        const debugResult = await debugResponse.json();
+        console.log('🔍 Debug validation result:', debugResult);
+        
+        if (!debugResult.success) {
+          console.error('❌ Validation failed at debug endpoint:', debugResult);
+          throw new Error(`Validation failed: ${debugResult.error}`);
+        }
+      } catch (debugError) {
+        console.error('🚨 Debug validation failed:', debugError);
+        // Continue with the actual request anyway
+      }
+
       // Increase timeout to 60 seconds and add better error handling
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000);
