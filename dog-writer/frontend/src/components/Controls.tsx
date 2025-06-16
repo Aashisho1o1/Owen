@@ -6,11 +6,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
 
 const Controls: React.FC = () => {
+  const navigate = useNavigate();
   const {
     authorPersona,
     setAuthorPersona,
@@ -266,6 +268,20 @@ const Controls: React.FC = () => {
 
         {/* Divider */}
         <div className="controls-divider"></div>
+
+        {/* Documents Button */}
+        <div className="control-icon-group">
+          <button
+            className="control-icon-button"
+            onClick={() => navigate('/documents')}
+            title="Document Management"
+          >
+            <div className="control-button-content">
+              <span className="control-icon">📚</span>
+            </div>
+            <div className="control-tooltip">Documents</div>
+          </button>
+        </div>
 
         {/* Writing Timer Clock Icon */}
         <div className="control-icon-group">

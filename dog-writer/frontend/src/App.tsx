@@ -9,6 +9,8 @@ import UserProfileModal from './components/UserProfileModal';
 import DocumentTitleBar from './components/DocumentTitleBar';
 import DocumentHelp from './components/DocumentHelp';
 import MangaStudioPage from './pages/MangaStudioPage';
+import DocumentsPage from './pages/DocumentsPage';
+import DocumentEditor from './pages/DocumentEditor';
 import './App.css';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -287,6 +289,8 @@ const AppContent: React.FC = () => {
       <AppLayout>
         <Routes>
           <Route path="/" element={<WritersDesk />} />
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/editor/:documentId" element={<DocumentEditor />} />
           <Route path="/manga" element={<MangaStudioPage />} />
           <Route path="/voice" element={<VoiceToTextPage />} />
           <Route path="*" element={<WritersDesk />} />
