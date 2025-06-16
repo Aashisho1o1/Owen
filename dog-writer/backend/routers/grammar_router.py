@@ -15,7 +15,7 @@ import logging
 
 from models.schemas import GrammarCheckRequest, GrammarCheckResponse
 from services.grammar_service import grammar_service, SecurityError
-from services.auth_service import get_current_user_id, get_optional_user_id
+# from services.auth_service import get_current_user_id, get_optional_user_id
 from services.validation_service import input_validator
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def get_client_ip(request: Request) -> str:
 async def check_grammar(
     request: Request,
     grammar_request: GrammarCheckRequest,
-    user_id: str = Depends(get_optional_user_id)  # Optional auth for public access
+    # user_id: str = Depends(get_optional_user_id)  # Optional auth for public access
 ):
     """
     Check grammar and spelling in text with security validation
@@ -49,6 +49,7 @@ async def check_grammar(
     - Malicious content detection
     """
     client_ip = get_client_ip(request)
+    user_id = None  # No auth for now
     
     try:
         # Validate input using our security service
@@ -130,7 +131,7 @@ async def check_grammar(
 @router.post("/check-stream")
 async def check_grammar_stream(
     request: GrammarCheckRequest,
-    user_id: str = Depends(get_current_user_id)
+    # user_id: str = Depends(get_current_user_id)
 ):
     """
     Streaming grammar check for real-time feedback
@@ -164,12 +165,12 @@ async def check_grammar_stream(
     return StreamingResponse(generate_stream(), media_type="text/plain")
 
 @router.get("/metrics")
-async def get_grammar_metrics(user_id: str = Depends(get_current_user_id)):
+async def get_grammar_metrics():
     """Get grammar checking performance metrics"""
     return grammar_service.get_metrics()
 
 @router.post("/clear-cache")
-async def clear_grammar_cache(user_id: str = Depends(get_current_user_id)):
+async def clear_grammar_cache():  # user_id: str = Depends(get_current_user_id)
     """Clear grammar check cache (admin only)"""
     grammar_service.clear_cache()
     return {"message": "Grammar cache cleared"} 
