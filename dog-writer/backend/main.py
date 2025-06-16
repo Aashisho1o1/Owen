@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 import logging
 import uvicorn
+import subprocess
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -239,12 +240,13 @@ async def read_root():
 async def health():
     """Health check endpoint"""
     return {
-        "healthy": True,
+        "status": "deployed",
         "service": "Owen AI Writer",
-        "version": "2.0.0",
+        "version": "2.2.0",
         "mode": "full",
         "port": os.getenv("PORT", "8000"),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "healthy": True
     }
 
 @app.get("/api/status")
@@ -307,7 +309,7 @@ async def test_deployed():
     """Simple test to verify new code is deployed"""
     return {
         "deployed": True,
-        "branch": "refactor/backend-modular", 
+        "branch": get_current_branch(),
         "timestamp": datetime.now().isoformat(),
         "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
         "message": "New code successfully deployed!"
@@ -358,13 +360,13 @@ async def test_gemini():
                 model.generate_content,
                 "Explain the concept of literary voice in exactly 10 words.",
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=30,
+                    max_output_tokens=300,
                     temperature=0.7,
                     top_p=0.9,
                     top_k=40,
                 )
             ),
-            timeout=60.0
+            timeout=180.0
         )
         
         return {
@@ -622,6 +624,14 @@ async def global_exception_handler(request, exc):
             "timestamp": datetime.now().isoformat()
         }
     )
+
+def get_current_branch():
+    try:
+        result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+                              capture_output=True, text=True, timeout=5)
+        return result.stdout.strip() if result.returncode == 0 else "unknown"
+    except:
+        return "unknown"
 
 if __name__ == "__main__":
     # This section only runs when executing the file directly (local development)
