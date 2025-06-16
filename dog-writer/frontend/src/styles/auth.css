@@ -34,8 +34,9 @@
   background: var(--bg-elevated);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  width: 100%;
-  max-width: 680px;
+  width: 100% !important;
+  max-width: 800px !important;
+  min-width: 600px !important;
   max-height: 90vh;
   overflow-y: auto;
   animation: authModalSlideIn 300ms ease-out;
@@ -50,6 +51,28 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* Force wider modal on all screen sizes */
+@media (min-width: 640px) {
+  .auth-modal {
+    max-width: 800px !important;
+    min-width: 600px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .auth-modal {
+    max-width: 900px !important;
+    min-width: 700px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-modal {
+    max-width: 1000px !important;
+    min-width: 800px !important;
   }
 }
 
@@ -436,7 +459,8 @@
   }
 
   .auth-modal {
-    max-width: 90vw;
+    max-width: 95vw !important; /* Use most of screen width on tablets */
+    min-width: 300px !important; /* Prevent it from being too narrow */
     margin: 0 auto;
   }
 
@@ -475,7 +499,8 @@
   }
 
   .auth-modal {
-    max-width: 95vw;
+    max-width: 98vw !important; /* Use almost all screen width on mobile */
+    min-width: 280px !important; /* Minimum usable width */
     margin: 0 auto;
   }
 

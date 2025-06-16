@@ -205,6 +205,19 @@ app.add_middleware(
 )
 
 # Pydantic models
+class ChatHistoryMessage(BaseModel):
+    role: str
+    content: str
+
+class UserPreferences(BaseModel):
+    english_variant: Optional[str] = "US"
+    writing_style_profile: Optional[dict] = {}
+    onboarding_completed: Optional[bool] = False
+    user_corrections: Optional[list] = []
+    writing_type: Optional[str] = None
+    feedback_style: Optional[str] = None
+    primary_goal: Optional[str] = None
+
 class ChatMessage(BaseModel):
     message: str
     editor_text: str = ""
@@ -212,9 +225,9 @@ class ChatMessage(BaseModel):
     highlight_id: str = ""  # New field for highlight ID
     author_persona: str = "Ernest Hemingway"
     help_focus: str = "general"
-    chat_history: list = []
+    chat_history: List[ChatHistoryMessage] = []  # Properly typed chat history
     llm_provider: str = "openai"
-    user_preferences: dict = {}
+    user_preferences: Optional[UserPreferences] = None  # Properly typed user preferences
     feedback_on_previous: str = ""
     english_variant: str = "US"
 
@@ -468,6 +481,8 @@ async def chat_message(chat: ChatMessage):
     request_id = f"req-{int(start_time.timestamp())}"
     print(f"[DEBUG] {request_id} Chat request started at {start_time} for provider: {chat.llm_provider}")
     print(f"[DEBUG] {request_id} Request data: message='{chat.message[:100]}...', persona={chat.author_persona}, focus={chat.help_focus}")
+    print(f"[DEBUG] {request_id} Chat history length: {len(chat.chat_history)}")
+    print(f"[DEBUG] {request_id} User preferences: {chat.user_preferences}")
     
     try:
         # Create persona-specific system prompt with highlighted text support
@@ -716,6 +731,32 @@ async def chat_demo(chat: ChatMessage):
         dialogue_response=f"As {chat.author_persona}, I'd say: {ai_response}",
         thinking_trail="Demo mode - instant response"
     )
+
+@app.post("/api/debug/chat-validation")
+async def debug_chat_validation(request_data: dict):
+    """Debug endpoint to test chat validation without processing"""
+    try:
+        # Try to parse the request data as ChatMessage
+        chat_message = ChatMessage(**request_data)
+        return {
+            "success": True,
+            "message": "Validation successful",
+            "parsed_data": {
+                "message": chat_message.message,
+                "author_persona": chat_message.author_persona,
+                "help_focus": chat_message.help_focus,
+                "chat_history_length": len(chat_message.chat_history),
+                "user_preferences": chat_message.user_preferences,
+                "llm_provider": chat_message.llm_provider
+            }
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "received_data": request_data
+        }
 
 # Error handler
 @app.exception_handler(Exception)
