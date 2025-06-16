@@ -35,7 +35,7 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
   animation: authModalSlideIn 300ms ease-out;
@@ -101,7 +101,7 @@
 /* ============= AUTH MODAL CONTENT ============= */
 
 .auth-modal-content {
-  padding: var(--space-6) var(--space-8) var(--space-8);
+  padding: var(--space-6) var(--space-10) var(--space-8);
 }
 
 /* ============= AUTH FORM ============= */
@@ -435,8 +435,8 @@
   }
   
   .auth-modal {
-    max-width: 100%;
-    max-height: 95vh;
+    max-width: 95vw;
+    margin: 0 auto;
   }
   
   .auth-modal-header {
@@ -457,12 +457,12 @@
   
   .auth-form-input {
     padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
   }
   
   .auth-form-submit {
-    padding: var(--space-3) var(--space-5);
-    font-size: var(--text-sm);
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--text-base);
   }
 }
 

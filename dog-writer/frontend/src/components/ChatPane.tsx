@@ -119,6 +119,22 @@ const ChatPane: React.FC = () => {
     handleSendMessage(finalMessage);
   };
 
+  // Handle automatic message sending from highlighted text
+  useEffect(() => {
+    const handleSendChatMessage = (event: CustomEvent) => {
+      const { message, highlightedText: eventHighlightedText, highlightId } = event.detail;
+      
+      // Send the message automatically
+      handleSendMessageWrapper(message);
+    };
+
+    window.addEventListener('sendChatMessage', handleSendChatMessage as EventListener);
+
+    return () => {
+      window.removeEventListener('sendChatMessage', handleSendChatMessage as EventListener);
+    };
+  }, [handleSendMessageWrapper]);
+
   const handleQuickQuestion = (questionTemplate: string) => {
     let finalMessage = questionTemplate;
     

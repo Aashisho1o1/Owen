@@ -137,56 +137,84 @@ export const useChat = ({
         highlight_id: highlightedTextId,
       };
       
-      const response: ChatResponse = await api.chat(requestData);
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+      });
+
+      const response: ChatResponse = await Promise.race([
+        api.chat(requestData),
+        timeoutPromise
+      ]);
       
       setIsThinking(false);
-      if (response.dialogue_response) {
+      
+      if (response && response.dialogue_response) {
         setFullResponse(response.dialogue_response);
         setIsStreaming(true); // Start streaming the response
+        setThinkingTrail(response.thinking_trail || null);
       } else {
         // Handle cases where dialogue_response might be empty or undefined
+        const fallbackMessage = `I apologize, but I received an empty response. As ${authorPersona} would say, let's try rephrasing your question or approach it from a different angle.`;
         setMessages(prev => [
           ...prev,
-          { role: 'assistant', content: 'I received an empty response. Please try again.' }
+          { role: 'assistant', content: fallbackMessage }
         ]);
+        setThinkingTrail('Empty response received - using fallback');
       }
-      setThinkingTrail(response.thinking_trail || null);
 
     } catch (error: unknown) {
       logger.error('Error sending message in useChat:', error);
+      setIsThinking(false);
+      setIsStreaming(false);
       
       const typedError = error as ApiError & { userMessage?: string };
       
-      // Use the enhanced error message from axios interceptor if available
-      const userFriendlyMessage = typedError.userMessage || 'Sorry, I encountered an error. Please try again.';
+      // Create a user-friendly fallback response based on the error type
+      let fallbackResponse = '';
+      let errorType = 'unknown';
       
+      if (typedError.message?.includes('timeout') || typedError.message?.includes('Request timeout')) {
+        errorType = 'timeout';
+        fallbackResponse = `I apologize, but my response took too long. As ${authorPersona} would say, sometimes the best writing comes from patience. Please try your question again, perhaps with fewer details.`;
+      } else if (typedError.message?.includes('Network Error') || typedError.message?.includes('ECONNREFUSED')) {
+        errorType = 'network';
+        fallbackResponse = `I'm having trouble connecting right now. As ${authorPersona} would say, even the best writers face obstacles. Please check your connection and try again.`;
+      } else if (typedError.response?.status === 500) {
+        errorType = 'server';
+        fallbackResponse = `I encountered a server issue. As ${authorPersona} would say, every writer faces technical difficulties. Let me try to help you differently - could you rephrase your question?`;
+      } else if (typedError.response?.status === 429) {
+        errorType = 'rate_limit';
+        fallbackResponse = `I'm receiving too many requests right now. As ${authorPersona} would say, good writing takes time. Please wait a moment and try again.`;
+      } else {
+        errorType = 'general';
+        fallbackResponse = `I encountered an unexpected issue. As ${authorPersona} would say, every writer faces challenges. Please try rephrasing your question or ask something else.`;
+      }
+      
+      // Add the fallback response to chat
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: userFriendlyMessage }
+        { role: 'assistant', content: fallbackResponse }
       ]);
       
-      // Detailed error for debugging
-      let specificApiError = `Error: ${typedError.message || 'Unknown error'}`;
+      // Set detailed error for debugging (but don't show to user)
+      let specificApiError = `Error (${errorType}): ${typedError.message || 'Unknown error'}`;
       if (typedError.response && typedError.response.data) {
         const errorDetail = typedError.response.data.detail || typedError.response.data.error || JSON.stringify(typedError.response.data);
-        specificApiError = `API error: ${typedError.response.status} - ${errorDetail}`;
+        specificApiError = `API error (${errorType}): ${typedError.response.status} - ${errorDetail}`;
       } else if (typedError.response) {
-        specificApiError = `API error: ${typedError.response.status} - ${typedError.response.statusText}`;
-      } else if (typedError.message?.includes('Network Error')) {
-        specificApiError = 'Network error: Unable to connect to the server. Please check if the backend is running.';
+        specificApiError = `API error (${errorType}): ${typedError.response.status} - ${typedError.response.statusText}`;
       }
       
       setApiError(specificApiError);
+      setThinkingTrail(`Error occurred: ${errorType} - Fallback response provided`);
       
-      // Also set global error if the error is connection-related
-      if (setApiGlobalError && (typedError.message?.includes('Network Error') || typedError.message?.includes('ECONNREFUSED'))) {
-        setApiGlobalError('Backend connection failed. Please ensure the server is running.');
+      // Set global error only for connection-related issues
+      if (setApiGlobalError && (errorType === 'network' || errorType === 'timeout')) {
+        setApiGlobalError(`Backend connection issue (${errorType}). Please check if the server is running.`);
       }
-      
-      setIsThinking(false);
-      setIsStreaming(false);
     }
-  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId]);
+  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId, setApiGlobalError]);
 
   const handleSaveCheckpoint = useCallback(async () => {
     logger.log("Save Checkpoint clicked");

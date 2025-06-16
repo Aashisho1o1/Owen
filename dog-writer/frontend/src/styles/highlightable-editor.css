@@ -59,78 +59,84 @@
   position: absolute;
 }
 
-/* Custom Highlight Styles */
+/* Custom Highlight Styles - Improved for readability */
 .highlightable-editor mark[data-color] {
-  padding: 2px 4px;
-  border-radius: 6px;
+  padding: 1px 2px;
+  border-radius: 4px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  display: inline-block;
+  display: inline;
   animation: highlightFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Make highlights more subtle and readable */
+  opacity: 0.8;
+  border: 1px solid transparent;
 }
 
 @keyframes highlightFadeIn {
   0% {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.98);
     background-color: transparent;
   }
   50% {
-    transform: scale(1.02);
+    transform: scale(1.01);
   }
   100% {
-    opacity: 1;
+    opacity: 0.8;
     transform: scale(1);
   }
 }
 
-/* Feedback Request Highlight - Blue */
+/* Feedback Request Highlight - Blue - More subtle */
 .highlightable-editor mark.highlight-feedback-request {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  background: rgba(219, 234, 254, 0.4); /* Much more transparent */
   color: #1e40af;
-  border: 1px solid #3b82f6;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.05);
 }
 
 .highlightable-editor mark.highlight-feedback-request:hover {
-  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  background: rgba(191, 219, 254, 0.6);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  opacity: 1;
 }
 
-/* Improvement Highlight - Purple */
+/* Improvement Highlight - Purple - More subtle */
 .highlightable-editor mark.highlight-improvement {
-  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  background: rgba(237, 233, 254, 0.4); /* Much more transparent */
   color: #7c3aed;
-  border: 1px solid #8b5cf6;
-  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 1px 2px rgba(139, 92, 246, 0.05);
 }
 
 .highlightable-editor mark.highlight-improvement:hover {
-  background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  background: rgba(221, 214, 254, 0.6);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+  opacity: 1;
 }
 
-/* Question Highlight - Orange */
+/* Question Highlight - Orange - More subtle */
 .highlightable-editor mark.highlight-question {
-  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  background: rgba(254, 215, 170, 0.4); /* Much more transparent */
   color: #ea580c;
-  border: 1px solid #f97316;
-  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  box-shadow: 0 1px 2px rgba(249, 115, 22, 0.05);
 }
 
 .highlightable-editor mark.highlight-question:hover {
-  background: linear-gradient(135deg, #fdba74 0%, #fb923c 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+  background: rgba(253, 186, 116, 0.6);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.15);
+  opacity: 1;
 }
 
-/* Highlight Tooltip */
+/* Highlight Tooltip - Positioned to avoid covering text */
 .highlight-tooltip {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
@@ -143,17 +149,28 @@
   animation: tooltipSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   pointer-events: auto;
+  /* Position tooltip to the side instead of over text */
+  position: fixed;
+  transform: translateX(-50%);
 }
 
-@keyframes tooltipSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateY(10px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Tooltip positioning improvements */
+.highlight-tooltip.tooltip-above {
+  transform: translateX(-50%) translateY(-100%);
+  margin-top: -8px;
+}
+
+.highlight-tooltip.tooltip-below {
+  transform: translateX(-50%) translateY(8px);
+}
+
+.highlight-tooltip.tooltip-left {
+  transform: translateX(-100%) translateY(-50%);
+  margin-left: -8px;
+}
+
+.highlight-tooltip.tooltip-right {
+  transform: translateX(8px) translateY(-50%);
 }
 
 .highlight-tooltip-content {
@@ -480,5 +497,16 @@
   .highlightable-editor {
     padding: 16px 20px;
     font-size: 15px;
+  }
+}
+
+@keyframes tooltipSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 } 

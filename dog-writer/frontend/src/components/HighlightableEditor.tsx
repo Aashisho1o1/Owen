@@ -174,7 +174,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
 
     setHighlights(prev => [...prev, highlightInfo]);
 
-    // Notify parent component
+    // Notify parent component with highlight type
     onTextHighlighted(selectedText, highlightId);
 
     // Hide tooltip and clear selection
@@ -185,6 +185,129 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
     // Clear the text selection
     editor.commands.setTextSelection(to);
   }, [editor, selectedText, onTextHighlighted]);
+
+  // Function to create highlight and send to chat with specific request type
+  const createHighlightAndSendToChat = useCallback((color: string, requestType: string) => {
+    if (!editor || !selectedText) return;
+
+    const highlightId = `highlight-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const { from, to } = editor.state.selection;
+
+    // Apply the highlight
+    editor.chain().focus().setHighlight({ 
+      color, 
+      id: highlightId 
+    }).run();
+
+    // Store highlight info
+    const highlightInfo: HighlightInfo = {
+      id: highlightId,
+      text: selectedText,
+      color,
+      position: { from, to },
+      timestamp: Date.now(),
+    };
+
+    setHighlights(prev => [...prev, highlightInfo]);
+
+    // Notify parent component with the highlighted text and request type
+    onTextHighlighted(selectedText, highlightId);
+
+    // Hide tooltip and clear selection
+    setShowHighlightTooltip(false);
+    setIsSelecting(false);
+    setSelectedText('');
+
+    // Clear the text selection
+    editor.commands.setTextSelection(to);
+
+    // Trigger chat with specific request
+    // This will be handled by the parent component (App.tsx) to open chat and send message
+    const event = new CustomEvent('highlightedTextForChat', {
+      detail: {
+        text: selectedText,
+        requestType,
+        highlightId,
+        color
+      }
+    });
+    window.dispatchEvent(event);
+  }, [editor, selectedText, onTextHighlighted]);
+
+  // Improved tooltip positioning to avoid covering text
+  const getTooltipPosition = useCallback((coords: { left: number; top: number }) => {
+    const tooltip = document.querySelector('.highlight-tooltip') as HTMLElement;
+    if (!tooltip) return { x: coords.left, y: coords.top - 60 };
+
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let x = coords.left;
+    let y = coords.top - 60; // Default: above selection
+
+    // Adjust horizontal position if tooltip would go off-screen
+    if (x + tooltipRect.width > viewportWidth - 20) {
+      x = viewportWidth - tooltipRect.width - 20;
+    }
+    if (x < 20) {
+      x = 20;
+    }
+
+    // If tooltip would go above viewport, position it below the selection
+    if (y < 20) {
+      y = coords.top + 30; // Below selection
+    }
+
+    // If still off-screen, position to the side
+    if (y + tooltipRect.height > viewportHeight - 20) {
+      y = coords.top - tooltipRect.height / 2;
+      x = coords.left + 100; // To the right
+      
+      // If right side is off-screen, try left side
+      if (x + tooltipRect.width > viewportWidth - 20) {
+        x = coords.left - tooltipRect.width - 20; // To the left
+      }
+    }
+
+    return { x, y };
+  }, []);
+
+  // Update selection handler to use improved positioning
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleSelectionUpdate = () => {
+      const { from, to } = editor.state.selection;
+      const selectedText = editor.state.doc.textBetween(from, to, ' ');
+      
+      if (selectedText.trim() && selectedText.length > 2) {
+        setSelectedText(selectedText.trim());
+        setIsSelecting(true);
+        
+        // Get the position of the selection for tooltip placement
+        const coords = editor.view.coordsAtPos(from);
+        const improvedPosition = getTooltipPosition(coords);
+        
+        setTooltipPosition({
+          x: improvedPosition.x,
+          y: improvedPosition.y,
+        });
+        setShowHighlightTooltip(true);
+      } else {
+        setShowHighlightTooltip(false);
+        setIsSelecting(false);
+        setSelectedText('');
+      }
+    };
+
+    // Replace the existing onSelectionUpdate in editor configuration
+    editor.on('selectionUpdate', handleSelectionUpdate);
+
+    return () => {
+      editor.off('selectionUpdate', handleSelectionUpdate);
+    };
+  }, [editor, getTooltipPosition]);
 
   // Function to remove a highlight
   const removeHighlight = useCallback((highlightId: string) => {
@@ -275,19 +398,19 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
               <div className="highlight-tooltip-actions">
                 <button
                   className="highlight-btn highlight-btn-primary"
-                  onClick={() => createHighlight('feedback-request')}
+                  onClick={() => createHighlightAndSendToChat('feedback-request', 'feedback')}
                 >
                   🔍 Get Feedback
                 </button>
                 <button
                   className="highlight-btn highlight-btn-secondary"
-                  onClick={() => createHighlight('improvement')}
+                  onClick={() => createHighlightAndSendToChat('improvement', 'improve')}
                 >
                   ✨ Improve This
                 </button>
                 <button
                   className="highlight-btn highlight-btn-tertiary"
-                  onClick={() => createHighlight('question')}
+                  onClick={() => createHighlightAndSendToChat('question', 'question')}
                 >
                   ❓ Ask Question
                 </button>

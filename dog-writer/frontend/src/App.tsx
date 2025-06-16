@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import HighlightableEditor from './components/HighlightableEditor';
 import ChatPane from './components/ChatPane';
@@ -92,6 +92,48 @@ const WritersDesk: React.FC = () => {
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
   };
+
+  // Handle highlighted text for chat integration
+  useEffect(() => {
+    const handleHighlightedTextForChat = (event: CustomEvent) => {
+      const { text, requestType, highlightId, color } = event.detail;
+      
+      // Open chat if not already open
+      if (!isChatOpen) {
+        setIsChatOpen(true);
+      }
+
+      // Create appropriate message based on request type
+      let message = '';
+      switch (requestType) {
+        case 'feedback':
+          message = `Please provide feedback on this text: "${text}"`;
+          break;
+        case 'improve':
+          message = `How can I improve this text: "${text}"`;
+          break;
+        case 'question':
+          message = `I have a question about this text: "${text}"`;
+          break;
+        default:
+          message = `Please analyze this text: "${text}"`;
+      }
+
+      // Send message to chat after a brief delay to ensure chat is open
+      setTimeout(() => {
+        const chatEvent = new CustomEvent('sendChatMessage', {
+          detail: { message, highlightedText: text, highlightId }
+        });
+        window.dispatchEvent(chatEvent);
+      }, 100);
+    };
+
+    window.addEventListener('highlightedTextForChat', handleHighlightedTextForChat as EventListener);
+
+    return () => {
+      window.removeEventListener('highlightedTextForChat', handleHighlightedTextForChat as EventListener);
+    };
+  }, [isChatOpen]);
 
   const handleTextHighlighted = (selectedText: string) => {
     const sel = window.getSelection();
