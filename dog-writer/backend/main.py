@@ -36,12 +36,11 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KE
 
 # Configure Gemini with better error handling
 GEMINI_CONFIGURED = False
-# Updated to use the correct model ID from official Google documentation
-# https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
-# https://ai.google.dev/gemini-api/docs/models
-GEMINI_MODEL_ID = 'gemini-2.5-pro-preview-06-05'  # Current preview version (June 5, 2025)
-# Alternative backup model ID in case the preview is unavailable
-GEMINI_FALLBACK_MODEL_ID = 'gemini-2.0-flash'  # Stable fallback model
+# Updated to use more stable model IDs
+# Primary model: Latest stable Gemini model
+GEMINI_MODEL_ID = 'gemini-1.5-pro'  # Stable model that should be available
+# Alternative backup model ID in case the primary is unavailable  
+GEMINI_FALLBACK_MODEL_ID = 'gemini-1.5-flash'  # Faster fallback model
 
 # Basic Gemini API configuration (no validation during startup to prevent key exposure)
 if os.getenv("GEMINI_API_KEY"):
@@ -343,7 +342,7 @@ async def debug_env():
 
 @app.get("/api/test/gemini")
 async def test_gemini():
-    """Test Gemini 2.5 Pro API connection"""
+    """Test Gemini API connection with fallback support"""
     try:
         if not os.getenv("GEMINI_API_KEY"):
             return {"error": "No Gemini API key configured"}
@@ -351,37 +350,87 @@ async def test_gemini():
         if not GEMINI_CONFIGURED:
             return {"error": "Gemini API configuration failed"}
         
-        print("[DEBUG] Testing Gemini 2.5 Pro API connection...")
-        model = genai.GenerativeModel(GEMINI_MODEL_ID)
+        print(f"[DEBUG] Testing Gemini API connection with model: {GEMINI_MODEL_ID}")
         
-        # Simple test prompt for advanced reasoning
-        response = await asyncio.wait_for(
-            asyncio.to_thread(
-                model.generate_content,
-                "Explain the concept of literary voice in exactly 10 words.",
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=300,
-                    temperature=0.7,
-                    top_p=0.9,
-                    top_k=40,
+        # Try primary model first
+        try:
+            model = genai.GenerativeModel(GEMINI_MODEL_ID)
+            
+            # Simple test prompt
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    model.generate_content,
+                    "Explain the concept of literary voice in exactly 10 words.",
+                    generation_config=genai.types.GenerationConfig(
+                        max_output_tokens=300,
+                        temperature=0.7,
+                        top_p=0.9,
+                        top_k=40,
+                    )
+                ),
+                timeout=60.0  # Shorter timeout for testing
+            )
+            
+            return {
+                "success": True,
+                "response": response.text.strip(),
+                "model": GEMINI_MODEL_ID,
+                "configured": GEMINI_CONFIGURED,
+                "fallback_used": False,
+                "capabilities": "Advanced reasoning, creative writing assistance"
+            }
+            
+        except Exception as primary_error:
+            print(f"[DEBUG] Primary model {GEMINI_MODEL_ID} failed: {str(primary_error)[:200]}")
+            
+            # Try fallback model
+            try:
+                print(f"[DEBUG] Trying fallback model: {GEMINI_FALLBACK_MODEL_ID}")
+                fallback_model = genai.GenerativeModel(GEMINI_FALLBACK_MODEL_ID)
+                
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        fallback_model.generate_content,
+                        "Explain literary voice in 10 words.",
+                        generation_config=genai.types.GenerationConfig(
+                            max_output_tokens=300,
+                            temperature=0.7,
+                        )
+                    ),
+                    timeout=60.0
                 )
-            ),
-            timeout=180.0
-        )
+                
+                return {
+                    "success": True,
+                    "response": response.text.strip(),
+                    "model": GEMINI_FALLBACK_MODEL_ID,
+                    "configured": GEMINI_CONFIGURED,
+                    "fallback_used": True,
+                    "primary_error": str(primary_error)[:200],
+                    "capabilities": "Fast text generation, writing assistance"
+                }
+                
+            except Exception as fallback_error:
+                return {
+                    "error": "Both primary and fallback models failed",
+                    "primary_model": GEMINI_MODEL_ID,
+                    "fallback_model": GEMINI_FALLBACK_MODEL_ID,
+                    "primary_error": str(primary_error)[:200],
+                    "fallback_error": str(fallback_error)[:200],
+                    "suggestion": "Check API key permissions and model availability"
+                }
         
-        return {
-            "success": True,
-            "response": response.text.strip(),
-            "model": GEMINI_MODEL_ID,
-            "configured": GEMINI_CONFIGURED,
-            "capabilities": "Advanced reasoning, complex thinking, enhanced creativity"
-        }
     except asyncio.TimeoutError:
-        logging.error("[ERROR] Gemini 2.5 Pro test timeout")
-        return {"error": "Gemini 2.5 Pro API test timed out after 60 seconds"}
+        logging.error("[ERROR] Gemini API test timeout")
+        return {"error": "Gemini API test timed out after 60 seconds"}
     except Exception as e:
-        logging.error(f"[ERROR] Gemini 2.5 Pro test failed: {e}", exc_info=True)
-        return {"error": "An internal error occurred. Please try again later."}
+        logging.error(f"[ERROR] Gemini test failed: {e}", exc_info=True)
+        return {
+            "error": "Unexpected error during Gemini test",
+            "details": str(e)[:200],
+            "model": GEMINI_MODEL_ID,
+            "configured": GEMINI_CONFIGURED
+        }
 
 # Basic chat endpoints
 @app.post("/api/chat/message", response_model=ChatResponse)
