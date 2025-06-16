@@ -35,6 +35,9 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KE
 
 # Configure Gemini with better error handling
 GEMINI_CONFIGURED = False
+GEMINI_MODEL_ID = 'gemini-2.5-pro-preview-06-05'  # Current preview version from https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
+# Note: This will be updated to 'gemini-2.5-pro' when Google releases the GA version
+
 if os.getenv("GEMINI_API_KEY"):
     try:
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -341,7 +344,11 @@ async def test_gemini():
             return {"error": "Gemini API configuration failed"}
         
         print("[DEBUG] Testing Gemini 2.5 Pro API connection...")
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        
+        # Use the correct preview model ID from Google Cloud documentation
+        # https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
+        model_id = GEMINI_MODEL_ID  # Current preview version as of June 2025
+        model = genai.GenerativeModel(model_id)
         
         # Simple test prompt for advanced reasoning
         response = await asyncio.wait_for(
@@ -361,16 +368,22 @@ async def test_gemini():
         return {
             "success": True,
             "response": response.text.strip(),
-            "model": "gemini-2.5-pro",
+            "model": model_id,
             "configured": GEMINI_CONFIGURED,
-            "capabilities": "Advanced reasoning, complex thinking, enhanced creativity"
+            "capabilities": "Advanced reasoning, complex thinking, enhanced creativity",
+            "note": "Using preview model - will update to GA when available"
         }
     except asyncio.TimeoutError:
         logging.error("[ERROR] Gemini 2.5 Pro test timeout")
         return {"error": "Gemini 2.5 Pro API test timed out after 60 seconds"}
     except Exception as e:
         logging.error(f"[ERROR] Gemini 2.5 Pro test failed: {e}", exc_info=True)
-        return {"error": "An internal error occurred. Please try again later."}
+        return {
+            "error": "Gemini 2.5 Pro test failed", 
+            "details": str(e)[:200],  # Include first 200 chars of error for debugging
+            "model_attempted": model_id if 'model_id' in locals() else 'gemini-2.5-pro',
+            "troubleshooting": "Check API key and model availability"
+        }
 
 # Basic chat endpoints
 @app.post("/api/chat/message", response_model=ChatResponse)
@@ -438,8 +451,9 @@ async def chat_message(chat: ChatMessage):
                 try:
                     print(f"[DEBUG] Starting Gemini 2.5 Pro call for: {chat.message[:50]}...")
                     
-                    # Use the latest Gemini 2.5 Pro model with advanced reasoning
-                    model = genai.GenerativeModel('gemini-2.5-pro')
+                    # Use the correct preview model ID from Google Cloud documentation
+                    model_id = GEMINI_MODEL_ID  # Current preview version as of June 2025
+                    model = genai.GenerativeModel(model_id)
                     
                     # Create enhanced prompt for advanced reasoning
                     enhanced_prompt = f"""You are {chat.author_persona}, a master writer and mentor with deep expertise in literary craft.
@@ -471,7 +485,7 @@ Please provide thoughtful, actionable advice that reflects {chat.author_persona}
                     
                     print(f"[DEBUG] Gemini 2.5 Pro call completed successfully")
                     ai_response = response.text.strip()
-                    thinking_trail = f"Google Gemini 2.5 Pro - Advanced Reasoning ({chat.author_persona})"
+                    thinking_trail = f"Google Gemini 2.5 Pro Preview ({model_id}) - Advanced Reasoning ({chat.author_persona})"
                     
                 except asyncio.TimeoutError:
                     print(f"[ERROR] Gemini 2.5 Pro timeout after 180 seconds")
