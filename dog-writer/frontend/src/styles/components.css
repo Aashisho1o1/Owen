@@ -740,13 +740,13 @@
   margin: 0;
 }
 
-/* With chat open - editor takes 60%, chat takes 40% */
+/* With chat open - balanced 50/50 split for better chat visibility */
 .writing-interface.with-chat {
   justify-content: stretch;
 }
 
 .writing-interface.with-chat .editor-panel {
-  width: 60%;
+  width: 50%;
   flex-shrink: 0;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
@@ -754,7 +754,7 @@
 }
 
 .writing-interface.with-chat .chat-panel {
-  width: 40%;
+  width: 50%;
   flex-shrink: 0;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
@@ -1238,7 +1238,7 @@
 
 .messages-container {
   flex: 1;
-  padding: var(--space-6);
+  padding: var(--space-4) var(--space-5);
   overflow-y: auto;
   min-height: 0;
   background: var(--bg-primary);
@@ -1302,17 +1302,18 @@
   border-left: 4px solid var(--primary-400);
 }
 
-/* Enhanced Welcome Message */
+/* Enhanced Welcome Message - Optimized for wider chat */
 .welcome-message {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem 1.5rem;
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
   border-radius: var(--radius-xl);
-  margin: 1rem;
+  margin: var(--space-3) var(--space-2);
   border: 1px solid var(--border-light);
+  max-width: none;
 }
 
 .welcome-avatar {
@@ -1338,7 +1339,7 @@
   margin: 0 0 1.5rem 0;
   color: var(--text-secondary);
   line-height: 1.6;
-  max-width: 400px;
+  max-width: none;
 }
 
 .conversation-starters h4 {
@@ -1351,9 +1352,9 @@
 .starter-questions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
-  max-width: 400px;
+  max-width: none;
 }
 
 /* Fixed starter question button styling - Override any previous styles */
@@ -1368,10 +1369,10 @@
   transition: all var(--transition-fast);
   text-align: left;
   line-height: 1.3 !important;
-  max-width: 300px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  max-width: none !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: initial !important;
   display: block !important;
   box-shadow: var(--shadow-xs) !important;
 }
@@ -1428,7 +1429,7 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   box-shadow: var(--shadow-xs);
-  max-width: 200px;
+  max-width: 280px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1849,12 +1850,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem 1.5rem;
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-  border-radius: var(--rounded-xl);
-  margin: 1rem;
+  border-radius: var(--radius-xl);
+  margin: var(--space-3) var(--space-2);
   border: 1px solid var(--border-light);
+  max-width: none;
 }
 
 .welcome-avatar {
@@ -1880,7 +1882,7 @@
   margin: 0 0 1.5rem 0;
   color: var(--text-secondary);
   line-height: 1.6;
-  max-width: 400px;
+  max-width: none;
 }
 
 .conversation-starters h4 {
@@ -1893,9 +1895,9 @@
 .starter-questions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
-  max-width: 400px;
+  max-width: none;
 }
 
 .starter-question-button {
@@ -1909,10 +1911,10 @@
   transition: all var(--transition-fast);
   text-align: left;
   line-height: 1.3 !important;
-  max-width: 300px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  max-width: none !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: initial !important;
   display: block !important;
   box-shadow: var(--shadow-xs) !important;
 }

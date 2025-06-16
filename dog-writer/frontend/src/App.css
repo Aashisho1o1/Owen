@@ -263,7 +263,7 @@ body {
 }
 
 .writing-interface.with-chat .editor-panel {
-  flex: 0 0 60%;
+  flex: 0 0 50%;
 }
 
 .editor-panel {
@@ -284,7 +284,7 @@ body {
 
 /* Chat Panel */
 .chat-panel {
-  flex: 0 0 40%;
+  flex: 0 0 50%;
   background-color: var(--chat-bg);
   border-left: 1px solid var(--border-primary);
   transition: all 0.3s ease;
