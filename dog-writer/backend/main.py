@@ -427,7 +427,7 @@ async def test_gemini():
         logging.error(f"[ERROR] Gemini test failed: {e}", exc_info=True)
         return {
             "error": "Unexpected error during Gemini test",
-            "details": str(e)[:200],
+            "details": "An internal error occurred. Please contact support if the issue persists.",
             "model": GEMINI_MODEL_ID,
             "configured": GEMINI_CONFIGURED
         }
