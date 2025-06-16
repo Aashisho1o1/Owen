@@ -225,11 +225,6 @@ const WritersDesk: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Controls - Left Sidebar */}
-      <div className="controls-sidebar">
-        <Controls />
-      </div>
-
       {/* Floating Chat Toggle Button */}
       <button 
         className={`chat-toggle-button ${isChatOpen ? 'active' : ''}`}
@@ -272,6 +267,11 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <WritingTimer editorRef={editorRef} />
         </div>
       </main>
+      
+      {/* Global Controls - Left Sidebar - Available on all pages */}
+      <div className="controls-sidebar">
+        <Controls />
+      </div>
     </div>
   );
 };
