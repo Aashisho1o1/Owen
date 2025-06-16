@@ -400,23 +400,23 @@ async def test_gemini():
                     timeout=60.0
                 )
                 
+                logging.error(f"Primary model error: {str(primary_error)}")
                 return {
                     "success": True,
                     "response": response.text.strip(),
                     "model": GEMINI_FALLBACK_MODEL_ID,
                     "configured": GEMINI_CONFIGURED,
                     "fallback_used": True,
-                    "primary_error": str(primary_error)[:200],
                     "capabilities": "Fast text generation, writing assistance"
                 }
                 
             except Exception as fallback_error:
+                logging.error(f"Primary model error: {str(primary_error)}")
+                logging.error(f"Fallback model error: {str(fallback_error)}")
                 return {
                     "error": "Both primary and fallback models failed",
                     "primary_model": GEMINI_MODEL_ID,
                     "fallback_model": GEMINI_FALLBACK_MODEL_ID,
-                    "primary_error": str(primary_error)[:200],
-                    "fallback_error": str(fallback_error)[:200],
                     "suggestion": "Check API key permissions and model availability"
                 }
         
