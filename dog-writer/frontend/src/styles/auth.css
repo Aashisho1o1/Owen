@@ -19,6 +19,7 @@
   z-index: 50;
   animation: authOverlayFadeIn 200ms ease-out;
   padding: var(--space-4);
+  box-sizing: border-box;
 }
 
 @keyframes authOverlayFadeIn {
@@ -34,13 +35,16 @@
   background: var(--bg-elevated);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  width: 100% !important;
-  max-width: 320px !important;
-  min-width: 280px !important;
+  width: 100%;
+  max-width: min(320px, calc(100vw - 2rem));
+  min-width: 280px;
   max-height: 90vh;
   overflow-y: auto;
   animation: authModalSlideIn 300ms ease-out;
   border: 1px solid var(--border-light);
+  margin: 0 auto;
+  position: relative;
+  box-sizing: border-box;
 }
 
 @keyframes authModalSlideIn {
@@ -57,22 +61,22 @@
 /* Optimal compact width inspired by control dropdowns */
 @media (min-width: 640px) {
   .auth-modal {
-    max-width: 340px !important;
-    min-width: 300px !important;
+    max-width: min(340px, calc(100vw - 2rem));
+    min-width: 300px;
   }
 }
 
 @media (min-width: 768px) {
   .auth-modal {
-    max-width: 360px !important;
-    min-width: 320px !important;
+    max-width: min(360px, calc(100vw - 2rem));
+    min-width: 320px;
   }
 }
 
 @media (min-width: 1024px) {
   .auth-modal {
-    max-width: 380px !important;
-    min-width: 340px !important;
+    max-width: min(380px, calc(100vw - 2rem));
+    min-width: 340px;
   }
 }
 
@@ -459,8 +463,8 @@
   }
 
   .auth-modal {
-    max-width: 300px !important; /* Compact but readable on tablets */
-    min-width: 260px !important;
+    max-width: min(300px, calc(100vw - 1.5rem)); /* Compact but readable on tablets */
+    min-width: 260px;
     margin: 0 auto;
   }
 
@@ -499,8 +503,8 @@
   }
 
   .auth-modal {
-    max-width: 280px !important; /* Compact mobile size */
-    min-width: 240px !important;
+    max-width: min(280px, calc(100vw - 1rem)); /* Compact mobile size */
+    min-width: 240px;
     margin: 0 auto;
   }
 
