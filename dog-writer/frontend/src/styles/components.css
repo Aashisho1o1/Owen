@@ -1304,89 +1304,84 @@
 
 /* Enhanced Welcome Message */
 .welcome-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1.5rem;
   text-align: center;
-  padding: var(--space-8) var(--space-6);
-  max-width: 600px;
-  margin: 0 auto;
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--primary-25) 100%);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  animation: welcomeSlideIn 0.5s ease-out;
-}
-
-@keyframes welcomeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  margin: 1rem;
+  border: 1px solid var(--border-light);
 }
 
 .welcome-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  width: 48px;
+  height: 48px;
+  background-color: var(--primary-500);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-inverse);
-  margin: 0 auto var(--space-4) auto;
-  box-shadow: var(--shadow-lg);
+  margin-bottom: 1rem;
+  color: white;
 }
 
 .welcome-content h3 {
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-3);
 }
 
 .welcome-content p {
-  font-size: var(--text-base);
+  margin: 0 0 1.5rem 0;
   color: var(--text-secondary);
   line-height: 1.6;
-  margin-bottom: var(--space-6);
+  max-width: 400px;
 }
 
 .conversation-starters h4 {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-4);
 }
 
 .starter-questions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  max-width: 500px;
-  margin: 0 auto;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
 }
 
+/* Fixed starter question button styling - Override any previous styles */
 .starter-question-button {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border: 2px solid var(--primary-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3) !important;
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-secondary) !important;
+  font-size: var(--text-xs) !important;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-align: left;
-  line-height: 1.5;
-  box-shadow: var(--shadow-xs);
+  line-height: 1.3 !important;
+  max-width: 300px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+  box-shadow: var(--shadow-xs) !important;
 }
 
 .starter-question-button:hover {
-  background: var(--primary-50);
-  border-color: var(--primary-400);
-  color: var(--primary-800);
+  background-color: var(--primary-50) !important;
+  border-color: var(--primary-300) !important;
+  color: var(--primary-700) !important;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm) !important;
 }
 
 /* Enhanced Chat Input */
@@ -1904,23 +1899,30 @@
 }
 
 .starter-question-button {
-  padding: 0.75rem 1rem;
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border-light);
-  border-radius: var(--rounded-lg);
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3) !important;
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-secondary) !important;
+  font-size: var(--text-xs) !important;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-align: left;
+  line-height: 1.3 !important;
+  max-width: 300px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+  box-shadow: var(--shadow-xs) !important;
 }
 
 .starter-question-button:hover {
-  background-color: var(--bg-secondary);
-  border-color: var(--primary-300);
-  color: var(--text-primary);
+  background-color: var(--primary-50) !important;
+  border-color: var(--primary-300) !important;
+  color: var(--primary-700) !important;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm) !important;
 }
 
 /* ============= ENHANCED CONTROLS ============= */
