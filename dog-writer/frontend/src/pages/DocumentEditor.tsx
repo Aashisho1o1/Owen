@@ -3,9 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
 import HighlightableEditor from '../components/HighlightableEditor';
 import ChatPane from '../components/ChatPane';
-import Controls from '../components/Controls';
-import DocumentTitleBar from '../components/DocumentTitleBar';
-import WritingTimer from '../components/WritingTimer';
 import './DocumentEditor.css';
 
 const DocumentEditor: React.FC = () => {
@@ -185,16 +182,6 @@ const DocumentEditor: React.FC = () => {
             <ChatPane />
           </div>
         )}
-      </div>
-
-      {/* Floating controls */}
-      <div className="floating-controls">
-        <Controls />
-      </div>
-
-      {/* Writing timer */}
-      <div className="writing-timer">
-        <WritingTimer editorRef={React.createRef()} />
       </div>
     </div>
   );

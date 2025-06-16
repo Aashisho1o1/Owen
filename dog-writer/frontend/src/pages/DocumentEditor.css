@@ -208,21 +208,6 @@
   flex-direction: column;
 }
 
-/* Floating Elements */
-.floating-controls {
-  position: fixed;
-  left: 24px;
-  bottom: 24px;
-  z-index: 100;
-}
-
-.writing-timer {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 100;
-}
-
 /* Responsive Design */
 @media (max-width: 1024px) {
   .editor-main.with-chat .editor-container {
@@ -272,12 +257,6 @@
     height: 40%;
     border-left: none;
     border-top: 1px solid #e8eaed;
-  }
-  
-  .floating-controls,
-  .writing-timer {
-    position: static;
-    margin: 16px;
   }
 }
 
