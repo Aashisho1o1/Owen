@@ -159,10 +159,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://owen-frontend-production.up.railway.app",
+        "https://web-production-44b3.up.railway.app", # Your current frontend
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:4173",
-      # Allow all origins for now
+        "*", # Fallback to allow all for now
     ],
     allow_credentials=True,
     allow_methods=["*"],

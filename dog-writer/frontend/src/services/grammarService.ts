@@ -55,7 +55,7 @@ class GrammarService {
       process.env.REACT_APP_API_URL ||
       process.env.VITE_API_URL ||
       import.meta.env?.VITE_API_URL ||
-      'https://backend-production-ea53.up.railway.app'
+      'https://backend-production-41ee.up.railway.app'
     );
   }
 
