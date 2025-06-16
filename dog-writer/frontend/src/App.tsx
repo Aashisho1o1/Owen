@@ -104,9 +104,28 @@ const WritersDesk: React.FC = () => {
     
     if (editorRef.current) {
       const editorRect = editorRef.current.getBoundingClientRect();
+      
+      // Calculate position relative to editor
+      let top = rect.top - editorRect.top + rect.height + 8; // Add 8px gap
+      let left = rect.left - editorRect.left + rect.width / 2;
+      
+      // Bounds checking to prevent overlap with chat panel
+      const editorWidth = editorRect.width;
+      const editorHeight = editorRect.height;
+      
+      // If chat is open, keep button within left 60% of editor to avoid chat overlap
+      if (isChatOpen) {
+        const maxLeft = editorWidth * 0.6 - 80; // 80px for button width
+        left = Math.min(left, maxLeft);
+      }
+      
+      // Keep button within editor bounds
+      left = Math.max(80, Math.min(left, editorWidth - 80)); // 80px margin from edges
+      top = Math.max(10, Math.min(top, editorHeight - 50)); // 50px margin from bottom
+      
       setSelection({
-        top: rect.top - editorRect.top + rect.height,
-        left: rect.left - editorRect.left + rect.width / 2,
+        top,
+        left,
         text: selectedText,
       });
     }
@@ -118,6 +137,9 @@ const WritersDesk: React.FC = () => {
     setSelection(null); // Hide button after submit
     setIsChatOpen(true); // Open chat
   };
+
+  // Hide floating button when chat is open and user might be typing
+  const shouldShowFloatingButton = selection;
 
   return (
     <div className="writers-desk">
@@ -137,7 +159,7 @@ const WritersDesk: React.FC = () => {
               onChange={setEditorContent} 
               onTextHighlighted={handleTextHighlighted} 
             />
-             {selection && (
+             {shouldShowFloatingButton && (
               <div 
                 className="floating-ai-button" 
                 style={{ top: selection.top, left: selection.left }}

@@ -755,14 +755,18 @@ body {
   border-radius: 20px;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
-  z-index: 50;
+  z-index: 100;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s ease-in-out;
   white-space: nowrap;
+  border: 2px solid white;
+  max-width: 120px;
+  text-align: center;
 }
 
 .floating-ai-button:hover {
   background-color: var(--accent-blue-hover);
   transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
 } 
