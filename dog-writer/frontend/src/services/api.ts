@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://backend-production-ea53.up.railway.app';
 
 // Add axios interceptors for better error handling and logging
 axios.interceptors.request.use(
