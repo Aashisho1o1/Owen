@@ -1028,17 +1028,16 @@
   top: 100%;
   left: 0;
   margin-top: var(--space-1);
-  background: #ff0000 !important; /* DEBUG: Bright red background */
-  border: 3px solid #00ff00 !important; /* DEBUG: Bright green border */
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   z-index: 9999;
   max-height: 300px;
   overflow-y: auto;
-  animation: none; /* DEBUG: Remove animation */
-  min-width: 280px !important;
-  width: 280px !important;
-  min-height: 200px !important; /* DEBUG: Force minimum height */
+  animation: dropdownSlide 0.2s ease-out;
+  min-width: 200px;
+  width: auto;
 }
 
 @keyframes dropdownSlide {
@@ -1070,19 +1069,19 @@
 }
 
 .dropdown-option {
-  display: flex !important;
+  display: flex;
   align-items: center;
-  width: 100% !important;
-  padding: 20px !important; /* DEBUG: Large padding */
-  background: #ffff00 !important; /* DEBUG: Bright yellow background */
-  border: 2px solid #0000ff !important; /* DEBUG: Blue border */
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
   text-align: left;
-  font-size: 16px !important; /* DEBUG: Large font */
-  color: #000000 !important; /* DEBUG: Black text */
+  font-size: 0.875rem;
+  color: #0f172a;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  gap: var(--space-3);
-  min-height: 50px !important; /* DEBUG: Force height */
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .option-icon {
@@ -1117,18 +1116,21 @@
 }
 
 .dropdown-option:hover {
-  background: var(--primary-50);
-  color: var(--primary-700);
+  background-color: #f1f5f9;
 }
 
 .dropdown-option.selected {
-  background: var(--primary-100);
-  color: var(--primary-800);
-  font-weight: var(--font-semibold);
+  background-color: #3b82f6;
+  color: white;
+  font-weight: 500;
 }
 
 .dropdown-option.selected:hover {
-  background: var(--primary-150);
+  background-color: #2563eb;
+}
+
+.dropdown-option:last-child {
+  border-bottom: none;
 }
 
 /* Controls Divider */
