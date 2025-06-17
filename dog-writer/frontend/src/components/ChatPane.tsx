@@ -225,12 +225,14 @@ const ChatPane: React.FC = () => {
         
         {/* Cursor-style Controls */}
         <div className="chat-controls">
+          DEBUG: Controls container is here!
           {/* Author Persona Selector */}
           <div className="control-group">
             <button
               className={`control-selector ${activeDropdown === 'persona' ? 'active' : ''}`}
               onClick={() => toggleDropdown('persona')}
             >
+              DEBUG BUTTON 1
               <span className="control-icon">👤</span>
               <span className="control-label">{authorPersona.split(' ')[0]}</span>
               <span className="control-arrow">▼</span>
@@ -257,6 +259,7 @@ const ChatPane: React.FC = () => {
               className={`control-selector ${activeDropdown === 'focus' ? 'active' : ''}`}
               onClick={() => toggleDropdown('focus')}
             >
+              DEBUG BUTTON 2
               <span className="control-icon">🎯</span>
               <span className="control-label">{helpFocus.split(' ')[0]}</span>
               <span className="control-arrow">▼</span>
@@ -283,6 +286,7 @@ const ChatPane: React.FC = () => {
               className={`control-selector ${activeDropdown === 'model' ? 'active' : ''}`}
               onClick={() => toggleDropdown('model')}
             >
+              DEBUG BUTTON 3
               <span className="control-icon">🤖</span>
               <span className="control-label">{selectedLLM.split(' ')[0]}</span>
               <span className="control-arrow">▼</span>
