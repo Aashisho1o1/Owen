@@ -2,82 +2,81 @@ import React, { useRef, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import HighlightableEditor from './components/HighlightableEditor';
 import ChatPane from './components/ChatPane';
-import Controls from './components/Controls';
-import WritingTimer from './components/WritingTimer';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import DocumentTitleBar from './components/DocumentTitleBar';
 import DocumentHelp from './components/DocumentHelp';
-import MangaStudioPage from './pages/MangaStudioPage';
 import DocumentsPage from './pages/DocumentsPage';
 import DocumentEditor from './pages/DocumentEditor';
 import './App.css';
 import { AppProvider, useAppContext } from './contexts/AppContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
-// Voice to Text Page
-const VoiceToTextPage: React.FC = () => {
-  return (
-    <div className="voice-page">
-      <div className="voice-controls">
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '8px', marginBottom: '20px' }}>
-            <h3>🎤 Voice Recognition</h3>
-            <p>Advanced voice-to-text functionality coming soon...</p>
-            <p>Will include real-time transcription and voice commands</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Enhanced navigation component
-const Navigation: React.FC = () => {
+// Top Navigation Bar with Documents, Settings, Auth in top right
+const TopNavigation: React.FC = () => {
   const location = useLocation();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const { setShowAuthModal, setAuthMode } = useAppContext();
   const [showProfileModal, setShowProfileModal] = useState(false);
-  
-  const navItems = [
-    { path: '/', label: 'Writer\'s Desk', icon: '✍️' },
-    { path: '/manga', label: 'Manga Studio', icon: '🎨' },
-    { path: '/voice', label: 'Voice to Text', icon: '🎤' },
-  ];
+
+  const handleAuthClick = () => {
+    if (isAuthenticated) {
+      setShowProfileModal(true);
+    } else {
+      setAuthMode('signin');
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleSignUpClick = () => {
+    setAuthMode('signup');
+    setShowAuthModal(true);
+  };
 
   return (
-    <nav className="main-navigation">
-      {/* First Row - Brand */}
-      <div className="nav-brand-row">
+    <nav className="top-navigation">
+      <div className="nav-container">
+        {/* Left side - Brand */}
         <div className="nav-brand">
-          <h1 className="brand-text">Owen</h1>
-          <span className="brand-tagline">Your AI Writing Companion</span>
+          <Link to="/" className="brand-link">
+            <h1 className="brand-text">Owen</h1>
+            <span className="brand-tagline">AI Writing Companion</span>
+          </Link>
+        </div>
+        
+        {/* Right side - Navigation items */}
+        <div className="nav-actions">
+          <Link 
+            to="/documents" 
+            className={`nav-action-button ${location.pathname === '/documents' ? 'active' : ''}`}
+          >
+            📄 Documents
+          </Link>
+          
+          <button className="nav-action-button" onClick={() => setShowProfileModal(true)}>
+            ⚙️ Settings
+          </button>
+          
+          {isAuthenticated ? (
+            <div className="user-menu">
+              <button className="nav-action-button user-button" onClick={handleAuthClick}>
+                👤 {user?.email || 'Profile'}
+              </button>
+            </div>
+          ) : (
+            <div className="auth-buttons">
+              <button className="nav-action-button" onClick={handleAuthClick}>
+                Sign In
+              </button>
+              <button className="nav-action-button primary" onClick={handleSignUpClick}>
+                Sign Up
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      
-      {/* Second Row - Navigation Links */}
-      <div className="nav-links-row">
-        <div className="nav-links">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode="signin"
-      />
 
       {/* User Profile Modal */}
       <UserProfileModal
@@ -191,9 +190,9 @@ const WritersDesk: React.FC = () => {
 
   return (
     <div className="writers-desk">
-      {/* Main Writing Interface - Text content at the very top */}
+      {/* Main Writing Interface - Clean and focused */}
       <div className={`writing-interface ${isChatOpen ? 'with-chat' : 'editor-only'}`}>
-        {/* Main Editor Panel - Text content at the top */}
+        {/* Main Editor Panel - Larger writing space */}
         <div className="editor-panel">
           {/* Document Title Bar */}
           <DocumentTitleBar />
@@ -244,34 +243,19 @@ const WritersDesk: React.FC = () => {
         >
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        {isChatOpen ? 'Close Chat' : 'AI Chat'}
       </button>
     </div>
   );
 };
 
+// App Layout with top navigation
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-
   return (
     <div className="app-layout">
-      <Navigation />
-      
-      <main className="main-content">
-        <div className="content-wrapper">
-          {children}
-        </div>
-        
-        {/* Writing Timer - Floating */}
-        <div className="writing-timer-float">
-          <WritingTimer editorRef={editorRef} />
-        </div>
+      <TopNavigation />
+      <main className="app-main">
+        {children}
       </main>
-      
-      {/* Global Controls - Left Sidebar - Available on all pages */}
-      <div className="controls-sidebar">
-        <Controls />
-      </div>
     </div>
   );
 };
@@ -291,8 +275,6 @@ const AppContent: React.FC = () => {
           <Route path="/" element={<WritersDesk />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/editor/:documentId" element={<DocumentEditor />} />
-          <Route path="/manga" element={<MangaStudioPage />} />
-          <Route path="/voice" element={<VoiceToTextPage />} />
           <Route path="*" element={<WritersDesk />} />
         </Routes>
       </AppLayout>
@@ -307,13 +289,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AppProvider>
+    <ThemeProvider>
       <AuthProvider>
-        <ThemeProvider>
+        <AppProvider>
           <AppContent />
-        </ThemeProvider>
+        </AppProvider>
       </AuthProvider>
-    </AppProvider>
+    </ThemeProvider>
   );
 };
 

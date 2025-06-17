@@ -9,7 +9,6 @@ import React, { useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import Editor from '../components/Editor';
 import ChatPane from '../components/ChatPane';
-import Controls from '../components/Controls';
 
 const WritersDesk: React.FC = () => {
   const {
@@ -24,11 +23,6 @@ const WritersDesk: React.FC = () => {
 
   return (
     <div className="writers-desk">
-      {/* Controls Section */}
-      <div className="controls-section">
-        <Controls />
-      </div>
-
       {/* Error Messages */}
       {(apiGlobalError || chatApiError) && (
         <div className="error-alerts">
@@ -57,7 +51,7 @@ const WritersDesk: React.FC = () => {
 
       {/* Main Writing Interface */}
       <div className="writing-interface">
-        {/* Editor Panel - Text content at the top */}
+        {/* Editor Panel - Clean and focused */}
         <div className="editor-panel">
           <div className="editor-container">
             <Editor 
@@ -69,7 +63,7 @@ const WritersDesk: React.FC = () => {
           </div>
         </div>
 
-        {/* Chat Panel */}
+        {/* Chat Panel with integrated controls */}
         <div className="chat-panel">
           <ChatPane />
         </div>

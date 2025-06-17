@@ -210,7 +210,6 @@ class ChatHistoryMessage(BaseModel):
     content: str
 
 class UserPreferences(BaseModel):
-    english_variant: Optional[str] = "US"
     writing_style_profile: Optional[dict] = {}
     onboarding_completed: Optional[bool] = False
     user_corrections: Optional[list] = []
@@ -229,7 +228,6 @@ class ChatMessage(BaseModel):
     llm_provider: str = "openai"
     user_preferences: Optional[UserPreferences] = None  # Properly typed user preferences
     feedback_on_previous: str = ""
-    english_variant: str = "US"
 
 class ChatResponse(BaseModel):
     dialogue_response: str
@@ -672,25 +670,7 @@ async def basic_chat():
         "frontend_url": "https://owen-frontend-production.up.railway.app"
     }
 
-# Voice endpoint (placeholder)
-@app.post("/api/voice/synthesize")
-async def synthesize_voice():
-    """Voice synthesis endpoint"""
-    return {
-        "message": "Voice synthesis ready",
-        "note": "Add OpenAI API key to enable TTS functionality",
-        "supported_voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-    }
 
-# Manga endpoint (placeholder)
-@app.post("/api/manga/generate")
-async def generate_manga():
-    """Manga generation endpoint"""
-    return {
-        "message": "Manga generation ready",
-        "note": "Add OpenAI API key to enable DALL-E functionality",
-        "supported_styles": ["anime", "manga", "realistic", "cartoon"]
-    }
 
 # Session endpoints (placeholder)
 @app.get("/api/sessions")

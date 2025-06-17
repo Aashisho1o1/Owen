@@ -3,6 +3,7 @@
  * 
  * Main chat interface with improved highlighted text integration,
  * contextual conversation starters, and better visual presentation.
+ * Now includes Cursor-style controls for Author, Focus, and Model selection.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -18,7 +19,11 @@ const ChatPane: React.FC = () => {
     thinkingTrail,
     highlightedText,
     helpFocus,
+    setHelpFocus,
     authorPersona,
+    setAuthorPersona,
+    selectedLLM,
+    setSelectedLLM,
     isStreaming,
     streamText,
     isThinking,
@@ -30,7 +35,34 @@ const ChatPane: React.FC = () => {
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [contextualPrompts, setContextualPrompts] = useState<string[]>([]);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Control options
+  const authorPersonas = [
+    'Ernest Hemingway',
+    'Virginia Woolf', 
+    'Maya Angelou',
+    'George Orwell',
+    'Toni Morrison',
+    'J.K. Rowling',
+    'Haruki Murakami',
+    'Margaret Atwood'
+  ];
+
+  const helpFocuses = [
+    'Dialogue Writing',
+    'Scene Description', 
+    'Plot Development',
+    'Character Introduction',
+    'Overall Tone'
+  ];
+
+  const llmOptions = [
+    'OpenAI GPT',
+    'Google Gemini',
+    'Anthropic Claude'
+  ];
 
   // Generate suggested questions based on help focus and author persona
   const generateSuggestedQuestions = useCallback((focus: string) => {
@@ -150,14 +182,126 @@ const ChatPane: React.FC = () => {
     setShowThinkingTrail(!showThinkingTrail);
   };
 
+  const toggleDropdown = (dropdown: string) => {
+    setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
+  };
+
+  const handleSelection = (type: string, value: string) => {
+    switch (type) {
+      case 'persona':
+        setAuthorPersona(value);
+        break;
+      case 'focus':
+        setHelpFocus(value);
+        break;
+      case 'model':
+        setSelectedLLM(value);
+        break;
+    }
+    setActiveDropdown(null);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveDropdown(null);
+    };
+
+    if (activeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [activeDropdown]);
+
   return (
     <div className="chat-container">
-      {/* Chat Header */}
+      {/* Chat Header with Cursor-style Controls */}
       <div className="chat-header">
-        <h2>💬 AI Writing Assistant</h2>
-        <div className="header-info">
-          <span className="author-persona">✍️ with {authorPersona}</span>
-          <span className="help-focus">🎯 Focus: {helpFocus}</span>
+        <div className="chat-title">
+          <h2>💬 AI Writing Assistant</h2>
+        </div>
+        
+        {/* Cursor-style Controls */}
+        <div className="chat-controls">
+          {/* Author Persona Selector */}
+          <div className="control-group">
+            <button
+              className={`control-selector ${activeDropdown === 'persona' ? 'active' : ''}`}
+              onClick={() => toggleDropdown('persona')}
+            >
+              <span className="control-icon">👤</span>
+              <span className="control-label">{authorPersona.split(' ')[0]}</span>
+              <span className="control-arrow">▼</span>
+            </button>
+            {activeDropdown === 'persona' && (
+              <div className="control-dropdown">
+                {authorPersonas.map((persona) => (
+                  <button
+                    key={persona}
+                    className={`dropdown-option ${authorPersona === persona ? 'selected' : ''}`}
+                    onClick={() => handleSelection('persona', persona)}
+                  >
+                    {persona}
+                    {authorPersona === persona && <span className="check-mark">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Focus Selector */}
+          <div className="control-group">
+            <button
+              className={`control-selector ${activeDropdown === 'focus' ? 'active' : ''}`}
+              onClick={() => toggleDropdown('focus')}
+            >
+              <span className="control-icon">🎯</span>
+              <span className="control-label">{helpFocus.split(' ')[0]}</span>
+              <span className="control-arrow">▼</span>
+            </button>
+            {activeDropdown === 'focus' && (
+              <div className="control-dropdown">
+                {helpFocuses.map((focus) => (
+                  <button
+                    key={focus}
+                    className={`dropdown-option ${helpFocus === focus ? 'selected' : ''}`}
+                    onClick={() => handleSelection('focus', focus)}
+                  >
+                    {focus}
+                    {helpFocus === focus && <span className="check-mark">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Model Selector */}
+          <div className="control-group">
+            <button
+              className={`control-selector ${activeDropdown === 'model' ? 'active' : ''}`}
+              onClick={() => toggleDropdown('model')}
+            >
+              <span className="control-icon">🤖</span>
+              <span className="control-label">{selectedLLM.split(' ')[0]}</span>
+              <span className="control-arrow">▼</span>
+            </button>
+            {activeDropdown === 'model' && (
+              <div className="control-dropdown">
+                {llmOptions.map((model) => (
+                  <button
+                    key={model}
+                    className={`dropdown-option ${selectedLLM === model ? 'selected' : ''}`}
+                    onClick={() => handleSelection('model', model)}
+                  >
+                    {model}
+                    {selectedLLM === model && <span className="check-mark">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
