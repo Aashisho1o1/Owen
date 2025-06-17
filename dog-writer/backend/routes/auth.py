@@ -7,6 +7,7 @@ Following security best practices with JWT tokens
 import os
 import bcrypt
 import jwt
+import json
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
@@ -85,6 +86,7 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+    user: Dict[str, Any]
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -249,26 +251,42 @@ async def register_user(user_data: UserRegistration):
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
         
-        # Store refresh token
+        # Store refresh token in refresh_tokens table
         refresh_expires = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         
-        # NOTE: Storing plain refresh tokens is not ideal.
-        # A better approach is to store a hash of the refresh token.
-        # This will be addressed in a future security enhancement.
         cursor.execute("""
-            UPDATE users SET refresh_token = ?, refresh_token_expires = ?
-            WHERE id = ?
-        """, (refresh_token, refresh_expires, user_id))
+            INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+            VALUES (?, ?, ?)
+        """, (user_id, refresh_token, refresh_expires))
         
         conn.commit()
         
         logger.info(f"New user registered: {username} (ID: {user_id})")
         
+        # Get user profile for response
+        user_profile = {
+            "user_id": str(user_id),
+            "username": username,
+            "email": user_data.email,
+            "display_name": user_data.name,
+            "created_at": datetime.utcnow().isoformat(),
+            "preferences": {
+                "onboarding_completed": False,
+                "user_corrections": [],
+                "writing_style_profile": {},
+                "writing_type": None,
+                "feedback_style": None,
+                "primary_goal": None
+            },
+            "onboarding_completed": False
+        }
+        
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "user": user_profile
         }
         
     except HTTPException:
@@ -319,22 +337,48 @@ async def login_user(login_data: UserLogin):
         access_token = create_access_token(token_data, access_expire)
         refresh_token = create_refresh_token(token_data)
         
-        # Store refresh token
+        # Store refresh token in refresh_tokens table
         refresh_expires = datetime.utcnow() + timedelta(days=refresh_expire_days)
         cursor.execute("""
-            UPDATE users SET refresh_token = ?, refresh_token_expires = ?
-            WHERE id = ?
-        """, (refresh_token, refresh_expires, user_id))
+            INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+            VALUES (?, ?, ?)
+        """, (user_id, refresh_token, refresh_expires))
         
         conn.commit()
         
         logger.info(f"User logged in: {username}")
         
+        # Get user profile for response
+        cursor.execute("""
+            SELECT name, email, created_at, preferences, onboarding_completed
+            FROM users WHERE id = ?
+        """, (user_id,))
+        
+        user_row = cursor.fetchone()
+        preferences = json.loads(user_row[3]) if user_row[3] else {}
+        user_profile = {
+            "user_id": str(user_id),
+            "username": username,
+            "email": user_row[1],
+            "display_name": user_row[0],
+            "created_at": user_row[2],
+            "preferences": {
+                "onboarding_completed": bool(user_row[4]),
+                "user_corrections": preferences.get("user_corrections", []),
+                "writing_style_profile": preferences.get("writing_style_profile", {}),
+                "writing_type": preferences.get("writing_type"),
+                "feedback_style": preferences.get("feedback_style"),
+                "primary_goal": preferences.get("primary_goal")
+            },
+            "onboarding_completed": bool(user_row[4])
+        }
+        
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": int(access_expire.total_seconds()) if login_data.remember_me else ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            "expires_in": int(access_expire.total_seconds()) if login_data.remember_me else ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "user": user_profile
         }
         
     except HTTPException:
@@ -370,12 +414,12 @@ async def refresh_access_token(refresh_data: RefreshTokenRequest):
         
         try:
             cursor.execute("""
-                SELECT refresh_token, refresh_token_expires FROM users 
-                WHERE id = ?
-            """, (user_id,))
+                SELECT token_hash, expires_at FROM refresh_tokens 
+                WHERE user_id = ? AND token_hash = ? AND revoked = FALSE
+            """, (user_id, refresh_data.refresh_token))
             
             token_data = cursor.fetchone()
-            if not token_data or token_data[0] != refresh_data.refresh_token:
+            if not token_data:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid refresh token"
