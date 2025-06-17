@@ -183,42 +183,22 @@ const ChatPane: React.FC = () => {
   };
 
   const toggleDropdown = (dropdown: string) => {
-    console.log('🔽 toggleDropdown called:', dropdown);
     setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
   };
 
   const handleSelection = (type: string, value: string) => {
-    console.log('🔄 handleSelection called:', { type, value });
-    console.log('📊 Current state before update:', { 
-      authorPersona, 
-      helpFocus, 
-      selectedLLM 
-    });
-    
     switch (type) {
       case 'persona':
-        console.log('👤 Setting author persona to:', value);
         setAuthorPersona(value);
         break;
       case 'focus':
-        console.log('🎯 Setting help focus to:', value);
         setHelpFocus(value);
         break;
       case 'model':
-        console.log('🤖 Setting selected LLM to:', value);
         setSelectedLLM(value);
         break;
     }
     setActiveDropdown(null);
-    
-    // Log state after a brief delay to see if it updated
-    setTimeout(() => {
-      console.log('📊 State after update:', { 
-        authorPersona, 
-        helpFocus, 
-        selectedLLM 
-      });
-    }, 100);
   };
 
   // Close dropdown when clicking outside
@@ -235,14 +215,7 @@ const ChatPane: React.FC = () => {
     }
   }, [activeDropdown]);
 
-  console.log('🎨 ChatPane render - Current values:', {
-    authorPersona,
-    helpFocus, 
-    selectedLLM,
-    authorPersonaFirst: authorPersona.split(' ')[0],
-    helpFocusFirst: helpFocus.split(' ')[0],
-    selectedLLMFirst: selectedLLM.split(' ')[0]
-  });
+
 
   return (
     <div className="chat-container">
@@ -250,32 +223,29 @@ const ChatPane: React.FC = () => {
       <div className="chat-header">
         <h2 className="chat-title">💬 AI Writing Assistant</h2>
         
-        {/* Cursor-style Controls */}
+        {/* Chat Controls */}
         <div className="chat-controls">
-          {/* Author Persona Selector */}
+          {/* Author Persona */}
           <div className="control-icon-group">
             <button
               className={`control-icon-button ${activeDropdown === 'persona' ? 'active' : ''}`}
-              onClick={() => {
-                console.log('🖱️ Persona toggle clicked');
-                toggleDropdown('persona');
-              }}
+              onClick={() => toggleDropdown('persona')}
+              title={`Author Persona: ${authorPersona}`}
+              aria-expanded={activeDropdown === 'persona'}
+              aria-haspopup="true"
             >
               <div className="control-button-content">
                 <span className="control-icon">👤</span>
-                <span className="control-short-name">{authorPersona.split(' ')[0]}</span>
               </div>
             </button>
             {activeDropdown === 'persona' && (
-              <div className="control-dropdown">
+              <div className="control-dropdown" role="menu">
                 {authorPersonas.map((persona) => (
                   <button
                     key={persona}
                     className={`dropdown-option ${authorPersona === persona ? 'selected' : ''}`}
-                    onClick={(e) => {
-                      console.log('🖱️ Persona option clicked:', persona, e);
-                      handleSelection('persona', persona);
-                    }}
+                    onClick={() => handleSelection('persona', persona)}
+                    role="menuitem"
                   >
                     {persona}
                   </button>
@@ -284,30 +254,27 @@ const ChatPane: React.FC = () => {
             )}
           </div>
 
-          {/* Focus Selector */}
+          {/* Help Focus */}
           <div className="control-icon-group">
             <button
               className={`control-icon-button ${activeDropdown === 'focus' ? 'active' : ''}`}
-              onClick={() => {
-                console.log('🖱️ Focus toggle clicked');
-                toggleDropdown('focus');
-              }}
+              onClick={() => toggleDropdown('focus')}
+              title={`Help Focus: ${helpFocus}`}
+              aria-expanded={activeDropdown === 'focus'}
+              aria-haspopup="true"
             >
               <div className="control-button-content">
                 <span className="control-icon">🎯</span>
-                <span className="control-short-name">{helpFocus.split(' ')[0]}</span>
               </div>
             </button>
             {activeDropdown === 'focus' && (
-              <div className="control-dropdown">
+              <div className="control-dropdown" role="menu">
                 {helpFocuses.map((focus) => (
                   <button
                     key={focus}
                     className={`dropdown-option ${helpFocus === focus ? 'selected' : ''}`}
-                    onClick={(e) => {
-                      console.log('🖱️ Focus option clicked:', focus, e);
-                      handleSelection('focus', focus);
-                    }}
+                    onClick={() => handleSelection('focus', focus)}
+                    role="menuitem"
                   >
                     {focus}
                   </button>
@@ -316,30 +283,27 @@ const ChatPane: React.FC = () => {
             )}
           </div>
 
-          {/* Model Selector */}
+          {/* AI Model */}
           <div className="control-icon-group">
             <button
               className={`control-icon-button ${activeDropdown === 'model' ? 'active' : ''}`}
-              onClick={() => {
-                console.log('🖱️ Model toggle clicked');
-                toggleDropdown('model');
-              }}
+              onClick={() => toggleDropdown('model')}
+              title={`AI Model: ${selectedLLM}`}
+              aria-expanded={activeDropdown === 'model'}
+              aria-haspopup="true"
             >
               <div className="control-button-content">
                 <span className="control-icon">🤖</span>
-                <span className="control-short-name">{selectedLLM.split(' ')[0]}</span>
               </div>
             </button>
             {activeDropdown === 'model' && (
-              <div className="control-dropdown">
+              <div className="control-dropdown" role="menu">
                 {llmOptions.map((model) => (
                   <button
                     key={model}
                     className={`dropdown-option ${selectedLLM === model ? 'selected' : ''}`}
-                    onClick={(e) => {
-                      console.log('🖱️ Model option clicked:', model, e);
-                      handleSelection('model', model);
-                    }}
+                    onClick={() => handleSelection('model', model)}
+                    role="menuitem"
                   >
                     {model}
                   </button>
