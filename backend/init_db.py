@@ -7,110 +7,156 @@ import sqlite3
 import os
 import logging
 from datetime import datetime
-from services.document_service import document_service
+
+# Conditional PostgreSQL import
+try:
+    import psycopg2
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def init_database():
-    """Initialize the authentication database with proper tables and indexes"""
+    """Initialize the database with proper tables and indexes for SQLite or PostgreSQL"""
     
-    db_path = os.path.join(os.path.dirname(__file__), 'database', 'auth.db')
-    db_dir = os.path.dirname(db_path)
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    db_type = "postgresql" if DATABASE_URL else "sqlite"
     
-    # Ensure database directory exists
-    if not os.path.exists(db_dir):
-        os.makedirs(db_dir)
+    if db_type == "postgresql" and not POSTGRES_AVAILABLE:
+        logger.error("PostgreSQL requested but psycopg2 not available. Install with: pip install psycopg2-binary")
+        return False
     
+    conn = None
+
     try:
-        conn = sqlite3.connect(db_path)
+        if db_type == "postgresql":
+            conn = psycopg2.connect(DATABASE_URL)
+        else:
+            db_path = os.path.join(os.path.dirname(__file__), 'database', 'auth.db')
+            db_dir = os.path.dirname(db_path)
+            # Ensure database directory exists
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+            conn = sqlite3.connect(db_path)
+        
         cursor = conn.cursor()
         
+        def execute_adapted_query(query, params=None):
+            if db_type == "postgresql":
+                cursor.execute(query.replace('?', '%s'), params or ())
+            else:
+                cursor.execute(query, params or ())
+
         # Create users table
-        cursor.execute('''
+        users_table_sql = '''
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 name TEXT,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT TRUE,
                 email_verified BOOLEAN DEFAULT FALSE,
                 onboarding_completed BOOLEAN DEFAULT FALSE,
-                last_login TIMESTAMP,
+                last_login TIMESTAMPTZ,
                 login_count INTEGER DEFAULT 0,
                 failed_login_attempts INTEGER DEFAULT 0,
-                last_failed_login TIMESTAMP,
-                account_locked_until TIMESTAMP,
+                last_failed_login TIMESTAMPTZ,
+                account_locked_until TIMESTAMPTZ,
                 password_reset_token TEXT,
-                password_reset_expires TIMESTAMP,
+                password_reset_expires TIMESTAMPTZ,
                 email_verification_token TEXT,
-                email_verification_expires TIMESTAMP,
-                preferences TEXT DEFAULT '{}',  -- JSON string for user preferences
+                email_verification_expires TIMESTAMPTZ,
+                preferences JSONB DEFAULT '{}',
                 subscription_tier TEXT DEFAULT 'free',
-                subscription_expires TIMESTAMP
+                subscription_expires TIMESTAMPTZ
             )
-        ''')
+        '''
+        if db_type == 'sqlite':
+            users_table_sql = users_table_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            users_table_sql = users_table_sql.replace('TIMESTAMPTZ', 'TIMESTAMP')
+            users_table_sql = users_table_sql.replace('JSONB', 'TEXT')
+            
+        execute_adapted_query(users_table_sql)
         
         # Create refresh_tokens table for JWT token management
-        cursor.execute('''
+        refresh_tokens_sql = '''
             CREATE TABLE IF NOT EXISTS refresh_tokens (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 token_hash TEXT NOT NULL,
-                expires_at TIMESTAMP NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMPTZ NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 revoked BOOLEAN DEFAULT FALSE,
                 device_info TEXT,
                 ip_address TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             )
-        ''')
+        '''
+        if db_type == 'sqlite':
+            refresh_tokens_sql = refresh_tokens_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            refresh_tokens_sql = refresh_tokens_sql.replace('TIMESTAMPTZ', 'TIMESTAMP')
+
+        execute_adapted_query(refresh_tokens_sql)
         
-        # Create login_logs table for security monitoring
-        cursor.execute('''
+        # Create login_logs table
+        login_logs_sql = '''
             CREATE TABLE IF NOT EXISTS login_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER,
                 email TEXT NOT NULL,
                 success BOOLEAN NOT NULL,
                 ip_address TEXT,
                 user_agent TEXT,
-                attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                attempted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 failure_reason TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
             )
-        ''')
+        '''
+        if db_type == 'sqlite':
+            login_logs_sql = login_logs_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            login_logs_sql = login_logs_sql.replace('TIMESTAMPTZ', 'TIMESTAMP')
+        execute_adapted_query(login_logs_sql)
         
-        # Create password_history table to prevent password reuse
-        cursor.execute('''
+        # Create password_history table
+        password_history_sql = '''
             CREATE TABLE IF NOT EXISTS password_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 password_hash TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             )
-        ''')
+        '''
+        if db_type == 'sqlite':
+            password_history_sql = password_history_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            password_history_sql = password_history_sql.replace('TIMESTAMPTZ', 'TIMESTAMP')
+        execute_adapted_query(password_history_sql)
         
-        # Create user_sessions table for session management
-        cursor.execute('''
+        # Create user_sessions table
+        user_sessions_sql = '''
             CREATE TABLE IF NOT EXISTS user_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 session_id TEXT UNIQUE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMPTZ NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
                 ip_address TEXT,
                 user_agent TEXT,
-                last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_activity TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             )
-        ''')
+        '''
+        if db_type == 'sqlite':
+            user_sessions_sql = user_sessions_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            user_sessions_sql = user_sessions_sql.replace('TIMESTAMPTZ', 'TIMESTAMP')
+        execute_adapted_query(user_sessions_sql)
         
         # Create indexes for better performance
         indexes = [
@@ -128,26 +174,28 @@ def init_database():
         ]
         
         for index_sql in indexes:
-            cursor.execute(index_sql)
+            execute_adapted_query(index_sql)
         
-        # Create triggers to update the updated_at timestamp
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS update_users_updated_at 
-            AFTER UPDATE ON users 
-            FOR EACH ROW 
-            BEGIN 
-                UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
-            END
-        ''')
-        
-        cursor.execute('''
-            CREATE TRIGGER IF NOT EXISTS update_user_sessions_last_activity 
-            AFTER UPDATE ON user_sessions 
-            FOR EACH ROW 
-            BEGIN 
-                UPDATE user_sessions SET last_activity = CURRENT_TIMESTAMP WHERE id = NEW.id; 
-            END
-        ''')
+        # Triggers are SQLite specific and might not be needed or compatible with PostgreSQL
+        if db_type == 'sqlite':
+            # Create triggers to update the updated_at timestamp
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS update_users_updated_at 
+                AFTER UPDATE ON users 
+                FOR EACH ROW 
+                BEGIN 
+                    UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+                END
+            ''')
+            
+            cursor.execute('''
+                CREATE TRIGGER IF NOT EXISTS update_user_sessions_last_activity 
+                AFTER UPDATE ON user_sessions 
+                FOR EACH ROW 
+                BEGIN 
+                    UPDATE user_sessions SET last_activity = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+                END
+            ''')
         
         # Commit all changes
         conn.commit()
@@ -159,21 +207,26 @@ def init_database():
         
         # Initialize document service database schema
         logger.info("🚀 Initializing document service database schema...")
+        # Import here to avoid circular imports
+        from services.document_service import document_service
         document_service.init_database()
         logger.info("✅ Document service database schema initialized successfully!")
         
-        # Display table info
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
-        logger.info(f"📁 Database contains {len(tables)} tables: {[table[0] for table in tables]}")
+        # Display table info for SQLite
+        if db_type == 'sqlite':
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            logger.info(f"📁 Database contains {len(tables)} tables: {[table[0] for table in tables]}")
+        else:
+            # For PostgreSQL, we can query information_schema
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+            tables = cursor.fetchall()
+            logger.info(f"📁 Database contains {len(tables)} tables: {[table[0] for table in tables]}")
         
         return True
         
-    except sqlite3.Error as e:
-        logger.error(f"❌ Database error: {e}")
-        return False
     except Exception as e:
-        logger.error(f"❌ Unexpected error: {e}")
+        logger.error(f"❌ Database error: {e}")
         return False
     finally:
         if conn:

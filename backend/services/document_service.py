@@ -110,17 +110,10 @@ class DocumentService:
         conn = None
         try:
             if self.db_type == "postgresql":
-                conn = psycopg2.connect(
-                    host=self.db_config.get('host', 'localhost'),
-                    port=self.db_config.get('port', 5432),
-                    database=self.db_config.get('database', 'dog_writer'),
-                    user=self.db_config.get('user', 'postgres'),
-                    password=self.db_config.get('password', ''),
-                    cursor_factory=RealDictCursor
-                )
+                conn = psycopg2.connect(self.db_config['url'], cursor_factory=RealDictCursor)
             else:
                 # SQLite
-                db_path = self.db_config.get('path', 'dog_writer_documents.db')
+                db_path = self.db_config.get('path', 'database/auth.db')
                 Path(db_path).parent.mkdir(parents=True, exist_ok=True)
                 conn = sqlite3.connect(db_path, timeout=30.0)
                 conn.execute("PRAGMA foreign_keys = ON")
@@ -503,10 +496,17 @@ class DocumentService:
             logger.error(f"Error restoring version: {e}")
             raise DocumentError(f"Failed to restore version: {e}")
 
+# Determine database configuration based on environment
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    DB_TYPE = "postgresql"
+    DB_CONFIG = {'url': DATABASE_URL}
+else:
+    DB_TYPE = "sqlite"
+    DB_CONFIG = {'path': 'database/auth.db'}
+
 # Global service instance
 document_service = DocumentService(
-    db_type=os.getenv('DATABASE_TYPE', 'sqlite'),
-    db_config={
-        'path': os.getenv('SQLITE_PATH', 'database/auth.db') # Use the unified auth database
-    }
+    db_type=DB_TYPE,
+    db_config=DB_CONFIG
 ) 

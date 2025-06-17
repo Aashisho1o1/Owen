@@ -54,6 +54,10 @@ if os.getenv("GEMINI_API_KEY"):
 else:
     logger.warning("GEMINI_API_KEY not found in environment variables")
 
+# Database Configuration
+DATABASE_URL = os.getenv("DATABASE_URL")
+DB_TYPE = "postgresql" if DATABASE_URL else "sqlite"
+
 # Configure basic setup
 app = FastAPI(
     title="Owen AI Writer",
@@ -115,11 +119,11 @@ except ImportError as e:
 # Initialize the authentication database on startup
 if AUTH_ROUTES_AVAILABLE:
     try:
-        logger.info("Initializing authentication database...")
+        logger.info(f"🚀 Initializing database ({DB_TYPE})...")
         init_database()
-        logger.info("Authentication database initialized successfully.")
+        logger.info("✅ Database initialized successfully.")
     except Exception as e:
-        logger.error(f"Failed to initialize authentication database: {e}")
+        logger.error(f"❌ Failed to initialize database: {e}")
 
 # Add Analytics Middleware (before CORS)
 if ANALYTICS_AVAILABLE:

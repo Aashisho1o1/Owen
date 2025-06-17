@@ -12,6 +12,16 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import HTTPException
 
+# This service no longer needs to know about the database path directly.
+# It will receive a connection from the service that calls it.
+# However, for the standalone init_db script to work, we need a way to get the config.
+# We will rely on the global configuration set in document_service.py for now.
+
+# from services.document_service import DB_TYPE, DB_CONFIG
+# This would be a better approach but causes circular imports.
+# For now, the services will implicitly share the database configuration
+# established in main.py and document_service.py
+
 logger = logging.getLogger(__name__)
 
 # JWT Configuration

@@ -38,4 +38,7 @@ python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 cryptography>=42.0.2
 redis==5.0.1
-slowapi==0.1.9 
+slowapi==0.1.9
+
+# For PostgreSQL support in production
+psycopg2-binary 
