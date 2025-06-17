@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
+import { useAuth } from '../contexts/AuthContext';
+import { useAppContext } from '../contexts/AppContext';
 import { Document } from '../services/api';
 import { FICTION_TEMPLATES, FictionTemplate } from '../constants/templates';
 
@@ -8,6 +10,8 @@ import './DocumentsPage.css';
 
 const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  const { setShowAuthModal, setAuthMode } = useAppContext();
   const { 
     documents, 
     isLoading, 
@@ -32,6 +36,12 @@ const DocumentsPage: React.FC = () => {
   }, [refreshAll]);
 
   const handleCreateFromTemplate = async (template: FictionTemplate) => {
+    if (!isAuthenticated) {
+      setAuthMode('signin');
+      setShowAuthModal(true);
+      return;
+    }
+
     try {
       const newDoc = await createDocument(
         `New ${template.genre} Novel`,
@@ -50,15 +60,23 @@ const DocumentsPage: React.FC = () => {
       navigate(`/editor/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create document from template:', error);
+      alert('Failed to create document. Please try again.');
     }
   };
 
   const handleCreateBlankDocument = async () => {
+    if (!isAuthenticated) {
+      setAuthMode('signin');
+      setShowAuthModal(true);
+      return;
+    }
+
     try {
       const newDoc = await createDocument('Untitled Document', 'novel');
       navigate(`/editor/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create blank document:', error);
+      alert('Failed to create document. Please try again.');
     }
   };
 
@@ -142,6 +160,12 @@ const DocumentsPage: React.FC = () => {
       <div className="documents-header">
         <div className="header-content">
           <h1>Start a new document</h1>
+          {!isAuthenticated && (
+            <p className="auth-notice">
+              <span className="auth-icon">🔒</span>
+              Please <button className="inline-auth-btn" onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}>sign in</button> to create and save documents
+            </p>
+          )}
           <div className="template-gallery">
             {/* Blank Document */}
             <div 
