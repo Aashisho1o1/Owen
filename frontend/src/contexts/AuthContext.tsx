@@ -70,6 +70,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-production-41ee.up.railway.app';
 
+// Debug log to show which API URL is being used
+console.log('🌐 API Configuration:', { 
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_BASE_URL: API_BASE_URL,
+  mode: import.meta.env.MODE
+});
+
 // Configure axios instance
 const apiInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -154,12 +161,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserProfile = useCallback(async (): Promise<boolean> => {
     try {
+      console.log('👤 Loading user profile...');
       const response = await apiInstance.get('/api/auth/profile');
+      console.log('✅ User profile loaded:', response.data);
       setUser(response.data);
       setIsAuthenticated(true);
       setError(null);
       return true;
     } catch (err) {
+      console.error('❌ Failed to load user profile:', {
+        error: err,
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data
+      });
       logger.error('Error loading user profile:', err);
       setUser(null);
       setIsAuthenticated(false);
@@ -242,21 +257,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Initialize authentication state
   useEffect(() => {
     const initializeAuth = async () => {
+      console.log('🚀 Initializing authentication...');
       setIsLoading(true);
       const tokens = getStoredTokens();
+      
       if (tokens) {
+        console.log('🔑 Found stored tokens:', { 
+          hasAccessToken: !!tokens.access_token,
+          hasRefreshToken: !!tokens.refresh_token,
+          tokenType: tokens.token_type,
+          expiresIn: tokens.expires_in
+        });
+        
         // Try to get user profile to verify token validity
         const success = await loadUserProfile();
         if (!success) {
+          console.log('⚠️ Token validation failed, attempting refresh...');
           // Token might be expired, try refresh
           const refreshSuccess = await refreshToken();
           if (refreshSuccess) {
+            console.log('✅ Token refresh successful');
             await loadUserProfile();
           } else {
+            console.log('❌ Token refresh failed, clearing tokens');
             // If refresh fails, clear tokens and log out
             clearTokens();
           }
+        } else {
+          console.log('✅ Token validation successful');
         }
+      } else {
+        console.log('📭 No stored tokens found');
       }
       setIsLoading(false);
     };
@@ -268,8 +299,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     
+    // Debug logging
+    console.log('🔐 Login attempt:', { 
+      email: data.email, 
+      apiUrl: API_BASE_URL,
+      fullUrl: `${API_BASE_URL}/api/auth/login`
+    });
+    
     try {
       const response = await apiInstance.post('/api/auth/login', data);
+      console.log('✅ Login successful:', response.data);
+      
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       // Store tokens
@@ -282,6 +322,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logger.log('Login successful', { username: userProfile.username });
       return true;
     } catch (err) {
+      console.error('❌ Login failed:', {
+        error: err,
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+        config: err?.config
+      });
+      
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
           ? err.response.data.detail
@@ -298,8 +346,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     
+    // Debug logging
+    console.log('📝 Register attempt:', { 
+      email: data.email, 
+      name: data.name,
+      apiUrl: API_BASE_URL,
+      fullUrl: `${API_BASE_URL}/api/auth/register`
+    });
+    
     try {
       const response = await apiInstance.post('/api/auth/register', data);
+      console.log('✅ Registration successful:', response.data);
+      
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       // Store tokens
@@ -312,6 +370,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logger.log('Registration successful', { username: userProfile.username });
       return true;
     } catch (err) {
+      console.error('❌ Registration failed:', {
+        error: err,
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+        config: err?.config
+      });
+      
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
           ? err.response.data.detail
