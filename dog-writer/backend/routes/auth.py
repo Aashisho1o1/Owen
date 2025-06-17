@@ -197,6 +197,44 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     finally:
         conn.close()
 
+# Test endpoint to check database connectivity
+@router.get("/test-db")
+async def test_database():
+    """Test database connectivity and schema"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+        
+        # Check users table structure
+        cursor.execute("PRAGMA table_info(users)")
+        users_columns = cursor.fetchall()
+        
+        # Check refresh_tokens table structure  
+        cursor.execute("PRAGMA table_info(refresh_tokens)")
+        refresh_tokens_columns = cursor.fetchall()
+        
+        return {
+            "status": "success",
+            "db_path": DB_PATH,
+            "tables": [table[0] for table in tables],
+            "users_columns": [col[1] for col in users_columns],
+            "refresh_tokens_columns": [col[1] for col in refresh_tokens_columns]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "db_path": DB_PATH
+        }
+    finally:
+        if conn:
+            conn.close()
+
 # Authentication endpoints
 @router.post("/register", response_model=TokenResponse)
 async def register_user(user_data: UserRegistration):
