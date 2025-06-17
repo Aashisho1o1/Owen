@@ -937,6 +937,11 @@
   display: none;
 }
 
+/* Show short names in chat controls */
+.chat-controls .control-short-name {
+  display: block;
+}
+
 .control-icon-button svg {
   display: none;
 }
@@ -1246,6 +1251,11 @@
   align-items: center;
   flex-wrap: wrap;
   min-height: 40px;
+}
+
+.chat-controls .control-icon-group {
+  width: auto;
+  min-width: 60px;
 }
 
 .control-group {

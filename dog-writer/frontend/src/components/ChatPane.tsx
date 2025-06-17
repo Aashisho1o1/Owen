@@ -253,17 +253,18 @@ const ChatPane: React.FC = () => {
         {/* Cursor-style Controls */}
         <div className="chat-controls">
           {/* Author Persona Selector */}
-          <div className="control-group">
+          <div className="control-icon-group">
             <button
-              className={`control-selector ${activeDropdown === 'persona' ? 'active' : ''}`}
+              className={`control-icon-button ${activeDropdown === 'persona' ? 'active' : ''}`}
               onClick={() => {
                 console.log('🖱️ Persona toggle clicked');
                 toggleDropdown('persona');
               }}
             >
-              <span className="control-icon">👤</span>
-              <span className="control-label">{authorPersona.split(' ')[0]}</span>
-              <span className="control-arrow">▼</span>
+              <div className="control-button-content">
+                <span className="control-icon">👤</span>
+                <span className="control-short-name">{authorPersona.split(' ')[0]}</span>
+              </div>
             </button>
             {activeDropdown === 'persona' && (
               <div className="control-dropdown">
@@ -277,7 +278,6 @@ const ChatPane: React.FC = () => {
                     }}
                   >
                     {persona}
-                    {authorPersona === persona && <span className="check-mark">✓</span>}
                   </button>
                 ))}
               </div>
@@ -285,17 +285,18 @@ const ChatPane: React.FC = () => {
           </div>
 
           {/* Focus Selector */}
-          <div className="control-group">
+          <div className="control-icon-group">
             <button
-              className={`control-selector ${activeDropdown === 'focus' ? 'active' : ''}`}
+              className={`control-icon-button ${activeDropdown === 'focus' ? 'active' : ''}`}
               onClick={() => {
                 console.log('🖱️ Focus toggle clicked');
                 toggleDropdown('focus');
               }}
             >
-              <span className="control-icon">🎯</span>
-              <span className="control-label">{helpFocus.split(' ')[0]}</span>
-              <span className="control-arrow">▼</span>
+              <div className="control-button-content">
+                <span className="control-icon">🎯</span>
+                <span className="control-short-name">{helpFocus.split(' ')[0]}</span>
+              </div>
             </button>
             {activeDropdown === 'focus' && (
               <div className="control-dropdown">
@@ -309,7 +310,6 @@ const ChatPane: React.FC = () => {
                     }}
                   >
                     {focus}
-                    {helpFocus === focus && <span className="check-mark">✓</span>}
                   </button>
                 ))}
               </div>
@@ -317,17 +317,18 @@ const ChatPane: React.FC = () => {
           </div>
 
           {/* Model Selector */}
-          <div className="control-group">
+          <div className="control-icon-group">
             <button
-              className={`control-selector ${activeDropdown === 'model' ? 'active' : ''}`}
+              className={`control-icon-button ${activeDropdown === 'model' ? 'active' : ''}`}
               onClick={() => {
                 console.log('🖱️ Model toggle clicked');
                 toggleDropdown('model');
               }}
             >
-              <span className="control-icon">🤖</span>
-              <span className="control-label">{selectedLLM.split(' ')[0]}</span>
-              <span className="control-arrow">▼</span>
+              <div className="control-button-content">
+                <span className="control-icon">🤖</span>
+                <span className="control-short-name">{selectedLLM.split(' ')[0]}</span>
+              </div>
             </button>
             {activeDropdown === 'model' && (
               <div className="control-dropdown">
@@ -341,7 +342,6 @@ const ChatPane: React.FC = () => {
                     }}
                   >
                     {model}
-                    {selectedLLM === model && <span className="check-mark">✓</span>}
                   </button>
                 ))}
               </div>
