@@ -187,18 +187,37 @@ const ChatPane: React.FC = () => {
   };
 
   const handleSelection = (type: string, value: string) => {
+    console.log('🔄 handleSelection called:', { type, value });
+    console.log('📊 Current state before update:', { 
+      authorPersona, 
+      helpFocus, 
+      selectedLLM 
+    });
+    
     switch (type) {
       case 'persona':
+        console.log('👤 Setting author persona to:', value);
         setAuthorPersona(value);
         break;
       case 'focus':
+        console.log('🎯 Setting help focus to:', value);
         setHelpFocus(value);
         break;
       case 'model':
+        console.log('🤖 Setting selected LLM to:', value);
         setSelectedLLM(value);
         break;
     }
     setActiveDropdown(null);
+    
+    // Log state after a brief delay to see if it updated
+    setTimeout(() => {
+      console.log('📊 State after update:', { 
+        authorPersona, 
+        helpFocus, 
+        selectedLLM 
+      });
+    }, 100);
   };
 
   // Close dropdown when clicking outside
@@ -214,6 +233,15 @@ const ChatPane: React.FC = () => {
       };
     }
   }, [activeDropdown]);
+
+  console.log('🎨 ChatPane render - Current values:', {
+    authorPersona,
+    helpFocus, 
+    selectedLLM,
+    authorPersonaFirst: authorPersona.split(' ')[0],
+    helpFocusFirst: helpFocus.split(' ')[0],
+    selectedLLMFirst: selectedLLM.split(' ')[0]
+  });
 
   return (
     <div className="chat-container">
