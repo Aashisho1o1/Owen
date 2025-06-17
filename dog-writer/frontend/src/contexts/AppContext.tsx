@@ -362,17 +362,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Text highlighting handlers
-  const handleTextHighlightedWithId = useCallback((text: string, highlightId?: string) => {
+  const handleTextHighlighted = useCallback((text: string, highlightId?: string) => {
     setHighlightedText(text);
     setHighlightedTextId(highlightId || null);
-    
-    // Also call the editor's handler if it exists
-    if (handleTextHighlighted) {
-      handleTextHighlighted(text);
-    }
-    
     logger.log('Text highlighted for AI feedback:', { text: text.substring(0, 50) + '...', highlightId });
-  }, [handleTextHighlighted]);
+  }, []);
 
   const clearTextHighlight = useCallback(() => {
     setHighlightedText('');
