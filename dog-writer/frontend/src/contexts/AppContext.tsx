@@ -219,47 +219,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const {
-    editorContent,
-    setEditorContent,
-    handleTextHighlighted,
-  } = useEditor({});
-
-  // Text highlighting handlers
-  const handleTextHighlightedWithId = useCallback((text: string, highlightId?: string) => {
-    setHighlightedText(text);
-    setHighlightedTextId(highlightId || null);
-    
-    // Also call the editor's handler if it exists
-    if (handleTextHighlighted) {
-      handleTextHighlighted(text);
-    }
-    
-    logger.log('Text highlighted for AI feedback:', { text: text.substring(0, 50) + '...', highlightId });
-  }, [handleTextHighlighted]);
-
-  const clearTextHighlight = useCallback(() => {
-    setHighlightedText('');
-    setHighlightedTextId(null);
-    logger.log('Text highlight cleared');
-  }, []);
-
-  // Document management hook
   const documentsHook = useDocuments();
-
-  // Sync editor content with current document
-  useEffect(() => {
-    if (documentsHook.currentDocument && !documentsHook.hasUnsavedChanges) {
-      setEditorContent(documentsHook.currentDocument.content);
-    }
-  }, [documentsHook.currentDocument, documentsHook.hasUnsavedChanges, setEditorContent]);
-
-  // Sync editor changes with document auto-save
-  useEffect(() => {
-    if (documentsHook.currentDocument) {
-      documentsHook.updateContent(editorContent);
-    }
-  }, [editorContent, documentsHook.currentDocument, documentsHook.updateContent]);
+  const { editorContent, setEditorContent, handleSaveCheckpoint, isSaving, lastSaved, hasUnsavedChanges } = useEditor(documentsHook.currentDocument, documentsHook.updateDocument);
 
   const {
     messages,
@@ -269,7 +230,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     streamText,
     isThinking,
     handleSendMessage,
-    handleSaveCheckpoint,
   } = useChat({
     authorPersona,
     helpFocus,
@@ -385,8 +345,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  // Text highlighting handlers
+  const handleTextHighlightedWithId = useCallback((text: string, highlightId?: string) => {
+    setHighlightedText(text);
+    setHighlightedTextId(highlightId || null);
+    
+    // Also call the editor's handler if it exists
+    if (handleTextHighlighted) {
+      handleTextHighlighted(text);
+    }
+    
+    logger.log('Text highlighted for AI feedback:', { text: text.substring(0, 50) + '...', highlightId });
+  }, [handleTextHighlighted]);
+
+  const clearTextHighlight = useCallback(() => {
+    setHighlightedText('');
+    setHighlightedTextId(null);
+    logger.log('Text highlight cleared');
+  }, []);
+
   // Memoize the context value to prevent unnecessary renders
-  const value = useMemo(() => ({
+  const value: AppContextType = useMemo(() => ({
     authorPersona,
     setAuthorPersona,
     helpFocus,
@@ -421,70 +400,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     submitFeedback,
     analyzeWritingSample,
     completeOnboarding,
-    documentManager: {
-      documents: documentsHook.documents,
-      folders: documentsHook.folders,
-      series: documentsHook.series,
-      templates: documentsHook.templates,
-      currentDocument: documentsHook.currentDocument,
-      isLoading: documentsHook.isLoading,
-      error: documentsHook.error,
-      
-      versions: documentsHook.versions,
-      searchResults: documentsHook.searchResults,
-      writingStats: documentsHook.writingStats,
-      writingSessions: documentsHook.writingSessions,
-      writingGoals: documentsHook.writingGoals,
-      
-      isSaving: documentsHook.isSaving,
-      lastSaved: documentsHook.lastSaved,
-      hasUnsavedChanges: documentsHook.hasUnsavedChanges,
-      
-      createDocument: documentsHook.createDocument,
-      getDocument: documentsHook.getDocument,
-      updateDocument: documentsHook.updateDocument,
-      deleteDocument: documentsHook.deleteDocument,
-      duplicateDocument: documentsHook.duplicateDocument,
-      
-      createFolder: documentsHook.createFolder,
-      createSeries: documentsHook.createSeries,
-      moveDocument: documentsHook.moveDocument,
-      
-      loadVersions: documentsHook.loadVersions,
-      restoreVersion: documentsHook.restoreVersion,
-      
-      searchDocuments: documentsHook.searchDocuments,
-      clearSearch: documentsHook.clearSearch,
-      
-      createFromTemplate: documentsHook.createFromTemplate,
-      
-      exportDocument: documentsHook.exportDocument,
-      
-      loadWritingStats: documentsHook.loadWritingStats,
-      createWritingGoal: documentsHook.createWritingGoal,
-      
-      shareDocument: documentsHook.shareDocument,
-      
-      setCurrentDocument: (document: Document | null) => {
-        documentsHook.setCurrentDocument(document);
-        if (document) {
-          setEditorContent(document.content);
-        } else {
-          setEditorContent('');
-        }
-      },
-      
-      saveCurrentDocument: async () => {
-        await documentsHook.saveNow();
-      },
-      
-      getWordCount: documentsHook.getWordCount,
-      getDocumentsByFolder: documentsHook.getDocumentsByFolder,
-      getDocumentsBySeries: documentsHook.getDocumentsBySeries,
-      getRecentDocuments: documentsHook.getRecentDocuments,
-      getTotalWordCount: documentsHook.getTotalWordCount,
-      refreshAll: documentsHook.refreshAll,
-    },
+    documentManager: documentsHook, // Assign the whole hook result
     showAuthModal,
     setShowAuthModal,
     authMode,
@@ -506,7 +422,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     userPreferences,
     feedbackOnPrevious,
     showOnboarding,
-    documentManager,
+    documentsHook, // Depend on the hook object
     showAuthModal,
     authMode
   ]);
