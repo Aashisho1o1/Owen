@@ -51,6 +51,10 @@ def verify_token(token: str) -> Dict[str, Any]:
         if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
             raise AuthError("Token has expired")
         
+        # Ensure user ID is a string for consistency
+        if "sub" in payload:
+            payload["sub"] = str(payload["sub"])
+        
         return payload
         
     except jwt.ExpiredSignatureError:
@@ -70,7 +74,7 @@ def get_user_id_from_token(token: str) -> str:
         if not user_id:
             raise AuthError("Token does not contain user ID")
         
-        return user_id
+        return str(user_id)  # Ensure it's a string
         
     except AuthError:
         raise
@@ -152,8 +156,21 @@ def mock_verify_token(token: str) -> Dict[str, Any]:
         }
     
     try:
-        return verify_token(token)
-    except AuthError:
+        # First try real token verification
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        
+        # Check if token is expired
+        exp = payload.get("exp")
+        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+            raise AuthError("Token has expired")
+        
+        # Ensure user ID is a string for consistency
+        if "sub" in payload:
+            payload["sub"] = str(payload["sub"])
+        
+        return payload
+        
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, AuthError):
         # If real token verification fails, return default dev user
         logger.warning("Using mock authentication for development")
         return {
@@ -163,6 +180,10 @@ def mock_verify_token(token: str) -> Dict[str, Any]:
             "iat": datetime.utcnow().timestamp()
         }
 
-# Use mock auth in development, real auth in production
-if os.getenv('ENVIRONMENT', 'development') == 'development':
+# Don't override in production - use real auth
+if os.getenv('RAILWAY_ENVIRONMENT') == 'production':
+    # Use real authentication in production
+    pass
+else:
+    # Use mock auth only in development
     verify_token = mock_verify_token 
