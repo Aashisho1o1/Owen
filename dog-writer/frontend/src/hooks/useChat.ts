@@ -68,23 +68,33 @@ export const useChat = ({
 
   useEffect(() => {
     // Initialize with a welcome message if no initial messages are provided
-    // and ensure messages isn't empty to prevent re-triggering.
-    if (initialMessages.length === 0 && messages.length === 0) {
+    // Update the welcome message when persona or focus changes
+    if (initialMessages.length === 0) {
       const englishVariantLabel = userPreferences?.english_variant === 'indian' ? 'Indian English' :
                                  userPreferences?.english_variant === 'british' ? 'British English' :
                                  userPreferences?.english_variant === 'american' ? 'American English' : '';
       
       const variantText = englishVariantLabel ? ` I'll respect your ${englishVariantLabel} preferences.` : '';
       
-      setMessages([
-        {
-          role: 'assistant',
-          content: `Hello, I'm your ${authorPersona} AI writing assistant. I'll help you with your ${helpFocus.toLowerCase()}.${variantText} What would you like to ask?`,
-        },
-      ]);
+      const welcomeMessage = {
+        role: 'assistant' as const,
+        content: `Hello, I'm your ${authorPersona} AI writing assistant. I'll help you with your ${helpFocus.toLowerCase()}.${variantText} What would you like to ask?`,
+      };
+
+      // If there are no messages, create the initial welcome message
+      if (messages.length === 0) {
+        setMessages([welcomeMessage]);
+      } else {
+        // If there are messages and the first one is a welcome message, update it
+        const firstMessage = messages[0];
+        if (firstMessage?.role === 'assistant' && firstMessage.content.includes('AI writing assistant')) {
+          setMessages(prev => [welcomeMessage, ...prev.slice(1)]);
+        }
+      }
+      
       setThinkingTrail(null); // Reset thinking trail with persona change
     }
-  }, [authorPersona, helpFocus, initialMessages.length, messages.length, userPreferences?.english_variant]);
+  }, [authorPersona, helpFocus, initialMessages.length, userPreferences?.english_variant]);
   
   // Effect for simulating typing stream
   useEffect(() => {
