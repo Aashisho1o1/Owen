@@ -184,7 +184,6 @@ class DatabaseService:
             '''CREATE TABLE IF NOT EXISTS user_profiles (
                 user_id_hash TEXT PRIMARY KEY,  -- Hashed for privacy
                 user_id TEXT NOT NULL,  -- Direct reference to user_accounts
-                english_variant TEXT DEFAULT 'standard' CHECK(english_variant IN ('standard', 'indian', 'british', 'american')),
                 writing_style_profile TEXT,  -- Encrypted JSON string
                 onboarding_completed BOOLEAN DEFAULT FALSE,
                 user_corrections TEXT,  -- Encrypted JSON array
@@ -296,12 +295,11 @@ class DatabaseService:
             
             query = '''
                 INSERT INTO user_profiles (
-                    user_id_hash, user_id, english_variant, writing_style_profile,
+                    user_id_hash, user_id, writing_style_profile,
                     onboarding_completed, user_corrections, writing_type,
                     feedback_style, primary_goal, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id_hash) DO UPDATE SET
-                    english_variant = excluded.english_variant,
                     writing_style_profile = excluded.writing_style_profile,
                     onboarding_completed = excluded.onboarding_completed,
                     user_corrections = excluded.user_corrections,
@@ -314,7 +312,6 @@ class DatabaseService:
             self._execute_query(query, (
                 user_id_hash,
                 user_id,
-                preferences.english_variant,
                 writing_style_profile,
                 preferences.onboarding_completed,
                 user_corrections,
@@ -334,7 +331,7 @@ class DatabaseService:
         """Retrieve user preferences by user ID"""
         try:
             query = '''
-                SELECT english_variant, writing_style_profile,
+                SELECT writing_style_profile,
                        onboarding_completed, user_corrections, writing_type,
                        feedback_style, primary_goal
                 FROM user_profiles WHERE user_id_hash = ?
@@ -344,7 +341,6 @@ class DatabaseService:
             
             if row:
                 return UserPreferences(
-                    english_variant=row['english_variant'],
                     writing_style_profile=self._deserialize_json(row['writing_style_profile']),
                     onboarding_completed=bool(row['onboarding_completed']),
                     user_corrections=self._deserialize_json(row['user_corrections'], []),
@@ -440,8 +436,7 @@ class DatabaseService:
         return preferences
     
     def complete_onboarding(self, user_id: str, writing_type: str, 
-                           feedback_style: str, primary_goal: str,
-                           english_variant: str = "standard") -> bool:
+                           feedback_style: str, primary_goal: str) -> bool:
         """Mark onboarding as complete and save initial preferences"""
         preferences = self.get_user_preferences(user_id) or UserPreferences()
         
@@ -449,7 +444,6 @@ class DatabaseService:
         preferences.writing_type = writing_type
         preferences.feedback_style = feedback_style
         preferences.primary_goal = primary_goal
-        preferences.english_variant = english_variant
         
         return self.save_user_preferences(user_id, preferences)
 
@@ -826,11 +820,11 @@ class DatabaseService:
             user_id_hash = self._hash_user_id(user_id)
             query = '''
                 INSERT INTO user_profiles (
-                    user_id_hash, user_id, english_variant, onboarding_completed
-                ) VALUES (?, ?, ?, ?)
+                    user_id_hash, user_id, onboarding_completed
+                ) VALUES (?, ?, ?)
             '''
             
-            self._execute_query(query, (user_id_hash, user_id, 'standard', False))
+            self._execute_query(query, (user_id_hash, user_id, False))
             
         except Exception as e:
             logger.error(f"Error creating default user profile: {e}")

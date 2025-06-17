@@ -28,7 +28,6 @@ interface WritingStyleProfile {
 }
 
 interface UserPreferences {
-  english_variant: string;
   writing_style_profile?: WritingStyleProfile;
   onboarding_completed: boolean;
   user_corrections: string[];
@@ -46,7 +45,6 @@ interface OnboardingData {
   writing_type: string;
   feedback_style: string;
   primary_goal: string;
-  english_variant: string;
 }
 
 export interface AppContextType {
@@ -89,7 +87,6 @@ export interface AppContextType {
   // New personalization features
   userPreferences: UserPreferences;
   setUserPreferences: (preferences: UserPreferences) => void;
-  englishVariants: StyleOption[];
   feedbackOnPrevious: string;
   setFeedbackOnPrevious: (feedback: string) => void;
   showOnboarding: boolean;
@@ -97,7 +94,6 @@ export interface AppContextType {
   
   // Actions
   loadUserPreferences: () => Promise<void>;
-  updateEnglishVariant: (variant: string) => void;
   submitFeedback: (originalMessage: string, aiResponse: string, feedback: string, type: string) => Promise<void>;
   analyzeWritingSample: (sample: string) => Promise<WritingStyleProfile | null>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
@@ -194,17 +190,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // New personalization state
   const [userPreferences, setUserPreferences] = useState<UserPreferences>({
-    english_variant: 'standard',
     onboarding_completed: false,
     user_corrections: []
   });
-  
-  const [englishVariants, setEnglishVariants] = useState<StyleOption[]>([
-    { value: 'standard', label: 'Standard English' },
-    { value: 'indian', label: 'Indian English' },
-    { value: 'british', label: 'British English' },
-    { value: 'american', label: 'American English' }
-  ]);
   
   const [feedbackOnPrevious, setFeedbackOnPrevious] = useState<string>('');
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
@@ -320,23 +308,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const loadStyleOptions = async () => {
-    try {
-      const response = await fetch('/api/chat/style-options');
-      const data = await response.json();
-      
-      if (data.english_variants) {
-        setEnglishVariants(data.english_variants);
-      }
-    } catch (error) {
-      logger.error('Error loading style options:', error);
-    }
-  };
 
-  const updateEnglishVariant = (variant: string) => {
-    const updatedPreferences = { ...userPreferences, english_variant: variant };
-    setUserPreferences(updatedPreferences);
-  };
+
+
 
   const submitFeedback = async (originalMessage: string, aiResponse: string, feedback: string, type: string) => {
     try {
@@ -457,7 +431,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // New personalization features
     userPreferences,
     setUserPreferences,
-    englishVariants,
     feedbackOnPrevious,
     setFeedbackOnPrevious,
     showOnboarding,
@@ -465,7 +438,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     // Actions
     loadUserPreferences,
-    updateEnglishVariant,
     submitFeedback,
     analyzeWritingSample,
     completeOnboarding,

@@ -9,7 +9,6 @@ class ChatMessage(BaseModel):
 
 class UserPreferences(BaseModel):
     """User preferences for personalized writing assistance."""
-    english_variant: str = "standard"  # "standard", "indian", "british", "american"
     writing_style_profile: Optional[Dict[str, Any]] = None  # Analyzed writing style
     onboarding_completed: bool = False
     user_corrections: List[str] = Field(default_factory=list)  # User feedback history
@@ -41,7 +40,6 @@ class ChatRequest(BaseModel):
     # NEW: Enhanced fields for personalized assistance
     user_preferences: Optional[UserPreferences] = None
     feedback_on_previous: Optional[str] = None  # User feedback on previous response
-    english_variant: str = "standard"  # Override for this specific request
 
 class ChatResponse(BaseModel):
     dialogue_response: str
@@ -68,7 +66,6 @@ class OnboardingRequest(BaseModel):
     writing_type: str  # "fiction", "non-fiction", "academic", "business"
     feedback_style: str  # "gentle", "clear", "direct"
     primary_goal: str  # "grammar", "storytelling", "voice"
-    english_variant: str = "standard"
 
 class OnboardingResponse(BaseModel):
     """Response after saving onboarding preferences."""
@@ -168,31 +165,7 @@ class TimerPreferences(BaseModel):
     show_analytics_notifications: bool = True
     analytics_frequency: str = "weekly"  # "daily", "weekly", "monthly"
 
-# --- Existing Models for Manga Feature ---
-class MangaStoryRequest(BaseModel):
-    story_text: str
-    author_persona: str # To pass to script generator for context
-
-class MangaPanelDialogue(BaseModel):
-    character: str
-    speech: str
-
-class MangaPanel(BaseModel):
-    panel_number: int
-    description: str # Detailed visual description for DALL-E
-    dialogue: List[MangaPanelDialogue] = Field(default_factory=list)
-    image_url: Optional[str] = None # To be populated by DALL-E
-
-class MangaPage(BaseModel):
-    title: str
-    page_number: int
-    character_designs: Dict[str, str] = Field(default_factory=dict) # CharacterName: Description
-    panels: List[MangaPanel] = Field(default_factory=list)
-
-class MangaScriptResponse(BaseModel):
-    manga_page: Optional[MangaPage] = None
-    error: Optional[str] = None 
-    warning: Optional[str] = None  # Add warning field for non-fatal issues 
+ 
 
 # Database models for user data persistence
 class UserProfile(BaseModel):

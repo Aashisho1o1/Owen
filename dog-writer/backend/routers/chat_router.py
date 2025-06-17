@@ -33,9 +33,7 @@ async def chat(
         validated_message = input_validator.validate_chat_message(request.message)
         validated_editor_text = input_validator.validate_text_input(request.editor_text or "")
         validated_llm_provider = input_validator.validate_llm_provider(request.llm_provider)
-        validated_english_variant = input_validator.validate_english_variant(
-            request.english_variant or "standard"
-        )
+
         
         # Get user preferences - now user_id comes from JWT token
         user_preferences = request.user_preferences
@@ -60,7 +58,6 @@ async def chat(
             editor_text=validated_editor_text,
             author_persona=request.author_persona,
             help_focus=request.help_focus,
-            english_variant=validated_english_variant,
             user_style_profile=user_preferences.writing_style_profile,
             user_corrections=user_preferences.user_corrections,
             highlighted_text=highlighted_text
@@ -243,14 +240,12 @@ async def complete_onboarding(
         validated_writing_type = input_validator.validate_text_input(request.writing_type)
         validated_feedback_style = input_validator.validate_text_input(request.feedback_style)
         validated_primary_goal = input_validator.validate_text_input(request.primary_goal)
-        validated_english_variant = input_validator.validate_english_variant(request.english_variant)
         
         success = db_service.complete_onboarding(
             user_id=user_id,
             writing_type=validated_writing_type,
             feedback_style=validated_feedback_style,
-            primary_goal=validated_primary_goal,
-            english_variant=validated_english_variant
+            primary_goal=validated_primary_goal
         )
         
         if success:
@@ -304,24 +299,4 @@ async def get_user_preferences(user_id: str = Depends(get_current_user_id)):
             "preferences": None
         }
 
-@router.get("/style-options")
-async def get_style_options():
-    """Get available style options (no authentication required)."""
-    try:
-        return {
-            "english_variants": [
-                {"value": "standard", "label": "Standard English"},
-                {"value": "indian", "label": "Indian English"},
-                {"value": "british", "label": "British English"},
-                {"value": "american", "label": "American English"}
-            ],
-            "correction_types": [
-                {"value": "grammar", "label": "Grammar"},
-                {"value": "style", "label": "Style"},
-                {"value": "tone", "label": "Tone"},
-                {"value": "general", "label": "General"}
-            ]
-        }
-    except Exception as e:
-        print(f"Error getting style options: {e}")
-        return {"error": "An internal error occurred while retrieving style options."} 
+ 

@@ -18,7 +18,6 @@ interface UserProfile {
   display_name?: string;
   created_at: string;
   preferences: {
-    english_variant: string;
     onboarding_completed: boolean;
     user_corrections: string[];
     writing_style_profile?: Record<string, unknown>;

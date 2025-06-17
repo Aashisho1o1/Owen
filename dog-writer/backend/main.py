@@ -251,8 +251,7 @@ async def read_root():
             "analytics": "Active" if ANALYTICS_ROUTES_LOADED else "Failed to load",
             "writing_analytics": "NLP-powered insights" if ANALYTICS_ENABLED else "Disabled",
             "privacy_compliance": "GDPR & CCPA compliant" if ANALYTICS_ENABLED else "N/A",
-            "voice": "Text-to-Speech Ready" if client else "Unavailable",
-            "manga": "AI Generation Ready" if client else "Unavailable",
+
             "sessions": "Session Management Ready"
         },
         "api_keys_configured": {
@@ -301,7 +300,7 @@ async def detailed_status():
             "chat": "AI chat endpoints",
             "database": "SQLite ready",
             "ai_integration": "Multi-provider support",
-            "voice_synthesis": "OpenAI TTS ready",
+
             "session_management": "User sessions ready"
         },
         "endpoints": {

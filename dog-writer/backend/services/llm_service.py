@@ -101,7 +101,6 @@ class LLMService:
                            editor_text: str,
                            author_persona: str,
                            help_focus: str,
-                           english_variant: str = "standard",
                            user_style_profile: Optional[Dict] = None,
                            user_corrections: Optional[List] = None,
                            highlighted_text: Optional[str] = None) -> str:
@@ -109,17 +108,6 @@ class LLMService:
         
         # Build context parts
         context_parts = []
-        
-        # Add English style guide
-        style_guides = {
-            "indian": "**Indian English Mode:** Preserve Indian English vocabulary (prepone, lakhs, crores), syntax patterns, and honorifics.",
-            "british": "**British English Mode:** Use British spellings (colour, analyse), vocabulary (lorry, pavement), and grammar conventions.",
-            "american": "**American English Mode:** Use American spellings (color, analyze), vocabulary (truck, sidewalk), and direct communication style.",
-            "standard": ""
-        }
-        
-        if english_variant in style_guides and style_guides[english_variant]:
-            context_parts.append(style_guides[english_variant])
         
         # Add author persona
         if author_persona:
@@ -185,53 +173,7 @@ User Message: {user_message}"""
         
         raise LLMError("No LLM providers available for style analysis")
     
-    async def generate_manga_script(self, story_text: str, author_persona_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate manga script using structured generation"""
-        if not SERVICES_AVAILABLE:
-            # Fallback manga structure
-            return {
-                "title": "Generated Story",
-            "page_number": 1,
-                "character_designs": {"Main Character": "Protagonist of the story"},
-            "panels": [
-                    {"panel_number": 1, "description": "Opening scene", "dialogue": []}
-                ]
-            }
-        
-        prompt = f"""Convert this story into a manga script format with 4 panels:
 
-Story: {story_text}
-Author: {author_persona_data.get('name', 'Unknown')}
-
-Return JSON with:
-- title: Short manga title
-- page_number: 1
-- character_designs: {{character_name: description}}
-- panels: [{{panel_number, description, dialogue: [{{character, speech}}]}}]"""
-        
-        for service in self.providers.values():
-            if service.is_available():
-                return await service.generate_structured(prompt, {})
-        
-        raise LLMError("No LLM providers available for manga generation")
-    
-    async def generate_panel_image_with_dalle(self, panel_description: str, 
-                                            character_descriptions: Dict[str, str]) -> Optional[str]:
-        """Generate manga panel image using DALL-E"""
-        if not SERVICES_AVAILABLE:
-            return None
-
-        if "OpenAI" in self.providers and self.providers["OpenAI"].is_available():
-            char_desc = ", ".join([f"{name}: {desc}" for name, desc in character_descriptions.items()])
-            image_prompt = f"{panel_description}. Characters: {char_desc}. Style: monochrome manga, clean lines"
-            
-            try:
-                return await self.providers["OpenAI"].generate_image(image_prompt)
-            except Exception as e:
-                logger.error(f"Image generation failed: {e}")
-                return None
-        
-        return None
 
 # Global instance for backward compatibility
 llm_service = LLMService()

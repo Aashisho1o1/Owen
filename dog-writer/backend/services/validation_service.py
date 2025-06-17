@@ -245,14 +245,7 @@ class InputValidator:
         
         return provider
     
-    def validate_english_variant(self, variant: str) -> str:
-        """Validate English variant selection"""
-        allowed_variants = ['standard', 'indian', 'british', 'american']
-        
-        if variant not in allowed_variants:
-            raise ValidationError(f"Invalid English variant. Allowed: {allowed_variants}")
-        
-        return variant
+
 
 # Global validator instance
 input_validator = InputValidator()
@@ -279,7 +272,6 @@ class ChatMessageModel(BaseModel):
     author_persona: Optional[str] = "Ernest Hemingway"
     help_focus: Optional[str] = "Dialogue Writing"
     llm_provider: Optional[str] = "Google Gemini"
-    english_variant: Optional[str] = "standard"
     
     @validator('message')
     def validate_message(cls, v):
@@ -294,10 +286,6 @@ class ChatMessageModel(BaseModel):
     @validator('llm_provider')
     def validate_llm_provider(cls, v):
         return input_validator.validate_llm_provider(v)
-    
-    @validator('english_variant')
-    def validate_english_variant(cls, v):
-        return input_validator.validate_english_variant(v)
 
 class UserFeedbackModel(BaseModel):
     """Pydantic model for user feedback validation"""
