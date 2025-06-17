@@ -33,20 +33,17 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 # Pydantic models
 class UserRegistration(BaseModel):
-    username: str
     email: EmailStr
     password: str
-    name: Optional[str] = None
+    name: str  # Make name required instead of username
     
-    @validator('username')
-    def validate_username(cls, v):
-        if len(v) < 3:
-            raise ValueError('Username must be at least 3 characters long')
-        if len(v) > 30:
-            raise ValueError('Username must be less than 30 characters')
-        if not re.match(r'^[a-zA-Z0-9_]+$', v):
-            raise ValueError('Username can only contain letters, numbers, and underscores')
-        return v.lower()
+    @validator('name')
+    def validate_name(cls, v):
+        if len(v.strip()) < 2:
+            raise ValueError('Name must be at least 2 characters long')
+        if len(v.strip()) > 100:
+            raise ValueError('Name must be less than 100 characters')
+        return v.strip()
     
     @validator('password')
     def validate_password(cls, v):
@@ -70,7 +67,7 @@ class UserRegistration(BaseModel):
         return v
 
 class UserLogin(BaseModel):
-    username: str  # Can be username or email
+    email: str  # Use email for login
     password: str
     remember_me: bool = False
 
@@ -206,24 +203,29 @@ async def register_user(user_data: UserRegistration):
     cursor = conn.cursor()
     
     try:
-        # Check if username or email already exists
+        # Check if email already exists
         cursor.execute("""
-            SELECT username, email FROM users 
-            WHERE username = ? OR email = ?
-        """, (user_data.username, user_data.email))
+            SELECT email FROM users WHERE email = ?
+        """, (user_data.email,))
         
         existing_user = cursor.fetchone()
         if existing_user:
-            if existing_user[0] == user_data.username:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Username already registered"
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered"
-                )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Auto-generate username from email
+        username = user_data.email.split('@')[0].lower()
+        # Ensure username is unique by adding number if needed
+        base_username = username
+        counter = 1
+        while True:
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            if not cursor.fetchone():
+                break
+            username = f"{base_username}_{counter}"
+            counter += 1
         
         # Hash password
         password_hash = hash_password(user_data.password)
@@ -233,7 +235,7 @@ async def register_user(user_data: UserRegistration):
             INSERT INTO users (username, name, email, password_hash)
             VALUES (?, ?, ?, ?)
         """, (
-            user_data.username,
+            username,  # Use auto-generated username
             user_data.name,
             user_data.email,
             password_hash
@@ -243,7 +245,7 @@ async def register_user(user_data: UserRegistration):
         conn.commit()
         
         # Create tokens
-        token_data = {"sub": user_id, "username": user_data.username}
+        token_data = {"sub": user_id, "username": username}
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
         
@@ -260,7 +262,7 @@ async def register_user(user_data: UserRegistration):
         
         conn.commit()
         
-        logger.info(f"New user registered: {user_data.username} (ID: {user_id})")
+        logger.info(f"New user registered: {username} (ID: {user_id})")
         
         return {
             "access_token": access_token,
@@ -288,17 +290,17 @@ async def login_user(login_data: UserLogin):
     cursor = conn.cursor()
     
     try:
-        # Find user by username or email
+        # Find user by email
         cursor.execute("""
             SELECT id, username, password_hash FROM users 
-            WHERE username = ? OR email = ?
-        """, (login_data.username, login_data.username))
+            WHERE email = ?
+        """, (login_data.email,))
         
         user_data = cursor.fetchone()
         if not user_data or not verify_password(login_data.password, user_data[2]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username/email or password"
+                detail="Incorrect email or password"
             )
         
         user_id, username = user_data[0], user_data[1]

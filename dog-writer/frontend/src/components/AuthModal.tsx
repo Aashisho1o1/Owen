@@ -137,15 +137,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
     setIsSubmitting(true);
     
     try {
+      let success = false;
+      
       if (mode === 'signin') {
-        await login(formData.email, formData.password);
+        success = await login({
+          email: formData.email,
+          password: formData.password,
+          remember_me: false
+        });
       } else {
-        await register(formData.name, formData.email, formData.password);
+        success = await register({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name
+        });
       }
       
-      // If successful, the AuthProvider will handle the user state and token
-      // We can just close the modal.
-      onClose();
+      if (success) {
+        onClose();
+      }
     } catch (err) {
       // The error is already handled by the AuthContext, but we can set a local error if needed.
       // The authError from useAuth() will also be populated.

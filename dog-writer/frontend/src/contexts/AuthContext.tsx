@@ -36,16 +36,15 @@ interface AuthTokens {
 }
 
 interface LoginData {
-  username: string;
+  email: string;
   password: string;
   remember_me?: boolean;
 }
 
 interface RegisterData {
-  username: string;
   email: string;
   password: string;
-  display_name?: string;
+  name: string;
 }
 
 interface AuthContextType {
