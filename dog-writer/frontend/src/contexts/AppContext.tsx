@@ -284,10 +284,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     highlightedTextId,
   });
 
-  // Load user preferences and style options on mount
+  // Load user preferences on mount
   useEffect(() => {
     loadUserPreferences();
-    loadStyleOptions();
   }, []);
 
   const loadUserPreferences = async () => {
