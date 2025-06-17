@@ -101,8 +101,8 @@ class DocumentService:
             logger.warning("PostgreSQL requested but psycopg2 not available, falling back to SQLite")
             self.db_type = "sqlite"
         
-        self.init_database()
-        logger.info(f"Document service initialized with {self.db_type}")
+        # self.init_database() # This is now called from the main init_db.py
+        logger.info(f"Document service configured for {self.db_type}")
     
     @contextmanager
     def get_connection(self):
@@ -507,6 +507,6 @@ class DocumentService:
 document_service = DocumentService(
     db_type=os.getenv('DATABASE_TYPE', 'sqlite'),
     db_config={
-        'path': os.getenv('SQLITE_PATH', 'database/dog_writer_documents.db')
+        'path': os.getenv('SQLITE_PATH', 'database/auth.db') # Use the unified auth database
     }
 ) 

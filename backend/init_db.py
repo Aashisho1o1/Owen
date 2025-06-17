@@ -7,6 +7,7 @@ import sqlite3
 import os
 import logging
 from datetime import datetime
+from services.document_service import document_service
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -155,6 +156,11 @@ def init_database():
         logger.info("📋 Created tables: users, refresh_tokens, login_logs, password_history, user_sessions")
         logger.info("📊 Created indexes for optimal performance")
         logger.info("⚡ Created triggers for automatic timestamp updates")
+        
+        # Initialize document service database schema
+        logger.info("🚀 Initializing document service database schema...")
+        document_service.init_database()
+        logger.info("✅ Document service database schema initialized successfully!")
         
         # Display table info
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
