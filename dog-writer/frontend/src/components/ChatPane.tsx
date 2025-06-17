@@ -183,6 +183,7 @@ const ChatPane: React.FC = () => {
   };
 
   const toggleDropdown = (dropdown: string) => {
+    console.log('🔽 toggleDropdown called:', dropdown);
     setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
   };
 
@@ -255,7 +256,10 @@ const ChatPane: React.FC = () => {
           <div className="control-group">
             <button
               className={`control-selector ${activeDropdown === 'persona' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('persona')}
+              onClick={() => {
+                console.log('🖱️ Persona toggle clicked');
+                toggleDropdown('persona');
+              }}
             >
               <span className="control-icon">👤</span>
               <span className="control-label">{authorPersona.split(' ')[0]}</span>
@@ -267,7 +271,10 @@ const ChatPane: React.FC = () => {
                   <button
                     key={persona}
                     className={`dropdown-option ${authorPersona === persona ? 'selected' : ''}`}
-                    onClick={() => handleSelection('persona', persona)}
+                    onClick={(e) => {
+                      console.log('🖱️ Persona option clicked:', persona, e);
+                      handleSelection('persona', persona);
+                    }}
                   >
                     {persona}
                     {authorPersona === persona && <span className="check-mark">✓</span>}
@@ -281,7 +288,10 @@ const ChatPane: React.FC = () => {
           <div className="control-group">
             <button
               className={`control-selector ${activeDropdown === 'focus' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('focus')}
+              onClick={() => {
+                console.log('🖱️ Focus toggle clicked');
+                toggleDropdown('focus');
+              }}
             >
               <span className="control-icon">🎯</span>
               <span className="control-label">{helpFocus.split(' ')[0]}</span>
@@ -293,7 +303,10 @@ const ChatPane: React.FC = () => {
                   <button
                     key={focus}
                     className={`dropdown-option ${helpFocus === focus ? 'selected' : ''}`}
-                    onClick={() => handleSelection('focus', focus)}
+                    onClick={(e) => {
+                      console.log('🖱️ Focus option clicked:', focus, e);
+                      handleSelection('focus', focus);
+                    }}
                   >
                     {focus}
                     {helpFocus === focus && <span className="check-mark">✓</span>}
@@ -307,7 +320,10 @@ const ChatPane: React.FC = () => {
           <div className="control-group">
             <button
               className={`control-selector ${activeDropdown === 'model' ? 'active' : ''}`}
-              onClick={() => toggleDropdown('model')}
+              onClick={() => {
+                console.log('🖱️ Model toggle clicked');
+                toggleDropdown('model');
+              }}
             >
               <span className="control-icon">🤖</span>
               <span className="control-label">{selectedLLM.split(' ')[0]}</span>
@@ -319,7 +335,10 @@ const ChatPane: React.FC = () => {
                   <button
                     key={model}
                     className={`dropdown-option ${selectedLLM === model ? 'selected' : ''}`}
-                    onClick={() => handleSelection('model', model)}
+                    onClick={(e) => {
+                      console.log('🖱️ Model option clicked:', model, e);
+                      handleSelection('model', model);
+                    }}
                   >
                     {model}
                     {selectedLLM === model && <span className="check-mark">✓</span>}
