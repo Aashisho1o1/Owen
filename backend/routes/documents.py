@@ -74,9 +74,14 @@ class VersionResponse(BaseModel):
 def get_current_user_id(token: str = Depends(security)) -> str:
     """Extract user ID from JWT token"""
     try:
+        print(f"🔍 DEBUG: Received token: {token.credentials[:50]}...")
         payload = verify_token(token.credentials)
-        return payload.get("sub")
-    except Exception:
+        print(f"🔍 DEBUG: Token payload: {payload}")
+        user_id = payload.get("sub")
+        print(f"🔍 DEBUG: Extracted user_id: {user_id}")
+        return str(user_id)
+    except Exception as e:
+        print(f"❌ DEBUG: Token verification failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 def document_to_response(doc: Document) -> DocumentResponse:
