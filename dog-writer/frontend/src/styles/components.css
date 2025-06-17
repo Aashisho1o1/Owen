@@ -2292,4 +2292,44 @@
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+/* Chat Controls - Simple Select Version */
+.chat-controls-simple {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.control-select-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-select-group label {
+  font-size: 16px;
+  margin: 0;
+}
+
+.control-select {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 120px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-select:hover {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.1);
+}
+
+.control-select:focus {
+  outline: none;
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
 } 
