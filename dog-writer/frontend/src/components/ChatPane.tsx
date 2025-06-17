@@ -181,6 +181,14 @@ const ChatPane: React.FC = () => {
     setShowThinkingTrail(!showThinkingTrail);
   };
 
+  // Debug logging for state values
+  console.log('ChatPane render - Current values:', {
+    authorPersona,
+    helpFocus,
+    selectedLLM,
+    messagesLength: messages.length
+  });
+
   return (
     <div className="chat-container">
       {/* Chat Header with Controls */}
@@ -243,7 +251,7 @@ const ChatPane: React.FC = () => {
       <div className="messages-container">
         {/* Welcome Message - Show when no messages */}
         {messages.length === 0 && (
-          <div className="welcome-message">
+          <div className="welcome-message" key={`${authorPersona}-${helpFocus}`}>
             <div className="welcome-avatar">
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
