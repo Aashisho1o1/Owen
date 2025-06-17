@@ -307,10 +307,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-
-
-
-
   const submitFeedback = async (originalMessage: string, aiResponse: string, feedback: string, type: string) => {
     try {
       const response = await fetch('/api/chat/feedback', {
@@ -390,28 +386,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Memoize the context value to prevent unnecessary renders
-  const contextValue: AppContextType = useMemo(() => ({
-    // Author and content settings
+  const value = useMemo(() => ({
     authorPersona,
     setAuthorPersona,
     helpFocus,
     setHelpFocus,
     selectedLLM,
     setSelectedLLM,
-    
-    // Editor state
     editorContent,
     setEditorContent,
-    
-    // Text highlighting for AI feedback
     highlightedText,
     setHighlightedText,
     highlightedTextId,
     setHighlightedTextId,
-    handleTextHighlighted: handleTextHighlightedWithId,
+    handleTextHighlighted,
     clearTextHighlight,
-    
-    // Chat state
     messages,
     handleSendMessage,
     thinkingTrail,
@@ -419,29 +408,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     streamText,
     isThinking,
     chatApiError,
-    
-    // API health
     apiGlobalError,
     checkApiConnection,
-    
-    // Actions
     handleSaveCheckpoint,
-    
-    // New personalization features
     userPreferences,
     setUserPreferences,
     feedbackOnPrevious,
     setFeedbackOnPrevious,
     showOnboarding,
     setShowOnboarding,
-    
-    // Actions
     loadUserPreferences,
     submitFeedback,
     analyzeWritingSample,
     completeOnboarding,
-
-    // Document Management
     documentManager: {
       documents: documentsHook.documents,
       folders: documentsHook.folders,
@@ -506,46 +485,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       getTotalWordCount: documentsHook.getTotalWordCount,
       refreshAll: documentsHook.refreshAll,
     },
-
-    // Auth Modal State
     showAuthModal,
     setShowAuthModal,
     authMode,
     setAuthMode,
   }), [
-    authorPersona, helpFocus, selectedLLM,
-    editorContent, highlightedText, highlightedTextId,
-    messages, thinkingTrail, isStreaming, streamText, isThinking, chatApiError,
+    authorPersona,
+    helpFocus,
+    selectedLLM,
+    editorContent,
+    highlightedText,
+    highlightedTextId,
+    messages,
+    thinkingTrail,
+    isStreaming,
+    streamText,
+    isThinking,
+    chatApiError,
     apiGlobalError,
-    // Adding missing dependencies:
-    setEditorContent, handleTextHighlightedWithId, clearTextHighlight,
-    handleSendMessage, checkApiConnection, handleSaveCheckpoint,
-    userPreferences, feedbackOnPrevious, showOnboarding,
-    loadUserPreferences, submitFeedback, analyzeWritingSample, completeOnboarding,
-    // Document management dependencies
-    documentsHook.documents, documentsHook.folders, documentsHook.series, documentsHook.templates,
-    documentsHook.currentDocument, documentsHook.isLoading, documentsHook.isSaving, 
-    documentsHook.hasUnsavedChanges, documentsHook.error, documentsHook.lastSaved,
-    documentsHook.versions, documentsHook.searchResults, documentsHook.writingStats,
-    documentsHook.writingSessions, documentsHook.writingGoals,
-    documentsHook.createDocument, documentsHook.getDocument, documentsHook.updateDocument,
-    documentsHook.deleteDocument, documentsHook.duplicateDocument, documentsHook.createFolder,
-    documentsHook.createSeries, documentsHook.moveDocument, documentsHook.loadVersions, 
-    documentsHook.restoreVersion, documentsHook.searchDocuments, documentsHook.clearSearch,
-    documentsHook.createFromTemplate, documentsHook.exportDocument,
-    documentsHook.loadWritingStats, documentsHook.createWritingGoal,
-    documentsHook.shareDocument, documentsHook.setCurrentDocument, documentsHook.saveNow,
-    documentsHook.getWordCount, documentsHook.getDocumentsByFolder,
-    documentsHook.getDocumentsBySeries, documentsHook.getRecentDocuments,
-    documentsHook.getTotalWordCount, documentsHook.refreshAll,
-    showAuthModal, authMode
+    userPreferences,
+    feedbackOnPrevious,
+    showOnboarding,
+    documentManager,
+    showAuthModal,
+    authMode
   ]);
 
-  return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 // Create a custom hook to use the context
