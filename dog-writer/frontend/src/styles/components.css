@@ -1155,10 +1155,17 @@
   display: none;
 }
 
+/* 
+  REMOVED: This was a legacy style that was conflicting 
+  with the new chat controls and causing them to be hidden.
+*/
+/*
 .control-group {
   display: none;
 }
+*/
 
+/* The label for the old controls is no longer needed */
 .control-label {
   display: none;
 }
@@ -1212,58 +1219,59 @@
 
 .chat-header {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
   padding: 1rem;
   border-bottom: 1px solid var(--border-light);
   background: linear-gradient(135deg, var(--primary-50) 0%, var(--bg-secondary) 100%);
   position: relative;
   flex-shrink: 0;
+  flex-wrap: wrap; 
+  gap: 1rem;
 }
 
-.chat-header h2 {
+.chat-title {
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
   margin: 0;
+  flex-grow: 1;
+  min-width: 200px; /* Give it enough space */
 }
 
 /* Cursor-style Controls */
 .chat-controls {
-  display: flex !important;
+  display: flex;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
   min-height: 40px;
-  background-color: #ff0000 !important; /* DEBUG: Red background */
-  padding: 10px !important;
-  border: 3px solid #00ff00 !important; /* DEBUG: Green border */
 }
 
 .control-group {
   position: relative;
+  display: inline-block; /* Make sure this is not 'none' */
 }
 
 .control-selector {
-  display: flex !important;
+  display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background-color: #ffff00 !important; /* DEBUG: Yellow background */
-  border: 3px solid #ff00ff !important; /* DEBUG: Magenta border */
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.875rem;
-  color: #000000 !important; /* DEBUG: Black text */
+  color: #475569;
   min-width: 100px;
   justify-content: space-between;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .control-selector:hover {
-  background-color: #f1f5f9;
-  border-color: #cbd5e1;
+  background-color: #f8fafc;
 }
 
 .control-selector.active {
@@ -1275,7 +1283,9 @@
   font-size: 1rem;
 }
 
+/* This is the new label style inside the buttons */
 .control-label {
+  display: block; /* Make sure this is not 'none' */
   font-weight: 500;
   color: #0f172a;
   flex: 1;

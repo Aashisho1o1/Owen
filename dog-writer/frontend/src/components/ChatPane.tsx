@@ -219,25 +219,18 @@ const ChatPane: React.FC = () => {
     <div className="chat-container">
       {/* Chat Header with Cursor-style Controls */}
       <div className="chat-header">
-        <div className="chat-title">
-          <h2>💬 AI Writing Assistant</h2>
-        </div>
+        <h2 className="chat-title">💬 AI Writing Assistant</h2>
         
         {/* Cursor-style Controls */}
         <div className="chat-controls">
-          DEBUG: Controls container is here!
-          DEBUG: authorPersona = {authorPersona || 'undefined'}
-          DEBUG: helpFocus = {helpFocus || 'undefined'}  
-          DEBUG: selectedLLM = {selectedLLM || 'undefined'}
           {/* Author Persona Selector */}
           <div className="control-group">
             <button
               className={`control-selector ${activeDropdown === 'persona' ? 'active' : ''}`}
               onClick={() => toggleDropdown('persona')}
             >
-              DEBUG BUTTON 1
               <span className="control-icon">👤</span>
-              <span className="control-label">{authorPersona?.split(' ')[0] || 'Author'}</span>
+              <span className="control-label">{authorPersona.split(' ')[0]}</span>
               <span className="control-arrow">▼</span>
             </button>
             {activeDropdown === 'persona' && (
@@ -262,9 +255,8 @@ const ChatPane: React.FC = () => {
               className={`control-selector ${activeDropdown === 'focus' ? 'active' : ''}`}
               onClick={() => toggleDropdown('focus')}
             >
-              DEBUG BUTTON 2
               <span className="control-icon">🎯</span>
-              <span className="control-label">{helpFocus?.split(' ')[0] || 'Focus'}</span>
+              <span className="control-label">{helpFocus.split(' ')[0]}</span>
               <span className="control-arrow">▼</span>
             </button>
             {activeDropdown === 'focus' && (
@@ -289,9 +281,8 @@ const ChatPane: React.FC = () => {
               className={`control-selector ${activeDropdown === 'model' ? 'active' : ''}`}
               onClick={() => toggleDropdown('model')}
             >
-              DEBUG BUTTON 3
               <span className="control-icon">🤖</span>
-              <span className="control-label">{selectedLLM?.split(' ')[0] || 'Model'}</span>
+              <span className="control-label">{selectedLLM.split(' ')[0]}</span>
               <span className="control-arrow">▼</span>
             </button>
             {activeDropdown === 'model' && (
