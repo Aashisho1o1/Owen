@@ -2,9 +2,27 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://backend-production-41ee.up.railway.app';
 
-// Add axios interceptors for better error handling and logging
-axios.interceptors.request.use(
+// Create axios instance with authentication support
+const apiClient = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  },
+});
+
+// Add authentication token to requests
+apiClient.interceptors.request.use(
   (config) => {
+    // Add authentication token if available
+    const token = localStorage.getItem('owen_access_token');
+    const tokenType = localStorage.getItem('owen_token_type') || 'bearer';
+    
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `${tokenType} ${token}`;
+    }
+    
     console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     console.log('Request data:', config.data);
     return config;
@@ -15,7 +33,7 @@ axios.interceptors.request.use(
   }
 );
 
-axios.interceptors.response.use(
+apiClient.interceptors.response.use(
   (response) => {
     console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
     return response;
@@ -269,6 +287,10 @@ export interface SearchResult {
 export interface CreateDocumentRequest {
   title: string;
   content?: string;
+  document_type?: string;
+  folder_id?: string;
+  series_id?: string;
+  chapter_number?: number;
 }
 
 export interface UpdateDocumentRequest {
@@ -276,6 +298,7 @@ export interface UpdateDocumentRequest {
   title?: string;
   content?: string;
   is_favorite?: boolean;
+  tags?: string[];
 }
 
 export interface DocumentsResponse {
@@ -311,101 +334,101 @@ export interface UserProfile {
 
 const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
-    const response = await axios.post<ChatResponse>(`${API_URL}/api/chat/message`, request);
+    const response = await apiClient.post<ChatResponse>('/api/chat/message', request);
     return response.data;
   },
   
   analyzeWriting: async (request: WritingSampleRequest): Promise<WritingSampleResponse> => {
-    const response = await axios.post<WritingSampleResponse>(`${API_URL}/api/chat/analyze-writing`, request);
+    const response = await apiClient.post<WritingSampleResponse>('/api/chat/analyze-writing', request);
     return response.data;
   },
   
   submitFeedback: async (request: UserFeedbackRequest): Promise<{ status: string; message: string }> => {
-    const response = await axios.post<{ status: string; message: string }>(`${API_URL}/api/chat/feedback`, request);
+    const response = await apiClient.post<{ status: string; message: string }>('/api/chat/feedback', request);
     return response.data;
   },
   
   completeOnboarding: async (request: OnboardingRequest): Promise<OnboardingResponse> => {
-    const response = await axios.post<OnboardingResponse>(`${API_URL}/api/chat/onboarding`, request);
+    const response = await apiClient.post<OnboardingResponse>('/api/chat/onboarding', request);
     return response.data;
   },
   
   getUserPreferences: async (): Promise<{ status: string; preferences?: UserPreferences; message?: string }> => {
-    const response = await axios.get<{ status: string; preferences?: UserPreferences; message?: string }>(`${API_URL}/api/chat/preferences`);
+    const response = await apiClient.get<{ status: string; preferences?: UserPreferences; message?: string }>('/api/chat/preferences');
     return response.data;
   },
   
   getStyleOptions: async (): Promise<{ english_variants: any[] }> => {
-    const response = await axios.get<{ english_variants: any[] }>(`${API_URL}/api/chat/style-options`);
+    const response = await apiClient.get<{ english_variants: any[] }>('/api/chat/style-options');
     return response.data;
   },
   
   createCheckpoint: async (request: CheckpointRequest): Promise<CheckpointResponse> => {
-    const response = await axios.post<CheckpointResponse>(`${API_URL}/api/checkpoint`, request);
+    const response = await apiClient.post<CheckpointResponse>('/api/checkpoint', request);
     return response.data;
   },
   
   healthCheck: async (): Promise<{ status: string }> => {
-    const response = await axios.get<{ status: string }>(`${API_URL}/api/health`);
+    const response = await apiClient.get<{ status: string }>('/api/health');
     return response.data;
   },
 
   generateMangaScript: async (request: MangaStoryRequest): Promise<MangaScriptResponseFE> => {
-    const response = await axios.post<MangaScriptResponseFE>(`${API_URL}/api/manga/generate_script`, request);
+    const response = await apiClient.post<MangaScriptResponseFE>('/api/manga/generate_script', request);
     return response.data;
   },
 
   // Document Management APIs
   getDocuments: async (): Promise<DocumentsResponse> => {
-    const response = await axios.get<DocumentsResponse>(`${API_URL}/api/documents`);
+    const response = await apiClient.get<DocumentsResponse>('/api/documents');
     return response.data;
   },
 
   getDocument: async (id: string): Promise<Document> => {
-    const response = await axios.get<Document>(`${API_URL}/api/documents/${id}`);
+    const response = await apiClient.get<Document>(`/api/documents/${id}`);
     return response.data;
   },
 
   createDocument: async (request: CreateDocumentRequest): Promise<Document> => {
-    const response = await axios.post<Document>(`${API_URL}/api/documents`, request);
+    const response = await apiClient.post<Document>('/api/documents', request);
     return response.data;
   },
 
   updateDocument: async (request: UpdateDocumentRequest): Promise<Document> => {
     const { id, ...updateData } = request;
-    const response = await axios.put<Document>(`${API_URL}/api/documents/${id}`, updateData);
+    const response = await apiClient.put<Document>(`/api/documents/${id}`, updateData);
     return response.data;
   },
 
   deleteDocument: async (id: string): Promise<{ success: boolean; message: string }> => {
-    const response = await axios.delete<{ success: boolean; message: string }>(`${API_URL}/api/documents/${id}`);
+    const response = await apiClient.delete<{ success: boolean; message: string }>(`/api/documents/${id}`);
     return response.data;
   },
 
   // VERSION MANAGEMENT
   getDocumentVersions: async (documentId: string): Promise<DocumentVersion[]> => {
-    const response = await axios.get<DocumentVersion[]>(`${API_URL}/api/documents/${documentId}/versions`);
+    const response = await apiClient.get<DocumentVersion[]>(`/api/documents/${documentId}/versions`);
     return response.data;
   },
 
   restoreDocumentVersion: async (documentId: string, versionId: string): Promise<Document> => {
-    const response = await axios.post<Document>(`${API_URL}/api/documents/${documentId}/versions/${versionId}/restore`);
+    const response = await apiClient.post<Document>(`/api/documents/${documentId}/versions/${versionId}/restore`);
     return response.data;
   },
 
   compareVersions: async (documentId: string, version1: string, version2: string): Promise<any> => {
-    const response = await axios.get(`${API_URL}/api/documents/${documentId}/versions/compare?v1=${version1}&v2=${version2}`);
+    const response = await apiClient.get(`/api/documents/${documentId}/versions/compare?v1=${version1}&v2=${version2}`);
     return response.data;
   },
 
   // FOLDER MANAGEMENT
   getFolders: async (): Promise<DocumentFolder[]> => {
-    const response = await axios.get<DocumentFolder[]>(`${API_URL}/api/folders`);
+    const response = await apiClient.get<DocumentFolder[]>('/api/folders');
     return response.data;
   },
 
   createFolder: async (name: string, parentId?: string, color?: string): Promise<DocumentFolder> => {
-    const response = await axios.post<DocumentFolder>(`${API_URL}/api/folders`, {
+    const response = await apiClient.post<DocumentFolder>('/api/folders', {
       name,
       parent_id: parentId,
       color
@@ -414,12 +437,12 @@ const api = {
   },
 
   updateFolder: async (folderId: string, updates: Partial<DocumentFolder>): Promise<DocumentFolder> => {
-    const response = await axios.put<DocumentFolder>(`${API_URL}/api/folders/${folderId}`, updates);
+    const response = await apiClient.put<DocumentFolder>(`/api/folders/${folderId}`, updates);
     return response.data;
   },
 
   deleteFolder: async (folderId: string, moveDocumentsTo?: string): Promise<{ success: boolean }> => {
-    const response = await axios.delete(`${API_URL}/api/folders/${folderId}`, {
+    const response = await apiClient.delete(`/api/folders/${folderId}`, {
       data: { move_documents_to: moveDocumentsTo }
     });
     return response.data;
@@ -427,12 +450,12 @@ const api = {
 
   // SERIES MANAGEMENT
   getSeries: async (): Promise<DocumentSeries[]> => {
-    const response = await axios.get<DocumentSeries[]>(`${API_URL}/api/series`);
+    const response = await apiClient.get<DocumentSeries[]>('/api/series');
     return response.data;
   },
 
   createSeries: async (name: string, description?: string): Promise<DocumentSeries> => {
-    const response = await axios.post<DocumentSeries>(`${API_URL}/api/series`, {
+    const response = await apiClient.post<DocumentSeries>('/api/series', {
       name,
       description
     });
@@ -440,23 +463,23 @@ const api = {
   },
 
   updateSeries: async (seriesId: string, updates: Partial<DocumentSeries>): Promise<DocumentSeries> => {
-    const response = await axios.put<DocumentSeries>(`${API_URL}/api/series/${seriesId}`, updates);
+    const response = await apiClient.put<DocumentSeries>(`/api/series/${seriesId}`, updates);
     return response.data;
   },
 
   deleteSeries: async (seriesId: string): Promise<{ success: boolean }> => {
-    const response = await axios.delete(`${API_URL}/api/series/${seriesId}`);
+    const response = await apiClient.delete(`/api/series/${seriesId}`);
     return response.data;
   },
 
   // TEMPLATES
   getTemplates: async (): Promise<DocumentTemplate[]> => {
-    const response = await axios.get<DocumentTemplate[]>(`${API_URL}/api/templates`);
+    const response = await apiClient.get<DocumentTemplate[]>('/api/templates');
     return response.data;
   },
 
   createDocumentFromTemplate: async (templateId: string, title: string, folderId?: string): Promise<Document> => {
-    const response = await axios.post<Document>(`${API_URL}/api/documents/from-template`, {
+    const response = await apiClient.post<Document>('/api/documents/from-template', {
       template_id: templateId,
       title,
       folder_id: folderId
@@ -466,13 +489,13 @@ const api = {
 
   // ADVANCED SEARCH
   searchDocuments: async (searchRequest: SearchRequest): Promise<SearchResult[]> => {
-    const response = await axios.post<SearchResult[]>(`${API_URL}/api/search`, searchRequest);
+    const response = await apiClient.post<SearchResult[]>('/api/search', searchRequest);
     return response.data;
   },
 
   // EXPORT FUNCTIONALITY
   exportDocument: async (exportRequest: ExportRequest): Promise<Blob> => {
-    const response = await axios.post(`${API_URL}/api/export`, exportRequest, {
+    const response = await apiClient.post('/api/export', exportRequest, {
       responseType: 'blob'
     });
     return response.data;
@@ -480,12 +503,12 @@ const api = {
 
   // WRITING ANALYTICS
   getWritingGoals: async (): Promise<WritingGoal[]> => {
-    const response = await axios.get<WritingGoal[]>(`${API_URL}/api/goals`);
+    const response = await apiClient.get<WritingGoal[]>('/api/goals');
     return response.data;
   },
 
   createWritingGoal: async (goal: Omit<WritingGoal, 'id' | 'user_id' | 'current_words'>): Promise<WritingGoal> => {
-    const response = await axios.post<WritingGoal>(`${API_URL}/api/goals`, goal);
+    const response = await apiClient.post<WritingGoal>('/api/goals', goal);
     return response.data;
   },
 
@@ -497,29 +520,29 @@ const api = {
       params.append('end_date', dateRange.end);
     }
     
-    const response = await axios.get<WritingSession[]>(`${API_URL}/api/sessions?${params}`);
+    const response = await apiClient.get<WritingSession[]>(`/api/sessions?${params}`);
     return response.data;
   },
 
   getWritingStats: async (period: 'week' | 'month' | 'year'): Promise<any> => {
-    const response = await axios.get(`${API_URL}/api/stats/writing?period=${period}`);
+    const response = await apiClient.get(`/api/stats/writing?period=${period}`);
     return response.data;
   },
 
   // BACKUP & SYNC
   createBackup: async (): Promise<{ backup_id: string; download_url: string }> => {
-    const response = await axios.post(`${API_URL}/api/backup`);
+    const response = await apiClient.post('/api/backup');
     return response.data;
   },
 
   restoreFromBackup: async (backupId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await axios.post(`${API_URL}/api/backup/${backupId}/restore`);
+    const response = await apiClient.post(`/api/backup/${backupId}/restore`);
     return response.data;
   },
 
   // COLLABORATION
   shareDocument: async (documentId: string, email: string, permission: 'view' | 'comment' | 'edit'): Promise<any> => {
-    const response = await axios.post(`${API_URL}/api/documents/${documentId}/share`, {
+    const response = await apiClient.post(`/api/documents/${documentId}/share`, {
       email,
       permission
     });
@@ -527,20 +550,20 @@ const api = {
   },
 
   getDocumentShares: async (documentId: string): Promise<any[]> => {
-    const response = await axios.get(`${API_URL}/api/documents/${documentId}/shares`);
+    const response = await apiClient.get(`/api/documents/${documentId}/shares`);
     return response.data;
   },
 
   // ENHANCED DOCUMENT OPERATIONS
   duplicateDocument: async (documentId: string, newTitle?: string): Promise<Document> => {
-    const response = await axios.post<Document>(`${API_URL}/api/documents/${documentId}/duplicate`, {
+    const response = await apiClient.post<Document>(`/api/documents/${documentId}/duplicate`, {
       new_title: newTitle
     });
     return response.data;
   },
 
   moveDocument: async (documentId: string, folderId?: string, seriesId?: string): Promise<Document> => {
-    const response = await axios.put<Document>(`${API_URL}/api/documents/${documentId}/move`, {
+    const response = await apiClient.put<Document>(`/api/documents/${documentId}/move`, {
       folder_id: folderId,
       series_id: seriesId
     });
@@ -548,31 +571,28 @@ const api = {
   },
 
   addDocumentTags: async (documentId: string, tags: string[]): Promise<Document> => {
-    const response = await axios.post<Document>(`${API_URL}/api/documents/${documentId}/tags`, { tags });
+    const response = await apiClient.post<Document>(`/api/documents/${documentId}/tags`, { tags });
     return response.data;
   },
 
   getDocumentAnalytics: async (documentId: string): Promise<any> => {
-    const response = await axios.get(`${API_URL}/api/documents/${documentId}/analytics`);
+    const response = await apiClient.get(`/api/documents/${documentId}/analytics`);
     return response.data;
   },
 
   // Auth APIs
   login: async (request: LoginRequest): Promise<TokenResponse> => {
-    const response = await axios.post<TokenResponse>(`${API_URL}/api/auth/login`, request);
+    const response = await apiClient.post<TokenResponse>('/api/auth/login', request);
     return response.data;
   },
 
   register: async (request: RegisterRequest): Promise<TokenResponse> => {
-    const response = await axios.post<TokenResponse>(`${API_URL}/api/auth/register`, request);
+    const response = await apiClient.post<TokenResponse>('/api/auth/register', request);
     return response.data;
   },
 
   getUserProfile: async (): Promise<UserProfile> => {
-    const token = localStorage.getItem('accessToken');
-    const response = await axios.get<UserProfile>(`${API_URL}/api/auth/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await apiClient.get<UserProfile>('/api/auth/profile');
     return response.data;
   },
 };

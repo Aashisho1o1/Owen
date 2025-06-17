@@ -45,9 +45,10 @@ const DocumentEditor: React.FC = () => {
         setEditorContent(doc.content);
         setDocumentTitle(doc.title);
         
-        // Apply document theme if available
-        const themeId = doc.metadata?.themeId;
-        if (themeId) {
+        // Apply document theme if available in tags
+        const themeTag = doc.tags?.find(tag => tag.startsWith('theme:'));
+        if (themeTag) {
+          const themeId = themeTag.replace('theme:', '');
           applyDocumentTheme(themeId);
         } else {
           clearDocumentTheme();

@@ -238,7 +238,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       const document = await api.createDocument({
         title,
         content: '',
-        document_type: documentType as any,
+        document_type: documentType,
         folder_id: folderId,
         series_id: seriesId
       });
