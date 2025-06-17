@@ -282,7 +282,7 @@ export const useChat = ({
         setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: https://backend-production-41ee.up.railway.app. Please check if the server is running.`);
       }
     }
-  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId, setApiGlobalError]);
+  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId]);
 
   const handleSaveCheckpoint = useCallback(async () => {
     logger.log("Save Checkpoint clicked");

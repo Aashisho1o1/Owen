@@ -374,8 +374,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logger.log('Text highlight cleared');
   }, []);
 
-  // Memoize the context value to prevent unnecessary renders
-  const value: AppContextType = useMemo(() => ({
+  // Build context value. We no longer memoize to avoid stale closures.
+  const value: AppContextType = {
     authorPersona,
     setAuthorPersona,
     helpFocus,
@@ -415,47 +415,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setShowAuthModal,
     authMode,
     setAuthMode,
-  }), [
-    authorPersona,
-    setAuthorPersona,
-    helpFocus,
-    setHelpFocus,
-    selectedLLM,
-    setSelectedLLM,
-    editorContent,
-    setEditorContent,
-    highlightedText,
-    setHighlightedText,
-    highlightedTextId,
-    setHighlightedTextId,
-    handleTextHighlighted,
-    clearTextHighlight,
-    messages,
-    handleSendMessage,
-    thinkingTrail,
-    isStreaming,
-    streamText,
-    isThinking,
-    chatApiError,
-    apiGlobalError,
-    checkApiConnection,
-    handleSaveCheckpoint,
-    userPreferences,
-    setUserPreferences,
-    feedbackOnPrevious,
-    setFeedbackOnPrevious,
-    showOnboarding,
-    setShowOnboarding,
-    loadUserPreferences,
-    submitFeedback,
-    analyzeWritingSample,
-    completeOnboarding,
-    documentsHook,
-    showAuthModal,
-    setShowAuthModal,
-    authMode,
-    setAuthMode
-  ]);
+  };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
