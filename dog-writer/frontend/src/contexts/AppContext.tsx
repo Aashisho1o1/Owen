@@ -220,7 +220,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const documentsHook = useDocuments();
-  const { editorContent, setEditorContent, handleSaveCheckpoint, isSaving, lastSaved, hasUnsavedChanges } = useEditor(documentsHook.currentDocument, documentsHook.updateDocument);
+  const { editorContent, setEditorContent } = useEditor({
+    initialContent: documentsHook.currentDocument?.content || 'Once upon a time, in a bustling city, a young detective named Kenji stumbled upon a mysterious diary. His partner, a seasoned veteran named Rina, always told him to trust his gut.'
+  });
+
+  // Handle save checkpoint
+  const handleSaveCheckpoint = useCallback(async () => {
+    if (documentsHook.currentDocument) {
+      await documentsHook.updateDocument(documentsHook.currentDocument.id, {
+        content: editorContent
+      });
+    }
+  }, [documentsHook.currentDocument, documentsHook.updateDocument, editorContent]);
+
+  // Add missing state variables
+  const isSaving = documentsHook.isSaving;
+  const lastSaved = documentsHook.lastSaved;
+  const hasUnsavedChanges = documentsHook.hasUnsavedChanges;
 
   const {
     messages,
