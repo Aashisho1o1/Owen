@@ -521,8 +521,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Adding missing dependencies:
     setEditorContent, handleTextHighlightedWithId, clearTextHighlight,
     handleSendMessage, checkApiConnection, handleSaveCheckpoint,
-    userPreferences, englishVariants, feedbackOnPrevious, showOnboarding,
-    loadUserPreferences, updateEnglishVariant, submitFeedback, analyzeWritingSample, completeOnboarding,
+    userPreferences, feedbackOnPrevious, showOnboarding,
+    loadUserPreferences, submitFeedback, analyzeWritingSample, completeOnboarding,
     // Document management dependencies
     documentsHook.documents, documentsHook.folders, documentsHook.series, documentsHook.templates,
     documentsHook.currentDocument, documentsHook.isLoading, documentsHook.isSaving, 
