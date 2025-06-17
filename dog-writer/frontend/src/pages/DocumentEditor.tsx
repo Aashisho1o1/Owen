@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
+import { useDocumentTheme } from '../contexts/DocumentThemeContext';
 import HighlightableEditor from '../components/HighlightableEditor';
 import ChatPane from '../components/ChatPane';
 import './DocumentEditor.css';
@@ -19,6 +20,8 @@ const DocumentEditor: React.FC = () => {
     lastSaved,
     hasUnsavedChanges 
   } = useDocuments();
+  
+  const { applyDocumentTheme, clearDocumentTheme, isDocumentThemeActive } = useDocumentTheme();
   
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [editorContent, setEditorContent] = useState('');
@@ -41,6 +44,15 @@ const DocumentEditor: React.FC = () => {
         setCurrentDocument(doc);
         setEditorContent(doc.content);
         setDocumentTitle(doc.title);
+        
+        // Apply document theme if available
+        const themeId = doc.metadata?.themeId;
+        if (themeId) {
+          applyDocumentTheme(themeId);
+        } else {
+          clearDocumentTheme();
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Failed to load document:', err);
@@ -51,7 +63,12 @@ const DocumentEditor: React.FC = () => {
     };
 
     loadDocument();
-  }, [documentId, getDocument, setCurrentDocument]);
+    
+    // Cleanup theme when component unmounts or document changes
+    return () => {
+      clearDocumentTheme();
+    };
+  }, [documentId, getDocument, setCurrentDocument, applyDocumentTheme, clearDocumentTheme]);
 
   // Update document content when editor changes
   useEffect(() => {
@@ -121,7 +138,7 @@ const DocumentEditor: React.FC = () => {
   }
 
   return (
-    <div className="document-editor">
+    <div className={`document-editor ${isDocumentThemeActive ? 'themed document-themed' : ''}`}>
       {/* Header with document controls */}
       <div className="editor-header">
         <div className="header-left">
@@ -168,7 +185,7 @@ const DocumentEditor: React.FC = () => {
 
       {/* Main editor area */}
       <div className={`editor-main ${isChatOpen ? 'with-chat' : 'full-width'}`}>
-        <div className="editor-container">
+        <div className={`editor-container ${isDocumentThemeActive ? 'themed' : ''}`}>
           <HighlightableEditor
             content={editorContent}
             onChange={setEditorContent}

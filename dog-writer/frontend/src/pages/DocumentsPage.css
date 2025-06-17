@@ -609,4 +609,152 @@
   .documents-grid {
     gap: 12px;
   }
+}
+
+/* Enhanced Template Cards with Theme Previews */
+.enhanced-template {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 2px solid var(--theme-primary, var(--template-color));
+  background: linear-gradient(135deg, var(--theme-background, #ffffff) 0%, rgba(255, 255, 255, 0.9) 100%);
+}
+
+.enhanced-template:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  border-color: var(--theme-primary, var(--template-color));
+}
+
+.enhanced-template .template-content h4 {
+  color: var(--theme-primary, var(--template-color));
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.enhanced-template .template-content p {
+  color: var(--theme-text, #666);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+/* Theme Preview Section */
+.theme-preview {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-name {
+  font-size: 0.8rem;
+  color: var(--theme-primary, var(--template-color));
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.theme-colors {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.color-dot:hover {
+  transform: scale(1.2);
+}
+
+/* Template Card Enhancements */
+.enhanced-template::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--theme-primary, var(--template-color)) 0%, transparent 100%);
+  opacity: 0.8;
+}
+
+.enhanced-template .template-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Responsive adjustments for enhanced templates */
+@media (max-width: 768px) {
+  .enhanced-template .template-content {
+    padding: 0.75rem;
+  }
+  
+  .theme-preview {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+  
+  .theme-name {
+    font-size: 0.75rem;
+  }
+  
+  .color-dot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* Template hover effects with theme colors */
+.enhanced-template:hover .template-icon {
+  transform: scale(1.1);
+  transition: transform 0.3s ease;
+}
+
+.enhanced-template:hover .theme-colors .color-dot {
+  animation: colorPulse 2s infinite;
+}
+
+@keyframes colorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Template selection state */
+.enhanced-template:active {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Template loading state for theme application */
+.enhanced-template.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.enhanced-template.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--theme-primary, var(--template-color));
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 } 

@@ -13,6 +13,8 @@ import { AppProvider, useAppContext } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { DocumentThemeProvider } from './contexts/DocumentThemeContext';
+import './styles/documentThemes.css';
 
 // Top Navigation Bar with Documents, Settings, Auth in top right
 const TopNavigation: React.FC = () => {
@@ -290,11 +292,13 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
-      </AuthProvider>
+      <DocumentThemeProvider>
+        <AuthProvider>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </AuthProvider>
+      </DocumentThemeProvider>
     </ThemeProvider>
   );
 };

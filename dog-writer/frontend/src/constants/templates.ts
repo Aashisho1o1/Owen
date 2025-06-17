@@ -1,3 +1,5 @@
+import { DocumentTheme } from './documentThemes';
+
 export interface FictionTemplate {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface FictionTemplate {
   icon: string;
   content: string;
   color: string;
+  // Enhanced theming reference
+  themeId: string; // References DOCUMENT_THEMES
 }
 
 export const FICTION_TEMPLATES: FictionTemplate[] = [
@@ -16,6 +20,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for romantic fiction with character development arcs',
     icon: '💕',
     color: '#ff6b9d',
+    themeId: 'romance',
     content: `# Romance Novel Template
 
 ## Main Characters
@@ -78,6 +83,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for suspenseful thrillers and mysteries',
     icon: '🔍',
     color: '#4c566a',
+    themeId: 'thriller',
     content: `# Thriller Novel Template
 
 ## Main Characters
@@ -139,6 +145,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for epic fantasy adventures',
     icon: '🐉',
     color: '#8b5a3c',
+    themeId: 'fantasy',
     content: `# Fantasy Epic Template
 
 ## World Building
@@ -209,6 +216,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for futuristic science fiction stories',
     icon: '🚀',
     color: '#4169e1',
+    themeId: 'scifi',
     content: `# Science Fiction Template
 
 ## Setting
@@ -277,6 +285,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for historical fiction set in past eras',
     icon: '🏛️',
     color: '#8b4513',
+    themeId: 'historical',
     content: `# Historical Fiction Template
 
 ## Historical Setting
@@ -344,6 +353,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for personal stories and biographies',
     icon: '📖',
     color: '#2e7d32',
+    themeId: 'memoir',
     content: `# Biography/Memoir Template
 
 ## Overview
@@ -414,6 +424,7 @@ export const FICTION_TEMPLATES: FictionTemplate[] = [
     description: 'A template for humorous fiction and satire',
     icon: '😂',
     color: '#ff9800',
+    themeId: 'comedy',
     content: `# Comedy Novel Template
 
 ## Comedic Style

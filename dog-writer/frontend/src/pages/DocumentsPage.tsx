@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
 import { Document } from '../services/api';
 import { FICTION_TEMPLATES, FictionTemplate } from '../constants/templates';
+import { getThemeForTemplate } from '../constants/documentThemes';
 import './DocumentsPage.css';
 
 const DocumentsPage: React.FC = () => {
@@ -39,8 +40,11 @@ const DocumentsPage: React.FC = () => {
         undefined
       );
       
-      // Update the document with template content
-      await updateDocument(newDoc.id, { content: template.content });
+      // Update the document with template content and theme reference
+      await updateDocument(newDoc.id, { 
+        content: template.content,
+        metadata: { themeId: template.themeId }
+      });
       
       // Navigate to the editor with the new document
       navigate(`/editor/${newDoc.id}`);
@@ -151,24 +155,59 @@ const DocumentsPage: React.FC = () => {
             </div>
 
             {/* Fiction Templates */}
-            {FICTION_TEMPLATES.map((template) => (
-              <div 
-                key={template.id}
-                className="template-card"
-                onClick={() => handleCreateFromTemplate(template)}
-                style={{ '--template-color': template.color } as React.CSSProperties}
-              >
-                <div className="template-preview">
-                  <div className="template-icon">{template.icon}</div>
-                  <div className="template-content">
-                    <h4>{template.name}</h4>
-                    <p>{template.description}</p>
+            {FICTION_TEMPLATES.map((template) => {
+              const theme = getThemeForTemplate(template.themeId);
+              return (
+                <div 
+                  key={template.id}
+                  className="template-card enhanced-template"
+                  onClick={() => handleCreateFromTemplate(template)}
+                  style={{ 
+                    '--template-color': template.color,
+                    '--theme-primary': theme?.colors.primary || template.color,
+                    '--theme-background': theme?.colors.background || '#ffffff',
+                    '--theme-text': theme?.colors.text.primary || '#000000',
+                    '--theme-font': theme?.typography.primaryFont || 'inherit'
+                  } as React.CSSProperties}
+                >
+                  <div className="template-preview">
+                    <div className="template-icon">{template.icon}</div>
+                    <div className="template-content">
+                      <h4 style={{ fontFamily: theme?.typography.headingFont || 'inherit' }}>
+                        {template.name}
+                      </h4>
+                      <p style={{ fontFamily: theme?.typography.primaryFont || 'inherit' }}>
+                        {template.description}
+                      </p>
+                      {theme && (
+                        <div className="theme-preview">
+                          <span className="theme-name">{theme.name}</span>
+                          <div className="theme-colors">
+                            <div 
+                              className="color-dot" 
+                              style={{ backgroundColor: theme.colors.primary }}
+                              title="Primary Color"
+                            />
+                            <div 
+                              className="color-dot" 
+                              style={{ backgroundColor: theme.colors.secondary }}
+                              title="Secondary Color"
+                            />
+                            <div 
+                              className="color-dot" 
+                              style={{ backgroundColor: theme.colors.text.accent }}
+                              title="Accent Color"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  <h3>{template.name}</h3>
+                  <span className="template-genre">{template.genre}</span>
                 </div>
-                <h3>{template.name}</h3>
-                <span className="template-genre">{template.genre}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
