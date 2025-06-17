@@ -263,6 +263,15 @@ const ChatPane: React.FC = () => {
               <p>I'm here to help you perfect your writing, focusing on <strong>{helpFocus.toLowerCase()}</strong>. 
                  Highlight text in your document to get specific feedback, or ask me general questions about writing craft.</p>
               
+              {/* Debug info - temporary */}
+              <div style={{fontSize: '12px', color: '#666', marginTop: '10px', padding: '10px', background: '#f5f5f5', borderRadius: '4px'}}>
+                <strong>Debug Info:</strong><br/>
+                Author: "{authorPersona}"<br/>
+                Focus: "{helpFocus}"<br/>
+                Model: "{selectedLLM}"<br/>
+                Render Time: {new Date().toLocaleTimeString()}
+              </div>
+              
               {/* Show general conversation starters when no text is highlighted */}
               {!highlightedText && (
                 <div className="conversation-starters">
