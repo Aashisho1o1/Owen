@@ -25,7 +25,7 @@ from routers.session_router import router as session_router
 # Import routes
 from routes.auth import router as auth_router
 from routes.documents import router as documents_router
-from routes.analytics import router as analytics_router
+# from routes.analytics import router as analytics_router  # Temporarily disabled
 
 # Configure logging
 logging.basicConfig(
@@ -122,7 +122,7 @@ async def health_check():
 # Include routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(documents_router, prefix="/api/documents", tags=["Documents"])
-app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
+# app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])  # Temporarily disabled
 
 # Legacy routers (if still needed)
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
