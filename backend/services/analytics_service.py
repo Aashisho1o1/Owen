@@ -455,5 +455,5 @@ class AnalyticsService:
             logger.error(f"Error deleting user data: {e}")
             return False
 
-# Global analytics service instance
-analytics_service = AnalyticsService() 
+# Global analytics service instance - temporarily disabled for deployment
+# analytics_service = AnalyticsService() 
