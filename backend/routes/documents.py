@@ -10,6 +10,7 @@ from fastapi.security import HTTPBearer
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+import os
 
 from services.document_service import document_service, Document, DocumentVersion, DocumentError
 from services.auth_service import verify_token
@@ -208,4 +209,37 @@ async def get_document_stats(
         "total_words": total_words,
         "document_types": type_counts,
         "average_words_per_document": total_words // total_documents if total_documents > 0 else 0
-    } 
+    }
+
+@router.get("/debug/system-status")
+@handle_exceptions()
+async def debug_system_status(
+    user_id: str = Depends(get_current_user_id)
+):
+    """Debug endpoint to check system status and database connectivity"""
+    try:
+        # Test database connectivity
+        test_docs = document_service.get_user_documents(user_id)
+        
+        # Get database configuration
+        DATABASE_URL = os.getenv("DATABASE_URL")
+        db_type = "postgresql" if DATABASE_URL else "sqlite"
+        
+        return {
+            "status": "healthy",
+            "user_id": user_id,
+            "database_type": db_type,
+            "database_url_present": bool(DATABASE_URL),
+            "document_service_db_type": document_service.db_type,
+            "document_service_config": document_service.db_config,
+            "user_documents_count": len(test_docs),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "user_id": user_id,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "timestamp": datetime.now().isoformat()
+        } 
