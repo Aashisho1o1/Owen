@@ -1,10 +1,2 @@
-# Railway Deployment Trigger
-# Updated: 2024-12-19 - Complete PostgreSQL Database Rebuild
-# This file triggers redeployment when changed
-
-DEPLOYMENT_VERSION=3.0.0
-DATABASE_ARCHITECTURE=postgresql_only_rebuild
-TIMESTAMP=2024-12-19T16:00:00Z
-FEATURE=complete_postgresql_rebuild
-BREAKING_CHANGE=removed_sqlite_completely
-# Railway deployment from clean 6:03 PM version - Tue Jun 17 19:06:45 PDT 2025
+# FORCE COMPLETE REBUILD - Tue Jun 17 22:59:54 PDT 2025
+REBUILD_ID=1750226394
