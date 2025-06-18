@@ -7,3 +7,4 @@ DATABASE_ARCHITECTURE=postgresql_only_rebuild
 TIMESTAMP=2024-12-19T16:00:00Z
 FEATURE=complete_postgresql_rebuild
 BREAKING_CHANGE=removed_sqlite_completely
+# Railway deployment from clean 6:03 PM version - Tue Jun 17 19:06:45 PDT 2025
