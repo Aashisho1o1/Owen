@@ -1,4 +1,4 @@
-// FORCE REDEPLOY to pick up new backend URL: 2025-01-21 18:00
+// FORCE REDEPLOY to pick up new VITE_API_URL env var: 2025-06-18 07:05
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
