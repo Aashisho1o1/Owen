@@ -3,7 +3,7 @@ import json
 import re
 
 # Import security services
-from services.auth_service import get_current_user_id, get_optional_user_id
+from services.auth_service import get_current_user_id
 from services.validation_service import ChatMessageModel, UserFeedbackModel, input_validator
 
 # Change relative imports to absolute imports
@@ -12,7 +12,7 @@ from models.schemas import (
     UserFeedbackRequest, OnboardingRequest, OnboardingResponse
 )
 from services.llm_service import LLMService
-from services.database_service import db_service
+from services.database import db_service
 
 # Initialize services
 llm_service = LLMService()

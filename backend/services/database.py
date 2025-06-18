@@ -29,16 +29,24 @@ class PostgreSQLService:
     
     def __init__(self):
         self.database_url = os.getenv("DATABASE_URL")
+        self.pool = None
+        
         if not self.database_url:
-            raise DatabaseError("DATABASE_URL environment variable is required")
+            logger.error("DATABASE_URL environment variable is not set")
+            logger.info("Database service created but not connected - set DATABASE_URL to connect")
+            return
         
-        # Initialize connection pool
-        self._init_connection_pool()
-        
-        # Initialize database schema
-        self.init_database()
-        
-        logger.info("PostgreSQL service initialized successfully")
+        try:
+            # Initialize connection pool
+            self._init_connection_pool()
+            
+            # Initialize database schema
+            self.init_database()
+            
+            logger.info("PostgreSQL service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize database service: {e}")
+            self.pool = None
     
     def _init_connection_pool(self):
         """Initialize PostgreSQL connection pool for better performance"""
@@ -257,6 +265,20 @@ class PostgreSQLService:
     
     def health_check(self) -> Dict[str, Any]:
         """Check database connectivity and status"""
+        if not self.database_url:
+            return {
+                "status": "unhealthy",
+                "error": "DATABASE_URL not configured",
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        if not self.pool:
+            return {
+                "status": "unhealthy",
+                "error": "Database connection pool not initialized",
+                "timestamp": datetime.now().isoformat()
+            }
+        
         try:
             result = self.execute_query("SELECT version()", fetch='one')
             user_count = self.execute_query("SELECT COUNT(*) as count FROM users", fetch='one')
@@ -278,8 +300,12 @@ class PostgreSQLService:
     
     def close(self):
         """Close all database connections"""
-        if hasattr(self, 'pool'):
-            self.pool.closeall()
+        if hasattr(self, 'pool') and self.pool:
+            try:
+                self.pool.closeall()
+                logger.info("Database connections closed")
+            except Exception as e:
+                logger.error(f"Error closing database connections: {e}")
 
 # Global database service instance
 db_service = PostgreSQLService() 

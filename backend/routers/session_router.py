@@ -10,7 +10,7 @@ from models.schemas import (
     LiveSessionData, TimerPreferences,
     DailyStat
 )
-from services.database_service import db_service
+from services.database import db_service
 
 router = APIRouter(
     prefix="/api/sessions",

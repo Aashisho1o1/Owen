@@ -19,8 +19,8 @@ from services.document_service import document_service
 # Import routers
 from routers.chat_router import router as chat_router
 from routers.checkpoint_router import router as checkpoint_router
-from routers.document_router import router as document_router
-from routers.export_router import router as export_router
+from routers.grammar_router import router as grammar_router
+from routers.session_router import router as session_router
 
 # Import routes
 from routes.auth import router as auth_router
@@ -40,20 +40,28 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting DOG Writer API with PostgreSQL")
     
-    # Verify database connectivity
-    health = db_service.health_check()
-    if health['status'] == 'healthy':
-        logger.info(f"✅ Database connected: {health['database_version']}")
-        logger.info(f"📊 Users: {health['total_users']}, Documents: {health['total_documents']}")
-    else:
-        logger.error(f"❌ Database connection failed: {health.get('error', 'Unknown error')}")
-        raise Exception("Database connection failed")
+    try:
+        # Verify database connectivity
+        health = db_service.health_check()
+        if health['status'] == 'healthy':
+            logger.info(f"✅ Database connected: {health['database_version']}")
+            logger.info(f"📊 Users: {health['total_users']}, Documents: {health['total_documents']}")
+        else:
+            logger.error(f"❌ Database connection failed: {health.get('error', 'Unknown error')}")
+            # Don't raise exception - let app start but mark as unhealthy
+            logger.warning("⚠️ Starting app with unhealthy database - check environment variables")
+    except Exception as e:
+        logger.error(f"❌ Database initialization error: {e}")
+        logger.warning("⚠️ Starting app without database - check DATABASE_URL")
     
     yield
     
     # Shutdown
     logger.info("🛑 Shutting down DOG Writer API")
-    db_service.close()
+    try:
+        db_service.close()
+    except:
+        pass
 
 # Create FastAPI app
 app = FastAPI(
@@ -119,8 +127,8 @@ app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"]
 # Legacy routers (if still needed)
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(checkpoint_router, prefix="/api/checkpoints", tags=["Checkpoints"])
-app.include_router(document_router, prefix="/api/document", tags=["Document Legacy"])
-app.include_router(export_router, prefix="/api/export", tags=["Export"])
+app.include_router(grammar_router, prefix="/api/grammar", tags=["Grammar"])
+app.include_router(session_router, prefix="/api/session", tags=["Session"])
 
 # Global exception handler
 @app.exception_handler(Exception)
