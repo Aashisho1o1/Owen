@@ -87,15 +87,9 @@ class AnalyticsService:
     
     def _start_background_processors(self):
         """Start background threads for processing analytics data"""
-        # Event processing thread
-        event_thread = threading.Thread(target=self._process_event_queue, daemon=True)
-        event_thread.start()
-        
-        # Writing analytics processing thread
-        writing_thread = threading.Thread(target=self._process_writing_analytics_queue, daemon=True)
-        writing_thread.start()
-        
-        logger.info("Analytics background processors started")
+        # Temporarily disabled background processors for deployment stability
+        # TODO: Re-enable after fixing queue processing issues
+        logger.info("Analytics background processors temporarily disabled for deployment stability")
     
     def _process_event_queue(self):
         """Process events from the queue in batches"""
