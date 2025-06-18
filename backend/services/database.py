@@ -2,17 +2,17 @@
 PostgreSQL Database Service for DOG Writer
 Modern, production-ready database service with connection pooling,
 security, and Railway optimizations.
+Simple but flexible schema for prototype development.
 """
 
 import os
 import logging
 from typing import Dict, Any, List, Optional, Union
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import contextmanager
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class PostgreSQLService:
     """
     Production-ready PostgreSQL service for Railway deployment.
     Features connection pooling, automatic reconnection, and security.
+    Simple but flexible schema for prototype development.
     """
     
     def __init__(self):
@@ -92,7 +93,7 @@ class PostgreSQLService:
                 return cursor.rowcount
     
     def init_database(self):
-        """Initialize complete database schema"""
+        """Initialize essential database schema - simple but flexible for future expansion"""
         
         schema_queries = [
             # Users table - Core authentication
@@ -107,23 +108,14 @@ class PostgreSQLService:
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT TRUE,
                 email_verified BOOLEAN DEFAULT FALSE,
-                onboarding_completed BOOLEAN DEFAULT FALSE,
                 last_login TIMESTAMPTZ,
-                login_count INTEGER DEFAULT 0,
                 failed_login_attempts INTEGER DEFAULT 0,
-                last_failed_login TIMESTAMPTZ,
                 account_locked_until TIMESTAMPTZ,
-                password_reset_token VARCHAR(255),
-                password_reset_expires TIMESTAMPTZ,
-                email_verification_token VARCHAR(255),
-                email_verification_expires TIMESTAMPTZ,
-                preferences JSONB DEFAULT '{}',
-                subscription_tier VARCHAR(20) DEFAULT 'free',
-                subscription_expires TIMESTAMPTZ
+                preferences JSONB DEFAULT '{}'
             )
             ''',
             
-            # Documents table - Core document management
+            # Documents table - Core document management (flexible for future features)
             '''
             CREATE TABLE IF NOT EXISTS documents (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -133,11 +125,11 @@ class PostgreSQLService:
                 document_type VARCHAR(50) DEFAULT 'novel',
                 folder_id UUID REFERENCES folders(id) ON DELETE SET NULL,
                 series_id UUID REFERENCES series(id) ON DELETE SET NULL,
-                chapter_number INTEGER,
                 status VARCHAR(20) DEFAULT 'draft',
                 tags JSONB DEFAULT '[]',
                 is_favorite BOOLEAN DEFAULT FALSE,
                 word_count INTEGER DEFAULT 0,
+                metadata JSONB DEFAULT '{}',
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
@@ -166,7 +158,8 @@ class PostgreSQLService:
                 name VARCHAR(100) NOT NULL,
                 parent_id UUID REFERENCES folders(id) ON DELETE CASCADE,
                 color VARCHAR(7),
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             ''',
             
@@ -179,7 +172,8 @@ class PostgreSQLService:
                 description TEXT,
                 total_chapters INTEGER DEFAULT 0,
                 total_words INTEGER DEFAULT 0,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             ''',
             
@@ -205,7 +199,6 @@ class PostgreSQLService:
                 email VARCHAR(255) NOT NULL,
                 success BOOLEAN NOT NULL,
                 ip_address INET,
-                user_agent TEXT,
                 attempted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 failure_reason TEXT
             )
@@ -221,17 +214,15 @@ class PostgreSQLService:
                 expires_at TIMESTAMPTZ NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
                 ip_address INET,
-                user_agent TEXT,
                 last_activity TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             '''
         ]
         
-        # Performance indexes
+        # Essential performance indexes
         index_queries = [
             'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
             'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
-            'CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active)',
             'CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_documents_folder_id ON documents(folder_id)',
             'CREATE INDEX IF NOT EXISTS idx_documents_series_id ON documents(series_id)',
@@ -247,14 +238,22 @@ class PostgreSQLService:
         ]
         
         # Execute all schema creation
-        for query in schema_queries + index_queries:
+        for query in schema_queries:
             try:
                 self.execute_query(query)
             except Exception as e:
                 logger.error(f"Failed to execute schema query: {e}")
                 # Continue with other queries
         
-        logger.info("Database schema initialized successfully")
+        # Execute all indexes
+        for query in index_queries:
+            try:
+                self.execute_query(query)
+            except Exception as e:
+                logger.error(f"Failed to create index: {e}")
+                # Continue with other indexes
+        
+        logger.info("Essential PostgreSQL schema initialized successfully")
     
     def health_check(self) -> Dict[str, Any]:
         """Check database connectivity and status"""
