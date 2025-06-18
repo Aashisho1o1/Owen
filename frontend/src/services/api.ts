@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://backend-production-41ee.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
 
 // Create axios instance with authentication support
 const apiClient = axios.create({

@@ -68,7 +68,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-production-41ee.up.railway.app';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
 
 // Debug log to show which API URL is being used
 console.log('🌐 API Configuration:', { 
