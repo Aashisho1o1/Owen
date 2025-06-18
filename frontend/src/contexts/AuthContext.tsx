@@ -67,8 +67,9 @@ interface AuthContextType {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
+// Ensure the base URL always contains a protocol (http/https)
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
+const API_BASE_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
 
 // Debug log to show which API URL is being used
 console.log('🌐 API Configuration:', { 

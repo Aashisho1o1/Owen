@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
+// Normalise base URL: ensure it includes protocol so we never end up with
+//   "backend-production-xxxx.up.railway.app" (missing scheme) which the browser
+//   treats as a relative path.
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
+const API_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
 
 // Create axios instance with authentication support
 const apiClient = axios.create({
