@@ -22,7 +22,7 @@ class UserRegistration(BaseModel):
     email: EmailStr
     password: str
     name: str
-    username: str
+    username: Optional[str] = None
     
     @validator('name')
     def validate_name(cls, v):
@@ -34,6 +34,8 @@ class UserRegistration(BaseModel):
     
     @validator('username')
     def validate_username(cls, v):
+        if v is None:
+            return v  # Allow None, will be auto-generated
         if len(v.strip()) < 3:
             raise ValueError('Username must be at least 3 characters long')
         if len(v.strip()) > 50:
@@ -112,8 +114,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 async def register_user(user_data: UserRegistration):
     """Register a new user"""
     try:
+        # Auto-generate username from email if not provided
+        username = user_data.username or user_data.email.split('@')[0]
+        
         result = auth_service.register_user(
-            username=user_data.username,
+            username=username,
             email=user_data.email,
             password=user_data.password,
             name=user_data.name
