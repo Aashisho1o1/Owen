@@ -1,87 +1,18 @@
 """
-Document Management Service for DOG Writer
-
-Comprehensive document storage and management with version control,
-full-text search, and advanced organization features.
-Supports both SQLite (development) and PostgreSQL (production).
+Document Service for DOG Writer
+PostgreSQL-based document management with version control, organization,
+and advanced features for creative writing.
 """
 
-import os
-import json
-import uuid
 import logging
-import hashlib
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Union
-from pathlib import Path
-from dataclasses import dataclass
+import json
+from datetime import datetime
+from typing import Dict, Any, List, Optional, Union
+from uuid import uuid4
 
-# Database imports
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    POSTGRES_AVAILABLE = True
-except ImportError:
-    POSTGRES_AVAILABLE = False
-
-import sqlite3
-from contextlib import contextmanager
-
-# Pydantic models
-from pydantic import BaseModel
-# from models.schemas import UserProfile # This causes circular import, will get user profile from auth service
+from .database import db_service, DatabaseError
 
 logger = logging.getLogger(__name__)
-
-# Document Models
-@dataclass
-class Document:
-    id: str
-    user_id: str
-    title: str
-    content: str
-    document_type: str  # 'novel', 'chapter', 'character_sheet', 'outline', 'notes'
-    folder_id: Optional[str] = None
-    series_id: Optional[str] = None
-    chapter_number: Optional[int] = None
-    status: str = 'draft'  # 'draft', 'revision', 'final', 'published'
-    tags: List[str] = None
-    is_favorite: bool = False
-    word_count: int = 0
-    created_at: datetime = None
-    updated_at: datetime = None
-
-@dataclass
-class DocumentVersion:
-    id: str
-    document_id: str
-    version_number: int
-    title: str
-    content: str
-    word_count: int
-    change_summary: str
-    is_auto_save: bool
-    created_at: datetime
-
-@dataclass 
-class DocumentFolder:
-    id: str
-    user_id: str
-    name: str
-    parent_id: Optional[str] = None
-    color: Optional[str] = None
-    created_at: datetime = None
-    children: List['DocumentFolder'] = None
-
-@dataclass
-class DocumentSeries:
-    id: str
-    user_id: str
-    name: str
-    description: Optional[str] = None
-    total_chapters: int = 0
-    total_words: int = 0
-    created_at: datetime = None
 
 class DocumentError(Exception):
     """Custom exception for document operations"""
@@ -89,424 +20,381 @@ class DocumentError(Exception):
 
 class DocumentService:
     """
-    Advanced document management service with version control and organization.
-    Supports both SQLite (development) and PostgreSQL (production).
+    Advanced document management service using PostgreSQL.
+    Features version control, organization, and collaborative writing tools.
     """
     
-    def __init__(self, db_type: str = "sqlite", db_config: Dict[str, Any] = None):
-        self.db_type = db_type.lower()
-        self.db_config = db_config or {}
-        
-        if self.db_type == "postgresql" and not POSTGRES_AVAILABLE:
-            logger.warning("PostgreSQL requested but psycopg2 not available, falling back to SQLite")
-            self.db_type = "sqlite"
-        
-        # self.init_database() # This is now called from the main init_db.py
-        logger.info(f"Document service configured for {self.db_type}")
+    def __init__(self):
+        self.db = db_service
+        logger.info("Document service initialized with PostgreSQL")
     
-    @contextmanager
-    def get_connection(self):
-        """Context manager for database connections supporting both SQLite and PostgreSQL"""
-        conn = None
-        try:
-            if self.db_type == "postgresql":
-                conn = psycopg2.connect(self.db_config['url'], cursor_factory=RealDictCursor)
-            else:
-                # SQLite
-                db_path = self.db_config.get('path', 'database/auth.db')
-                Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-                conn = sqlite3.connect(db_path, timeout=30.0)
-                conn.execute("PRAGMA foreign_keys = ON")
-                conn.execute("PRAGMA journal_mode = WAL")
-                conn.row_factory = sqlite3.Row
-            
-            yield conn
-            if self.db_type == 'postgresql':
-                conn.commit()
-            
-        except Exception as e:
-            if conn and self.db_type == 'postgresql':
-                conn.rollback()
-            logger.error(f"Database error: {e}")
-            raise DocumentError(f"Database operation failed: {e}")
-        finally:
-            if conn:
-                conn.close()
-    
-    def _execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[sqlite3.Row], Any, int, None]:
-        """Execute database query with support for both SQLite and PostgreSQL"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Adapt query for PostgreSQL vs SQLite differences
-            if self.db_type == "postgresql":
-                # Convert SQLite ? placeholders to PostgreSQL %s
-                pg_query = query.replace('?', '%s')
-                cursor.execute(pg_query, params)
-            else:
-                cursor.execute(query, params)
-            
-            if fetch == 'one':
-                return cursor.fetchone()
-            elif fetch == 'all':
-                return cursor.fetchall()
-            else:
-                if self.db_type != "postgresql":
-                    conn.commit()
-                return cursor.rowcount
-
-    def init_database(self):
-        """Initialize database with comprehensive document management schema"""
-        
-        # Common SQL for both databases with slight variations
-        if self.db_type == "postgresql":
-            timestamp_type = "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP"
-            text_type = "TEXT"
-            json_type = "JSONB"
-        else:
-            timestamp_type = "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))"
-            text_type = "TEXT"
-            json_type = "TEXT"
-        
-        schema_queries = [
-            # Documents table
-            f'''CREATE TABLE IF NOT EXISTS documents (
-                id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                title TEXT NOT NULL,
-                content {text_type},
-                document_type TEXT DEFAULT 'novel',
-                folder_id TEXT,
-                series_id TEXT,
-                chapter_number INTEGER,
-                status TEXT DEFAULT 'draft',
-                tags {json_type},
-                is_favorite BOOLEAN DEFAULT FALSE,
-                word_count INTEGER DEFAULT 0,
-                created_at {timestamp_type},
-                updated_at {timestamp_type}
-            )''',
-            
-            # Document versions for change tracking
-            f'''CREATE TABLE IF NOT EXISTS document_versions (
-                id TEXT PRIMARY KEY,
-                document_id TEXT NOT NULL,
-                version_number INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                content {text_type},
-                word_count INTEGER DEFAULT 0,
-                change_summary TEXT,
-                is_auto_save BOOLEAN DEFAULT FALSE,
-                created_at {timestamp_type},
-                FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
-            )''',
-        ]
-        
-        index_queries = [
-            'CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_document_versions_document_id ON document_versions(document_id)',
-        ]
-        
-        for query in schema_queries + index_queries:
-            self._execute_query(query)
-
-    def _calculate_word_count(self, content: str) -> int:
-        """Calculate word count from text content"""
-        if not content:
-            return 0
-        return len(content.strip().split())
-
-    def _serialize_tags(self, tags: List[str]) -> str:
-        """Serialize tags list for storage"""
-        return json.dumps(tags or [])
-
-    def _deserialize_tags(self, tags_json: str) -> List[str]:
-        """Deserialize tags from storage"""
-        if not tags_json:
-            return []
-        try:
-            return json.loads(tags_json)
-        except (TypeError, ValueError):
-            return []
-
-    # ============= DOCUMENT OPERATIONS =============
-    
-    def create_document(self, user_id: str, title: str, content: str = "", 
-                       document_type: str = "novel", folder_id: str = None, 
-                       series_id: str = None, chapter_number: int = None) -> Document:
+    def create_document(self, user_id: int, title: str, content: str = "", document_type: str = "novel", 
+                       folder_id: str = None, series_id: str = None, tags: List[str] = None) -> Dict[str, Any]:
         """Create a new document"""
         try:
-            doc_id = str(uuid.uuid4())
-            word_count = self._calculate_word_count(content)
-            now = datetime.now().isoformat()
+            # Validate user exists
+            user = self.db.execute_query(
+                "SELECT id FROM users WHERE id = %s AND is_active = TRUE",
+                (user_id,),
+                fetch='one'
+            )
             
-            query = '''
-                INSERT INTO documents (
-                    id, user_id, title, content, document_type, folder_id,
-                    series_id, chapter_number, word_count, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            '''
+            if not user:
+                raise DocumentError("User not found or inactive")
             
-            self._execute_query(query, (
-                doc_id, user_id, title, content, document_type, folder_id,
-                series_id, chapter_number, word_count, now, now
-            ))
+            # Calculate word count
+            word_count = len(content.split()) if content else 0
+            
+            # Generate UUID for document
+            doc_id = str(uuid4())
+            
+            # Create document
+            query = """
+                INSERT INTO documents (id, user_id, title, content, document_type, folder_id, series_id, 
+                                     tags, word_count, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, title, document_type, word_count, created_at
+            """
+            
+            document = self.db.execute_query(
+                query,
+                (doc_id, user_id, title, content, document_type, folder_id, series_id, 
+                 json.dumps(tags or []), word_count, datetime.utcnow(), datetime.utcnow()),
+                fetch='one'
+            )
+            
+            if not document:
+                raise DocumentError("Failed to create document")
             
             # Create initial version
-            self._create_version(doc_id, 1, title, content, word_count, "Initial version", False)
+            self._create_document_version(doc_id, 1, title, content, word_count, "Initial version")
             
-            return self.get_document(doc_id)
+            logger.info(f"Document created successfully: {doc_id} for user {user_id}")
             
-        except Exception as e:
-            logger.error(f"Error creating document: {e}")
-            raise DocumentError(f"Failed to create document: {e}")
-
-    def get_document(self, document_id: str) -> Optional[Document]:
-        """Retrieve a document by ID"""
-        try:
-            query = "SELECT * FROM documents WHERE id = ?"
-            row = self._execute_query(query, (document_id,), fetch='one')
-            
-            if row:
-                return Document(
-                    id=row['id'],
-                    user_id=row['user_id'],
-                    title=row['title'],
-                    content=row['content'],
-                    document_type=row['document_type'],
-                    folder_id=row['folder_id'],
-                    series_id=row['series_id'],
-                    chapter_number=row['chapter_number'],
-                    status=row['status'],
-                    tags=self._deserialize_tags(row['tags']),
-                    is_favorite=bool(row['is_favorite']),
-                    word_count=row['word_count'],
-                    created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
-                    updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
-                )
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error retrieving document: {e}")
-            raise DocumentError(f"Failed to retrieve document: {e}")
-
-    def update_document(self, document_id: str, **updates) -> Document:
-        """Update document with change tracking"""
-        try:
-            current_doc = self.get_document(document_id)
-            if not current_doc:
-                raise DocumentError(f"Document {document_id} not found")
-            
-            update_fields = []
-            update_values = []
-            
-            allowed_fields = {
-                'title', 'content', 'document_type', 'folder_id', 'series_id',
-                'chapter_number', 'status', 'tags', 'is_favorite'
+            return {
+                "id": document['id'],
+                "title": document['title'],
+                "document_type": document['document_type'],
+                "word_count": document['word_count'],
+                "created_at": document['created_at'].isoformat(),
+                "status": "success"
             }
             
-            for field, value in updates.items():
-                if field in allowed_fields:
-                    if field == 'tags':
-                        value = self._serialize_tags(value)
-                    elif field == 'content' and value != current_doc.content:
-                        updates['word_count'] = self._calculate_word_count(value)
-                        # Add word_count to allowed fields for this update
-                        if 'word_count' not in [f.split(' = ?')[0] for f in update_fields]:
-                            update_fields.append('word_count = ?')
-                            update_values.append(updates['word_count'])
-                    
-                    update_fields.append(f'{field} = ?')
-                    update_values.append(value)
-                else:
-                    logger.warning(f"Attempted to update disallowed field: {field}")
-                    continue
-            
-            if not update_fields:
-                return current_doc
-            
-            update_fields.append('updated_at = ?')
-            update_values.append(datetime.now().isoformat())
-            update_values.append(document_id)
-            
-            # Fixed: Validate all field names against allowlist before building query
-            safe_update_fields = []
-            for field_clause in update_fields:
-                field_name = field_clause.split(' = ?')[0]
-                # Include 'updated_at' as it's always safe and added by us
-                if field_name in allowed_fields or field_name in {'updated_at', 'word_count'}:
-                    safe_update_fields.append(field_clause)
-                else:
-                    logger.error(f"Unauthorized field in UPDATE query: {field_name}")
-                    raise DocumentError(f"Unauthorized field update attempted: {field_name}")
-            
-            query = f"UPDATE documents SET {', '.join(safe_update_fields)} WHERE id = ?"
-            self._execute_query(query, tuple(update_values))
-            
-            if 'content' in updates or 'title' in updates:
-                latest_version = self._get_latest_version_number(document_id)
-                new_title = updates.get('title', current_doc.title)
-                new_content = updates.get('content', current_doc.content)
-                new_word_count = updates.get('word_count', current_doc.word_count)
-                
-                self._create_version(
-                    document_id, 
-                    latest_version + 1,
-                    new_title,
-                    new_content,
-                    new_word_count,
-                    "Auto-save update",
-                    True
-                )
-            
-            return self.get_document(document_id)
-            
+        except DatabaseError as e:
+            logger.error(f"Database error during document creation: {e}")
+            raise DocumentError("Failed to create document due to database error")
         except Exception as e:
-            logger.error(f"Error updating document: {e}")
-            raise DocumentError(f"Failed to update document: {e}")
-
-    def delete_document(self, document_id: str) -> bool:
-        """Delete a document and all its versions"""
+            logger.error(f"Unexpected error during document creation: {e}")
+            raise DocumentError("Failed to create document")
+    
+    def get_user_documents(self, user_id: int, folder_id: str = None, series_id: str = None, 
+                          document_type: str = None, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get user's documents with optional filtering"""
         try:
-            query = "DELETE FROM documents WHERE id = ?"
-            result = self._execute_query(query, (document_id,))
-            return result > 0
-            
-        except Exception as e:
-            logger.error(f"Error deleting document: {e}")
-            raise DocumentError(f"Failed to delete document: {e}")
-
-    def get_user_documents(self, user_id: str, folder_id: str = None, 
-                          series_id: str = None, document_type: str = None) -> List[Document]:
-        """Get all documents for a user with optional filtering"""
-        try:
-            # Fixed: Use predefined conditions instead of dynamic string building
-            base_query = "SELECT * FROM documents WHERE user_id = ?"
+            # Build query with filters
+            conditions = ["user_id = %s"]
             params = [user_id]
             
-            # Build WHERE clause safely with predefined conditions
-            additional_conditions = []
             if folder_id:
-                additional_conditions.append("folder_id = ?")
+                conditions.append("folder_id = %s")
                 params.append(folder_id)
+            
             if series_id:
-                additional_conditions.append("series_id = ?")
+                conditions.append("series_id = %s")
                 params.append(series_id)
+            
             if document_type:
-                # Validate document_type against allowed values
-                allowed_types = {'novel', 'chapter', 'character_sheet', 'outline', 'notes'}
-                if document_type not in allowed_types:
-                    logger.warning(f"Invalid document_type filter: {document_type}")
-                    raise DocumentError(f"Invalid document type: {document_type}")
-                additional_conditions.append("document_type = ?")
+                conditions.append("document_type = %s")
                 params.append(document_type)
             
-            # Safely build the final query
-            if additional_conditions:
-                query = f"{base_query} AND {' AND '.join(additional_conditions)} ORDER BY updated_at DESC"
-            else:
-                query = f"{base_query} ORDER BY updated_at DESC"
-                
-            rows = self._execute_query(query, tuple(params), fetch='all')
+            query = f"""
+                SELECT id, title, document_type, status, tags, is_favorite, word_count, 
+                       created_at, updated_at, folder_id, series_id
+                FROM documents 
+                WHERE {' AND '.join(conditions)}
+                ORDER BY updated_at DESC
+                LIMIT %s OFFSET %s
+            """
+            params.extend([limit, offset])
             
-            documents = []
-            for row in rows:
-                documents.append(Document(
-                    id=row['id'], user_id=row['user_id'], title=row['title'],
-                    content=row['content'], document_type=row['document_type'],
-                    folder_id=row['folder_id'], series_id=row['series_id'],
-                    chapter_number=row['chapter_number'], status=row['status'],
-                    tags=self._deserialize_tags(row['tags']), is_favorite=bool(row['is_favorite']),
-                    word_count=row['word_count'],
-                    created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
-                    updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
-                ))
+            documents = self.db.execute_query(query, tuple(params), fetch='all')
             
-            return documents
+            # Format response
+            result = []
+            for doc in documents:
+                result.append({
+                    "id": doc['id'],
+                    "title": doc['title'],
+                    "document_type": doc['document_type'],
+                    "status": doc['status'],
+                    "tags": json.loads(doc['tags']) if doc['tags'] else [],
+                    "is_favorite": doc['is_favorite'],
+                    "word_count": doc['word_count'],
+                    "created_at": doc['created_at'].isoformat(),
+                    "updated_at": doc['updated_at'].isoformat(),
+                    "folder_id": doc['folder_id'],
+                    "series_id": doc['series_id']
+                })
             
+            return result
+            
+        except DatabaseError as e:
+            logger.error(f"Database error getting user documents: {e}")
+            raise DocumentError("Failed to retrieve documents")
         except Exception as e:
-            logger.error(f"Error retrieving user documents: {e}")
-            raise DocumentError(f"Failed to retrieve documents: {e}")
-
-    # ============= VERSION MANAGEMENT =============
+            logger.error(f"Unexpected error getting user documents: {e}")
+            raise DocumentError("Failed to retrieve documents")
     
-    def _create_version(self, document_id: str, version_number: int, title: str, 
-                       content: str, word_count: int, change_summary: str, is_auto_save: bool):
+    def get_document(self, document_id: str, user_id: int) -> Dict[str, Any]:
+        """Get a specific document"""
+        try:
+            query = """
+                SELECT id, title, content, document_type, status, tags, is_favorite, 
+                       word_count, created_at, updated_at, folder_id, series_id, chapter_number
+                FROM documents 
+                WHERE id = %s AND user_id = %s
+            """
+            
+            document = self.db.execute_query(query, (document_id, user_id), fetch='one')
+            
+            if not document:
+                raise DocumentError("Document not found or access denied")
+            
+            return {
+                "id": document['id'],
+                "title": document['title'],
+                "content": document['content'],
+                "document_type": document['document_type'],
+                "status": document['status'],
+                "tags": json.loads(document['tags']) if document['tags'] else [],
+                "is_favorite": document['is_favorite'],
+                "word_count": document['word_count'],
+                "created_at": document['created_at'].isoformat(),
+                "updated_at": document['updated_at'].isoformat(),
+                "folder_id": document['folder_id'],
+                "series_id": document['series_id'],
+                "chapter_number": document['chapter_number']
+            }
+            
+        except DatabaseError as e:
+            logger.error(f"Database error getting document: {e}")
+            raise DocumentError("Failed to retrieve document")
+        except Exception as e:
+            logger.error(f"Unexpected error getting document: {e}")
+            raise DocumentError("Failed to retrieve document")
+    
+    def update_document(self, document_id: str, user_id: int, title: str = None, content: str = None, 
+                       status: str = None, tags: List[str] = None, is_favorite: bool = None,
+                       auto_save: bool = False) -> Dict[str, Any]:
+        """Update a document"""
+        try:
+            # First verify the document exists and belongs to the user
+            existing_doc = self.get_document(document_id, user_id)
+            
+            # Build update query
+            updates = []
+            params = []
+            
+            if title is not None:
+                updates.append("title = %s")
+                params.append(title)
+            
+            if content is not None:
+                word_count = len(content.split()) if content else 0
+                updates.append("content = %s")
+                updates.append("word_count = %s")
+                params.extend([content, word_count])
+            
+            if status is not None:
+                updates.append("status = %s")
+                params.append(status)
+            
+            if tags is not None:
+                updates.append("tags = %s")
+                params.append(json.dumps(tags))
+            
+            if is_favorite is not None:
+                updates.append("is_favorite = %s")
+                params.append(is_favorite)
+            
+            if not updates:
+                return existing_doc  # No changes to make
+            
+            # Add updated_at
+            updates.append("updated_at = %s")
+            params.append(datetime.utcnow())
+            params.extend([document_id, user_id])
+            
+            query = f"""
+                UPDATE documents 
+                SET {', '.join(updates)}
+                WHERE id = %s AND user_id = %s
+                RETURNING word_count, updated_at
+            """
+            
+            result = self.db.execute_query(query, tuple(params), fetch='one')
+            
+            if not result:
+                raise DocumentError("Failed to update document")
+            
+            # Create version if not auto-save
+            if not auto_save and content is not None:
+                # Get latest version number
+                latest_version = self.db.execute_query(
+                    "SELECT COALESCE(MAX(version_number), 0) as max_version FROM document_versions WHERE document_id = %s",
+                    (document_id,),
+                    fetch='one'
+                )
+                
+                new_version = (latest_version['max_version'] if latest_version else 0) + 1
+                self._create_document_version(
+                    document_id, new_version, title or existing_doc['title'], 
+                    content, result['word_count'], "Manual save", auto_save
+                )
+            
+            logger.info(f"Document updated successfully: {document_id}")
+            
+            # Return updated document
+            return self.get_document(document_id, user_id)
+            
+        except DocumentError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error updating document: {e}")
+            raise DocumentError("Failed to update document")
+    
+    def delete_document(self, document_id: str, user_id: int) -> bool:
+        """Delete a document and all its versions"""
+        try:
+            # Verify document exists and belongs to user
+            document = self.get_document(document_id, user_id)
+            
+            # Delete document (versions will be deleted by CASCADE)
+            result = self.db.execute_query(
+                "DELETE FROM documents WHERE id = %s AND user_id = %s",
+                (document_id, user_id)
+            )
+            
+            if result == 0:
+                raise DocumentError("Document not found or access denied")
+            
+            logger.info(f"Document deleted successfully: {document_id}")
+            return True
+            
+        except DocumentError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error deleting document: {e}")
+            raise DocumentError("Failed to delete document")
+    
+    def _create_document_version(self, document_id: str, version_number: int, title: str, 
+                                content: str, word_count: int, change_summary: str, is_auto_save: bool = False):
         """Create a new document version"""
-        version_id = str(uuid.uuid4())
-        query = '''
-            INSERT INTO document_versions (id, document_id, version_number, title, content,
-                word_count, change_summary, is_auto_save, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        '''
-        self._execute_query(query, (
-            version_id, document_id, version_number, title, content,
-            word_count, change_summary, is_auto_save, datetime.now().isoformat()
-        ))
-
-    def _get_latest_version_number(self, document_id: str) -> int:
-        """Get the latest version number for a document"""
-        query = "SELECT MAX(version_number) as max_version FROM document_versions WHERE document_id = ?"
-        result = self._execute_query(query, (document_id,), fetch='one')
-        return result['max_version'] if result and result['max_version'] else 0
-
-    def get_document_versions(self, document_id: str) -> List[DocumentVersion]:
-        """Get all versions of a document"""
+        query = """
+            INSERT INTO document_versions (id, document_id, version_number, title, content, 
+                                         word_count, change_summary, is_auto_save, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        self.db.execute_query(
+            query,
+            (str(uuid4()), document_id, version_number, title, content, word_count, 
+             change_summary, is_auto_save, datetime.utcnow())
+        )
+    
+    def get_document_versions(self, document_id: str, user_id: int, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get document version history"""
         try:
-            query = "SELECT * FROM document_versions WHERE document_id = ? ORDER BY version_number DESC"
-            rows = self._execute_query(query, (document_id,), fetch='all')
+            # Verify document belongs to user
+            self.get_document(document_id, user_id)
             
-            versions = []
-            for row in rows:
-                versions.append(DocumentVersion(
-                    id=row['id'], document_id=row['document_id'],
-                    version_number=row['version_number'], title=row['title'], content=row['content'],
-                    word_count=row['word_count'], change_summary=row['change_summary'],
-                    is_auto_save=bool(row['is_auto_save']),
-                    created_at=datetime.fromisoformat(row['created_at'])
-                ))
-            return versions
+            query = """
+                SELECT id, version_number, title, word_count, change_summary, 
+                       is_auto_save, created_at
+                FROM document_versions 
+                WHERE document_id = %s
+                ORDER BY version_number DESC
+                LIMIT %s
+            """
             
+            versions = self.db.execute_query(query, (document_id, limit), fetch='all')
+            
+            return [
+                {
+                    "id": v['id'],
+                    "version_number": v['version_number'],
+                    "title": v['title'],
+                    "word_count": v['word_count'],
+                    "change_summary": v['change_summary'],
+                    "is_auto_save": v['is_auto_save'],
+                    "created_at": v['created_at'].isoformat()
+                }
+                for v in versions
+            ]
+            
+        except DocumentError:
+            raise
         except Exception as e:
-            logger.error(f"Error retrieving document versions: {e}")
-            raise DocumentError(f"Failed to retrieve versions: {e}")
-
-    def restore_version(self, document_id: str, version_id: str) -> Document:
-        """Restore a document to a previous version"""
+            logger.error(f"Error getting document versions: {e}")
+            raise DocumentError("Failed to retrieve document versions")
+    
+    def create_folder(self, user_id: int, name: str, parent_id: str = None, color: str = None) -> Dict[str, Any]:
+        """Create a new folder"""
         try:
-            query = "SELECT * FROM document_versions WHERE id = ? AND document_id = ?"
-            version = self._execute_query(query, (version_id, document_id), fetch='one')
-            if not version:
-                raise DocumentError(f"Version {version_id} not found")
+            folder_id = str(uuid4())
             
-            updated_doc = self.update_document(
-                document_id,
-                title=version['title'],
-                content=version['content']
+            query = """
+                INSERT INTO folders (id, user_id, name, parent_id, color, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, name, color, created_at
+            """
+            
+            folder = self.db.execute_query(
+                query,
+                (folder_id, user_id, name, parent_id, color, datetime.utcnow()),
+                fetch='one'
             )
             
-            latest_version = self._get_latest_version_number(document_id)
-            self._create_version(
-                document_id, latest_version + 1, version['title'], version['content'],
-                version['word_count'], f"Restored from version {version['version_number']}", False
-            )
-            return updated_doc
+            if not folder:
+                raise DocumentError("Failed to create folder")
+            
+            return {
+                "id": folder['id'],
+                "name": folder['name'],
+                "color": folder['color'],
+                "created_at": folder['created_at'].isoformat()
+            }
             
         except Exception as e:
-            logger.error(f"Error restoring version: {e}")
-            raise DocumentError(f"Failed to restore version: {e}")
+            logger.error(f"Error creating folder: {e}")
+            raise DocumentError("Failed to create folder")
+    
+    def get_user_folders(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get user's folders"""
+        try:
+            query = """
+                SELECT id, name, parent_id, color, created_at
+                FROM folders 
+                WHERE user_id = %s
+                ORDER BY name
+            """
+            
+            folders = self.db.execute_query(query, (user_id,), fetch='all')
+            
+            return [
+                {
+                    "id": f['id'],
+                    "name": f['name'],
+                    "parent_id": f['parent_id'],
+                    "color": f['color'],
+                    "created_at": f['created_at'].isoformat()
+                }
+                for f in folders
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error getting folders: {e}")
+            raise DocumentError("Failed to retrieve folders")
 
-# Determine database configuration based on environment
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL:
-    DB_TYPE = "postgresql"
-    DB_CONFIG = {'url': DATABASE_URL}
-else:
-    DB_TYPE = "sqlite"
-    DB_CONFIG = {'path': 'database/auth.db'}
-
-# Global service instance
-document_service = DocumentService(
-    db_type=DB_TYPE,
-    db_config=DB_CONFIG
-) 
+# Global document service instance
+document_service = DocumentService() 

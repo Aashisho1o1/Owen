@@ -1,199 +1,361 @@
 """
 Authentication Service for DOG Writer
-
-Basic JWT token verification and user authentication.
-Supports both session-based and JWT authentication.
+PostgreSQL-based authentication with JWT tokens, secure password handling,
+and comprehensive user management.
 """
 
-import os
+import bcrypt
 import jwt
 import logging
+import secrets
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from fastapi import HTTPException
+from typing import Optional, Dict, Any, Tuple
+from email_validator import validate_email, EmailNotValidError
 
-# This service no longer needs to know about the database path directly.
-# It will receive a connection from the service that calls it.
-# However, for the standalone init_db script to work, we need a way to get the config.
-# We will rely on the global configuration set in document_service.py for now.
-
-# from services.document_service import DB_TYPE, DB_CONFIG
-# This would be a better approach but causes circular imports.
-# For now, the services will implicitly share the database configuration
-# established in main.py and document_service.py
+from .database import db_service, DatabaseError
 
 logger = logging.getLogger(__name__)
 
 # JWT Configuration
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+JWT_SECRET_KEY = secrets.token_urlsafe(32)  # In production, use environment variable
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 30
 
-class AuthError(Exception):
+class AuthenticationError(Exception):
     """Custom exception for authentication errors"""
     pass
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-    """Create JWT access token"""
-    to_encode = data.copy()
+class AuthService:
+    """
+    Modern authentication service using PostgreSQL.
+    Handles user registration, login, token management, and security.
+    """
     
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
+    def __init__(self):
+        self.db = db_service
+        logger.info("Auth service initialized with PostgreSQL")
     
-    to_encode.update({"exp": expire})
+    def _hash_password(self, password: str) -> str:
+        """Hash password using bcrypt"""
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
-    try:
-        encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
-        return encoded_jwt
-    except Exception as e:
-        logger.error(f"Error creating JWT token: {e}")
-        raise AuthError(f"Failed to create access token: {e}")
+    def _verify_password(self, password: str, hashed: str) -> bool:
+        """Verify password against hash"""
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    
+    def _generate_tokens(self, user_id: int, email: str) -> Tuple[str, str]:
+        """Generate access and refresh tokens"""
+        # Access token (short-lived)
+        access_payload = {
+            "user_id": user_id,
+            "email": email,
+            "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+            "iat": datetime.utcnow(),
+            "type": "access"
+        }
+        access_token = jwt.encode(access_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+        
+        # Refresh token (long-lived)
+        refresh_payload = {
+            "user_id": user_id,
+            "email": email,
+            "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+            "iat": datetime.utcnow(),
+            "type": "refresh"
+        }
+        refresh_token = jwt.encode(refresh_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+        
+        return access_token, refresh_token
+    
+    def _store_refresh_token(self, user_id: int, refresh_token: str, device_info: str = None, ip_address: str = None):
+        """Store refresh token in database"""
+        token_hash = bcrypt.hashpw(refresh_token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        query = """
+            INSERT INTO refresh_tokens (user_id, token_hash, expires_at, device_info, ip_address)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        self.db.execute_query(query, (user_id, token_hash, expires_at, device_info, ip_address))
+    
+    def register_user(self, username: str, email: str, password: str, name: str = None) -> Dict[str, Any]:
+        """Register a new user"""
+        try:
+            # Validate email
+            try:
+                valid_email = validate_email(email)
+                email = valid_email.email
+            except EmailNotValidError as e:
+                raise AuthenticationError(f"Invalid email: {e}")
+            
+            # Check if user already exists
+            existing_user = self.db.execute_query(
+                "SELECT id FROM users WHERE email = %s OR username = %s",
+                (email, username),
+                fetch='one'
+            )
+            
+            if existing_user:
+                raise AuthenticationError("User with this email or username already exists")
+            
+            # Hash password
+            password_hash = self._hash_password(password)
+            
+            # Create user
+            query = """
+                INSERT INTO users (username, email, password_hash, name, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id, username, email, name, created_at
+            """
+            user = self.db.execute_query(
+                query,
+                (username, email, password_hash, name, datetime.utcnow()),
+                fetch='one'
+            )
+            
+            if not user:
+                raise AuthenticationError("Failed to create user")
+            
+            # Generate tokens
+            access_token, refresh_token = self._generate_tokens(user['id'], user['email'])
+            
+            # Store refresh token
+            self._store_refresh_token(user['id'], refresh_token)
+            
+            # Log successful registration
+            self._log_login_attempt(user['id'], email, True, None, "Registration successful")
+            
+            logger.info(f"User registered successfully: {email}")
+            
+            return {
+                "user": {
+                    "id": user['id'],
+                    "username": user['username'],
+                    "email": user['email'],
+                    "name": user['name'],
+                    "created_at": user['created_at'].isoformat()
+                },
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer"
+            }
+            
+        except DatabaseError as e:
+            logger.error(f"Database error during registration: {e}")
+            raise AuthenticationError("Registration failed due to database error")
+        except Exception as e:
+            logger.error(f"Unexpected error during registration: {e}")
+            raise AuthenticationError("Registration failed")
+    
+    def login_user(self, email: str, password: str, ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
+        """Authenticate user and return tokens"""
+        try:
+            # Get user from database
+            user = self.db.execute_query(
+                "SELECT id, username, email, name, password_hash, is_active, failed_login_attempts, account_locked_until FROM users WHERE email = %s",
+                (email,),
+                fetch='one'
+            )
+            
+            if not user:
+                self._log_login_attempt(None, email, False, ip_address, "User not found")
+                raise AuthenticationError("Invalid email or password")
+            
+            # Check if account is locked
+            if user['account_locked_until'] and user['account_locked_until'] > datetime.utcnow():
+                self._log_login_attempt(user['id'], email, False, ip_address, "Account locked")
+                raise AuthenticationError("Account is temporarily locked")
+            
+            # Check if account is active
+            if not user['is_active']:
+                self._log_login_attempt(user['id'], email, False, ip_address, "Account inactive")
+                raise AuthenticationError("Account is inactive")
+            
+            # Verify password
+            if not self._verify_password(password, user['password_hash']):
+                # Increment failed login attempts
+                self._handle_failed_login(user['id'])
+                self._log_login_attempt(user['id'], email, False, ip_address, "Invalid password")
+                raise AuthenticationError("Invalid email or password")
+            
+            # Reset failed login attempts on successful login
+            self._reset_failed_login_attempts(user['id'])
+            
+            # Generate tokens
+            access_token, refresh_token = self._generate_tokens(user['id'], user['email'])
+            
+            # Store refresh token
+            self._store_refresh_token(user['id'], refresh_token, user_agent, ip_address)
+            
+            # Update last login
+            self.db.execute_query(
+                "UPDATE users SET last_login = %s, login_count = login_count + 1 WHERE id = %s",
+                (datetime.utcnow(), user['id'])
+            )
+            
+            # Log successful login
+            self._log_login_attempt(user['id'], email, True, ip_address, "Login successful")
+            
+            logger.info(f"User logged in successfully: {email}")
+            
+            return {
+                "user": {
+                    "id": user['id'],
+                    "username": user['username'],
+                    "email": user['email'],
+                    "name": user['name']
+                },
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer"
+            }
+            
+        except DatabaseError as e:
+            logger.error(f"Database error during login: {e}")
+            raise AuthenticationError("Login failed due to database error")
+        except AuthenticationError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during login: {e}")
+            raise AuthenticationError("Login failed")
+    
+    def verify_token(self, token: str) -> Dict[str, Any]:
+        """Verify JWT token and return user info"""
+        try:
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            
+            # Check token type
+            if payload.get('type') != 'access':
+                raise AuthenticationError("Invalid token type")
+            
+            # Get user from database to ensure they still exist and are active
+            user = self.db.execute_query(
+                "SELECT id, username, email, name, is_active FROM users WHERE id = %s",
+                (payload['user_id'],),
+                fetch='one'
+            )
+            
+            if not user or not user['is_active']:
+                raise AuthenticationError("User not found or inactive")
+            
+            return {
+                "user_id": user['id'],
+                "username": user['username'],
+                "email": user['email'],
+                "name": user['name']
+            }
+            
+        except jwt.ExpiredSignatureError:
+            raise AuthenticationError("Token has expired")
+        except jwt.InvalidTokenError:
+            raise AuthenticationError("Invalid token")
+        except Exception as e:
+            logger.error(f"Token verification error: {e}")
+            raise AuthenticationError("Token verification failed")
+    
+    def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
+        """Generate new access token using refresh token"""
+        try:
+            payload = jwt.decode(refresh_token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            
+            if payload.get('type') != 'refresh':
+                raise AuthenticationError("Invalid token type")
+            
+            # Check if refresh token exists in database and is not revoked
+            token_hash = bcrypt.hashpw(refresh_token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            stored_token = self.db.execute_query(
+                "SELECT id, user_id FROM refresh_tokens WHERE user_id = %s AND expires_at > %s AND revoked = FALSE",
+                (payload['user_id'], datetime.utcnow()),
+                fetch='one'
+            )
+            
+            if not stored_token:
+                raise AuthenticationError("Refresh token not found or expired")
+            
+            # Get user
+            user = self.db.execute_query(
+                "SELECT id, email, is_active FROM users WHERE id = %s",
+                (payload['user_id'],),
+                fetch='one'
+            )
+            
+            if not user or not user['is_active']:
+                raise AuthenticationError("User not found or inactive")
+            
+            # Generate new access token
+            access_token, _ = self._generate_tokens(user['id'], user['email'])
+            
+            return {
+                "access_token": access_token,
+                "token_type": "bearer"
+            }
+            
+        except jwt.ExpiredSignatureError:
+            raise AuthenticationError("Refresh token has expired")
+        except jwt.InvalidTokenError:
+            raise AuthenticationError("Invalid refresh token")
+        except Exception as e:
+            logger.error(f"Token refresh error: {e}")
+            raise AuthenticationError("Token refresh failed")
+    
+    def _handle_failed_login(self, user_id: int):
+        """Handle failed login attempt"""
+        # Increment failed attempts
+        self.db.execute_query(
+            "UPDATE users SET failed_login_attempts = failed_login_attempts + 1, last_failed_login = %s WHERE id = %s",
+            (datetime.utcnow(), user_id)
+        )
+        
+        # Check if account should be locked
+        user = self.db.execute_query(
+            "SELECT failed_login_attempts FROM users WHERE id = %s",
+            (user_id,),
+            fetch='one'
+        )
+        
+        if user and user['failed_login_attempts'] >= 5:
+            # Lock account for 15 minutes
+            lock_until = datetime.utcnow() + timedelta(minutes=15)
+            self.db.execute_query(
+                "UPDATE users SET account_locked_until = %s WHERE id = %s",
+                (lock_until, user_id)
+            )
+    
+    def _reset_failed_login_attempts(self, user_id: int):
+        """Reset failed login attempts after successful login"""
+        self.db.execute_query(
+            "UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL WHERE id = %s",
+            (user_id,)
+        )
+    
+    def _log_login_attempt(self, user_id: Optional[int], email: str, success: bool, ip_address: str = None, failure_reason: str = None):
+        """Log login attempt for security monitoring"""
+        query = """
+            INSERT INTO login_logs (user_id, email, success, ip_address, failure_reason, attempted_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        self.db.execute_query(query, (user_id, email, success, ip_address, failure_reason, datetime.utcnow()))
+    
+    def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user by ID"""
+        user = self.db.execute_query(
+            "SELECT id, username, email, name, created_at, is_active, email_verified FROM users WHERE id = %s",
+            (user_id,),
+            fetch='one'
+        )
+        return user
 
+# Global auth service instance
+auth_service = AuthService()
+
+# Utility functions for FastAPI dependencies
 def verify_token(token: str) -> Dict[str, Any]:
-    """Verify and decode JWT token"""
-    try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        
-        # Check if token is expired
-        exp = payload.get("exp")
-        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
-            raise AuthError("Token has expired")
-        
-        # Ensure user ID is a string for consistency
-        if "sub" in payload:
-            payload["sub"] = str(payload["sub"])
-        
-        return payload
-        
-    except jwt.ExpiredSignatureError:
-        raise AuthError("Token has expired")
-    except jwt.InvalidTokenError as e:
-        raise AuthError(f"Invalid token: {e}")
-    except Exception as e:
-        logger.error(f"Error verifying token: {e}")
-        raise AuthError(f"Token verification failed: {e}")
+    """Verify token - used as FastAPI dependency"""
+    return auth_service.verify_token(token)
 
-def get_user_id_from_token(token: str) -> str:
-    """Extract user ID from JWT token"""
-    try:
-        payload = verify_token(token)
-        user_id = payload.get("sub")
-        
-        if not user_id:
-            raise AuthError("Token does not contain user ID")
-        
-        return str(user_id)  # Ensure it's a string
-        
-    except AuthError:
-        raise
-    except Exception as e:
-        logger.error(f"Error extracting user ID from token: {e}")
-        raise AuthError(f"Failed to extract user ID: {e}")
-
-def create_user_token(user_id: str, username: str = None, email: str = None) -> str:
-    """Create a JWT token for a user"""
-    try:
-        token_data = {
-            "sub": user_id,  # Subject (user ID)
-            "iat": datetime.utcnow(),  # Issued at
-        }
-        
-        # Add optional claims
-        if username:
-            token_data["username"] = username
-        if email:
-            token_data["email"] = email
-        
-        return create_access_token(token_data)
-        
-    except Exception as e:
-        logger.error(f"Error creating user token: {e}")
-        raise AuthError(f"Failed to create user token: {e}")
-
-def validate_user_access(token: str, required_user_id: str = None) -> Dict[str, Any]:
-    """Validate user access and optionally check if token belongs to specific user"""
-    try:
-        payload = verify_token(token)
-        token_user_id = payload.get("sub")
-        
-        if required_user_id and token_user_id != required_user_id:
-            raise AuthError("Token does not belong to the required user")
-        
-        return payload
-        
-    except AuthError:
-        raise
-    except Exception as e:
-        logger.error(f"Error validating user access: {e}")
-        raise AuthError(f"Access validation failed: {e}")
-
-# For development: create a temporary session-based auth
-_session_users = {}  # In-memory session storage (for development only)
-
-def create_session_user(user_id: str = None) -> str:
-    """Create a temporary session user (for development)"""
-    import uuid
-    
-    if not user_id:
-        user_id = str(uuid.uuid4())
-    
-    session_token = create_user_token(user_id, f"user_{user_id[:8]}")
-    _session_users[user_id] = {
-        "user_id": user_id,
-        "created_at": datetime.utcnow(),
-        "token": session_token
-    }
-    
-    logger.info(f"Created session user: {user_id}")
-    return session_token
-
-def get_session_user(user_id: str) -> Optional[Dict[str, Any]]:
-    """Get session user information"""
-    return _session_users.get(user_id)
-
-# Mock authentication for development
-def mock_verify_token(token: str) -> Dict[str, Any]:
-    """Mock token verification for development (when no real auth is implemented)"""
-    if not token or token == "Bearer":
-        # Create a default user for development
-        return {
-            "sub": "dev-user-001",
-            "username": "developer",
-            "email": "dev@dogwriter.com",
-            "iat": datetime.utcnow().timestamp()
-        }
-    
-    try:
-        # First try real token verification
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        
-        # Check if token is expired
-        exp = payload.get("exp")
-        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
-            raise AuthError("Token has expired")
-        
-        # Ensure user ID is a string for consistency
-        if "sub" in payload:
-            payload["sub"] = str(payload["sub"])
-        
-        return payload
-        
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, AuthError):
-        # If real token verification fails, return default dev user
-        logger.warning("Using mock authentication for development")
-        return {
-            "sub": "dev-user-001",
-            "username": "developer", 
-            "email": "dev@dogwriter.com",
-            "iat": datetime.utcnow().timestamp()
-        }
-
-# Don't override in production - use real auth
-if os.getenv('RAILWAY_ENVIRONMENT') == 'production':
-    # Use real authentication in production
-    pass
-else:
-    # Use mock auth only in development
-    verify_token = mock_verify_token 
+def get_current_user_id(token: str) -> int:
+    """Get current user ID from token - used as FastAPI dependency"""
+    user_info = verify_token(token)
+    return user_info['user_id'] 
