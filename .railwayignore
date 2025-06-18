@@ -1,0 +1,40 @@
+# Development files
+.venv/
+.git/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.env
+.env.local
+
+# Node modules
+node_modules/
+.npm
+.yarn
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Database files (should use Railway PostgreSQL)
+*.db
+*.sqlite
+*.sqlite3 
