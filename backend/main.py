@@ -542,6 +542,9 @@ async def health_check():
 @app.post("/api/auth/register")
 async def register(user_data: UserCreate) -> TokenResponse:
     try:
+        logger.info(f"Registration attempt for email: {user_data.email}")
+        logger.info(f"Registration data: name='{user_data.name}', email='{user_data.email}', password_length={len(user_data.password)}")
+        
         # Use auth service for registration
         result = auth_service.register_user(
             username=user_data.email.split('@')[0],  # Use email prefix as username
@@ -565,10 +568,16 @@ async def register(user_data: UserCreate) -> TokenResponse:
             }
         )
     except AuthenticationError as e:
+        logger.error(f"Authentication error during registration: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        logger.error(f"Database error during registration: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
-        logger.error(f"Registration error: {e}")
-        raise HTTPException(status_code=500, detail="Registration failed")
+        logger.error(f"Unexpected registration error: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"Registration traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/api/auth/login")
 async def login(login_data: UserLogin) -> TokenResponse:
