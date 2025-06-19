@@ -1,11 +1,13 @@
 """
 DOG Writer Backend - Google Docs-Like Document Management System
-Comprehensive document editor with folders, versions, sharing, analytics, and collaboration features
+Comprehensive document editor with PostgreSQL database, folders, versions, sharing, and collaboration
+Production-ready with proper database persistence
 """
 
 import os
 import logging
 import uuid
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
 from contextlib import asynccontextmanager
@@ -19,6 +21,10 @@ from pydantic import BaseModel, Field
 
 import jwt
 import bcrypt
+
+# Import our PostgreSQL services
+from services.database import db_service, DatabaseError
+from services.auth_service import auth_service, AuthenticationError
 
 # Configure logging
 logging.basicConfig(
@@ -44,15 +50,6 @@ class ActivityType(str, Enum):
     SHARED = "shared"
     VIEWED = "viewed"
     COMMENTED = "commented"
-
-# Enhanced in-memory storage
-users_store: Dict[str, dict] = {}
-documents_store: Dict[str, dict] = {}
-folders_store: Dict[str, dict] = {}
-document_versions_store: Dict[str, List[dict]] = {}
-document_analytics_store: Dict[str, dict] = {}
-activity_logs_store: Dict[str, List[dict]] = {}
-favorites_store: Dict[str, Set[str]] = {}
 
 # Comprehensive templates with rich content
 templates_store: List[dict] = [
@@ -375,6 +372,31 @@ class TokenResponse(BaseModel):
     token_type: str
     user: dict
 
+# Database utility functions
+def get_user_id_from_email(email: str) -> Optional[int]:
+    """Get user ID from email"""
+    try:
+        result = db_service.execute_query(
+            "SELECT id FROM users WHERE email = %s AND is_active = TRUE",
+            (email,),
+            fetch='one'
+        )
+        return result['id'] if result else None
+    except DatabaseError:
+        return None
+
+def get_user_by_id(user_id: int) -> Optional[dict]:
+    """Get user by ID"""
+    try:
+        result = db_service.execute_query(
+            "SELECT id, username, name, email, created_at, last_login, preferences FROM users WHERE id = %s AND is_active = TRUE",
+            (user_id,),
+            fetch='one'
+        )
+        return result
+    except DatabaseError:
+        return None
+
 # Utility functions
 def calculate_reading_time(content: str) -> int:
     """Calculate estimated reading time in minutes"""
@@ -393,40 +415,50 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: int) -> str:
     expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),  # Convert to string for consistency
         "exp": expire,
         "iat": datetime.utcnow()
     }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     try:
         token = credentials.credentials
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return user_id
+        return int(user_id)  # Convert back to int
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token format")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Starting DOG Writer - Google Docs-Like Document Management System")
     logger.info(f"📚 Loaded {len(templates_store)} comprehensive templates")
-    logger.info("✨ Features: Folders, Versions, Analytics, Auto-save, Collaboration-ready")
+    logger.info("✨ Features: PostgreSQL Database, Folders, Versions, Analytics, Auto-save")
+    
+    # Check database connectivity
+    health = db_service.health_check()
+    if health['status'] == 'healthy':
+        logger.info(f"✅ PostgreSQL connected: {health.get('total_users', 0)} users, {health.get('total_documents', 0)} documents")
+    else:
+        logger.warning(f"⚠️ Database not healthy: {health.get('error', 'Unknown error')}")
+    
     yield
     logger.info("🛑 Shutting down DOG Writer API")
 
 # Create FastAPI app
 app = FastAPI(
     title="DOG Writer - Google Docs-Like Document System",
-    description="Comprehensive document management with folders, versions, sharing, and collaboration",
+    description="Comprehensive document management with PostgreSQL, folders, versions, sharing, and collaboration",
     version="2.0.0",
     lifespan=lifespan
 )
@@ -449,11 +481,14 @@ app.add_middleware(
 # Health endpoints
 @app.get("/")
 async def root():
+    db_health = db_service.health_check()
     return {
         "message": "DOG Writer - Google Docs-Like Document Management System",
         "version": "2.0.0",
         "status": "healthy",
+        "database": db_health['status'],
         "features": [
+            "postgresql_database",
             "document_management",
             "folder_organization", 
             "version_control",
@@ -464,104 +499,130 @@ async def root():
             "search_and_filter"
         ],
         "statistics": {
-            "total_users": len(users_store),
-            "total_documents": len(documents_store),
-            "total_folders": len(folders_store),
+            "total_users": db_health.get('total_users', 0),
+            "total_documents": db_health.get('total_documents', 0),
             "total_templates": len(templates_store)
         }
     }
 
 @app.get("/api/health")
 async def health_check():
+    db_health = db_service.health_check()
+    
+    # Get additional metrics
+    try:
+        folder_count = db_service.execute_query("SELECT COUNT(*) as count FROM folders", fetch='one')
+        version_count = db_service.execute_query("SELECT COUNT(*) as count FROM document_versions", fetch='one')
+    except:
+        folder_count = {"count": 0}
+        version_count = {"count": 0}
+    
     return {
-        "status": "healthy",
+        "status": db_health['status'],
         "timestamp": datetime.utcnow().isoformat(),
+        "database": db_health,
         "metrics": {
-            "users_count": len(users_store),
-            "documents_count": len(documents_store),
-            "folders_count": len(folders_store),
+            "users_count": db_health.get('total_users', 0),
+            "documents_count": db_health.get('total_documents', 0),
+            "folders_count": folder_count['count'],
             "templates_count": len(templates_store),
-            "total_document_versions": sum(len(versions) for versions in document_versions_store.values()),
-            "total_activities": sum(len(activities) for activities in activity_logs_store.values())
+            "document_versions_count": version_count['count']
         }
     }
 
 # Authentication endpoints
 @app.post("/api/auth/register")
 async def register(user_data: UserCreate) -> TokenResponse:
-    if any(user['email'] == user_data.email for user in users_store.values()):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    user_id = str(uuid.uuid4())
-    hashed_password = hash_password(user_data.password)
-    
-    user = {
-        "id": user_id,
-        "email": user_data.email,
-        "name": user_data.name,
-        "password_hash": hashed_password,
-        "created_at": datetime.utcnow().isoformat(),
-        "last_login": datetime.utcnow().isoformat(),
-        "preferences": {
-            "theme": "light",
-            "auto_save_interval": 30,
-            "default_folder": None
-        }
-    }
-    
-    users_store[user_id] = user
-    favorites_store[user_id] = set()
-    
-    access_token = create_access_token(user_id)
-    user_response = {key: value for key, value in user.items() if key != 'password_hash'}
-    
-    logger.info(f"New user registered: {user_data.email}")
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=user_response
-    )
+    try:
+        # Use auth service for registration
+        result = auth_service.register_user(
+            username=user_data.email.split('@')[0],  # Use email prefix as username
+            email=user_data.email,
+            password=user_data.password,
+            name=user_data.name
+        )
+        
+        user_info = result['user']
+        access_token = create_access_token(user_info['id'])
+        
+        logger.info(f"New user registered: {user_data.email}")
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user={
+                "id": user_info['id'],
+                "name": user_info['name'],
+                "email": user_info['email'],
+                "created_at": user_info['created_at']
+            }
+        )
+    except AuthenticationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        raise HTTPException(status_code=500, detail="Registration failed")
 
 @app.post("/api/auth/login")
 async def login(login_data: UserLogin) -> TokenResponse:
-    user = None
-    for stored_user in users_store.values():
-        if stored_user['email'] == login_data.email:
-            user = stored_user
-            break
-    
-    if not user or not verify_password(login_data.password, user['password_hash']):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    user['last_login'] = datetime.utcnow().isoformat()
-    access_token = create_access_token(user['id'])
-    user_response = {key: value for key, value in user.items() if key != 'password_hash'}
-    
-    logger.info(f"User logged in: {login_data.email}")
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=user_response
-    )
+    try:
+        # Use auth service for login
+        result = auth_service.login_user(login_data.email, login_data.password)
+        
+        user_info = result['user']
+        access_token = create_access_token(user_info['id'])
+        
+        logger.info(f"User logged in: {login_data.email}")
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user={
+                "id": user_info['id'],
+                "name": user_info['name'],
+                "email": user_info['email'],
+                "last_login": user_info.get('last_login')
+            }
+        )
+    except AuthenticationError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
 
 @app.get("/api/auth/profile")
-async def get_profile(user_id: str = Depends(get_current_user_id)):
-    user = users_store.get(user_id)
+async def get_profile(user_id: int = Depends(get_current_user_id)):
+    user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    user_documents = [doc for doc in documents_store.values() if doc['user_id'] == user_id]
-    user_folders = [folder for folder in folders_store.values() if folder['user_id'] == user_id]
+    # Get user statistics
+    try:
+        doc_stats = db_service.execute_query(
+            "SELECT COUNT(*) as total_docs, SUM(word_count) as total_words FROM documents WHERE user_id = %s",
+            (user_id,),
+            fetch='one'
+        )
+        folder_stats = db_service.execute_query(
+            "SELECT COUNT(*) as total_folders FROM folders WHERE user_id = %s",
+            (user_id,),
+            fetch='one'
+        )
+        favorite_stats = db_service.execute_query(
+            "SELECT COUNT(*) as total_favorites FROM documents WHERE user_id = %s AND is_favorite = TRUE",
+            (user_id,),
+            fetch='one'
+        )
+        
+        user['statistics'] = {
+            "total_documents": doc_stats['total_docs'] if doc_stats else 0,
+            "total_words": doc_stats['total_words'] if doc_stats and doc_stats['total_words'] else 0,
+            "total_folders": folder_stats['total_folders'] if folder_stats else 0,
+            "favorite_documents": favorite_stats['total_favorites'] if favorite_stats else 0
+        }
+    except Exception as e:
+        logger.error(f"Error getting user statistics: {e}")
+        user['statistics'] = {"total_documents": 0, "total_words": 0, "total_folders": 0, "favorite_documents": 0}
     
-    profile = {key: value for key, value in user.items() if key != 'password_hash'}
-    profile['statistics'] = {
-        "total_documents": len(user_documents),
-        "total_folders": len(user_folders),
-        "favorite_documents": len(favorites_store.get(user_id, set())),
-        "total_words": sum(calculate_word_count(doc['content']) for doc in user_documents)
-    }
-    
-    return profile
+    return user
 
 # Templates endpoints
 @app.get("/api/templates")
@@ -577,40 +638,57 @@ async def get_template(template_id: str):
 
 # Folder management endpoints
 @app.get("/api/folders")
-async def get_folders(user_id: str = Depends(get_current_user_id)):
-    user_folders = [folder for folder in folders_store.values() if folder['user_id'] == user_id]
-    
-    for folder in user_folders:
-        folder['document_count'] = len([
-            doc for doc in documents_store.values() 
-            if doc.get('folder_id') == folder['id'] and doc['user_id'] == user_id
-        ])
-    
-    return user_folders
+async def get_folders(user_id: int = Depends(get_current_user_id)):
+    try:
+        folders = db_service.execute_query(
+            """SELECT f.*, 
+               (SELECT COUNT(*) FROM documents d WHERE d.folder_id = f.id) as document_count
+               FROM folders f 
+               WHERE f.user_id = %s 
+               ORDER BY f.created_at DESC""",
+            (user_id,),
+            fetch='all'
+        )
+        return folders
+    except DatabaseError as e:
+        logger.error(f"Error fetching folders: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch folders")
 
 @app.post("/api/folders")
-async def create_folder(folder_data: FolderCreate, user_id: str = Depends(get_current_user_id)):
-    folder_id = str(uuid.uuid4())
-    
-    folder = {
-        "id": folder_id,
-        "name": folder_data.name,
-        "description": folder_data.description,
-        "parent_id": folder_data.parent_id,
-        "color": folder_data.color,
-        "user_id": user_id,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
-    }
-    
-    folders_store[folder_id] = folder
-    logger.info(f"Folder created: {folder_data.name} by user {user_id}")
-    
-    return folder
+async def create_folder(folder_data: FolderCreate, user_id: int = Depends(get_current_user_id)):
+    try:
+        folder_id = str(uuid.uuid4())
+        
+        query = """
+            INSERT INTO folders (id, user_id, name, parent_id, color, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, name, parent_id, color, created_at, updated_at
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (folder_id, user_id, folder_data.name, folder_data.parent_id, 
+             folder_data.color, datetime.utcnow(), datetime.utcnow()),
+            fetch='one'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to create folder")
+            
+        logger.info(f"Folder created: {folder_data.name} by user {user_id}")
+        return result
+        
+    except DatabaseError as e:
+        logger.error(f"Error creating folder: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create folder")
 
 @app.put("/api/folders/{folder_id}")
-async def update_folder(folder_id: str, folder_data: FolderUpdate, user_id: str = Depends(get_current_user_id)):
-    folder = folders_store.get(folder_id)
+async def update_folder(folder_id: str, folder_data: FolderUpdate, user_id: int = Depends(get_current_user_id)):
+    folder = db_service.execute_query(
+        "SELECT id, user_id, name, description, color, created_at, updated_at FROM folders WHERE id = %s AND user_id = %s",
+        (folder_id, user_id),
+        fetch='one'
+    )
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
     
@@ -624,13 +702,33 @@ async def update_folder(folder_id: str, folder_data: FolderUpdate, user_id: str 
     if folder_data.color is not None:
         folder['color'] = folder_data.color
     
-    folder['updated_at'] = datetime.utcnow().isoformat()
+    query = """
+        UPDATE folders
+        SET name = %s,
+            description = %s,
+            color = %s,
+            updated_at = %s
+        WHERE id = %s AND user_id = %s
+    """
+    
+    result = db_service.execute_query(
+        query,
+        (folder['name'], folder['description'], folder['color'], datetime.utcnow(), folder['id'], user_id),
+        fetch='one'
+    )
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to update folder")
     
     return folder
 
 @app.delete("/api/folders/{folder_id}")
-async def delete_folder(folder_id: str, user_id: str = Depends(get_current_user_id)):
-    folder = folders_store.get(folder_id)
+async def delete_folder(folder_id: str, user_id: int = Depends(get_current_user_id)):
+    folder = db_service.execute_query(
+        "SELECT id, user_id, name, description, color, created_at, updated_at FROM folders WHERE id = %s AND user_id = %s",
+        (folder_id, user_id),
+        fetch='one'
+    )
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
     
@@ -638,116 +736,161 @@ async def delete_folder(folder_id: str, user_id: str = Depends(get_current_user_
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Move documents to root
-    for document in documents_store.values():
-        if document.get('folder_id') == folder_id and document['user_id'] == user_id:
-            document['folder_id'] = None
+    query = """
+        UPDATE documents
+        SET folder_id = NULL
+        WHERE folder_id = %s AND user_id = %s
+    """
     
-    del folders_store[folder_id]
+    result = db_service.execute_query(
+        query,
+        (folder_id, user_id),
+        fetch='execute'
+    )
+    
+    if result.rowcount == 0:
+        raise HTTPException(status_code=500, detail="Failed to move documents to root")
+    
+    query = """
+        DELETE FROM folders
+        WHERE id = %s AND user_id = %s
+    """
+    
+    result = db_service.execute_query(
+        query,
+        (folder_id, user_id),
+        fetch='execute'
+    )
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to delete folder")
     
     return {"message": "Folder deleted successfully"}
 
 # Enhanced document endpoints
 @app.get("/api/documents")
 async def get_documents(
-    user_id: str = Depends(get_current_user_id),
+    user_id: int = Depends(get_current_user_id),
     folder_id: Optional[str] = Query(None),
     status: Optional[DocumentStatus] = Query(None),
     search: Optional[str] = Query(None),
     limit: Optional[int] = Query(50),
     offset: Optional[int] = Query(0)
 ):
-    user_documents = [doc for doc in documents_store.values() if doc['user_id'] == user_id]
-    
-    # Apply filters
-    if folder_id:
-        user_documents = [doc for doc in user_documents if doc.get('folder_id') == folder_id]
-    
-    if status:
-        user_documents = [doc for doc in user_documents if doc.get('status') == status.value]
-    
-    if search:
-        search_lower = search.lower()
-        user_documents = [
-            doc for doc in user_documents 
-            if search_lower in doc['title'].lower() or search_lower in doc['content'].lower()
-        ]
-    
-    # Sort by updated_at (most recent first)
-    user_documents.sort(key=lambda x: x['updated_at'], reverse=True)
-    
-    total_count = len(user_documents)
-    user_documents = user_documents[offset:offset + limit]
-    
-    # Add analytics
-    for doc in user_documents:
-        analytics = document_analytics_store.get(doc['id'], {})
-        doc['analytics'] = {
-            "word_count": calculate_word_count(doc['content']),
-            "character_count": calculate_character_count(doc['content']),
-            "reading_time_minutes": calculate_reading_time(doc['content']),
-            "view_count": analytics.get('view_count', 0),
-            "edit_count": analytics.get('edit_count', 0)
+    try:
+        query = """
+            SELECT d.*, 
+                   (SELECT COUNT(*) FROM document_versions dv WHERE dv.document_id = d.id) as version_count,
+                   (SELECT COUNT(*) FROM document_analytics da WHERE da.document_id = d.id) as analytics_count
+            FROM documents d
+            WHERE d.user_id = %s
+        """
+        
+        if folder_id:
+            query += " AND d.folder_id = %s"
+        
+        if status:
+            query += " AND d.status = %s"
+        
+        if search:
+            search_lower = search.lower()
+            query += " AND (d.title ILIKE %s OR d.content ILIKE %s)"
+        
+        query += " ORDER BY d.updated_at DESC LIMIT %s OFFSET %s"
+        
+        params = (user_id, folder_id, status.value, search_lower, search_lower, limit, offset)
+        
+        documents = db_service.execute_query(
+            query,
+            params,
+            fetch='all'
+        )
+        
+        total_count = len(documents)
+        
+        # Add analytics
+        for doc in documents:
+            analytics = db_service.execute_query(
+                "SELECT view_count, edit_count, word_count, character_count, reading_time_minutes, last_viewed, last_edited FROM document_analytics WHERE document_id = %s",
+                (doc['id'],),
+                fetch='one'
+            )
+            doc['analytics'] = analytics
+            doc['is_favorite'] = doc['id'] in favorites_store.get(user_id, set())
+        
+        return {
+            "documents": documents,
+            "total_count": total_count,
+            "page_info": {
+                "has_next": offset + limit < total_count,
+                "has_previous": offset > 0,
+                "current_offset": offset,
+                "limit": limit
+            }
         }
-        doc['is_favorite'] = doc['id'] in favorites_store.get(user_id, set())
-    
-    return {
-        "documents": user_documents,
-        "total_count": total_count,
-        "page_info": {
-            "has_next": offset + limit < total_count,
-            "has_previous": offset > 0,
-            "current_offset": offset,
-            "limit": limit
-        }
-    }
+    except DatabaseError as e:
+        logger.error(f"Error fetching documents: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch documents")
 
 @app.post("/api/documents")
-async def create_document(doc_data: DocumentCreate, user_id: str = Depends(get_current_user_id)):
-    doc_id = str(uuid.uuid4())
-    
-    # Use template content if provided
-    content = doc_data.content
-    template_used = None
-    if doc_data.template_id:
-        template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
-        if template:
-            content = template['content']
-            template_used = template
-    
-    document = {
-        "id": doc_id,
-        "title": doc_data.title,
-        "content": content,
-        "user_id": user_id,
-        "template_id": doc_data.template_id,
-        "folder_id": doc_data.folder_id,
-        "status": doc_data.status.value,
-        "tags": doc_data.tags,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
-        "template_used": template_used['title'] if template_used else None
-    }
-    
-    documents_store[doc_id] = document
-    
-    # Initialize analytics
-    document_analytics_store[doc_id] = {
-        "document_id": doc_id,
-        "view_count": 0,
-        "edit_count": 1,
-        "word_count": calculate_word_count(content),
-        "character_count": calculate_character_count(content),
-        "reading_time_minutes": calculate_reading_time(content),
-        "last_viewed": None,
-        "last_edited": datetime.utcnow().isoformat()
-    }
-    
-    logger.info(f"Document created: {doc_data.title} by user {user_id}")
-    return document
+async def create_document(doc_data: DocumentCreate, user_id: int = Depends(get_current_user_id)):
+    try:
+        doc_id = str(uuid.uuid4())
+        
+        # Use template content if provided
+        content = doc_data.content
+        template_used = None
+        if doc_data.template_id:
+            template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
+            if template:
+                content = template['content']
+                template_used = template
+        
+        query = """
+            INSERT INTO documents (id, user_id, title, content, template_id, folder_id, status, tags, created_at, updated_at, template_used)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, title, content, template_id, folder_id, status, tags, created_at, updated_at, template_used
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (doc_id, user_id, doc_data.title, content, doc_data.template_id, doc_data.folder_id, doc_data.status.value, doc_data.tags, datetime.utcnow(), datetime.utcnow(), template_used['title'] if template_used else NULL),
+            fetch='one'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to create document")
+        
+        document = result
+        
+        # Initialize analytics
+        query = """
+            INSERT INTO document_analytics (document_id, view_count, edit_count, word_count, character_count, reading_time_minutes, last_viewed, last_edited)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (document['id'], 0, 1, calculate_word_count(content), calculate_character_count(content), calculate_reading_time(content), NULL, document['updated_at']),
+            fetch='execute'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to initialize document analytics")
+        
+        logger.info(f"Document created: {document['title']} by user {user_id}")
+        return document
+    except DatabaseError as e:
+        logger.error(f"Error creating document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create document")
 
 @app.get("/api/documents/{document_id}")
-async def get_document(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = documents_store.get(document_id)
+async def get_document(document_id: str, user_id: int = Depends(get_current_user_id)):
+    document = db_service.execute_query(
+        "SELECT d.*, dv.content, da.view_count, da.edit_count, da.word_count, da.character_count, da.reading_time_minutes, da.last_viewed, da.last_edited FROM documents d LEFT JOIN document_versions dv ON d.id = dv.document_id LEFT JOIN document_analytics da ON d.id = da.document_id WHERE d.id = %s AND d.user_id = %s",
+        (document_id, user_id),
+        fetch='one'
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -755,24 +898,23 @@ async def get_document(document_id: str, user_id: str = Depends(get_current_user
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Update view analytics
-    if document_id not in document_analytics_store:
-        document_analytics_store[document_id] = {
-            "document_id": document_id,
-            "view_count": 0,
-            "edit_count": 0,
-            "word_count": calculate_word_count(document['content']),
-            "character_count": calculate_character_count(document['content']),
-            "reading_time_minutes": calculate_reading_time(document['content']),
-            "last_viewed": None,
-            "last_edited": None
-        }
+    if document['view_count'] is None:
+        query = """
+            INSERT INTO document_analytics (document_id, view_count, edit_count, word_count, character_count, reading_time_minutes, last_viewed, last_edited)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (document['id'], 1, document['edit_count'], document['word_count'], document['character_count'], document['reading_time_minutes'], datetime.utcnow(), document['last_edited']),
+            fetch='execute'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update document analytics")
     
-    analytics = document_analytics_store[document_id]
-    analytics['view_count'] += 1
-    analytics['last_viewed'] = datetime.utcnow().isoformat()
-    
-    document['analytics'] = analytics
-    document['is_favorite'] = document_id in favorites_store.get(user_id, set())
+    document['analytics'] = document
+    document['is_favorite'] = document['id'] in favorites_store.get(user_id, set())
     
     return document
 
@@ -780,9 +922,13 @@ async def get_document(document_id: str, user_id: str = Depends(get_current_user
 async def update_document(
     document_id: str, 
     doc_data: DocumentUpdate, 
-    user_id: str = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
-    document = documents_store.get(document_id)
+    document = db_service.execute_query(
+        "SELECT id, user_id, title, content, status, tags, folder_id, created_at, updated_at FROM documents WHERE id = %s AND user_id = %s",
+        (document_id, user_id),
+        fetch='one'
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -792,22 +938,19 @@ async def update_document(
     # Create version for significant changes
     if doc_data.content is not None and doc_data.content != document['content']:
         if abs(len(doc_data.content) - len(document['content'])) > 50:
-            if document_id not in document_versions_store:
-                document_versions_store[document_id] = []
+            query = """
+                INSERT INTO document_versions (id, document_id, content, title, created_at, version_number)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
             
-            version = {
-                "id": str(uuid.uuid4()),
-                "content": document['content'],
-                "title": document['title'],
-                "created_at": datetime.utcnow().isoformat(),
-                "version_number": len(document_versions_store[document_id]) + 1
-            }
+            result = db_service.execute_query(
+                query,
+                (str(uuid.uuid4()), document['id'], document['content'], document['title'], document['updated_at'], (SELECT COUNT(*) FROM document_versions WHERE document_id = %s) + 1),
+                fetch='execute'
+            )
             
-            document_versions_store[document_id].append(version)
-            
-            # Keep only last 20 versions
-            if len(document_versions_store[document_id]) > 20:
-                document_versions_store[document_id] = document_versions_store[document_id][-20:]
+            if not result:
+                raise HTTPException(status_code=500, detail="Failed to create document version")
     
     # Update fields
     if doc_data.title is not None:
@@ -821,23 +964,39 @@ async def update_document(
     if doc_data.folder_id is not None:
         document['folder_id'] = doc_data.folder_id
     
-    document['updated_at'] = datetime.utcnow().isoformat()
+    document['updated_at'] = datetime.utcnow()
     
     # Update analytics
-    if document_id in document_analytics_store:
-        analytics = document_analytics_store[document_id]
-        analytics['edit_count'] += 1
-        analytics['last_edited'] = datetime.utcnow().isoformat()
-        if doc_data.content is not None:
-            analytics['word_count'] = calculate_word_count(doc_data.content)
-            analytics['character_count'] = calculate_character_count(doc_data.content)
-            analytics['reading_time_minutes'] = calculate_reading_time(doc_data.content)
+    query = """
+        UPDATE document_analytics
+        SET view_count = %s,
+            edit_count = %s,
+            word_count = %s,
+            character_count = %s,
+            reading_time_minutes = %s,
+            last_viewed = %s,
+            last_edited = %s
+        WHERE document_id = %s AND user_id = %s
+    """
+    
+    result = db_service.execute_query(
+        query,
+        (document['view_count'], document['edit_count'], document['word_count'], document['character_count'], document['reading_time_minutes'], document['last_viewed'], document['last_edited'], document['id'], user_id),
+        fetch='execute'
+    )
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to update document analytics")
     
     return document
 
 @app.delete("/api/documents/{document_id}")
-async def delete_document(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = documents_store.get(document_id)
+async def delete_document(document_id: str, user_id: int = Depends(get_current_user_id)):
+    document = db_service.execute_query(
+        "SELECT id, user_id, title, content, status, folder_id, created_at, updated_at FROM documents WHERE id = %s AND user_id = %s",
+        (document_id, user_id),
+        fetch='one'
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -845,94 +1004,165 @@ async def delete_document(document_id: str, user_id: str = Depends(get_current_u
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Clean up related data
-    if document_id in document_versions_store:
-        del document_versions_store[document_id]
-    if document_id in document_analytics_store:
-        del document_analytics_store[document_id]
+    query = """
+        DELETE FROM document_versions
+        WHERE document_id = %s AND user_id = %s
+    """
+    
+    result = db_service.execute_query(
+        query,
+        (document['id'], user_id),
+        fetch='execute'
+    )
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to clean up related data")
     
     # Remove from favorites
-    if user_id in favorites_store:
-        favorites_store[user_id].discard(document_id)
+    query = """
+        DELETE FROM favorites
+        WHERE document_id = %s AND user_id = %s
+    """
     
-    del documents_store[document_id]
+    result = db_service.execute_query(
+        query,
+        (document['id'], user_id),
+        fetch='execute'
+    )
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to remove document from favorites")
+    
+    # Delete document
+    query = """
+        DELETE FROM documents
+        WHERE id = %s AND user_id = %s
+    """
+    
+    result = db_service.execute_query(
+        query,
+        (document['id'], user_id),
+        fetch='execute'
+    )
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Failed to delete document")
     
     logger.info(f"Document deleted: {document['title']} by user {user_id}")
     return {"message": "Document deleted successfully"}
 
 # Document versions
 @app.get("/api/documents/{document_id}/versions")
-async def get_document_versions(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = documents_store.get(document_id)
+async def get_document_versions(document_id: str, user_id: int = Depends(get_current_user_id)):
+    document = db_service.execute_query(
+        "SELECT id, content, title, created_at, version_number FROM document_versions WHERE document_id = %s AND user_id = %s ORDER BY created_at DESC",
+        (document_id, user_id),
+        fetch='all'
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
     if document['user_id'] != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    versions = document_versions_store.get(document_id, [])
-    return {"versions": versions}
+    return {"versions": document}
 
 # Document favorites
 @app.post("/api/documents/{document_id}/favorite")
-async def toggle_document_favorite(document_id: str, user_id: str = Depends(get_current_user_id)):
-    document = documents_store.get(document_id)
+async def toggle_document_favorite(document_id: str, user_id: int = Depends(get_current_user_id)):
+    document = db_service.execute_query(
+        "SELECT id, user_id, is_favorite FROM documents WHERE id = %s AND user_id = %s",
+        (document_id, user_id),
+        fetch='one'
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
     if document['user_id'] != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    if user_id not in favorites_store:
-        favorites_store[user_id] = set()
-    
-    if document_id in favorites_store[user_id]:
-        favorites_store[user_id].remove(document_id)
+    if document['is_favorite']:
+        query = """
+            UPDATE documents
+            SET is_favorite = FALSE
+            WHERE id = %s AND user_id = %s
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (document['id'], user_id),
+            fetch='execute'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to remove document from favorites")
+        
         is_favorite = False
     else:
-        favorites_store[user_id].add(document_id)
+        query = """
+            UPDATE documents
+            SET is_favorite = TRUE
+            WHERE id = %s AND user_id = %s
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (document['id'], user_id),
+            fetch='execute'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to add document to favorites")
+        
         is_favorite = True
     
     return {
-        "document_id": document_id,
+        "document_id": document['id'],
         "is_favorite": is_favorite,
         "message": f"Document {'added to' if is_favorite else 'removed from'} favorites"
     }
 
 @app.get("/api/documents/favorites")
-async def get_favorite_documents(user_id: str = Depends(get_current_user_id)):
-    favorite_ids = favorites_store.get(user_id, set())
-    favorite_documents = [
-        documents_store[doc_id] for doc_id in favorite_ids 
-        if doc_id in documents_store and documents_store[doc_id]['user_id'] == user_id
-    ]
+async def get_favorite_documents(user_id: int = Depends(get_current_user_id)):
+    favorite_ids = db_service.execute_query(
+        "SELECT document_id FROM favorites WHERE user_id = %s",
+        (user_id,),
+        fetch='all'
+    )
+    favorite_documents = db_service.execute_query(
+        "SELECT d.*, da.view_count, da.edit_count, da.word_count, da.character_count, da.reading_time_minutes, da.last_viewed, da.last_edited FROM documents d LEFT JOIN document_analytics da ON d.id = da.document_id WHERE d.id IN (%s) AND d.user_id = %s",
+        (tuple(doc['document_id'] for doc in favorite_ids), user_id),
+        fetch='all'
+    )
     
     # Add analytics
     for doc in favorite_documents:
-        analytics = document_analytics_store.get(doc['id'], {})
-        doc['analytics'] = {
-            "word_count": calculate_word_count(doc['content']),
-            "character_count": calculate_character_count(doc['content']),
-            "reading_time_minutes": calculate_reading_time(doc['content']),
-            "view_count": analytics.get('view_count', 0),
-            "edit_count": analytics.get('edit_count', 0)
-        }
+        doc['analytics'] = doc
         doc['is_favorite'] = True
     
     return favorite_documents
 
 # Analytics endpoints
 @app.get("/api/analytics/overview")
-async def get_analytics_overview(user_id: str = Depends(get_current_user_id)):
-    user_documents = [doc for doc in documents_store.values() if doc['user_id'] == user_id]
+async def get_analytics_overview(user_id: int = Depends(get_current_user_id)):
+    user_documents = db_service.execute_query(
+        "SELECT id, title, updated_at, word_count, status FROM documents WHERE user_id = %s",
+        (user_id,),
+        fetch='all'
+    )
     
-    total_words = sum(calculate_word_count(doc['content']) for doc in user_documents)
+    total_words = sum(doc['word_count'] for doc in user_documents)
     total_documents = len(user_documents)
-    total_folders = len([folder for folder in folders_store.values() if folder['user_id'] == user_id])
+    total_folders = db_service.execute_query(
+        "SELECT COUNT(*) as count FROM folders WHERE user_id = %s",
+        (user_id,),
+        fetch='one'
+    )['count']
     
     # Status distribution
     status_counts = {}
     for doc in user_documents:
-        status = doc.get('status', 'draft')
+        status = doc['status']
         status_counts[status] = status_counts.get(status, 0) + 1
     
     # Recent documents
@@ -951,7 +1181,7 @@ async def get_analytics_overview(user_id: str = Depends(get_current_user_id)):
                 "id": doc['id'],
                 "title": doc['title'],
                 "updated_at": doc['updated_at'],
-                "word_count": calculate_word_count(doc['content'])
+                "word_count": doc['word_count']
             } for doc in recent_documents
         ]
     }
@@ -961,10 +1191,14 @@ async def get_analytics_overview(user_id: str = Depends(get_current_user_id)):
 async def auto_save_document(
     document_id: str,
     content: str,
-    user_id: str = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """Auto-save document content without creating versions"""
-    document = documents_store.get(document_id)
+    document = db_service.execute_query(
+        "SELECT id, user_id, title, content, status, created_at, updated_at FROM documents WHERE id = %s AND user_id = %s",
+        (document_id, user_id),
+        fetch='one'
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -974,14 +1208,29 @@ async def auto_save_document(
     # Only save if content changed
     if document['content'] != content:
         document['content'] = content
-        document['updated_at'] = datetime.utcnow().isoformat()
+        document['updated_at'] = datetime.utcnow()
         
         # Update analytics
-        if document_id in document_analytics_store:
-            analytics = document_analytics_store[document_id]
-            analytics['word_count'] = calculate_word_count(content)
-            analytics['character_count'] = calculate_character_count(content)
-            analytics['reading_time_minutes'] = calculate_reading_time(content)
+        query = """
+            UPDATE document_analytics
+            SET view_count = %s,
+                edit_count = %s,
+                word_count = %s,
+                character_count = %s,
+                reading_time_minutes = %s,
+                last_viewed = %s,
+                last_edited = %s
+            WHERE document_id = %s AND user_id = %s
+        """
+        
+        result = db_service.execute_query(
+            query,
+            (document['view_count'], document['edit_count'], calculate_word_count(content), calculate_character_count(content), calculate_reading_time(content), datetime.utcnow(), datetime.utcnow(), document['id'], user_id),
+            fetch='execute'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update document analytics")
     
     return {"status": "auto_saved", "timestamp": datetime.utcnow().isoformat()}
 
