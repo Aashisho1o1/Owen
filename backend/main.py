@@ -538,6 +538,48 @@ async def health_check():
         }
     }
 
+# Test endpoint for debugging
+@app.post("/api/test/register")
+async def test_register(user_data: UserCreate):
+    try:
+        logger.info(f"🧪 TEST: Registration attempt for {user_data.email}")
+        
+        # Test database connection
+        test_query = db_service.execute_query("SELECT 1 as test", fetch='one')
+        logger.info(f"🧪 Database connection test: {test_query}")
+        
+        # Check if user exists
+        existing_user = db_service.execute_query(
+            "SELECT id, email FROM users WHERE email = %s",
+            (user_data.email,),
+            fetch='one'
+        )
+        
+        if existing_user:
+            logger.info(f"🧪 User already exists: {existing_user}")
+            return {"error": "User already exists", "existing_user": existing_user}
+        
+        # Try simple user creation without auth service
+        username = user_data.email.split('@')[0]
+        password_hash = hash_password(user_data.password)
+        
+        new_user = db_service.execute_query(
+            """INSERT INTO users (username, email, password_hash, name, created_at)
+               VALUES (%s, %s, %s, %s, %s)
+               RETURNING id, username, email, name, created_at""",
+            (username, user_data.email, password_hash, user_data.name, datetime.utcnow()),
+            fetch='one'
+        )
+        
+        logger.info(f"🧪 User created successfully: {new_user}")
+        return {"success": True, "user": dict(new_user)}
+        
+    except Exception as e:
+        logger.error(f"🧪 TEST ERROR: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"🧪 TEST TRACEBACK: {traceback.format_exc()}")
+        return {"error": str(e), "type": type(e).__name__}
+
 # Authentication endpoints
 @app.post("/api/auth/register")
 async def register(user_data: UserCreate) -> TokenResponse:
