@@ -15,6 +15,7 @@ import { useTheme } from './contexts/ThemeContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DocumentThemeProvider } from './contexts/DocumentThemeContext';
 import './styles/documentThemes.css';
+import './styles/enhanced-ui.css';
 
 // Top Navigation Bar with Documents, Settings, Auth in top right
 const TopNavigation: React.FC = () => {
