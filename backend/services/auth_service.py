@@ -8,6 +8,7 @@ import bcrypt
 import jwt
 import logging
 import secrets
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from email_validator import validate_email, EmailNotValidError
@@ -17,7 +18,10 @@ from .database import db_service, DatabaseError
 logger = logging.getLogger(__name__)
 
 # JWT Configuration
-JWT_SECRET_KEY = secrets.token_urlsafe(32)  # In production, use environment variable
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", None)
+if not JWT_SECRET_KEY:
+    JWT_SECRET_KEY = secrets.token_urlsafe(32)
+    logger.warning("JWT_SECRET_KEY not found in environment - using temporary key (tokens will reset on restart)")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 30
