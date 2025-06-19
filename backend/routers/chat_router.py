@@ -16,24 +16,12 @@ from models.schemas import (
 from services.llm_service import LLMService
 from services.database import db_service
 
+# Import centralized authentication dependency
+from dependencies import get_current_user_id
+
 # Initialize services
 llm_service = LLMService()
 logger = logging.getLogger(__name__)
-security = HTTPBearer()
-
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    """Get current user ID from JWT token"""
-    if credentials is None or not credentials.credentials:
-        raise HTTPException(status_code=401, detail="Authentication credentials were not provided.")
-    try:
-        token = credentials.credentials
-        user_data = auth_service.verify_token(token)
-        return user_data["user_id"]
-    except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
-        logger.error(f"Authentication error in chat route: {e}", exc_info=True)
-        raise HTTPException(status_code=401, detail="Invalid token or authentication error.")
 
 router = APIRouter(
     prefix="/api/chat",

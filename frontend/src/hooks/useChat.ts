@@ -169,28 +169,6 @@ export const useChat = ({
         helpFocusType: typeof helpFocus,
         llmProviderType: typeof selectedLLM
       });
-      
-      // Try to test the validation first
-      try {
-        console.log('🧪 Testing validation with debug endpoint first...');
-        const debugResponse = await fetch('https://backend-production-1429.up.railway.app/api/debug/chat-validation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
-        });
-        const debugResult = await debugResponse.json();
-        console.log('🔍 Debug validation result:', debugResult);
-        
-        if (!debugResult.success) {
-          console.error('❌ Validation failed at debug endpoint:', debugResult);
-          throw new Error(`Validation failed: ${debugResult.error}`);
-        }
-      } catch (debugError) {
-        console.error('🚨 Debug validation failed:', debugError);
-        // Continue with the actual request anyway
-      }
 
       // Increase timeout to 60 seconds and add better error handling
       const timeoutPromise = new Promise<never>((_, reject) => {
