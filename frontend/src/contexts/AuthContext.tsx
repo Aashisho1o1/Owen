@@ -186,10 +186,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshToken = useCallback(async (): Promise<boolean> => {
     const tokens = getStoredTokens();
     if (!tokens?.refresh_token) {
+      console.log('❌ No refresh token available');
       return false;
     }
 
     try {
+      console.log('🔄 Attempting token refresh...');
       const response = await apiInstance.post('/api/auth/refresh', {
         refresh_token: tokens.refresh_token,
       });
@@ -204,8 +206,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         expires_in,
       });
 
+      console.log('✅ Token refresh successful');
       return true;
     } catch (err) {
+      console.error('❌ Token refresh failed:', err);
       logger.error('Token refresh error:', err);
       // If refresh fails, log the user out as the session is invalid
       logout();
