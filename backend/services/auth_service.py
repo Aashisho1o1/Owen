@@ -195,7 +195,7 @@ class AuthService:
             
             # Update last login
             self.db.execute_query(
-                "UPDATE users SET last_login = %s, login_count = login_count + 1 WHERE id = %s",
+                "UPDATE users SET last_login = %s WHERE id = %s",
                 (datetime.utcnow(), user['id'])
             )
             

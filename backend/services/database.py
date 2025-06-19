@@ -119,6 +119,7 @@ class PostgreSQLService:
                 last_login TIMESTAMPTZ,
                 failed_login_attempts INTEGER DEFAULT 0,
                 account_locked_until TIMESTAMPTZ,
+                login_count INTEGER DEFAULT 0,
                 preferences JSONB DEFAULT '{}'
             )
             ''',
@@ -260,6 +261,23 @@ class PostgreSQLService:
             except Exception as e:
                 logger.error(f"Failed to create index: {e}")
                 # Continue with other indexes
+        
+        # Migration: Add missing columns to existing databases
+        migration_queries = [
+            # Add login_count column if it doesn't exist
+            '''
+            ALTER TABLE users 
+            ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0
+            '''
+        ]
+        
+        for query in migration_queries:
+            try:
+                self.execute_query(query)
+                logger.info(f"Migration executed successfully: {query.strip()}")
+            except Exception as e:
+                logger.error(f"Migration failed: {e}")
+                # Continue with other migrations
         
         logger.info("Essential PostgreSQL schema initialized successfully")
     
