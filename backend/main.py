@@ -57,87 +57,21 @@ class ActivityType(str, Enum):
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-here-please-change-in-production")
 security = HTTPBearer()
 
-# Story Writing Templates - Beautiful Templates for Creative Writers
+# Story Writing Templates - Clean and Simple
 templates_store = [
     {
         "id": "romance",
         "title": "Romance Novel",
         "description": "A passionate love story template with character arcs and emotional depth",
-        "content": """# Romance Novel: [Your Story Title]
+        "content": """# Romance Novel
 
-💕 **Genre:** Romance | **Target Length:** 50,000-80,000 words | **Theme:** [Love conquers all/Second chances/Enemies to lovers]
+## Chapter 1
 
----
+*The coffee shop smelled like possibility and second chances.*
 
-## ✨ Main Characters
+[Start writing your love story here...]
 
-### 💖 Protagonist
-- **Name:** [Character Name]
-- **Age:** [Age]
-- **Occupation:** [Job/Career]
-- **Personality:** [3-4 key traits]
-- **Backstory:** [What shaped them?]
-- **Romantic History:** [Past relationships/heartbreak]
-- **Internal Conflict:** [What holds them back from love?]
-- **Character Arc:** [How will love change them?]
-
-### 💕 Love Interest
-- **Name:** [Character Name]
-- **Age:** [Age]
-- **Occupation:** [Job/Career]
-- **Personality:** [3-4 key traits that complement/contrast protagonist]
-- **Backstory:** [What shaped them?]
-- **What Makes Them Irresistible:** [Specific traits that attract protagonist]
-- **Internal Conflict:** [Their own barriers to love]
-
-## 🎭 Romance Plot Structure
-
-### 📖 Chapter 1-3: The Meet-Cute
-- **First Encounter:** [How do they meet? What's the immediate impression?]
-- **Initial Attraction:** [What draws them to each other?]
-- **First Obstacle:** [What creates tension/conflict?]
-
-### 💫 Chapter 4-8: Building Tension
-- **Growing Attraction:** [Moments of connection and chemistry]
-- **Romantic Obstacles:** [External/internal conflicts keeping them apart]
-- **First Kiss:** [When and how does it happen?]
-- **Deepening Bond:** [How do they get to know each other?]
-
-### 💔 Chapter 9-12: The Crisis
-- **Dark Moment:** [What threatens to tear them apart?]
-- **Misunderstanding/Conflict:** [The big fight or revelation]
-- **Separation:** [Physical or emotional distance]
-- **Internal Growth:** [What each character learns about themselves]
-
-### 💕 Chapter 13-15: Resolution
-- **Grand Gesture:** [How is love declared/proven?]
-- **Reconciliation:** [How do they overcome the obstacles?]
-- **Happy Ever After:** [How does their love story conclude?]
-
----
-
-## 🌟 Chapter 1: [Chapter Title]
-
-[Start with a compelling hook that introduces your protagonist in a moment of vulnerability, strength, or change. Show their world before love enters it.]
-
-The morning light filtered through [setting details], casting shadows that reminded [protagonist] of everything they were trying to forget. [Describe their current emotional state and what they want/need]...
-
-[Continue with the scene that will lead to meeting the love interest, or set up their world compellingly]
-
----
-
-## 💝 Romance Writing Prompts
-- What's the one thing your protagonist swore they'd never do again?
-- What secret could destroy their budding relationship?
-- What does your love interest do that no one else has ever done for your protagonist?
-- What's the most romantic gesture in your story?
-
-## 🎯 Key Themes to Explore
-- [ ] Vulnerability and trust
-- [ ] Growth through love
-- [ ] Overcoming past trauma
-- [ ] Finding self-worth
-- [ ] The courage to love again""",
+""",
         "category": "Romance",
         "word_count_target": 65000,
         "estimated_time": "3-6 months"
@@ -146,114 +80,15 @@ The morning light filtered through [setting details], casting shadows that remin
         "id": "fantasy",
         "title": "Fantasy Epic",
         "description": "A magical world-building template for epic fantasy adventures",
-        "content": """# Fantasy Epic: [Your World's Name]
+        "content": """# Fantasy Epic
 
-🐉 **Genre:** Epic Fantasy | **Target Length:** 80,000-120,000 words | **Magic Level:** [High/Low Fantasy]
+## Chapter 1: The Call to Adventure
 
----
+*The ancient runes glowed with an otherworldly light, warning of the darkness that was coming.*
 
-## 🌍 World Building
+[Begin your epic fantasy adventure here...]
 
-### ⚡ Magic System
-- **How Magic Works:** [Energy source, mechanics, visualization]
-- **Rules & Limitations:** [What can't magic do? What's the cost?]
-- **Who Can Use Magic:** [Bloodlines, training, artifacts, born ability]
-- **Magic Types:** [Elemental, divine, arcane, nature, etc.]
-- **Forbidden Magic:** [What's dangerous or banned?]
-
-### 🏰 Geography & Realms
-- **Main Kingdom/Empire:** [Name, culture, government]
-- **Other Regions:** [At least 3 distinct areas with unique features]
-- **Important Locations:** [Capital cities, sacred sites, dangerous zones]
-- **Climate & Terrain:** [How geography affects story and characters]
-
-### 👑 Cultures & Peoples
-- **Main Race/Culture:** [Humans, elves, etc. - their customs, values]
-- **Other Peoples:** [At least 2-3 distinct cultures with conflicts/alliances]
-- **Languages:** [Do you have unique languages or naming conventions?]
-- **Religions/Beliefs:** [Gods, creation myths, afterlife beliefs]
-- **Political Structure:** [How are these societies governed?]
-
-## ⚔️ Main Characters
-
-### 🌟 The Hero/Heroine
-- **Name:** [Character Name]
-- **Age:** [Age]
-- **Origin:** [Where are they from? What's their background?]
-- **Special Abilities:** [Magical powers, skills, unique traits]
-- **Greatest Fear:** [What terrifies them most?]
-- **Fatal Flaw:** [What weakness could destroy them?]
-- **The Call to Adventure:** [What forces them to leave their ordinary world?]
-- **Character Arc:** [How will they grow throughout the journey?]
-
-### 🛡️ The Mentor
-- **Name:** [Character Name]
-- **Relationship to Hero:** [How do they know each other?]
-- **Wisdom/Powers:** [What can they teach the hero?]
-- **Dark Secret:** [What are they hiding?]
-
-### ⚔️ Companions/Fellowship
-- **Warrior:** [Name, fighting style, motivation for joining]
-- **Mage/Healer:** [Name, magical abilities, personal quest]
-- **Rogue/Scout:** [Name, skills, what they're running from]
-- **[Additional Companion]:** [Name, role, unique contribution]
-
-### 🖤 The Dark Lord/Antagonist
-- **Name:** [Character Name]
-- **Origin Story:** [How did they become evil? Were they always?]
-- **Powers:** [What makes them formidable?]
-- **Army/Followers:** [Who serves them and why?]
-- **Ultimate Goal:** [World domination? Revenge? Destruction?]
-- **Connection to Hero:** [Personal stakes beyond good vs. evil]
-
-## 🗡️ The Epic Quest
-
-### 🌅 Call to Adventure
-- **The Ordinary World:** [Hero's life before adventure]
-- **Inciting Incident:** [What changes everything?]
-- **Refusal of the Call:** [Why don't they want to go?]
-- **Crossing the Threshold:** [What forces them to begin?]
-
-### 🏔️ Trials & Challenges
-- **Trial 1:** [First major obstacle - physical/mental/spiritual test]
-- **Trial 2:** [Character development challenge]
-- **Trial 3:** [Team building/trust challenge]
-- **The Midpoint Crisis:** [Major setback/revelation changes everything]
-- **Trial 4:** [Personal sacrifice required]
-- **Trial 5:** [Face their greatest fear]
-
-### ⚡ Magical Items & Artifacts
-- **The [Weapon/Tool] of [Power]:** [Description, powers, history]
-- **Ancient Relic:** [What it does, where it's hidden]
-- **Protective Charm:** [Who gives it, what it protects against]
-
-### 🏰 Final Confrontation
-- **The Dark Fortress:** [Where the final battle takes place]
-- **Ultimate Test:** [How is the villain defeated?]
-- **Hero's Sacrifice:** [What must they give up to win?]
-- **Resolution:** [How is peace restored?]
-
----
-
-## ⭐ Chapter 1: The Ordinary World
-
-[Begin with your hero in their normal life, but hint at the larger destiny awaiting them. Show us their character through action.]
-
-The ancient oak had stood guard over [location] for a thousand years, its roots drinking from the same spring that [protagonist] visited each morning. Today, however, something was different. The water tasted of copper and starlight, and [protagonist] could swear they heard whispers in the wind...
-
-[Continue with a scene that establishes your world's magic and your hero's life before adventure calls]
-
----
-
-## 🎯 Fantasy Elements Checklist
-- [ ] Unique magic system with clear rules
-- [ ] Rich world history and mythology
-- [ ] Distinct cultures with their own customs
-- [ ] Political conflicts and alliances
-- [ ] Ancient prophecies or legends
-- [ ] Magical creatures and beings
-- [ ] Epic battles and personal growth
-- [ ] Themes of power, responsibility, and sacrifice""",
+""",
         "category": "Fantasy",
         "word_count_target": 100000,
         "estimated_time": "6-12 months"
@@ -262,114 +97,15 @@ The ancient oak had stood guard over [location] for a thousand years, its roots 
         "id": "mystery",
         "title": "Mystery Thriller",
         "description": "A suspenseful mystery template with clues, red herrings, and shocking revelations",
-        "content": """# Mystery Thriller: [Your Mystery Title]
+        "content": """# Mystery Thriller
 
-🔍 **Genre:** Mystery/Thriller | **Target Length:** 60,000-80,000 words | **Setting:** [Time & Place]
+## Chapter 1: The Discovery
 
----
+*The body was found at 6:47 AM, and nothing would ever be the same again.*
 
-## 🕵️ Main Characters
+[Start unraveling your mystery here...]
 
-### 🎯 The Detective/Protagonist
-- **Name:** [Character Name]
-- **Profession:** [Police detective, private investigator, amateur sleuth]
-- **Age:** [Age]
-- **Special Skills:** [Deduction, forensics, psychology, local knowledge]
-- **Personal Stakes:** [Why is this case personal? What do they have to lose?]
-- **Fatal Flaw:** [Obsessiveness, trust issues, past trauma]
-- **Unique Method:** [How do they approach solving crimes differently?]
-
-### 💀 The Victim
-- **Name:** [Character Name]
-- **Background:** [Who were they? Why were they targeted?]
-- **Secrets:** [What were they hiding?]
-- **Connections:** [How do they link to other characters?]
-- **The Hook:** [What makes their death compelling/mysterious?]
-
-### 🎭 The Killer/Antagonist
-- **Identity:** [Keep this secret until the reveal!]
-- **Motive:** [Why did they kill? Revenge, money, love, power?]
-- **Method:** [How do they operate? Signature elements?]
-- **Psychology:** [What drives them? Are they calculating or impulsive?]
-- **Connection to Protagonist:** [How are they linked to the detective?]
-
-### 🧩 Key Suspects (3-5 people)
-**Suspect 1:** [Name] - [Relationship to victim] - [Apparent motive] - [Secret they're hiding]
-**Suspect 2:** [Name] - [Relationship to victim] - [Apparent motive] - [Secret they're hiding]  
-**Suspect 3:** [Name] - [Relationship to victim] - [Apparent motive] - [Secret they're hiding]
-**Suspect 4:** [Name] - [Relationship to victim] - [Apparent motive] - [Secret they're hiding]
-
-## 🧩 The Mystery Structure
-
-### 🚨 The Crime (Chapters 1-2)
-- **The Discovery:** [Who finds the body? How?]
-- **First Impressions:** [What does the scene reveal?]
-- **Initial Questions:** [What immediately seems strange/wrong?]
-- **Stakes Established:** [Why must this be solved quickly?]
-
-### 🔍 Investigation Phase 1 (Chapters 3-8)
-- **Key Clue 1:** [Physical evidence found]
-- **Key Clue 2:** [Witness testimony/information]
-- **Key Clue 3:** [Discovery about victim's past]
-- **Red Herring 1:** [False lead that misdirects]
-- **Character Development:** [What personal demons does protagonist face?]
-
-### 💡 Revelation & Escalation (Chapters 9-12)
-- **Major Discovery:** [Game-changing information revealed]
-- **Second Crime/Attempt:** [Killer strikes again or threatens to]
-- **Red Herring 2:** [Another false lead]
-- **Personal Danger:** [Protagonist becomes target]
-- **Breakthrough:** [Crucial clue that starts unraveling truth]
-
-### ⚡ Resolution (Chapters 13-15)
-- **The Confrontation:** [Detective faces the killer]
-- **The Reveal:** [How/why the crime was committed]
-- **Justice:** [How is the killer caught/punished?]
-- **Resolution:** [How are loose ends tied up?]
-
-## 🔍 Clues & Evidence
-
-### 🧩 Physical Evidence
-1. **[Clue Name]:** [Description] - [What it reveals] - [When discovered]
-2. **[Clue Name]:** [Description] - [What it reveals] - [When discovered]
-3. **[Clue Name]:** [Description] - [What it reveals] - [When discovered]
-
-### 🗣️ Witness Testimony
-- **Witness 1:** [Name] - [What they saw/know] - [Why they're important]
-- **Witness 2:** [Name] - [What they saw/know] - [Why they're important]
-
-### 🎭 Red Herrings (False Clues)
-1. **[False Lead]:** [What it suggests] - [Why it's wrong] - [When revealed]
-2. **[False Lead]:** [What it suggests] - [Why it's wrong] - [When revealed]
-
----
-
-## 🔍 Chapter 1: The Discovery
-
-[Start with the discovery of the crime in a way that immediately hooks the reader. Show your protagonist's expertise and personality.]
-
-The call came at 3:47 AM, dragging Detective [Name] from the first decent sleep they'd had in weeks. "[Victim's name] is dead," the voice on the phone announced without preamble. "[Location]." 
-
-[Continue with the protagonist arriving at the scene, their first observations, and what immediately strikes them as wrong or unusual about this case...]
-
----
-
-## 🎯 Mystery Writing Checklist
-- [ ] All clues necessary for solution are presented fairly to reader
-- [ ] Red herrings mislead without cheating
-- [ ] Multiple viable suspects with clear motives
-- [ ] Solution is surprising but inevitable in hindsight  
-- [ ] Protagonist uses logical deduction
-- [ ] Personal stakes for detective beyond just "doing their job"
-- [ ] Escalating tension and danger
-- [ ] Satisfying confrontation and resolution
-
-## 💭 Themes to Explore
-- Truth vs. perception
-- Justice vs. revenge  
-- Past sins catching up
-- The cost of secrets
-- Obsession and its dangers""",
+""",
         "category": "Mystery",
         "word_count_target": 70000,
         "estimated_time": "4-8 months"
@@ -378,116 +114,16 @@ The call came at 3:47 AM, dragging Detective [Name] from the first decent sleep 
         "id": "scifi",
         "title": "Science Fiction",
         "description": "A futuristic sci-fi template exploring technology, humanity, and the unknown",
-        "content": """# Science Fiction: [Your Future Vision]
+        "content": """# Science Fiction
 
-🚀 **Genre:** Science Fiction | **Target Length:** 70,000-100,000 words | **Time:** [Year/Era] | **Setting:** [Planet/Space/Dimension]
+## Chapter 1: First Contact
 
----
+*The signal came from beyond the edge of known space, carrying a message that would change everything.*
 
-## 🌌 World Building
+[Launch your sci-fi adventure here...]
 
-### 🔬 Scientific Foundation
-- **Core Technology:** [AI, genetic engineering, space travel, time manipulation, etc.]
-- **How It Works:** [Explain the science - real or imagined]
-- **Societal Impact:** [How has this technology changed humanity?]
-- **Limitations:** [What can't this technology do? What are the costs?]
-- **Ethical Questions:** [What moral dilemmas does it raise?]
-
-### 🌍 Setting & Society
-- **Time Period:** [How far in the future? Alternate timeline?]
-- **Location:** [Earth, colony planets, space stations, other dimensions]
-- **Government:** [How is society organized? Corporate rule? Democracy? AI governance?]
-- **Social Classes:** [How is society stratified? Rich/poor? Human/AI? Enhanced/natural?]
-- **Daily Life:** [How do ordinary people live in this world?]
-
-### 🤖 Technology & Science
-- **Transportation:** [How do people travel? Teleportation? FTL ships? Time travel?]
-- **Communication:** [Brain implants? Quantum networks? AI translators?]
-- **Medicine:** [Life extension? Genetic modification? Consciousness transfer?]
-- **Energy:** [Fusion? Dark matter? Zero-point? Environmental impact?]
-- **Computing:** [AI consciousness? Quantum computers? Neural interfaces?]
-
-## 👥 Main Characters
-
-### 🌟 The Protagonist
-- **Name:** [Character Name]
-- **Profession:** [Scientist, pilot, explorer, rebel, ordinary person]
-- **Background:** [Where are they from? What's their history?]
-- **Relationship to Technology:** [Enhanced? Natural? Resistant? Dependent?]
-- **Personal Stakes:** [What do they have to lose/gain?]
-- **Character Flaw:** [Pride in science? Fear of change? Nostalgia for the past?]
-- **The Question They Face:** [What forces them to examine their beliefs?]
-
-### 🤖 The Other (AI/Alien/Enhanced Human)
-- **Nature:** [Artificial intelligence, alien species, genetically modified human]
-- **Capabilities:** [What can they do that humans can't?]
-- **Motivation:** [What do they want? How do they think differently?]
-- **Relationship to Protagonist:** [Ally, enemy, mysterious guide?]
-- **The Mirror:** [How do they reflect or challenge human nature?]
-
-### 🏢 The Institution/Corporation/Government
-- **Name:** [Organization Name]
-- **Power:** [What do they control? Technology? Information? Lives?]
-- **Goals:** [Profit? Control? Human advancement? Survival?]
-- **Methods:** [How do they maintain power?]
-- **Corruption:** [What are they hiding? What lines have they crossed?]
-
-## 🚀 Science Fiction Plot Structure
-
-### 🌌 Opening: The New World (Chapters 1-3)
-- **Establish the Science:** [Show your technology/world in action]
-- **Normal Life:** [How does your protagonist live in this world?]
-- **The Inciting Incident:** [Discovery, malfunction, first contact, rebellion]
-- **The Question:** [What big issue will your story explore?]
-
-### 🔬 Exploration & Discovery (Chapters 4-8)
-- **Deeper Understanding:** [Protagonist learns more about the technology/aliens/situation]
-- **Complications:** [The science/situation is more complex than expected]
-- **Ethical Dilemmas:** [Characters must make difficult choices]
-- **Growing Stakes:** [Personal becomes universal, or vice versa]
-
-### ⚡ Crisis & Confrontation (Chapters 9-12)  
-- **The Problem Escalates:** [Technology fails, aliens attack, society collapses]
-- **Impossible Choices:** [Science vs. humanity, safety vs. freedom, etc.]
-- **Personal Cost:** [What must the protagonist sacrifice?]
-- **The Solution:** [How science/understanding provides a way forward]
-
-### 🌟 Resolution & New Understanding (Chapters 13-15)
-- **The New Normal:** [How has the world changed?]
-- **Human Growth:** [What have characters learned about humanity?]
-- **Future Implications:** [What questions remain? What comes next?]
-
----
-
-## 🌌 Chapter 1: [Chapter Title]
-
-[Start by dropping the reader into your futuristic world. Show the technology and society in action through your protagonist's eyes.]
-
-The morning neural-sync alert chimed softly in [protagonist's] mind at exactly 0600 hours, as it had every day for the past [time period]. Outside the biodome's transparent walls, [planet/setting] stretched endlessly, its [color] horizon broken only by the geometric patterns of the terraforming arrays.
-
-[Continue with a scene that establishes your world's technology and the protagonist's role/feelings about it, leading to the inciting incident...]
-
----
-
-## 🎯 Science Fiction Themes to Explore
-- [ ] What makes us human?
-- [ ] The consequences of technological advancement
-- [ ] Individual vs. collective good
-- [ ] The nature of consciousness and identity
-- [ ] Humanity's place in the universe
-- [ ] The ethics of scientific progress
-- [ ] Communication across different forms of intelligence
-- [ ] Evolution and adaptation
-
-## 🔬 Scientific Elements Checklist
-- [ ] Core scientific concept is explained clearly
-- [ ] Technology feels both advanced and believable
-- [ ] Scientific elements drive the plot forward
-- [ ] Ethical implications are explored
-- [ ] Characters represent different viewpoints on science
-- [ ] World-building supports the scientific themes
-- [ ] Resolution addresses the central scientific question""",
-        "category": "Science Fiction", 
+""",
+        "category": "Science Fiction",
         "word_count_target": 85000,
         "estimated_time": "5-10 months"
     },
@@ -495,130 +131,15 @@ The morning neural-sync alert chimed softly in [protagonist's] mind at exactly 0
         "id": "horror",
         "title": "Horror Story",
         "description": "A spine-chilling horror template with psychological terror and supernatural elements",
-        "content": """# Horror Story: [Your Nightmare Title]
+        "content": """# Horror Story
 
-👻 **Genre:** Horror | **Target Length:** 50,000-75,000 words | **Horror Type:** [Psychological/Supernatural/Body Horror/Cosmic]
+## Chapter 1: Something's Wrong
 
----
+*The house had been empty for twenty years, but someone—or something—was walking upstairs.*
 
-## 😨 Horror Elements
+[Begin your terrifying tale here...]
 
-### 👻 The Fear Factor
-- **Primary Fear:** [Death, isolation, loss of control, the unknown, body horror, madness]
-- **Horror Subgenre:** [Psychological, supernatural, slasher, cosmic, folk horror]
-- **Atmosphere:** [Oppressive, claustrophobic, dreamlike, decay, wrongness]
-- **The Unknown:** [What are you keeping hidden from readers?]
-- **Escalation:** [How does the horror intensify throughout the story?]
-
-### 🏚️ Setting & Atmosphere  
-- **Location:** [Haunted house, small town, isolated cabin, urban decay, otherworldly realm]
-- **Time Period:** [Modern day, historical, timeless/eternal]
-- **Weather/Season:** [Perpetual winter, oppressive heat, eternal storms]
-- **Physical Decay:** [How does the environment reflect the horror?]
-- **Isolation Factor:** [What cuts characters off from help/escape?]
-
-### 👹 The Horror/Monster/Threat
-- **Nature:** [Ghost, demon, alien, human killer, psychological break, ancient evil]
-- **Origin:** [Where did it come from? Why is it here now?]
-- **Rules:** [What can it do? What are its limitations?]
-- **Symbolism:** [What deeper fear does it represent?]
-- **Connection to Characters:** [How is it tied to the protagonist's past/psyche?]
-
-## 😱 Main Characters
-
-### 🎯 The Protagonist 
-- **Name:** [Character Name]
-- **Age:** [Age]
-- **Background:** [What's their history? Any trauma/guilt?]
-- **Fatal Flaw:** [Pride, denial, guilt, curiosity, isolation]
-- **Connection to Horror:** [How are they specifically vulnerable?]
-- **Arc:** [Do they survive? How are they changed?]
-- **Sanity Level:** [Stable to start? Gradual breakdown? Already fragile?]
-
-### 👥 Supporting Characters (The Victims/Allies)
-- **Character 1:** [Name] - [Role] - [How they die/what they represent]
-- **Character 2:** [Name] - [Role] - [How they die/what they represent]  
-- **Character 3:** [Name] - [Role] - [How they die/what they represent]
-- **The Skeptic:** [Who doesn't believe until it's too late?]
-- **The Believer:** [Who understands the threat first?]
-
-### 🔍 The Investigator/Expert
-- **Name:** [Character Name]
-- **Expertise:** [Occult, psychology, history, science]
-- **Personal Connection:** [Why do they care about this case?]
-- **Fate:** [Do they help or become another victim?]
-
-## 👻 Horror Story Structure
-
-### 🌙 Setup: The Normal World (Chapters 1-2)
-- **Establish Normalcy:** [Show life before horror intrudes]
-- **First Signs:** [Subtle wrongness, minor disturbances]
-- **Character Introduction:** [Show personalities before they're tested]
-- **The Hook:** [First genuinely scary/unsettling moment]
-
-### 😰 Rising Dread (Chapters 3-6)
-- **Escalating Events:** [Supernatural occurrences become undeniable]
-- **Isolation Begins:** [Characters cut off from help/escape]
-- **First Victim:** [Someone dies/disappears - establishes real danger]
-- **Attempts to Rationalize:** [Characters try to explain away the horror]
-- **Research/Investigation:** [Learning about the threat's history]
-
-### 😱 Full Horror (Chapters 7-10)
-- **Point of No Return:** [Characters realize they're truly trapped]
-- **Major Losses:** [Multiple deaths, hope lost]
-- **Truth Revealed:** [The full nature of the threat is understood]
-- **Protagonist's Breaking Point:** [Their defenses/sanity crumble]
-- **Desperate Measures:** [Characters attempt increasingly risky solutions]
-
-### 🌅 Climax & Resolution (Chapters 11-12)
-- **Final Confrontation:** [Face the horror directly]
-- **Ultimate Sacrifice:** [What must be given up to survive/win?]
-- **Resolution:** [Is the horror defeated? Escaped? Does it win?]
-- **New Normal:** [How are survivors changed? Is it really over?]
-
-## 👻 Horror Scenes & Setpieces
-
-### 😨 Key Scare Moments
-1. **The First Real Scare:** [When horror becomes undeniable]
-2. **The False Relief:** [Moment when characters think they're safe]
-3. **The Revelation:** [Terrifying truth is revealed]
-4. **The Chase:** [Characters flee from the horror]
-5. **The Final Scare:** [Last moment of terror]
-
-### 🩸 Death Scenes (If Applicable)
-- **Death 1:** [Who, how, what it represents]
-- **Death 2:** [Who, how, what it represents]
-- **Death 3:** [Who, how, what it represents]
-
----
-
-## 🌙 Chapter 1: The Calm Before
-
-[Begin with a sense of normalcy that will be shattered. Establish your characters and setting, but let unease creep in at the edges.]
-
-The house on Elm Street had stood empty for three years, and [protagonist] had driven past it every day on the way to work, never giving it a second thought. Until today. Today, there was a light in the upstairs window—a warm, yellow glow that seemed to pulse like a heartbeat.
-
-[Continue with subtle wrongness building. Show character's normal life, but plant seeds of the horror to come...]
-
----
-
-## 😱 Horror Writing Techniques
-- [ ] **Show, Don't Tell:** Let readers discover horror through details
-- [ ] **Less is More:** Sometimes what's not shown is scarier
-- [ ] **Sensory Details:** Use all five senses to create dread
-- [ ] **Pacing:** Build tension slowly, release in sharp bursts
-- [ ] **Vulnerability:** Put characters in helpless situations
-- [ ] **The Uncanny:** Make familiar things seem wrong/threatening
-- [ ] **Escalation:** Each scare should top the last
-
-## 🎭 Themes to Explore
-- The price of curiosity
-- Guilt and punishment
-- The thin line between sanity and madness
-- What we fear says about who we are
-- The past coming back to haunt us
-- Isolation and helplessness
-- The corruption of innocence""",
+""",
         "category": "Horror",
         "word_count_target": 62500,
         "estimated_time": "3-6 months"
