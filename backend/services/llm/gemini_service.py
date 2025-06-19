@@ -26,9 +26,7 @@ class GeminiService(BaseLLMService):
                 temperature=1.0,
                 top_p=0.95,
                 top_k=64,
-                max_output_tokens=8192,
-                # Set thinking budget to 0 for fastest response
-                thinking_budget=0
+                max_output_tokens=8192
             )
 
     async def _make_api_call(self, api_call_func: Callable, error_context: str, **kwargs):
