@@ -1,1 +1,7 @@
-from fastapi import APIRouter; router = APIRouter(); @router.get("/"); async def get_series(): return []
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/")
+async def get_series():
+    return []

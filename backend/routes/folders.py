@@ -1,1 +1,7 @@
-from fastapi import APIRouter; router = APIRouter(); @router.get("/"); async def get_folders(): return []
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/")
+async def get_folders():
+    return []
