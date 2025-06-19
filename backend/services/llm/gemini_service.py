@@ -98,4 +98,6 @@ class GeminiService(BaseLLMService):
         return await self._make_api_call(_generate, "conversation generation")
 
 # Global instance
-gemini_service = GeminiService() 
+gemini_service = GeminiService()
+
+# Force redeploy: 2025-06-19 12:45 PM UTC 
