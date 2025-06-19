@@ -1,4 +1,4 @@
-# Core FastAPI dependencies - Railway Optimized
+# Core FastAPI dependencies - Local Development
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.18
@@ -42,9 +42,6 @@ cryptography>=42.0.2
 redis==5.0.1
 slowapi==0.1.9
 
-# PostgreSQL - Production Database (ONLY)
-psycopg2-binary==2.9.9
-asyncpg==0.29.0
-
-# Database connection pooling and utilities
-SQLAlchemy==2.0.23
+# SQLite for local development (replaces PostgreSQL)
+aiosqlite==0.20.0
+SQLAlchemy==2.0.23 
