@@ -118,7 +118,11 @@
   background: #f1f3f4;
 }
 
-/* Minimal color indicators */
+/* Minimal color indicators + subtle backgrounds */
+.template-card[data-template-id="romance"] {
+  background: #fef7f7;
+}
+
 .template-card[data-template-id="romance"]::before {
   content: '';
   position: absolute;
@@ -127,6 +131,10 @@
   right: 0;
   height: 3px;
   background: #ff6b9d;
+}
+
+.template-card[data-template-id="fantasy"] {
+  background: #faf8f6;
 }
 
 .template-card[data-template-id="fantasy"]::before {
@@ -139,6 +147,10 @@
   background: #8b5a3c;
 }
 
+.template-card[data-template-id="mystery"] {
+  background: #f8f9fb;
+}
+
 .template-card[data-template-id="mystery"]::before {
   content: '';
   position: absolute;
@@ -149,6 +161,10 @@
   background: #4c566a;
 }
 
+.template-card[data-template-id="scifi"] {
+  background: #f0fbff;
+}
+
 .template-card[data-template-id="scifi"]::before {
   content: '';
   position: absolute;
@@ -157,6 +173,10 @@
   right: 0;
   height: 3px;
   background: #0ea5e9;
+}
+
+.template-card[data-template-id="horror"] {
+  background: #fef6f6;
 }
 
 .template-card[data-template-id="horror"]::before {
