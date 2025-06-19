@@ -258,43 +258,66 @@ class AuthService:
     def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
         """Generate new access token using refresh token"""
         try:
+            logger.info("Attempting to refresh access token")
             payload = jwt.decode(refresh_token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             
             if payload.get('type') != 'refresh':
+                logger.warning("Invalid token type in refresh request")
                 raise AuthenticationError("Invalid token type")
             
-            # Check if refresh token exists in database and is not revoked
-            token_hash = bcrypt.hashpw(refresh_token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            stored_token = self.db.execute_query(
-                "SELECT id, user_id FROM refresh_tokens WHERE user_id = %s AND expires_at > %s AND revoked = FALSE",
-                (payload['user_id'], datetime.utcnow()),
-                fetch='one'
+            user_id = payload['user_id']
+            logger.info(f"Refresh token valid for user {user_id}")
+            
+            # Get all valid refresh tokens for this user
+            stored_tokens = self.db.execute_query(
+                "SELECT id, user_id, token_hash FROM refresh_tokens WHERE user_id = %s AND expires_at > %s AND revoked = FALSE",
+                (user_id, datetime.utcnow()),
+                fetch='all'
             )
             
-            if not stored_token:
+            if not stored_tokens:
+                logger.warning(f"No valid refresh tokens found for user {user_id}")
+                raise AuthenticationError("No valid refresh tokens found")
+            
+            logger.info(f"Found {len(stored_tokens)} valid refresh tokens for user {user_id}")
+            
+            # Check if the provided refresh token matches any stored hash
+            valid_token = None
+            for stored_token in stored_tokens:
+                if bcrypt.checkpw(refresh_token.encode('utf-8'), stored_token['token_hash'].encode('utf-8')):
+                    valid_token = stored_token
+                    logger.info(f"Refresh token verified for user {user_id}")
+                    break
+            
+            if not valid_token:
+                logger.warning(f"Refresh token verification failed for user {user_id}")
                 raise AuthenticationError("Refresh token not found or expired")
             
             # Get user
             user = self.db.execute_query(
                 "SELECT id, email, is_active FROM users WHERE id = %s",
-                (payload['user_id'],),
+                (user_id,),
                 fetch='one'
             )
             
             if not user or not user['is_active']:
+                logger.warning(f"User {user_id} not found or inactive during token refresh")
                 raise AuthenticationError("User not found or inactive")
             
             # Generate new access token
             access_token, _ = self._generate_tokens(user['id'], user['email'])
             
+            logger.info(f"New access token generated for user {user_id}")
             return {
                 "access_token": access_token,
                 "token_type": "bearer"
             }
             
         except jwt.ExpiredSignatureError:
+            logger.warning("Refresh token has expired")
             raise AuthenticationError("Refresh token has expired")
         except jwt.InvalidTokenError:
+            logger.warning("Invalid refresh token provided")
             raise AuthenticationError("Invalid refresh token")
         except Exception as e:
             logger.error(f"Token refresh error: {e}")
@@ -346,6 +369,54 @@ class AuthService:
             fetch='one'
         )
         return user
+
+    def cleanup_expired_tokens(self):
+        """Clean up expired refresh tokens"""
+        try:
+            deleted_count = self.db.execute_query(
+                "DELETE FROM refresh_tokens WHERE expires_at < %s",
+                (datetime.utcnow(),),
+                fetch='none'
+            )
+            if deleted_count and deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} expired refresh tokens")
+        except Exception as e:
+            logger.error(f"Error cleaning up expired tokens: {e}")
+
+    def revoke_user_tokens(self, user_id: int):
+        """Revoke all refresh tokens for a user (useful for logout all devices)"""
+        try:
+            self.db.execute_query(
+                "UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = %s",
+                (user_id,)
+            )
+            logger.info(f"Revoked all tokens for user {user_id}")
+        except Exception as e:
+            logger.error(f"Error revoking tokens for user {user_id}: {e}")
+
+    def cleanup_expired_tokens(self):
+        """Clean up expired refresh tokens"""
+        try:
+            deleted_count = self.db.execute_query(
+                "DELETE FROM refresh_tokens WHERE expires_at < %s",
+                (datetime.utcnow(),),
+                fetch='none'
+            )
+            if deleted_count and deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} expired refresh tokens")
+        except Exception as e:
+            logger.error(f"Error cleaning up expired tokens: {e}")
+
+    def revoke_user_tokens(self, user_id: int):
+        """Revoke all refresh tokens for a user (useful for logout all devices)"""
+        try:
+            self.db.execute_query(
+                "UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = %s",
+                (user_id,)
+            )
+            logger.info(f"Revoked all tokens for user {user_id}")
+        except Exception as e:
+            logger.error(f"Error revoking tokens for user {user_id}: {e}")
 
 # Global auth service instance
 auth_service = AuthService()

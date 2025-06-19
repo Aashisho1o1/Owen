@@ -220,16 +220,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       async (err) => {
         const originalRequest = err.config;
 
-        if (err.response?.status === 401 && !originalRequest._retry) {
+        // Prevent infinite loops
+        if (err.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/api/auth/refresh') {
           originalRequest._retry = true;
 
+          console.log('🔄 Token expired, attempting refresh...');
           const success = await refreshToken();
           if (success) {
             const newTokens = getStoredTokens();
             if (newTokens) {
               originalRequest.headers['Authorization'] = `${newTokens.token_type} ${newTokens.access_token}`;
+              console.log('✅ Token refreshed, retrying request');
               return apiInstance(originalRequest);
             }
+          } else {
+            console.log('❌ Token refresh failed, logging out');
+            // Refresh failed, user will be logged out
           }
         }
 
@@ -260,30 +266,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const initializeAuth = async () => {
       console.log('🚀 Initializing authentication...');
       setIsLoading(true);
-      const tokens = getStoredTokens();
       
+      // TEMPORARY FIX: Clear potentially corrupted tokens to prevent refresh loops
+      const tokens = getStoredTokens();
       if (tokens) {
-        console.log('🔑 Found stored tokens:', { 
-          hasAccessToken: !!tokens.access_token,
-          hasRefreshToken: !!tokens.refresh_token,
-          tokenType: tokens.token_type,
-          expiresIn: tokens.expires_in
-        });
+        console.log('🔍 Found stored tokens, validating...');
         
         // Try to get user profile to verify token validity
         const success = await loadUserProfile();
         if (!success) {
-          console.log('⚠️ Token validation failed, attempting refresh...');
-          // Token might be expired, try refresh
-          const refreshSuccess = await refreshToken();
-          if (refreshSuccess) {
-            console.log('✅ Token refresh successful');
-            await loadUserProfile();
-          } else {
-            console.log('❌ Token refresh failed, clearing tokens');
-            // If refresh fails, clear tokens and log out
-            clearTokens();
-          }
+          console.log('⚠️ Token validation failed, clearing all tokens to prevent loops');
+          clearTokens();
+          setUser(null);
+          setIsAuthenticated(false);
         } else {
           console.log('✅ Token validation successful');
         }
@@ -294,7 +289,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     initializeAuth();
-  }, [getStoredTokens, loadUserProfile, refreshToken, clearTokens]);
+  }, [getStoredTokens, loadUserProfile, clearTokens]);
 
   const login = async (data: LoginData): Promise<boolean> => {
     setIsLoading(true);
