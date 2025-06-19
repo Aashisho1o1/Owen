@@ -28,6 +28,9 @@ import bcrypt
 from services.database import db_service, DatabaseError
 from services.auth_service import auth_service, AuthenticationError
 
+# Import centralized authentication dependency
+from dependencies import get_current_user_id
+
 # Import routers
 from routers.chat_router import router as chat_router
 
@@ -206,22 +209,6 @@ def create_access_token(user_id: int) -> str:
         "iat": datetime.utcnow()
     }
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
-
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    """Get current user ID from JWT token"""
-    try:
-        token = credentials.credentials
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
-        user_id = payload.get("user_id")
-        
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        return user_id
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 # App initialization
 @asynccontextmanager
