@@ -1,10 +1,11 @@
+// Template Fix Deployment - 2024
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppContext } from '../contexts/AppContext';
 import { Document } from '../services/api';
-import { FICTION_TEMPLATES, FictionTemplate } from '../constants/templates';
+
 
 import './DocumentsPage.css';
 
@@ -14,11 +15,13 @@ const DocumentsPage: React.FC = () => {
   const { setShowAuthModal, setAuthMode } = useAppContext();
   const { 
     documents, 
+    templates,
     isLoading, 
     error, 
     createDocument, 
     deleteDocument, 
     updateDocument,
+    createFromTemplate,
     getRecentDocuments,
     refreshAll 
   } = useDocuments();
@@ -35,7 +38,7 @@ const DocumentsPage: React.FC = () => {
     refreshAll();
   }, [refreshAll]);
 
-  const handleCreateFromTemplate = async (template: FictionTemplate) => {
+  const handleCreateFromTemplate = async (template: any) => {
     if (!isAuthenticated) {
       setAuthMode('signin');
       setShowAuthModal(true);
@@ -43,20 +46,7 @@ const DocumentsPage: React.FC = () => {
     }
 
     try {
-      const newDoc = await createDocument(
-        `New ${template.genre} Novel`,
-        'novel',
-        undefined,
-        undefined
-      );
-      
-      // Update the document with template content and theme reference stored in tags
-      await updateDocument(newDoc.id, { 
-        content: template.content,
-        tags: [`theme:${template.themeId}`]
-      });
-      
-      // Navigate to the editor with the new document
+      const newDoc = await createFromTemplate(template.id, `New ${template.title}`);
       navigate(`/editor/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create document from template:', error);
@@ -178,23 +168,22 @@ const DocumentsPage: React.FC = () => {
               <h3>Blank document</h3>
             </div>
 
-            {/* Fiction Templates */}
-            {FICTION_TEMPLATES.map((template) => (
+            {/* Backend Templates */}
+            {templates.map((template) => (
               <div 
                 key={template.id}
                 className="template-card"
                 onClick={() => handleCreateFromTemplate(template)}
-                style={{ '--template-color': template.color } as React.CSSProperties}
               >
                 <div className="template-preview">
-                  <div className="template-icon">{template.icon}</div>
+                  <div className="template-icon">📄</div>
                   <div className="template-content">
-                    <h4>{template.name}</h4>
+                    <h4>{template.title}</h4>
                     <p>{template.description}</p>
                   </div>
                 </div>
-                <h3>{template.name}</h3>
-                <span className="template-genre">{template.genre}</span>
+                <h3>{template.title}</h3>
+                <span className="template-genre">Template</span>
               </div>
             ))}
           </div>

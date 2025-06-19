@@ -1,3 +1,5 @@
+# Backend API - DOG Writer Document Management System
+# Version 2.0.0 - Railway Deployment [FORCE-DEPLOY-2024-TEMPLATE-FIX]
 """
 DOG Writer Backend - Google Docs-Like Document Management System
 Comprehensive document editor with PostgreSQL database, folders, versions, sharing, and collaboration
