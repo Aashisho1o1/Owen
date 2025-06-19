@@ -406,9 +406,8 @@ const api = {
     return response.data;
   },
 
-  updateDocument: async (request: UpdateDocumentRequest): Promise<Document> => {
-    const { id, ...updateData } = request;
-    const response = await apiClient.put<Document>(`/api/documents/${id}`, updateData);
+  updateDocument: async (id: string, updates: Partial<Document>): Promise<Document> => {
+    const response = await apiClient.put<Document>(`/api/documents/${id}`, updates);
     return response.data;
   },
 

@@ -25,6 +25,10 @@ from routers.session_router import router as session_router
 # Import routes
 from routes.auth import router as auth_router
 from routes.documents import router as documents_router
+from routes.folders import router as folders_router
+from routes.templates import router as templates_router
+from routes.series import router as series_router
+from routes.goals import router as goals_router
 # from routes.analytics import router as analytics_router  # Temporarily disabled
 
 # Configure logging
@@ -120,12 +124,13 @@ async def health_check():
             }
         )
 
-# Include routers
+# Include routers - Proper REST API architecture
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(documents_router, prefix="/api/documents", tags=["Documents"])
-
-# Mount documents router again at /api level for folders, series, templates, goals
-app.include_router(documents_router, prefix="/api", tags=["Document Management"])
+app.include_router(folders_router, prefix="/api/folders", tags=["Folders"])
+app.include_router(templates_router, prefix="/api/templates", tags=["Templates"])
+app.include_router(series_router, prefix="/api/series", tags=["Series"])
+app.include_router(goals_router, prefix="/api/goals", tags=["Writing Goals"])
 
 # Legacy routers (if still needed)
 # app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])  # Temporarily disabled
