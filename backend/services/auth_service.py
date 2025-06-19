@@ -84,12 +84,12 @@ class AuthService:
     def register_user(self, username: str, email: str, password: str, name: str = None) -> Dict[str, Any]:
         """Register a new user"""
         try:
-            # Skip email validation temporarily
-            # try:
-            #     valid_email = validate_email(email)
-            #     email = valid_email.email
-            # except EmailNotValidError as e:
-            #     raise AuthenticationError(f"Invalid email: {e}")
+            # Validate email
+            try:
+                valid_email = validate_email(email)
+                email = valid_email.email
+            except EmailNotValidError as e:
+                raise AuthenticationError(f"Invalid email: {e}")
             
             # Check if user already exists
             existing_user = self.db.execute_query(
@@ -122,11 +122,11 @@ class AuthService:
             # Generate tokens
             access_token, refresh_token = self._generate_tokens(user['id'], user['email'])
             
-            # Skip refresh token storage temporarily
-            # self._store_refresh_token(user['id'], refresh_token)
+            # Store refresh token
+            self._store_refresh_token(user['id'], refresh_token)
             
-            # Skip login logs temporarily  
-            # self._log_login_attempt(user['id'], email, True, None, "Registration successful")
+            # Log successful registration
+            self._log_login_attempt(user['id'], email, True, None, "Registration successful")
             
             logger.info(f"User registered successfully: {email}")
             
