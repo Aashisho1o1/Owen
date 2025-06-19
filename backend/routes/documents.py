@@ -15,10 +15,10 @@ from services.document_service import document_service, DocumentError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter()# THIS IS THE CORRECT FUNCTION THAT SHOULD BE IN documents.py
+
 security = HTTPBearer()
 
-# Authentication dependency
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     """Get current user ID from JWT token"""
     try:
@@ -28,8 +28,8 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     except AuthenticationError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
-        logger.error(f"Authentication error: {e}")
-        raise HTTPException(status_code=401, detail="Invalid authentication token")
+        logger.error(f"Authentication error in documents route: {e}", exc_info=True)
+        raise HTTPException(status_code=401, detail="Invalid token or authentication error.")
 
 # Request/Response Models
 class DocumentCreateRequest(BaseModel):
@@ -56,7 +56,7 @@ class FolderCreateRequest(BaseModel):
 @router.post("/")
 async def create_document(
     request: DocumentCreateRequest,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Create a new document"""
     try:
@@ -80,12 +80,12 @@ async def create_document(
     except DocumentError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error in create_document: {e}")
+        logger.error(f"Unexpected error in create_document: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/")
 async def get_user_documents(
-    user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(get_current_user_id_from_documents),
     folder_id: Optional[str] = Query(None),
     series_id: Optional[str] = Query(None),
     document_type: Optional[str] = Query(None),
@@ -119,7 +119,7 @@ async def get_user_documents(
 @router.get("/{document_id}")
 async def get_document(
     document_id: str,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Get a specific document"""
     try:
@@ -141,7 +141,7 @@ async def get_document(
 async def update_document(
     document_id: str,
     request: DocumentUpdateRequest,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Update a document"""
     try:
@@ -172,7 +172,7 @@ async def update_document(
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: str,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Delete a document"""
     try:
@@ -193,7 +193,7 @@ async def delete_document(
 @router.get("/{document_id}/versions")
 async def get_document_versions(
     document_id: str,
-    user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(get_current_user_id_from_documents),
     limit: int = Query(20, ge=1, le=50)
 ):
     """Get document version history"""
@@ -220,7 +220,7 @@ async def get_document_versions(
 @router.post("/folders")
 async def create_folder(
     request: FolderCreateRequest,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Create a new folder"""
     try:
@@ -246,7 +246,7 @@ async def create_folder(
 
 @router.get("/folders")
 async def get_user_folders(
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Get user's folders"""
     try:
@@ -268,7 +268,7 @@ async def get_user_folders(
 # Debug endpoint (remove in production)
 @router.get("/debug/system-status")
 async def debug_system_status(
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Debug endpoint to check system status and database connectivity"""
     try:
@@ -300,7 +300,7 @@ async def debug_system_status(
 # Series endpoints
 @router.get("/series")
 async def get_user_series(
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Get user's series (placeholder implementation)"""
     try:
@@ -322,7 +322,7 @@ async def get_user_series(
 # Templates endpoints
 @router.get("/templates")
 async def get_templates(
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Get available document templates (sophisticated implementation)"""
     try:
@@ -800,7 +800,7 @@ async def get_templates(
 # Goals endpoints  
 @router.get("/goals")
 async def get_writing_goals(
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id_from_documents)
 ):
     """Get user's writing goals (placeholder implementation)"""
     try:

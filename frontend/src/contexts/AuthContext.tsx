@@ -280,7 +280,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const success = await loadUserProfile();
         if (!success) {
           console.log('⚠️ Token validation failed, clearing all tokens to prevent loops');
-          clearTokens();
+            clearTokens();
           setUser(null);
           setIsAuthenticated(false);
         } else {

@@ -432,13 +432,3 @@ class AuthService:
 
 # Global auth service instance
 auth_service = AuthService()
-
-# Utility functions for FastAPI dependencies
-def verify_token(token: str) -> Dict[str, Any]:
-    """Verify token - used as FastAPI dependency"""
-    return auth_service.verify_token(token)
-
-def get_current_user_id(token: str) -> int:
-    """Get current user ID from token - used as FastAPI dependency"""
-    user_info = verify_token(token)
-    return user_info['user_id'] 
