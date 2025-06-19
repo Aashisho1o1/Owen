@@ -150,8 +150,13 @@ class DocumentUpdate(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
+    expires_in: int = 1800  # 30 minutes
     user: dict
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 class DocumentFromTemplateCreate(BaseModel):
     template_id: str = Field(..., description="Template ID to use")
@@ -201,14 +206,6 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-
-def create_access_token(user_id: int) -> str:
-    payload = {
-        "user_id": user_id,
-        "exp": datetime.utcnow() + timedelta(weeks=1),
-        "iat": datetime.utcnow()
-    }
-    return jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
 
 # App initialization
 @asynccontextmanager
@@ -305,7 +302,7 @@ async def register(user_data: UserCreate) -> TokenResponse:
         logger.info(f"Registration attempt for email: {user_data.email}")
         logger.info(f"Registration data: name='{user_data.name}', email='{user_data.email}', password_length={len(user_data.password)}")
         
-        # Use auth service for registration
+        # Use auth service for registration - returns complete token response
         result = auth_service.register_user(
             username=user_data.email.split('@')[0],  # Use email prefix as username
             email=user_data.email,
@@ -313,18 +310,17 @@ async def register(user_data: UserCreate) -> TokenResponse:
             name=user_data.name
         )
         
-        user_info = result['user']
-        access_token = create_access_token(user_info['id'])
-        
         logger.info(f"New user registered: {user_data.email}")
         return TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
+            access_token=result['access_token'],
+            refresh_token=result['refresh_token'],
+            token_type=result['token_type'],
+            expires_in=1800,  # 30 minutes
             user={
-                "id": user_info['id'],
-                "name": user_info['name'],
-                "email": user_info['email'],
-                "created_at": user_info['created_at']
+                "id": result['user']['id'],
+                "name": result['user']['name'],
+                "email": result['user']['email'],
+                "created_at": result['user']['created_at']
             }
         )
     except AuthenticationError as e:
@@ -342,21 +338,20 @@ async def register(user_data: UserCreate) -> TokenResponse:
 @app.post("/api/auth/login")
 async def login(login_data: UserLogin) -> TokenResponse:
     try:
-        # Use auth service for login
+        # Use auth service for login - returns complete token response
         result = auth_service.login_user(login_data.email, login_data.password)
-        
-        user_info = result['user']
-        access_token = create_access_token(user_info['id'])
         
         logger.info(f"User logged in: {login_data.email}")
         return TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
+            access_token=result['access_token'],
+            refresh_token=result['refresh_token'],
+            token_type=result['token_type'],
+            expires_in=1800,  # 30 minutes
             user={
-                "id": user_info['id'],
-                "name": user_info['name'],
-                "email": user_info['email'],
-                "last_login": user_info.get('last_login')
+                "id": result['user']['id'],
+                "name": result['user']['name'],
+                "email": result['user']['email'],
+                "last_login": result['user'].get('last_login')
             }
         )
     except AuthenticationError as e:
@@ -364,6 +359,40 @@ async def login(login_data: UserLogin) -> TokenResponse:
     except Exception as e:
         logger.error(f"Login error: {e}")
         raise HTTPException(status_code=500, detail="Login failed")
+
+@app.post("/api/auth/refresh")
+async def refresh_token(refresh_data: RefreshTokenRequest) -> TokenResponse:
+    """Refresh access token using refresh token"""
+    try:
+        result = auth_service.refresh_access_token(refresh_data.refresh_token)
+        
+        return TokenResponse(
+            access_token=result['access_token'],
+            refresh_token=refresh_data.refresh_token,  # Keep the same refresh token
+            token_type=result['token_type'],
+            expires_in=1800,  # 30 minutes
+            user={}  # Don't return user data for refresh
+        )
+    except AuthenticationError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        logger.error(f"Token refresh error: {e}")
+        raise HTTPException(status_code=500, detail="Token refresh failed")
+
+@app.post("/api/auth/logout")
+async def logout(user_id: int = Depends(get_current_user_id)):
+    """Logout user (revoke tokens)"""
+    try:
+        # This would ideally revoke the refresh tokens in the database
+        # For now, return success (client should discard tokens)
+        logger.info(f"User {user_id} logged out")
+        return {
+            "success": True,
+            "message": "Logged out successfully"
+        }
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        raise HTTPException(status_code=500, detail="Logout failed")
 
 @app.get("/api/auth/profile")
 async def get_profile(user_id: int = Depends(get_current_user_id)):
