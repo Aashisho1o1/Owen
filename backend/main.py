@@ -123,8 +123,9 @@ async def health_check():
 # Include routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(documents_router, prefix="/api/documents", tags=["Documents"])
-# Single clean mounting of documents router - includes folders, series, templates, goals endpoints
-# app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])  # Temporarily disabled
+
+# Mount documents router again at /api level for folders, series, templates, goals
+app.include_router(documents_router, prefix="/api", tags=["Document Management"])
 
 # Legacy routers (if still needed)
 # app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])  # Temporarily disabled

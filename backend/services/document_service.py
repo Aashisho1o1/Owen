@@ -150,7 +150,7 @@ class DocumentService:
         try:
             query = """
                 SELECT id, title, content, document_type, status, tags, is_favorite, 
-                       word_count, created_at, updated_at, folder_id, series_id, chapter_number
+                       word_count, created_at, updated_at, folder_id, series_id
                 FROM documents 
                 WHERE id = %s AND user_id = %s
             """
@@ -173,7 +173,7 @@ class DocumentService:
                 "updated_at": document['updated_at'].isoformat(),
                 "folder_id": document['folder_id'],
                 "series_id": document['series_id'],
-                "chapter_number": document['chapter_number']
+                "chapter_number": None  # Not in database schema yet
             }
             
         except DatabaseError as e:
