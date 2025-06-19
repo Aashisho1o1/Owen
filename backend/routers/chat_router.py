@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import json
 import re
+import logging
 
 # Import security services
-from services.auth_service import get_current_user_id
+from services.auth_service import auth_service, AuthenticationError
 from services.validation_service import ChatMessageModel, UserFeedbackModel, input_validator
 
 # Change relative imports to absolute imports
@@ -16,6 +18,22 @@ from services.database import db_service
 
 # Initialize services
 llm_service = LLMService()
+logger = logging.getLogger(__name__)
+security = HTTPBearer()
+
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
+    """Get current user ID from JWT token"""
+    if credentials is None or not credentials.credentials:
+        raise HTTPException(status_code=401, detail="Authentication credentials were not provided.")
+    try:
+        token = credentials.credentials
+        user_data = auth_service.verify_token(token)
+        return user_data["user_id"]
+    except AuthenticationError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        logger.error(f"Authentication error in chat route: {e}", exc_info=True)
+        raise HTTPException(status_code=401, detail="Invalid token or authentication error.")
 
 router = APIRouter(
     prefix="/api/chat",
@@ -25,7 +43,7 @@ router = APIRouter(
 @router.post("/", response_model=ChatResponse)
 async def chat(
     request: ChatRequest, 
-    user_id: str = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
@@ -158,7 +176,7 @@ async def chat(
 @router.post("/analyze-writing", response_model=WritingSampleResponse)
 async def analyze_writing_sample(
     request: WritingSampleRequest,
-    user_id: str = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """Analyze a user's writing sample to create a personalized style profile."""
     try:
@@ -196,7 +214,7 @@ async def analyze_writing_sample(
 @router.post("/feedback")
 async def submit_user_feedback(
     request: UserFeedbackRequest,
-    user_id: str = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """Submit user feedback on AI responses for continuous improvement."""
     try:
@@ -232,7 +250,7 @@ async def submit_user_feedback(
 @router.post("/onboarding", response_model=OnboardingResponse)
 async def complete_onboarding(
     request: OnboardingRequest,
-    user_id: str = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)
 ):
     """Complete user onboarding and save initial preferences."""
     try:
@@ -273,7 +291,7 @@ async def complete_onboarding(
         )
 
 @router.get("/preferences")
-async def get_user_preferences(user_id: str = Depends(get_current_user_id)):
+async def get_user_preferences(user_id: int = Depends(get_current_user_id)):
     """Get user preferences for the authenticated user."""
     try:
         preferences = db_service.get_user_preferences(user_id)
