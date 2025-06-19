@@ -580,6 +580,88 @@ async def test_register(user_data: UserCreate):
         logger.error(f"🧪 TEST TRACEBACK: {traceback.format_exc()}")
         return {"error": str(e), "type": type(e).__name__}
 
+# Test auth service flow step by step
+@app.post("/api/test/auth-flow")  
+async def test_auth_flow(user_data: UserCreate):
+    try:
+        logger.info(f"🧪 AUTH FLOW TEST: Starting for {user_data.email}")
+        
+        # Step 1: Email validation (like auth service)
+        try:
+            from email_validator import validate_email, EmailNotValidError
+            valid_email = validate_email(user_data.email)
+            email = valid_email.email
+            logger.info(f"🧪 Step 1 - Email validation: ✅ {email}")
+        except EmailNotValidError as e:
+            logger.error(f"🧪 Step 1 - Email validation: ❌ {e}")
+            return {"error": f"Invalid email: {e}", "step": "email_validation"}
+        except ImportError as e:
+            logger.error(f"🧪 Step 1 - Email validator import: ❌ {e}")
+            return {"error": f"Email validator not available: {e}", "step": "email_validator_import"}
+        
+        # Step 2: Check existing user
+        existing_user = db_service.execute_query(
+            "SELECT id FROM users WHERE email = %s OR username = %s",
+            (email, user_data.email.split('@')[0]),
+            fetch='one'
+        )
+        
+        if existing_user:
+            logger.info(f"🧪 Step 2 - User exists: ✅ Found existing user {existing_user['id']}")
+            return {"error": "User already exists", "step": "user_exists", "existing_user_id": existing_user['id']}
+        
+        logger.info(f"🧪 Step 2 - User exists: ✅ No existing user found")
+        
+        # Step 3: Password hashing
+        password_hash = hash_password(user_data.password)
+        logger.info(f"🧪 Step 3 - Password hashing: ✅")
+        
+        # Step 4: Create user
+        username = user_data.email.split('@')[0]
+        new_user = db_service.execute_query(
+            """INSERT INTO users (username, email, password_hash, name, created_at)
+               VALUES (%s, %s, %s, %s, %s)
+               RETURNING id, username, email, name, created_at""",
+            (username, email, password_hash, user_data.name, datetime.utcnow()),
+            fetch='one'
+        )
+        
+        if not new_user:
+            logger.error(f"🧪 Step 4 - User creation: ❌ No user returned")
+            return {"error": "Failed to create user", "step": "user_creation"}
+        
+        logger.info(f"🧪 Step 4 - User creation: ✅ User ID {new_user['id']}")
+        
+        # Step 5: Generate tokens (simplified)
+        access_token = create_access_token(new_user['id'])
+        logger.info(f"🧪 Step 5 - Token generation: ✅")
+        
+        # Step 6: Test login_logs table
+        try:
+            db_service.execute_query(
+                """INSERT INTO login_logs (user_id, email, success, attempted_at, failure_reason)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (new_user['id'], email, True, datetime.utcnow(), "Registration successful"),
+            )
+            logger.info(f"🧪 Step 6 - Login logs: ✅")
+        except Exception as e:
+            logger.error(f"🧪 Step 6 - Login logs: ❌ {e}")
+            return {"error": f"Login logs failed: {e}", "step": "login_logs", "user_created": True, "user_id": new_user['id']}
+        
+        logger.info(f"🧪 AUTH FLOW TEST: ✅ All steps successful")
+        return {
+            "success": True, 
+            "user": dict(new_user),
+            "access_token": access_token,
+            "message": "All auth service steps successful"
+        }
+        
+    except Exception as e:
+        logger.error(f"🧪 AUTH FLOW ERROR: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"🧪 AUTH FLOW TRACEBACK: {traceback.format_exc()}")
+        return {"error": str(e), "type": type(e).__name__}
+
 # Authentication endpoints
 @app.post("/api/auth/register")
 async def register(user_data: UserCreate) -> TokenResponse:
