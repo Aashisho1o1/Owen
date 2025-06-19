@@ -7,14 +7,29 @@ import os
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-from services.auth_service import get_current_user_id, AuthenticationError
+from services.auth_service import auth_service, AuthenticationError
 from services.document_service import document_service, DocumentError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+security = HTTPBearer()
+
+# Authentication dependency
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
+    """Get current user ID from JWT token"""
+    try:
+        token = credentials.credentials
+        user_info = auth_service.verify_token(token)
+        return user_info['user_id']
+    except AuthenticationError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        logger.error(f"Authentication error: {e}")
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 # Request/Response Models
 class DocumentCreateRequest(BaseModel):
@@ -277,8 +292,7 @@ async def debug_system_status(
         logger.error(f"System status check failed: {e}")
         return {
             "status": "unhealthy",
-            "user_id": user_id,
-            "database_type": "postgresql",
             "error": str(e),
+            "user_id": user_id,
             "message": "System check failed"
         } 
