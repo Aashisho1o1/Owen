@@ -28,6 +28,9 @@ import bcrypt
 from services.database import db_service, DatabaseError
 from services.auth_service import auth_service, AuthenticationError
 
+# Import routers
+from routers.chat_router import router as chat_router
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -251,6 +254,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(chat_router)
 
 # Health endpoints
 @app.get("/")

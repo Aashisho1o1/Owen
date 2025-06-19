@@ -346,7 +346,7 @@ export interface UserProfile {
 
 const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
-    const response = await apiClient.post<ChatResponse>('/api/chat/message', request);
+    const response = await apiClient.post<ChatResponse>('/api/chat/', request);
     return response.data;
   },
   
