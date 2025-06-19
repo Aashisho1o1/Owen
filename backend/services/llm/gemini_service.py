@@ -27,8 +27,6 @@ class GeminiService(BaseLLMService):
                 top_p=0.95,
                 top_k=64,
                 max_output_tokens=8192,
-                # Disable thinking mode for faster response times and lower costs
-                response_logprobs=False,
                 # Set thinking budget to 0 for fastest response
                 thinking_budget=0
             )
