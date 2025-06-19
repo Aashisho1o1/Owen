@@ -224,10 +224,14 @@ class AuthService:
     def verify_token(self, token: str) -> Dict[str, Any]:
         """Verify JWT token and return user info"""
         try:
+            # Log token verification attempt
+            logger.debug(f"Verifying token: {token[:20]}...")
+            
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             
             # Check token type
             if payload.get('type') != 'access':
+                logger.warning(f"Invalid token type: {payload.get('type')}")
                 raise AuthenticationError("Invalid token type")
             
             # Get user from database to ensure they still exist and are active
@@ -237,9 +241,15 @@ class AuthService:
                 fetch='one'
             )
             
-            if not user or not user['is_active']:
-                raise AuthenticationError("User not found or inactive")
+            if not user:
+                logger.warning(f"User {payload['user_id']} not found in database")
+                raise AuthenticationError("User not found")
+                
+            if not user['is_active']:
+                logger.warning(f"User {payload['user_id']} is inactive")
+                raise AuthenticationError("User account is inactive")
             
+            logger.debug(f"Token verified successfully for user {user['id']}")
             return {
                 "user_id": user['id'],
                 "username": user['username'],
@@ -248,11 +258,13 @@ class AuthService:
             }
             
         except jwt.ExpiredSignatureError:
+            logger.warning("Token has expired")
             raise AuthenticationError("Token has expired")
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            logger.error(f"Invalid token: {str(e)}")
             raise AuthenticationError("Invalid token")
         except Exception as e:
-            logger.error(f"Token verification error: {e}")
+            logger.error(f"Token verification error: {str(e)}")
             raise AuthenticationError("Token verification failed")
     
     def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
