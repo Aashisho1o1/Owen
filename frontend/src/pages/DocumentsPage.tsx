@@ -168,24 +168,50 @@ const DocumentsPage: React.FC = () => {
               <h3>Blank document</h3>
             </div>
 
-            {/* Backend Templates */}
-            {templates.map((template) => (
-              <div 
-                key={template.id}
-                className="template-card"
-                onClick={() => handleCreateFromTemplate(template)}
-              >
-                <div className="template-preview">
-                  <div className="template-icon">📄</div>
-                  <div className="template-content">
-                    <h4>{template.title}</h4>
-                    <p>{template.description}</p>
+            {/* Story Genre Templates */}
+            {templates.map((template) => {
+              // Map template IDs to genre icons and display names
+              const getTemplateIcon = (id: string) => {
+                switch(id) {
+                  case 'romance': return '💕';
+                  case 'fantasy': return '🐉';
+                  case 'mystery': return '🔍';
+                  case 'scifi': return '🚀';
+                  case 'horror': return '👻';
+                  default: return '📖';
+                }
+              };
+
+              const getGenreDisplayName = (id: string) => {
+                switch(id) {
+                  case 'romance': return 'Romance';
+                  case 'fantasy': return 'Fantasy';
+                  case 'mystery': return 'Mystery';
+                  case 'scifi': return 'Sci-Fi';
+                  case 'horror': return 'Horror';
+                  default: return 'Story';
+                }
+              };
+
+              return (
+                <div 
+                  key={template.id}
+                  className="template-card"
+                  data-template-id={template.id}
+                  onClick={() => handleCreateFromTemplate(template)}
+                >
+                  <div className="template-preview">
+                    <div className="template-icon">{getTemplateIcon(template.id)}</div>
+                    <div className="template-content">
+                      <h4>{template.title}</h4>
+                      <p>{template.description}</p>
+                    </div>
                   </div>
+                  <h3>{template.title}</h3>
+                  <span className="template-genre">{getGenreDisplayName(template.id)}</span>
                 </div>
-                <h3>{template.title}</h3>
-                <span className="template-genre">Template</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
