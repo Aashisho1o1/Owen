@@ -605,7 +605,7 @@ async def get_profile(user_id: int = Depends(get_current_user_id)):
     # Get user statistics
     try:
         doc_stats = db_service.execute_query(
-            "SELECT COUNT(*) as total_documents, COALESCE(SUM(word_count), 0) as total_words, COUNT(CASE WHEN is_favorite THEN 1 END) as favorite_documents FROM documents WHERE user_id = %s",
+            "SELECT COUNT(*) as total_documents, SUM(word_count) as total_words, COUNT(CASE WHEN is_favorite THEN 1 END) as favorite_documents FROM documents WHERE user_id = %s",
             (user_id,),
             fetch='one'
         )
