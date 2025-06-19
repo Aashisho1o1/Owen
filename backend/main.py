@@ -380,6 +380,11 @@ class TokenResponse(BaseModel):
     token_type: str
     user: dict
 
+class DocumentFromTemplateCreate(BaseModel):
+    template_id: str = Field(..., description="Template ID to use")
+    title: str = Field(..., min_length=1, max_length=200, description="Document title")
+    folder_id: Optional[str] = None
+
 # Helper functions
 def get_user_id_from_email(email: str) -> Optional[int]:
     """Get user ID from email"""
@@ -843,6 +848,44 @@ async def get_documents(
     except DatabaseError as e:
         logger.error(f"Error fetching documents: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch documents")
+
+@app.post("/api/documents/from-template")
+async def create_document_from_template(doc_data: DocumentFromTemplateCreate, user_id: int = Depends(get_current_user_id)):
+    try:
+        # Find the template
+        template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
+        if not template:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        doc_id = str(uuid.uuid4())
+        content = template['content']
+        
+        # Calculate analytics
+        word_count = calculate_word_count(content)
+        
+        result = db_service.execute_query(
+            """INSERT INTO documents (id, user_id, title, content, folder_id, status, tags, word_count, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               RETURNING id, title, content, folder_id, status, tags, word_count, created_at, updated_at""",
+            (doc_id, user_id, doc_data.title, content, doc_data.folder_id, 'draft', json.dumps([]), word_count, datetime.utcnow(), datetime.utcnow()),
+            fetch='one'
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to create document from template")
+        
+        # Format response
+        document = dict(result)
+        document['tags'] = json.loads(document['tags']) if document['tags'] else []
+        document['created_at'] = document['created_at'].isoformat() if document['created_at'] else None
+        document['updated_at'] = document['updated_at'].isoformat() if document['updated_at'] else None
+        
+        logger.info(f"Document created from template '{doc_data.template_id}': {document['title']} by user {user_id}")
+        return document
+        
+    except DatabaseError as e:
+        logger.error(f"Error creating document from template: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create document from template")
 
 @app.post("/api/documents")
 async def create_document(doc_data: DocumentCreate, user_id: int = Depends(get_current_user_id)):
