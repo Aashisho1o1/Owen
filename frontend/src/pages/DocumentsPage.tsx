@@ -178,7 +178,7 @@ const DocumentsPage: React.FC = () => {
                   case 'mystery': return '🔍';
                   case 'scifi': return '🚀';
                   case 'horror': return '👻';
-                  default: return '📖';
+                  default: return '✍️'; // Elegant writing icon instead of book
                 }
               };
 
@@ -189,7 +189,7 @@ const DocumentsPage: React.FC = () => {
                   case 'mystery': return 'Mystery';
                   case 'scifi': return 'Sci-Fi';
                   case 'horror': return 'Horror';
-                  default: return 'Story';
+                  default: return 'Template';
                 }
               };
 
