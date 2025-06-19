@@ -100,11 +100,11 @@ async def get_user_documents(
         
         # Apply pagination
         paginated_docs = user_docs[offset:offset + limit]
-        
-        return {
+    
+    return {
             "documents": paginated_docs,
             "total": len(user_docs)
-        }
+    }
         
     except Exception as e:
         logger.error(f"Error getting documents: {e}")
@@ -159,7 +159,7 @@ async def update_document(
             document["word_count"] = len(request.content.split()) if request.content else 0
             
         document["updated_at"] = datetime.utcnow().isoformat()
-        
+    
         return document
         
     except HTTPException:
