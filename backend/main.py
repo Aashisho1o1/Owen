@@ -17,7 +17,7 @@ from services.auth_service import auth_service
 from services.document_service import document_service
 
 # Import routers
-from routers.chat_router import router as chat_router
+# from routers.chat_router import router as chat_router  # Temporarily disabled for debugging
 from routers.checkpoint_router import router as checkpoint_router
 from routers.grammar_router import router as grammar_router
 from routers.session_router import router as session_router
@@ -128,7 +128,7 @@ app.include_router(documents_router, prefix="/api", tags=["Document Management"]
 # app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])  # Temporarily disabled
 
 # Legacy routers (if still needed)
-app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
+# app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])  # Temporarily disabled
 app.include_router(checkpoint_router, prefix="/api/checkpoints", tags=["Checkpoints"])
 app.include_router(grammar_router, prefix="/api/grammar", tags=["Grammar"])
 app.include_router(session_router, prefix="/api/session", tags=["Session"])
