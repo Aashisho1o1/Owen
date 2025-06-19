@@ -63,15 +63,7 @@ templates_store = [
         "id": "romance",
         "title": "Romance Novel",
         "description": "A passionate love story template with character arcs and emotional depth",
-        "content": """# Romance Novel
-
-## Chapter 1
-
-*The coffee shop smelled like possibility and second chances.*
-
-[Start writing your love story here...]
-
-""",
+        "content": "",
         "category": "Romance",
         "word_count_target": 65000,
         "estimated_time": "3-6 months"
@@ -80,15 +72,7 @@ templates_store = [
         "id": "fantasy",
         "title": "Fantasy Epic",
         "description": "A magical world-building template for epic fantasy adventures",
-        "content": """# Fantasy Epic
-
-## Chapter 1: The Call to Adventure
-
-*The ancient runes glowed with an otherworldly light, warning of the darkness that was coming.*
-
-[Begin your epic fantasy adventure here...]
-
-""",
+        "content": "",
         "category": "Fantasy",
         "word_count_target": 100000,
         "estimated_time": "6-12 months"
@@ -97,15 +81,7 @@ templates_store = [
         "id": "mystery",
         "title": "Mystery Thriller",
         "description": "A suspenseful mystery template with clues, red herrings, and shocking revelations",
-        "content": """# Mystery Thriller
-
-## Chapter 1: The Discovery
-
-*The body was found at 6:47 AM, and nothing would ever be the same again.*
-
-[Start unraveling your mystery here...]
-
-""",
+        "content": "",
         "category": "Mystery",
         "word_count_target": 70000,
         "estimated_time": "4-8 months"
@@ -114,15 +90,7 @@ templates_store = [
         "id": "scifi",
         "title": "Science Fiction",
         "description": "A futuristic sci-fi template exploring technology, humanity, and the unknown",
-        "content": """# Science Fiction
-
-## Chapter 1: First Contact
-
-*The signal came from beyond the edge of known space, carrying a message that would change everything.*
-
-[Launch your sci-fi adventure here...]
-
-""",
+        "content": "",
         "category": "Science Fiction",
         "word_count_target": 85000,
         "estimated_time": "5-10 months"
@@ -131,15 +99,7 @@ templates_store = [
         "id": "horror",
         "title": "Horror Story",
         "description": "A spine-chilling horror template with psychological terror and supernatural elements",
-        "content": """# Horror Story
-
-## Chapter 1: Something's Wrong
-
-*The house had been empty for twenty years, but someone—or something—was walking upstairs.*
-
-[Begin your terrifying tale here...]
-
-""",
+        "content": "",
         "category": "Horror",
         "word_count_target": 62500,
         "estimated_time": "3-6 months"
