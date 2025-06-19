@@ -224,33 +224,48 @@ class AuthService:
     
     def verify_token(self, token: str) -> Dict[str, Any]:
         """Verify JWT token and return user info"""
-        try:
-            # Log token verification attempt
-            logger.debug(f"Verifying token: {token[:20]}...")
+        logger.info("--- 🕵️ Starting Token Verification ---")
+        if not token:
+            logger.error("VERIFY_TOKEN_FAIL: Token is null or empty.")
+            raise AuthenticationError("Token not provided.")
             
+        try:
+            logger.info(f"VERIFY_TOKEN_STEP_1: Decoding JWT. Token starts with: {token[:20]}...")
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            logger.info("VERIFY_TOKEN_STEP_2: JWT decoded successfully.")
             
             # Check token type
-            if payload.get('type') != 'access':
-                logger.warning(f"Invalid token type: {payload.get('type')}")
+            token_type = payload.get('type')
+            logger.info(f"VERIFY_TOKEN_STEP_3: Checking token type. Found type: '{token_type}'.")
+            if token_type != 'access':
+                logger.warning(f"VERIFY_TOKEN_FAIL: Invalid token type. Expected 'access', got '{token_type}'.")
                 raise AuthenticationError("Invalid token type")
             
+            user_id = payload.get('user_id')
+            logger.info(f"VERIFY_TOKEN_STEP_4: Extracting user_id. Found user_id: {user_id}.")
+            if not user_id:
+                logger.error("VERIFY_TOKEN_FAIL: 'user_id' not found in token payload.")
+                raise AuthenticationError("'user_id' missing from token.")
+
             # Get user from database to ensure they still exist and are active
+            logger.info(f"VERIFY_TOKEN_STEP_5: Querying database for user_id: {user_id}.")
             user = self.db.execute_query(
                 "SELECT id, username, email, name, is_active FROM users WHERE id = %s",
-                (payload['user_id'],),
+                (user_id,),
                 fetch='one'
             )
             
             if not user:
-                logger.warning(f"User {payload['user_id']} not found in database")
+                logger.warning(f"VERIFY_TOKEN_FAIL: User {user_id} not found in database.")
                 raise AuthenticationError("User not found")
+            logger.info(f"VERIFY_TOKEN_STEP_6: User {user_id} found in database.")
                 
             if not user['is_active']:
-                logger.warning(f"User {payload['user_id']} is inactive")
+                logger.warning(f"VERIFY_TOKEN_FAIL: User {user_id} is inactive.")
                 raise AuthenticationError("User account is inactive")
+            logger.info(f"VERIFY_TOKEN_STEP_7: User {user_id} is active.")
             
-            logger.debug(f"Token verified successfully for user {user['id']}")
+            logger.info(f"--- ✅ Token Verified Successfully for user {user['id']} ---")
             return {
                 "user_id": user['id'],
                 "username": user['username'],
@@ -259,13 +274,13 @@ class AuthService:
             }
             
         except jwt.ExpiredSignatureError:
-            logger.warning("Token has expired")
+            logger.warning("VERIFY_TOKEN_FAIL: JWT has expired.")
             raise AuthenticationError("Token has expired")
         except jwt.InvalidTokenError as e:
-            logger.error(f"Invalid token: {str(e)}")
+            logger.error(f"VERIFY_TOKEN_FAIL: JWT is invalid. Details: {str(e)}")
             raise AuthenticationError("Invalid token")
         except Exception as e:
-            logger.error(f"Token verification error: {str(e)}")
+            logger.error(f"VERIFY_TOKEN_FAIL: An unexpected exception occurred. Details: {str(e)}", exc_info=True)
             raise AuthenticationError("Token verification failed")
     
     def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
