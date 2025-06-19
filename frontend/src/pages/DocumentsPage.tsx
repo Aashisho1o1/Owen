@@ -203,12 +203,10 @@ const DocumentsPage: React.FC = () => {
                   <div className="template-preview">
                     <div className="template-icon">{getTemplateIcon(template.id)}</div>
                     <div className="template-content">
-                      <h4>{template.title}</h4>
                       <p>{template.description}</p>
                     </div>
                   </div>
                   <h3>{template.title}</h3>
-                  <span className="template-genre">{getGenreDisplayName(template.id)}</span>
                 </div>
               );
             })}
