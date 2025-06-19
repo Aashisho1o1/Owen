@@ -123,64 +123,62 @@ export const useChat = ({
 
 
   const handleSendMessage = useCallback(async (message: string) => {
-    const newUserMessage: ChatMessage = { role: 'user', content: message };
-    const updatedMessages = [...messages, newUserMessage];
-    setMessages(updatedMessages);
+    if (!message.trim()) return;
     
-    setApiError(null);
-    setIsStreaming(false);
-    setStreamText('');
-    setStreamIndex(0);
+    setIsStreaming(true);
     setIsThinking(true);
-    setThinkingTrail(null); // Clear previous thinking trail
-
+    setThinkingTrail('');
+    setApiError(null);
+    
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: message,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    
     try {
-      const requestData: ChatRequest = {
+      logger.info('📤 Sending chat request:', {
+        messageLength: message.length,
+        editorContentLength: editorContent.length,
+        authorPersona,
+        helpFocus,
+        selectedLLM,
+        hasHighlightedText: !!highlightedText
+      });
+      
+      logger.info('📋 Request validation details:', {
+        messageValid: message.length > 0,
+        hasPreferences: !!userPreferences,
+        hasFeedback: !!feedbackOnPrevious
+      });
+      
+      const requestPayload = {
         message,
-        editor_text: editorContent || "",
+        editor_text: editorContent,
         author_persona: authorPersona,
         help_focus: helpFocus,
-        chat_history: updatedMessages, // Send the latest messages including the current user message
+        chat_history: [...messages, userMessage],
         llm_provider: selectedLLM,
         user_preferences: userPreferences || {
-          english_variant: "US",
-          writing_style_profile: {},
           onboarding_completed: false,
-          user_corrections: [],
-          writing_type: null,
-          feedback_style: null,
-          primary_goal: null
+          user_corrections: []
         },
         feedback_on_previous: feedbackOnPrevious || "",
-        english_variant: userPreferences?.english_variant || "US",
         highlighted_text: highlightedText || "",
         highlight_id: highlightedTextId || "",
+        english_variant: "US"
       };
-
-      console.log('📤 Sending chat request:', requestData);
-      console.log('📋 Request validation details:', {
-        messageType: typeof message,
-        messageLength: message?.length || 0,
-        editorTextType: typeof editorContent,
-        chatHistoryType: typeof updatedMessages,
-        chatHistoryLength: updatedMessages?.length || 0,
-        chatHistoryFirst: updatedMessages?.[0],
-        userPreferencesType: typeof userPreferences,
-        userPreferencesContent: userPreferences,
-        authorPersonaType: typeof authorPersona,
-        helpFocusType: typeof helpFocus,
-        llmProviderType: typeof selectedLLM
+      
+      // Log only essential request details to avoid circular references
+      logger.info('🔄 API Request:', 'POST', '/api/chat/');
+      logger.info('Request data:', {
+        ...requestPayload,
+        chat_history: `(${requestPayload.chat_history.length} messages)` // Prevent circular ref
       });
-
-      // Increase timeout to 60 seconds and add better error handling
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000);
-      });
-
-      const response: ChatResponse = await Promise.race([
-        api.chat(requestData),
-        timeoutPromise
-      ]);
+      
+      const response = await api.post('/api/chat/', requestPayload);
 
       console.log('📥 Received chat response:', response);
       

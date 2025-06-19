@@ -18,7 +18,7 @@ class GeminiService(BaseLLMService):
         super().__init__("GEMINI_API_KEY")
         if self.available:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-pro')
+            self.model = genai.GenerativeModel('gemini-2.5-pro')
     
     async def _make_api_call(self, api_call_func: Callable, error_context: str, **kwargs):
         """Generic helper to make Gemini API calls"""

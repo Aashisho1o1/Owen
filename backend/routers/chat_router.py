@@ -79,16 +79,20 @@ async def chat(
                 {"role": "user", "parts": [final_prompt]}
             ]
             response_text = await llm_service.generate_with_selected_llm(prompts, validated_llm_provider)
-        else: # Anthropic Claude
+        elif validated_llm_provider == "OpenAI GPT":
+            # Format prompt for OpenAI (simple string)
+            response_text = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
+        else: # Anthropic Claude or other
             response_result = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
             
             if isinstance(response_result, dict) and "text" in response_result:
                 response_text = response_result["text"]
                 thinking_trail = response_result.get("thinking_trail")
             else:
-                print(f"Unexpected response_result structure from Claude: {response_result}")
-                response_text = json.dumps({"dialogue_response": "Error: Received unexpected response structure from LLM service for Claude."})
-                thinking_trail = response_result.get("thinking_trail", "Error retrieving thinking trail.") if isinstance(response_result, dict) else "Unknown error in thinking trail."
+                print(f"Unexpected response_result structure from {validated_llm_provider}: {type(response_result)}")
+                # Avoid circular reference by converting to string safely
+                response_text = json.dumps({"dialogue_response": f"Error: Received unexpected response structure from LLM service for {validated_llm_provider}."})
+                thinking_trail = "Error retrieving thinking trail."
 
         # Parse and validate the JSON response
         try:
