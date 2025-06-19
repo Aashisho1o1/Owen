@@ -6,6 +6,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ChatMessage } from './chat/ChatMessage';
 import { ChatInput } from './chat/ChatInput';
 import { ThinkingTrail } from './chat/ThinkingTrail';
@@ -78,7 +79,49 @@ const CONTEXTUAL_PROMPTS = [
   "What writing techniques are used here and how can they be improved?"
 ];
 
+// Check if user is authenticated by looking for tokens
+const isUserAuthenticated = () => {
+  try {
+    const accessToken = localStorage.getItem('owen_access_token');
+    return !!accessToken;
+  } catch {
+    return false;
+  }
+};
+
 const ChatPane: React.FC = () => {
+  // Check authentication status
+  const isAuthenticated = () => {
+    try {
+      const accessToken = localStorage.getItem('owen_access_token');
+      return !!accessToken;
+    } catch {
+      return false;
+    }
+  };
+
+  const [userAuthenticated, setUserAuthenticated] = useState(isAuthenticated());
+
+  // Check auth status on mount and when localStorage changes
+  useEffect(() => {
+    const checkAuth = () => {
+      setUserAuthenticated(isAuthenticated());
+    };
+
+    checkAuth();
+    
+    // Listen for storage changes (when user logs in/out)
+    window.addEventListener('storage', checkAuth);
+    
+    // Also check periodically in case tokens are updated programmatically
+    const interval = setInterval(checkAuth, 1000);
+
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      clearInterval(interval);
+    };
+  }, []);
+
   const { 
     messages, 
     handleSendMessage, 
@@ -95,7 +138,10 @@ const ChatPane: React.FC = () => {
     isThinking,
     chatApiError,
     apiGlobalError,
-    checkApiConnection
+    checkApiConnection,
+    showAuthModal,
+    setShowAuthModal,
+    setAuthMode
   } = useAppContext();
 
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);

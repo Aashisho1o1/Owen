@@ -16,6 +16,7 @@ import { useChat } from '../hooks/useChat';
 import { useEditor } from '../hooks/useEditor';
 import { useDocuments } from '../hooks/useDocuments';
 import { logger } from '../utils/logger';
+import { useAuth } from '../contexts/AuthContext';
 
 interface WritingStyleProfile {
   formality?: string;
@@ -48,6 +49,10 @@ interface OnboardingData {
 }
 
 export interface AppContextType {
+  // Authentication state
+  isAuthenticated: boolean;
+  user: any;
+  
   // Author and content settings
   authorPersona: string;
   setAuthorPersona: React.Dispatch<React.SetStateAction<string>>;

@@ -29,6 +29,7 @@ export interface UseChatOptions {
   feedbackOnPrevious?: string;
   highlightedText?: string;
   highlightedTextId?: string;
+  onAuthRequired?: () => void;
 }
 
 export interface UseChatReturn {
@@ -56,6 +57,7 @@ export const useChat = ({
   feedbackOnPrevious,
   highlightedText,
   highlightedTextId,
+  onAuthRequired,
 }: UseChatOptions): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
@@ -241,7 +243,7 @@ export const useChat = ({
         fallbackResponse = `There was an issue with your request format. As ${authorPersona} would say, clarity is key in both writing and communication. Please try rephrasing your question.`;
       } else if (typedError.response?.status === 403 || typedError.response?.status === 401) {
         errorType = 'auth';
-        fallbackResponse = `There was an authentication issue. As ${authorPersona} would say, proper credentials are essential. Please refresh the page and try again.`;
+        fallbackResponse = `🔐 Authentication Required: You need to be signed in to use the AI Writing Assistant. Please sign in or create an account to start getting personalized writing feedback from ${authorPersona}.`;
       } else {
         errorType = 'general';
         fallbackResponse = `I encountered an unexpected issue: ${typedError.message || 'Unknown error'}. As ${authorPersona} would say, every writer faces challenges. Please try rephrasing your question or ask something else.`;
