@@ -1,48 +1,41 @@
 """
-Documents API for DOG Writer - Frontend Compatible
-Fixed to match exact frontend expectations and data structures.
+Simple Documents API for DOG Writer
+Minimal, working document management.
 """
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel
+import uuid
+from datetime import datetime
 
-from services.auth_service import auth_service, AuthenticationError
-from services.document_service import document_service, DocumentError
+from services.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     """Get current user ID from JWT token"""
-    if credentials is None or not credentials.credentials:
-        raise HTTPException(status_code=401, detail="Authentication credentials were not provided.")
     try:
         token = credentials.credentials
         user_data = auth_service.verify_token(token)
         return user_data["user_id"]
-    except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
-        logger.error(f"Authentication error in documents route: {e}", exc_info=True)
-        raise HTTPException(status_code=401, detail="Invalid token or authentication error.")
+        logger.error(f"Auth error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication required")
 
-# Request models matching frontend expectations
+# Simple request models
 class DocumentCreateRequest(BaseModel):
     title: str
     content: str = ""
     document_type: str = "novel"
     folder_id: Optional[str] = None
-    series_id: Optional[str] = None
-    chapter_number: Optional[int] = None
 
 class DocumentUpdateRequest(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
-    is_favorite: Optional[bool] = None
-    tags: Optional[List[str]] = None
 
 class CreateFromTemplateRequest(BaseModel):
     template_id: str
@@ -51,45 +44,45 @@ class CreateFromTemplateRequest(BaseModel):
 
 router = APIRouter()
 
-# Documents endpoints (return direct objects as frontend expects)
+# In-memory storage for development/testing
+documents_store = {}
+
 @router.post("/")
 async def create_document(
     request: DocumentCreateRequest,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Create a new document - returns Document object directly"""
+    """Create a new document - ultra simple"""
     try:
-        document = document_service.create_document(
-            user_id=user_id,
-            title=request.title,
-            content=request.content,
-            document_type=request.document_type,
-            folder_id=request.folder_id,
-            series_id=request.series_id
-        )
+        doc_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
         
-        # Return direct Document object as frontend expects
-        return {
-            "id": document["id"],
-            "title": document["title"],
+        document = {
+            "id": doc_id,
+            "title": request.title,
             "content": request.content,
-            "document_type": document["document_type"],
-            "word_count": document["word_count"],
-            "created_at": document["created_at"],
-            "updated_at": document["created_at"],
+            "document_type": request.document_type,
+            "word_count": len(request.content.split()) if request.content else 0,
+            "created_at": now,
+            "updated_at": now,
             "user_id": str(user_id),
             "folder_id": request.folder_id,
-            "series_id": request.series_id,
-            "chapter_number": request.chapter_number,
+            "series_id": None,
+            "chapter_number": None,
             "status": "draft",
             "is_favorite": False,
             "tags": []
         }
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        
+        # Store in memory (for now)
+        documents_store[doc_id] = document
+        
+        logger.info(f"Created document {doc_id} for user {user_id}")
+        return document
+        
     except Exception as e:
-        logger.error(f"Unexpected error in create_document: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error creating document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create document")
 
 @router.get("/")
 async def get_user_documents(
@@ -97,75 +90,49 @@ async def get_user_documents(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
-    """Get user's documents - returns DocumentsResponse format"""
+    """Get user's documents - ultra simple"""
     try:
-        documents = document_service.get_user_documents(
-            user_id=user_id,
-            limit=limit,
-            offset=offset
-        )
+        # Filter documents for this user
+        user_docs = [
+            doc for doc in documents_store.values() 
+            if doc["user_id"] == str(user_id)
+        ]
         
-        # Format for frontend DocumentsResponse interface
-        formatted_documents = []
-        for doc in documents:
-            formatted_documents.append({
-                "id": doc["id"],
-                "title": doc["title"],
-                "content": doc.get("content", ""),
-                "document_type": doc["document_type"],
-                "word_count": doc["word_count"],
-                "created_at": doc["created_at"],
-                "updated_at": doc["updated_at"],
-                "user_id": str(user_id),
-                "folder_id": doc.get("folder_id"),
-                "series_id": doc.get("series_id"),
-                "chapter_number": doc.get("chapter_number"),
-                "status": doc.get("status", "draft"),
-                "is_favorite": doc.get("is_favorite", False),
-                "tags": doc.get("tags", [])
-            })
+        # Apply pagination
+        paginated_docs = user_docs[offset:offset + limit]
         
         return {
-            "documents": formatted_documents,
-            "total": len(formatted_documents)
+            "documents": paginated_docs,
+            "total": len(user_docs)
         }
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        
     except Exception as e:
-        logger.error(f"Unexpected error in get_user_documents: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting documents: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get documents")
 
 @router.get("/{document_id}")
 async def get_document(
     document_id: str,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Get a specific document - returns Document object directly"""
+    """Get a specific document"""
     try:
-        doc = document_service.get_document(document_id, user_id)
+        if document_id not in documents_store:
+            raise HTTPException(status_code=404, detail="Document not found")
+            
+        document = documents_store[document_id]
         
-        # Return direct Document object as frontend expects
-        return {
-            "id": doc["id"],
-            "title": doc["title"],
-            "content": doc["content"],
-            "document_type": doc["document_type"],
-            "word_count": doc["word_count"],
-            "created_at": doc["created_at"],
-            "updated_at": doc["updated_at"],
-            "user_id": str(user_id),
-            "folder_id": doc.get("folder_id"),
-            "series_id": doc.get("series_id"),
-            "chapter_number": doc.get("chapter_number"),
-            "status": doc.get("status", "draft"),
-            "is_favorite": doc.get("is_favorite", False),
-            "tags": doc.get("tags", [])
-        }
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Check ownership
+        if document["user_id"] != str(user_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+            
+        return document
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Unexpected error in get_document: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get document")
 
 @router.put("/{document_id}")
 async def update_document(
@@ -173,39 +140,33 @@ async def update_document(
     request: DocumentUpdateRequest,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Update a document - returns Document object directly"""
+    """Update a document"""
     try:
-        document = document_service.update_document(
-            document_id=document_id,
-            user_id=user_id,
-            title=request.title,
-            content=request.content,
-            tags=request.tags,
-            is_favorite=request.is_favorite
-        )
+        if document_id not in documents_store:
+            raise HTTPException(status_code=404, detail="Document not found")
+            
+        document = documents_store[document_id]
         
-        # Return direct Document object as frontend expects
-        return {
-            "id": document["id"],
-            "title": document["title"],
-            "content": document["content"],
-            "document_type": document["document_type"],
-            "word_count": document["word_count"],
-            "created_at": document["created_at"],
-            "updated_at": document["updated_at"],
-            "user_id": str(user_id),
-            "folder_id": document.get("folder_id"),
-            "series_id": document.get("series_id"),
-            "chapter_number": document.get("chapter_number"),
-            "status": document.get("status", "draft"),
-            "is_favorite": document.get("is_favorite", False),
-            "tags": document.get("tags", [])
-        }
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Check ownership
+        if document["user_id"] != str(user_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Update fields
+        if request.title is not None:
+            document["title"] = request.title
+        if request.content is not None:
+            document["content"] = request.content
+            document["word_count"] = len(request.content.split()) if request.content else 0
+            
+        document["updated_at"] = datetime.utcnow().isoformat()
+        
+        return document
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Unexpected error in update_document: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error updating document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update document")
 
 @router.delete("/{document_id}")
 async def delete_document(
@@ -214,23 +175,33 @@ async def delete_document(
 ):
     """Delete a document"""
     try:
-        success = document_service.delete_document(document_id, user_id)
-        return {"success": success, "message": "Document deleted successfully"}
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        if document_id not in documents_store:
+            raise HTTPException(status_code=404, detail="Document not found")
+            
+        document = documents_store[document_id]
+        
+        # Check ownership
+        if document["user_id"] != str(user_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+            
+        del documents_store[document_id]
+        
+        return {"success": True, "message": "Document deleted successfully"}
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Unexpected error in delete_document: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error deleting document: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete document")
 
-# Template functionality
 @router.post("/from-template")
 async def create_from_template(
     request: CreateFromTemplateRequest,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Create document from template"""
+    """Create document from template - ultra simple"""
     try:
-        # Get template content
+        # Simple templates
         templates = {
             "blank": "",
             "novel": "Chapter 1\n\n",
@@ -242,23 +213,18 @@ async def create_from_template(
         
         content = templates.get(request.template_id, "")
         
-        document = document_service.create_document(
-            user_id=user_id,
-            title=request.title,
-            content=content,
-            document_type="novel",
-            folder_id=request.folder_id
-        )
+        # Create document using same logic as create_document
+        doc_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
         
-        # Return direct Document object
-        return {
-            "id": document["id"],
-            "title": document["title"],
+        document = {
+            "id": doc_id,
+            "title": request.title,
             "content": content,
-            "document_type": document["document_type"],
-            "word_count": document["word_count"],
-            "created_at": document["created_at"],
-            "updated_at": document["created_at"],
+            "document_type": "novel",
+            "word_count": len(content.split()) if content else 0,
+            "created_at": now,
+            "updated_at": now,
             "user_id": str(user_id),
             "folder_id": request.folder_id,
             "series_id": None,
@@ -267,8 +233,12 @@ async def create_from_template(
             "is_favorite": False,
             "tags": []
         }
-    except DocumentError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        
+        documents_store[doc_id] = document
+        
+        logger.info(f"Created document from template {request.template_id}")
+        return document
+        
     except Exception as e:
-        logger.error(f"Unexpected error in create_from_template: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error creating from template: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create document from template")
