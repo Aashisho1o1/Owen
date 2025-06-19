@@ -846,16 +846,23 @@ async def get_documents(
 @app.post("/api/documents/from-template")
 async def create_document_from_template(doc_data: DocumentFromTemplateCreate, user_id: int = Depends(get_current_user_id)):
     try:
+        logger.info(f"🎯 TEMPLATE ENDPOINT CALLED: template_id={doc_data.template_id}, title={doc_data.title}, user_id={user_id}")
+        
         # Find the template
         template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
         if not template:
+            logger.error(f"❌ Template not found: {doc_data.template_id}")
             raise HTTPException(status_code=404, detail="Template not found")
+        
+        logger.info(f"✅ Template found: {template['title']}")
         
         doc_id = str(uuid.uuid4())
         content = template['content']
         
         # Calculate analytics
         word_count = calculate_word_count(content)
+        
+        logger.info(f"📝 Creating document with content length: {len(content)} characters, {word_count} words")
         
         result = db_service.execute_query(
             """INSERT INTO documents (id, user_id, title, content, folder_id, status, tags, word_count, created_at, updated_at)
@@ -866,6 +873,7 @@ async def create_document_from_template(doc_data: DocumentFromTemplateCreate, us
         )
         
         if not result:
+            logger.error(f"❌ Failed to create document from template")
             raise HTTPException(status_code=500, detail="Failed to create document from template")
         
         # Format response
@@ -874,24 +882,28 @@ async def create_document_from_template(doc_data: DocumentFromTemplateCreate, us
         document['created_at'] = document['created_at'].isoformat() if document['created_at'] else None
         document['updated_at'] = document['updated_at'].isoformat() if document['updated_at'] else None
         
-        logger.info(f"Document created from template '{doc_data.template_id}': {document['title']} by user {user_id}")
+        logger.info(f"🎉 TEMPLATE DOCUMENT CREATED SUCCESSFULLY: {document['title']} (ID: {document['id']}) by user {user_id}")
         return document
         
     except DatabaseError as e:
-        logger.error(f"Error creating document from template: {e}")
+        logger.error(f"❌ Database error creating document from template: {e}")
         raise HTTPException(status_code=500, detail="Failed to create document from template")
 
 @app.post("/api/documents")
 async def create_document(doc_data: DocumentCreate, user_id: int = Depends(get_current_user_id)):
     try:
+        logger.info(f"🔵 REGULAR DOCUMENT ENDPOINT CALLED: title={doc_data.title}, template_id={doc_data.template_id}, user_id={user_id}")
+        
         doc_id = str(uuid.uuid4())
         
         # Use template content if provided
         content = doc_data.content
         if doc_data.template_id:
+            logger.info(f"⚠️  USING TEMPLATE IN REGULAR ENDPOINT: {doc_data.template_id}")
             template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
             if template:
                 content = template['content']
+                logger.info(f"📝 Template content applied: {len(content)} characters")
         
         # Calculate analytics
         word_count = calculate_word_count(content)
@@ -913,7 +925,7 @@ async def create_document(doc_data: DocumentCreate, user_id: int = Depends(get_c
         document['created_at'] = document['created_at'].isoformat() if document['created_at'] else None
         document['updated_at'] = document['updated_at'].isoformat() if document['updated_at'] else None
         
-        logger.info(f"Document created: {document['title']} by user {user_id}")
+        logger.info(f"🔵 REGULAR DOCUMENT CREATED: {document['title']} (ID: {document['id']}) by user {user_id}")
         return document
         
     except DatabaseError as e:
