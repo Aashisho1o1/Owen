@@ -1,3 +1,4 @@
 # Deployment trigger for Documents feature: Mon Jun 16 06:18:52 PDT 2025
 
-Frontend deployment trigger - 2025-06-18T07:05:00Z - Force redeploy with NEW VITE_API_URL env var set in Railway
+Frontend deployment trigger - 2025-06-19T01:00:00Z - Fix Mixed Content: Force redeploy with HTTPS VITE_API_URL env var
+Force redeploy: Wed Jun 18 17:37:22 PDT 2025
