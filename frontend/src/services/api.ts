@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // Normalise base URL: ensure it includes protocol so we never end up with
 //   "backend-production-xxxx.up.railway.app" (missing scheme) which the browser
@@ -15,14 +15,51 @@ console.log('🌐 API Configuration:', {
 });
 
 // Create axios instance with authentication support
-const apiClient = axios.create({
+const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 15000, // Increased timeout for better reliability
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
   },
 });
+
+// Enhanced error handler for better debugging
+const handleApiError = (error: AxiosError): never => {
+  const errorContext = {
+    url: error.config?.url,
+    method: error.config?.method,
+    status: error.response?.status,
+    statusText: error.response?.statusText,
+    data: error.response?.data,
+    message: error.message,
+    code: error.code
+  };
+
+  console.error('❌ API Error Details:', errorContext);
+
+  // Enhanced error message for user
+  let userMessage = 'An unexpected error occurred. Please try again.';
+  
+  if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+    userMessage = 'Unable to connect to the server. Please check if the backend is running.';
+  } else if (error.response?.status === 500) {
+    userMessage = 'Server error occurred. Please try again later.';
+  } else if (error.response?.status === 404) {
+    userMessage = 'API endpoint not found. Please check your configuration.';
+  } else if (error.response?.status === 401) {
+    userMessage = 'Authentication failed. Please log in again.';
+  } else if (error.response?.status === 403) {
+    userMessage = 'Access denied. You do not have permission for this action.';
+  } else if (error.response?.data) {
+    const responseData = error.response.data as any;
+    userMessage = responseData?.detail || responseData?.error || responseData?.message || userMessage;
+  }
+
+  // Add user-friendly message to error object
+  (error as any).userMessage = userMessage;
+  throw error;
+};
 
 // Add authentication token to requests
 apiClient.interceptors.request.use(
@@ -50,30 +87,30 @@ apiClient.interceptors.response.use(
     console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
     return response;
   },
-  (error) => {
-    console.error('❌ Response Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    });
-    
-    // Enhanced error message for user
-    if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-      error.userMessage = 'Unable to connect to the server. Please check if the backend is running.';
-    } else if (error.response?.status === 500) {
-      error.userMessage = 'Server error occurred. Please try again later.';
-    } else if (error.response?.status === 404) {
-      error.userMessage = 'API endpoint not found. Please check your configuration.';
-    } else {
-      error.userMessage = error.response?.data?.detail || error.response?.data?.error || error.message;
-    }
-    
-    return Promise.reject(error);
+  (error: AxiosError) => {
+    return Promise.reject(handleApiError(error));
   }
 );
+
+// Type-safe wrapper for API calls
+const safeApiCall = async <T>(apiCall: () => Promise<T>): Promise<T> => {
+  try {
+    return await apiCall();
+  } catch (error) {
+    console.error('🔍 Detailed error analysis:', {
+      errorName: error?.constructor?.name,
+      errorMessage: (error as Error)?.message,
+      errorStack: (error as Error)?.stack,
+      apiUrl: API_URL,
+      hasRequest: !!(error as any)?.config,
+      hasResponse: !!(error as any)?.response,
+      responseStatus: (error as any)?.response?.status,
+      responseData: (error as any)?.response?.data,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
+};
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -346,43 +383,59 @@ export interface UserProfile {
 
 const api = {
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
-    const response = await apiClient.post<ChatResponse>('/api/chat/', request);
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.post<ChatResponse>('/api/chat/', request);
+      return response.data;
+    });
   },
   
   analyzeWriting: async (request: WritingSampleRequest): Promise<WritingSampleResponse> => {
-    const response = await apiClient.post<WritingSampleResponse>('/api/chat/analyze-writing', request);
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.post<WritingSampleResponse>('/api/chat/analyze-writing', request);
+      return response.data;
+    });
   },
   
   submitFeedback: async (request: UserFeedbackRequest): Promise<{ status: string; message: string }> => {
-    const response = await apiClient.post<{ status: string; message: string }>('/api/chat/feedback', request);
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.post<{ status: string; message: string }>('/api/chat/feedback', request);
+      return response.data;
+    });
   },
   
   completeOnboarding: async (request: OnboardingRequest): Promise<OnboardingResponse> => {
-    const response = await apiClient.post<OnboardingResponse>('/api/chat/onboarding', request);
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.post<OnboardingResponse>('/api/chat/onboarding', request);
+      return response.data;
+    });
   },
   
   getUserPreferences: async (): Promise<{ status: string; preferences?: UserPreferences; message?: string }> => {
-    const response = await apiClient.get<{ status: string; preferences?: UserPreferences; message?: string }>('/api/chat/preferences');
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.get<{ status: string; preferences?: UserPreferences; message?: string }>('/api/chat/preferences');
+      return response.data;
+    });
   },
   
   getStyleOptions: async (): Promise<{ english_variants: any[] }> => {
-    const response = await apiClient.get<{ english_variants: any[] }>('/api/chat/style-options');
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.get<{ english_variants: any[] }>('/api/chat/style-options');
+      return response.data;
+    });
   },
   
   createCheckpoint: async (request: CheckpointRequest): Promise<CheckpointResponse> => {
-    const response = await apiClient.post<CheckpointResponse>('/api/checkpoint', request);
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.post<CheckpointResponse>('/api/checkpoint', request);
+      return response.data;
+    });
   },
   
   healthCheck: async (): Promise<{ status: string }> => {
-    const response = await apiClient.get<{ status: string }>('/api/health');
-    return response.data;
+    return safeApiCall(async () => {
+      const response = await apiClient.get<{ status: string }>('/api/health');
+      return response.data;
+    });
   },
 
   generateMangaScript: async (request: MangaStoryRequest): Promise<MangaScriptResponseFE> => {
