@@ -39,9 +39,9 @@ def diagnose_environment():
                     print(f"   Password: {'*' * len(parsed.password) if parsed.password else 'None'}")
                     
                     # Check if using internal Railway URL
-                    if 'postgres.railway.internal' in parsed.hostname:
+                    if parsed.hostname and parsed.hostname.endswith('postgres.railway.internal'):
                         print(f"   ✅ Using Railway internal URL (CORRECT)")
-                    elif 'viaduct.proxy.rlwy.net' in parsed.hostname:
+                    elif parsed.hostname and parsed.hostname.endswith('viaduct.proxy.rlwy.net'):
                         print(f"   ⚠️  Using external proxy URL (MIGHT CAUSE ISSUES)")
                         print(f"   💡 TIP: Try using postgres.railway.internal:5432 instead")
                     else:
