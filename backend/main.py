@@ -945,11 +945,15 @@ if __name__ == "__main__":
     if os.getenv("RAILWAY_ENVIRONMENT"):
         # Production Railway deployment
         logger.info("🚂 Running on Railway - using hypercorn for dual-stack binding")
-        import subprocess
-        subprocess.run([
+        
+        # Use exec to replace the process properly - this fixes port binding issues
+        import os
+        os.execvp("python", [
             "python", "-m", "hypercorn", "main:app",
             "--bind", f"[::]:{port}",
-            "--bind", f"0.0.0.0:{port}"
+            "--bind", f"0.0.0.0:{port}",
+            "--access-logfile", "-",
+            "--error-logfile", "-"
         ])
     else:
         # Local development

@@ -1,4 +1,4 @@
-DEPLOY_TRIGGER_1749516507
+2025-06-20-force-clean-deploy-port-fix
 # Force Railway deployment
 
 # CRITICAL FIX: Railway port binding and hypercorn deployment
