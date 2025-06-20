@@ -81,7 +81,8 @@ class SecurityConfig:
         
         # CORS Configuration
         self.ALLOWED_ORIGINS = [
-            "https://frontend-production-88b0.up.railway.app",
+            "https://frontend-production-e178.up.railway.app",  # Your NEW frontend URL
+            "https://frontend-production-88b0.up.railway.app",  # Keep old as backup
             "https://owen-ai-writer.vercel.app",  # Add your production frontend URL
             "http://localhost:3000",
             "http://localhost:3001", 

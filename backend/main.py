@@ -236,7 +236,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://frontend-production-88b0.up.railway.app",  # Your current production frontend
+        "https://frontend-production-e178.up.railway.app",  # Your NEW frontend URL
+        "https://frontend-production-88b0.up.railway.app",  # Keep old as backup
         "https://owen-ai-writer.vercel.app",
         "http://localhost:3000",
         "http://localhost:3001", 
