@@ -7,24 +7,49 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-    // Prevent variable name mangling that causes "Be.post is not a function" errors
+    // Prevent variable name mangling that causes "api.post is not a function" errors
     minify: 'terser',
     terserOptions: {
       mangle: {
         // Keep function names and important variables
         keep_fnames: true,
-        reserved: ['apiClient', 'axios', 'api', 'post', 'get', 'put', 'delete']
+        keep_classnames: true,
+        // Preserve critical API-related identifiers
+        reserved: [
+          'apiClient', 'axios', 'api', 'apiService',
+          'post', 'get', 'put', 'delete', 'patch',
+          'chat', 'analyzeWriting', 'submitFeedback',
+          'healthCheck', 'getDocuments', 'createDocument',
+          'updateDocument', 'deleteDocument', 'safeApiCall',
+          'handleApiError', 'AxiosInstance', 'AxiosError'
+        ]
       },
       compress: {
         // Keep function names in production for better debugging
         keep_fnames: true,
+        keep_classnames: true,
         drop_console: false, // Keep console logs for debugging
+        // Don't optimize function calls that might break our API
+        reduce_funcs: false,
+        reduce_vars: false
       }
     },
     // Ensure proper source maps for debugging
     sourcemap: true,
     // Increase chunk size warning limit
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    // Additional rollup options to preserve function names
+    rollupOptions: {
+      output: {
+        // Preserve function names in output
+        preserveModules: false,
+        // Use more descriptive chunk names
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop().replace('.ts', '').replace('.tsx', '') : 'chunk';
+          return `assets/${facadeModuleId}-[hash].js`;
+        }
+      }
+    }
   },
   // Ensure proper environment variable handling
   define: {

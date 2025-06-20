@@ -381,10 +381,41 @@ export interface UserProfile {
   email: string;
 }
 
-const api = {
+// API Service Object - Using named export to prevent minification issues
+export const apiService = {
+  // Chat APIs
   chat: async (request: ChatRequest): Promise<ChatResponse> => {
     return safeApiCall(async () => {
       const response = await apiClient.post<ChatResponse>('/api/chat/', request);
+      return response.data;
+    });
+  },
+  
+  // Direct HTTP methods for backward compatibility
+  post: async <T = any>(url: string, data?: any): Promise<T> => {
+    return safeApiCall(async () => {
+      const response = await apiClient.post<T>(url, data);
+      return response.data;
+    });
+  },
+  
+  get: async <T = any>(url: string): Promise<T> => {
+    return safeApiCall(async () => {
+      const response = await apiClient.get<T>(url);
+      return response.data;
+    });
+  },
+  
+  put: async <T = any>(url: string, data?: any): Promise<T> => {
+    return safeApiCall(async () => {
+      const response = await apiClient.put<T>(url, data);
+      return response.data;
+    });
+  },
+  
+  delete: async <T = any>(url: string, config?: any): Promise<T> => {
+    return safeApiCall(async () => {
+      const response = await apiClient.delete<T>(url, config);
       return response.data;
     });
   },
@@ -661,4 +692,6 @@ const api = {
   },
 };
 
+// Keep backward compatibility with default export
+const api = apiService;
 export default api; 

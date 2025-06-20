@@ -31,9 +31,10 @@ class GeminiService(BaseLLMService):
                 
                 # Try different model names in order of preference
                 model_preferences = [
-                    'gemini-1.5-pro',          # Most stable
+                    'gemini-2.5-pro',          # User's preferred model - latest and most capable
+                    'gemini-1.5-pro',          # Stable fallback
                     'gemini-1.5-flash',        # Fast alternative
-                    'gemini-pro',              # Fallback
+                    'gemini-pro',              # Legacy fallback
                 ]
                 
                 for model_name in model_preferences:
@@ -52,13 +53,24 @@ class GeminiService(BaseLLMService):
                     return
                 
                 # Configure generation settings for optimal performance
-                self.generation_config = genai.types.GenerationConfig(
-                    temperature=0.7,
-                    top_p=0.8,
-                    top_k=40,
-                    max_output_tokens=8192,
-                    candidate_count=1
-                )
+                # For Gemini 2.5 models, thinking mode is on by default which can increase latency
+                # We can adjust this based on the model being used
+                base_config = {
+                    "temperature": 0.7,
+                    "top_p": 0.8,
+                    "top_k": 40,
+                    "max_output_tokens": 8192,
+                    "candidate_count": 1
+                }
+                
+                # If using Gemini 2.5, we can disable thinking for faster responses when needed
+                if self.model_name and '2.5' in self.model_name:
+                    # For production, we may want to disable thinking for speed
+                    # This can be adjusted based on use case
+                    base_config["response_schema"] = {"thinking": False}
+                    logger.info("🧠 Gemini 2.5 detected - thinking mode can be controlled for performance")
+                
+                self.generation_config = genai.types.GenerationConfig(**base_config)
                 
                 # Configure safety settings
                 self.safety_settings = {
