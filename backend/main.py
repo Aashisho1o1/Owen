@@ -34,6 +34,9 @@ from dependencies import get_current_user_id
 from routers.chat_router import router as chat_router
 from routers.grammar_router import router as grammar_router
 
+# Import security middleware
+from middleware.security_middleware import SecurityMiddleware
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -41,15 +44,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# CRITICAL: JWT Secret validation - fail startup if not configured
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY or JWT_SECRET_KEY == "your-secret-key-here-please-change-in-production":
+    logger.error("🚨 SECURITY CRITICAL: JWT_SECRET_KEY not properly configured!")
+    logger.error("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+    raise ValueError("JWT_SECRET_KEY must be set to a secure value in production")
+
+if len(JWT_SECRET_KEY) < 32:
+    logger.error("🚨 SECURITY CRITICAL: JWT_SECRET_KEY too short! Must be at least 32 characters")
+    raise ValueError("JWT_SECRET_KEY must be at least 32 characters long")
+
+logger.info("✅ JWT_SECRET_KEY properly configured")
+security = HTTPBearer()
+
 # Enums for better type safety
 class DocumentStatus(str, Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
-
-# JWT Configuration from auth service
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-here-please-change-in-production")
-security = HTTPBearer()
 
 # Story Writing Templates - Essential templates only
 templates_store = [
@@ -163,13 +176,28 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add security middleware first (before CORS)
+app.add_middleware(SecurityMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "https://frontend-production-88b0.up.railway.app",
+        "https://owen-ai-writer.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "http://localhost:4173",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175", 
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://localhost:8080"
+    ],
+    allow_credentials=True,  # Enable credentials for auth tokens
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # Include routers
