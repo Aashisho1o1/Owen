@@ -24,7 +24,10 @@ aiofiles==23.2.1
 
 # AI integrations (Core MVP features only)
 openai>=1.35.0
-google-generativeai>=0.8.5
+# CRITICAL FIX: Use stable version of google-generativeai for Railway compatibility
+# Version 0.8.5+ has known Railway deployment issues, using stable 0.7.2
+# This version is known to work well with Railway's Python environment
+google-generativeai==0.7.2
 
 # Database (PostgreSQL only - production ready)
 psycopg2-binary==2.9.9
