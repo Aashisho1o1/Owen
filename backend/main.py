@@ -14,12 +14,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from contextlib import asynccontextmanager
 from enum import Enum
+import asyncio
 
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field
@@ -213,10 +214,15 @@ async def lifespan(app: FastAPI):
     finally:
         logger.info("🔄 Shutting down database connections...")
         try:
-            db_service.close()
-            logger.info("✅ Database connections closed cleanly")
+            # Ensure we're in the right context for database cleanup
+            if hasattr(db_service, 'close'):
+                db_service.close()
+                logger.info("✅ Database connections closed cleanly")
         except Exception as e:
             logger.error(f"⚠️ Error during shutdown: {e}")
+        finally:
+            # Give a moment for cleanup to complete
+            await asyncio.sleep(0.1)
 
 app = FastAPI(
     title="DOG Writer MVP",
@@ -225,14 +231,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add security middleware first (before CORS)
-app.add_middleware(SecurityMiddleware)
-
-# CORS middleware
+# CRITICAL: CORS middleware MUST be added BEFORE Security middleware
+# This ensures CORS preflight OPTIONS requests are handled before security checks
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://frontend-production-88b0.up.railway.app",
+        "https://frontend-production-88b0.up.railway.app",  # Your current production frontend
         "https://owen-ai-writer.vercel.app",
         "http://localhost:3000",
         "http://localhost:3001", 
@@ -245,13 +249,33 @@ app.add_middleware(
         "http://localhost:8080"
     ],
     allow_credentials=True,  # Enable credentials for auth tokens
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Added PATCH and explicit OPTIONS
+    allow_headers=[
+        "Authorization", 
+        "Content-Type", 
+        "X-Requested-With",
+        "Accept",
+        "Accept-Language", 
+        "Content-Language",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers"
+    ],
+    expose_headers=["*"],  # Allow frontend to access response headers
 )
+
+# Add security middleware AFTER CORS middleware
+app.add_middleware(SecurityMiddleware)
 
 # Include routers
 app.include_router(chat_router)
 app.include_router(grammar_router)
+
+# Explicit CORS preflight handler for all routes
+@app.options("/{path:path}")
+async def preflight_handler(path: str):
+    """Handle CORS preflight requests for all paths"""
+    return {"message": "OK"}
 
 # Health endpoints
 @app.get("/")
@@ -285,7 +309,7 @@ async def root():
         }
 
 @app.get("/api/health")
-async def health_check():
+async def health_check(request: Request = None):
     """Enhanced health check with detailed diagnostics"""
     try:
         # Basic environment check
@@ -304,11 +328,32 @@ async def health_check():
         if "❌ NOT SET" in env_status.values():
             overall_status = "unhealthy"
         
+        # CORS debugging information
+        cors_info = {
+            "allowed_origins": [
+                "https://frontend-production-88b0.up.railway.app",
+                "https://owen-ai-writer.vercel.app",
+                "http://localhost:3000",
+                "http://localhost:3001", 
+                "http://localhost:4173",
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175", 
+                "http://localhost:5176",
+                "http://localhost:5177",
+                "http://localhost:8080"
+            ],
+            "request_origin": request.headers.get("origin") if request else None,
+            "request_method": request.method if request else None,
+            "request_headers": dict(request.headers) if request else None
+        }
+        
         response = {
             "status": overall_status,
             "timestamp": datetime.utcnow().isoformat(),
             "environment": env_status,
             "database": db_health,
+            "cors_debug": cors_info,
             "version": "3.0.0-MVP",
             "debug_info": {
                 "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
@@ -331,6 +376,12 @@ async def health_check():
                     "Verify environment variables are set in Railway dashboard",
                     "Use internal URL: postgres.railway.internal:5432",
                     "Ensure both backend and database services are deployed"
+                ],
+                "cors_specific": [
+                    "Verify frontend URL matches allowed origins",
+                    "Check if CORS preflight requests are being blocked",
+                    "Ensure OPTIONS method is allowed",
+                    "Verify security middleware allows CORS preflight"
                 ]
             }
         
