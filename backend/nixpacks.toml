@@ -1,8 +1,8 @@
-[phases.build]
-cmds = ["pip install -r requirements.txt"]
+# Railway Python Configuration for DOG Writer Backend
+# Fixed to prevent "pip: command not found" errors
 
-[phases.install]
-cmds = ["chmod +x start.sh"]
+# Let nixpacks auto-detect Python based on requirements.txt and runtime.txt
+# Remove custom build phase that causes pip command not found
 
 [start]
 cmd = "./start.sh"
@@ -10,8 +10,8 @@ cmd = "./start.sh"
 [variables]
 PYTHONPATH = "/app"
 PORT = "8080"
+PYTHON_VERSION = "3.11.9"
 
-# Override Railway's auto-detection
+# Railway deployment optimizations
 [nixpacks]
-# Force Railway to use our start command instead of auto-detecting main.py
 app = "backend" 
