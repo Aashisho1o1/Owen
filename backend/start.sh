@@ -61,10 +61,10 @@ if command -v lsof &> /dev/null; then
     fi
 fi
 
-# NUCLEAR OPTION: Try different binding strategies
-echo "🚀 Starting hypercorn with nuclear binding strategy..."
+# FIXED: Use correct hypercorn arguments
+echo "🚀 Starting hypercorn with corrected arguments..."
 
-# Strategy 1: IPv4 only first
+# Strategy 1: IPv4 only first with CORRECT arguments
 echo "🔄 Attempt 1: IPv4 only binding"
 python -m hypercorn main:app \
     --bind "0.0.0.0:$PORT" \
@@ -72,8 +72,8 @@ python -m hypercorn main:app \
     --error-logfile - \
     --worker-class asyncio \
     --workers 1 \
-    --timeout-keep-alive 5 \
-    --timeout-graceful-shutdown 10 &
+    --keep-alive 5 \
+    --graceful-timeout 10 &
 
 HYPERCORN_PID=$!
 sleep 3
@@ -85,7 +85,7 @@ if kill -0 $HYPERCORN_PID 2>/dev/null; then
 else
     echo "❌ IPv4 binding failed, trying dual-stack..."
     
-    # Strategy 2: Dual-stack binding
+    # Strategy 2: Dual-stack binding with CORRECT arguments
     echo "🔄 Attempt 2: Dual-stack binding"
     exec python -m hypercorn main:app \
         --bind "[::]:$PORT" \
@@ -94,8 +94,8 @@ else
         --error-logfile - \
         --worker-class asyncio \
         --workers 1 \
-        --timeout-keep-alive 5 \
-        --timeout-graceful-shutdown 10
+        --keep-alive 5 \
+        --graceful-timeout 10
 fi
 
 echo "📊 Environment Check:"

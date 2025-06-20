@@ -207,3 +207,39 @@ DOCKERFILE_ADDED=true
 NIXPACKS_FIXED=true
 PYTHON_VERSION=3.11.9
 DEPLOYMENT_METHOD=dockerfile_primary_nixpacks_fallback
+
+HYPERCORN-ARGUMENTS-FIX-2025-01-27-21:30:00Z
+
+# 🔧 CRITICAL FIX: Hypercorn argument names causing startup failure
+# Problem: Invalid hypercorn command-line arguments
+
+ISSUE_IDENTIFIED=HYPERCORN_INVALID_ARGUMENTS
+BUILD_ERROR=unrecognized_arguments_timeout_keep_alive_timeout_graceful_shutdown
+HYPERCORN_VERSION_MISMATCH=true
+
+# ERROR ANALYSIS:
+# ❌ --timeout-keep-alive is not recognized by hypercorn
+# ❌ --timeout-graceful-shutdown is not recognized by hypercorn
+# ❌ Hypercorn showing usage help instead of starting server
+# ❌ Server never starts, causing CORS errors on frontend
+
+# SOLUTION APPLIED:
+# 1. Fixed --timeout-keep-alive → --keep-alive
+# 2. Fixed --timeout-graceful-shutdown → --graceful-timeout
+# 3. Used correct hypercorn parameter names for the installed version
+# 4. Maintained all other startup logic (port cleanup, dual binding)
+
+# EXPECTED RESULT:
+# ✅ Hypercorn should start successfully without argument errors
+# ✅ Server should bind to port 8080 and accept requests
+# ✅ CORS headers should be sent properly
+# ✅ User registration should work without CORS errors
+
+# TECHNICAL DETAILS:
+# - Railway uses a specific version of hypercorn with different argument names
+# - The incorrect arguments caused hypercorn to exit immediately
+# - Frontend saw this as network/CORS errors since server never started
+# - This explains why all endpoints returned "net::ERR_FAILED"
+
+DEPLOYMENT_STRATEGY=HYPERCORN_ARGUMENT_CORRECTION
+PRIORITY=CRITICAL_STARTUP_FIX
