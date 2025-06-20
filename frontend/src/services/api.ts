@@ -500,20 +500,17 @@ export const apiService = {
     return response.data;
   },
 
-  // VERSION MANAGEMENT
+  // VERSION MANAGEMENT - REMOVED FOR MVP
   getDocumentVersions: async (documentId: string): Promise<DocumentVersion[]> => {
-    const response = await apiClient.get<DocumentVersion[]>(`/api/documents/${documentId}/versions`);
-    return response.data;
+    return []; // MVP: Version management feature removed
   },
 
   restoreDocumentVersion: async (documentId: string, versionId: string): Promise<Document> => {
-    const response = await apiClient.post<Document>(`/api/documents/${documentId}/versions/${versionId}/restore`);
-    return response.data;
+    throw new Error("Version management feature not available in MVP");
   },
 
   compareVersions: async (documentId: string, version1: string, version2: string): Promise<any> => {
-    const response = await apiClient.get(`/api/documents/${documentId}/versions/compare?v1=${version1}&v2=${version2}`);
-    return response.data;
+    throw new Error("Version comparison feature not available in MVP");
   },
 
   // FOLDER MANAGEMENT
@@ -543,28 +540,22 @@ export const apiService = {
     return response.data;
   },
 
-  // SERIES MANAGEMENT
+  // SERIES MANAGEMENT - REMOVED FOR MVP
+  // Series endpoints removed in MVP - these functions return empty data
   getSeries: async (): Promise<DocumentSeries[]> => {
-    const response = await apiClient.get<DocumentSeries[]>('/api/series');
-    return response.data;
+    return []; // MVP: Series feature removed
   },
 
   createSeries: async (name: string, description?: string): Promise<DocumentSeries> => {
-    const response = await apiClient.post<DocumentSeries>('/api/series', {
-      name,
-      description
-    });
-    return response.data;
+    throw new Error("Series feature not available in MVP");
   },
 
   updateSeries: async (seriesId: string, updates: Partial<DocumentSeries>): Promise<DocumentSeries> => {
-    const response = await apiClient.put<DocumentSeries>(`/api/series/${seriesId}`, updates);
-    return response.data;
+    throw new Error("Series feature not available in MVP");
   },
 
   deleteSeries: async (seriesId: string): Promise<{ success: boolean }> => {
-    const response = await apiClient.delete(`/api/series/${seriesId}`);
-    return response.data;
+    throw new Error("Series feature not available in MVP");
   },
 
   // TEMPLATES
@@ -582,97 +573,67 @@ export const apiService = {
     return response.data;
   },
 
-  // ADVANCED SEARCH
+  // ADVANCED SEARCH - REMOVED FOR MVP
   searchDocuments: async (searchRequest: SearchRequest): Promise<SearchResult[]> => {
-    const response = await apiClient.post<SearchResult[]>('/api/search', searchRequest);
-    return response.data;
+    return []; // MVP: Advanced search feature removed
   },
 
-  // EXPORT FUNCTIONALITY
+  // EXPORT FUNCTIONALITY - REMOVED FOR MVP
   exportDocument: async (exportRequest: ExportRequest): Promise<Blob> => {
-    const response = await apiClient.post('/api/export', exportRequest, {
-      responseType: 'blob'
-    });
-    return response.data;
+    throw new Error("Export feature not available in MVP");
   },
 
-  // WRITING ANALYTICS
+  // WRITING ANALYTICS - REMOVED FOR MVP
+  // Analytics endpoints removed in MVP - these functions return empty data
   getWritingGoals: async (): Promise<WritingGoal[]> => {
-    const response = await apiClient.get<WritingGoal[]>('/api/goals');
-    return response.data;
+    return []; // MVP: Writing goals feature removed
   },
 
   createWritingGoal: async (goal: Omit<WritingGoal, 'id' | 'user_id' | 'current_words'>): Promise<WritingGoal> => {
-    const response = await apiClient.post<WritingGoal>('/api/goals', goal);
-    return response.data;
+    throw new Error("Writing goals feature not available in MVP");
   },
 
   getWritingSessions: async (documentId?: string, dateRange?: { start: string; end: string }): Promise<WritingSession[]> => {
-    const params = new URLSearchParams();
-    if (documentId) params.append('document_id', documentId);
-    if (dateRange) {
-      params.append('start_date', dateRange.start);
-      params.append('end_date', dateRange.end);
-    }
-    
-    const response = await apiClient.get<WritingSession[]>(`/api/sessions?${params}`);
-    return response.data;
+    return []; // MVP: Writing sessions feature removed
   },
 
   getWritingStats: async (period: 'week' | 'month' | 'year'): Promise<any> => {
-    const response = await apiClient.get(`/api/stats/writing?period=${period}`);
-    return response.data;
+    return null; // MVP: Writing stats feature removed
   },
 
-  // BACKUP & SYNC
+  // BACKUP & SYNC - REMOVED FOR MVP
   createBackup: async (): Promise<{ backup_id: string; download_url: string }> => {
-    const response = await apiClient.post('/api/backup');
-    return response.data;
+    throw new Error("Backup feature not available in MVP");
   },
 
   restoreFromBackup: async (backupId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post(`/api/backup/${backupId}/restore`);
-    return response.data;
+    throw new Error("Backup feature not available in MVP");
   },
 
-  // COLLABORATION
+  // COLLABORATION - REMOVED FOR MVP
   shareDocument: async (documentId: string, email: string, permission: 'view' | 'comment' | 'edit'): Promise<any> => {
-    const response = await apiClient.post(`/api/documents/${documentId}/share`, {
-      email,
-      permission
-    });
-    return response.data;
+    throw new Error("Document sharing feature not available in MVP");
   },
 
   getDocumentShares: async (documentId: string): Promise<any[]> => {
-    const response = await apiClient.get(`/api/documents/${documentId}/shares`);
-    return response.data;
+    return []; // MVP: Document sharing feature removed
   },
 
-  // ENHANCED DOCUMENT OPERATIONS
+  // ENHANCED DOCUMENT OPERATIONS - REMOVED FOR MVP
   duplicateDocument: async (documentId: string, newTitle?: string): Promise<Document> => {
-    const response = await apiClient.post<Document>(`/api/documents/${documentId}/duplicate`, {
-      new_title: newTitle
-    });
-    return response.data;
+    throw new Error("Document duplication feature not available in MVP");
   },
 
   moveDocument: async (documentId: string, folderId?: string, seriesId?: string): Promise<Document> => {
-    const response = await apiClient.put<Document>(`/api/documents/${documentId}/move`, {
-      folder_id: folderId,
-      series_id: seriesId
-    });
-    return response.data;
+    throw new Error("Document move feature not available in MVP");
   },
 
   addDocumentTags: async (documentId: string, tags: string[]): Promise<Document> => {
-    const response = await apiClient.post<Document>(`/api/documents/${documentId}/tags`, { tags });
-    return response.data;
+    throw new Error("Document tags feature not available in MVP");
   },
 
   getDocumentAnalytics: async (documentId: string): Promise<any> => {
-    const response = await apiClient.get(`/api/documents/${documentId}/analytics`);
-    return response.data;
+    return null; // MVP: Document analytics feature removed
   },
 
   // Auth APIs

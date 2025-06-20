@@ -1,0 +1,1 @@
+web: cd backend && python -m hypercorn main:app --bind [::]:$PORT --bind 0.0.0.0:$PORT 

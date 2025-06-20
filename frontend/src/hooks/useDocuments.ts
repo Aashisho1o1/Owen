@@ -188,28 +188,27 @@ export const useDocuments = (): UseDocumentsReturn => {
     };
   }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument]);
 
-  // Load initial data
+  // Load initial data - MVP VERSION (only endpoints that exist)
   const refreshAll = useCallback(async () => {
     if (!user) return;
     
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const [documents, folders, series, templates, goals] = await Promise.all([
+      // Only call endpoints that exist in MVP backend
+      const [documents, folders, templates] = await Promise.all([
         api.getDocuments(),
         api.getFolders(),
-        api.getSeries(),
-        api.getTemplates(),
-        api.getWritingGoals()
+        api.getTemplates()
       ]);
       
       setState(prev => ({
         ...prev,
         documents: documents.documents || [],
         folders,
-        series,
+        series: [], // Empty array for MVP - series feature removed
         templates,
-        writingGoals: goals,
+        writingGoals: [], // Empty array for MVP - goals feature removed
         isLoading: false
       }));
     } catch (error) {

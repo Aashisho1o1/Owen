@@ -6,6 +6,7 @@ Core features: Authentication, Documents, AI Chat, Grammar Check, Basic Organiza
 """
 
 import os
+import sys
 import logging
 import uuid
 import json
@@ -156,18 +157,66 @@ def calculate_word_count(content: str) -> int:
 # App initialization
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database on startup"""
+    """Initialize database on startup with enhanced error reporting"""
     try:
-        logger.info("Initializing database...")
+        logger.info("🚀 Starting DOG Writer MVP backend...")
+        
+        # Check critical environment variables first
+        critical_vars = {
+            'DATABASE_URL': os.getenv('DATABASE_URL'),
+            'JWT_SECRET_KEY': os.getenv('JWT_SECRET_KEY'),
+        }
+        
+        for var_name, var_value in critical_vars.items():
+            if not var_value:
+                error_msg = f"❌ CRITICAL: {var_name} environment variable is not set!"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            else:
+                logger.info(f"✅ {var_name}: Configured")
+        
+        # Test database connection before initializing schema
+        logger.info("🔍 Testing database connectivity...")
+        health = db_service.health_check()
+        if health['status'] != 'healthy':
+            error_msg = f"❌ DATABASE HEALTH CHECK FAILED: {health.get('error', 'Unknown error')}"
+            logger.error(error_msg)
+            logger.error("💡 DEBUGGING TIPS:")
+            logger.error("   1. Check if Railway PostgreSQL service is running")
+            logger.error("   2. Verify DATABASE_URL uses 'postgres.railway.internal:5432'")
+            logger.error("   3. Ensure DATABASE_URL has correct credentials")
+            logger.error("   4. Check if DATABASE_URL env var is actually set in Railway")
+            raise RuntimeError(error_msg)
+        
+        logger.info("✅ Database connectivity confirmed")
+        
+        # Initialize database schema
+        logger.info("📊 Initializing database schema...")
         db_service.init_database()
-        logger.info("Database initialized successfully")
+        logger.info("✅ Database schema initialized successfully")
+        
+        # Final health check
+        final_health = db_service.health_check()
+        logger.info(f"✅ Final health check: {final_health['status']}")
+        logger.info(f"📊 Database stats: {final_health.get('total_users', 0)} users, {final_health.get('total_documents', 0)} documents")
+        
+        logger.info("🎉 DOG Writer MVP backend started successfully!")
         yield
+        
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"❌ CRITICAL STARTUP FAILURE: {type(e).__name__}: {e}")
+        logger.error("🔧 This will cause 500 errors on all endpoints")
+        
+        # Still yield to prevent FastAPI from crashing completely
+        # This allows the health endpoint to return error information
         yield
     finally:
-        logger.info("Closing database connections...")
-        db_service.close()
+        logger.info("🔄 Shutting down database connections...")
+        try:
+            db_service.close()
+            logger.info("✅ Database connections closed cleanly")
+        except Exception as e:
+            logger.error(f"⚠️ Error during shutdown: {e}")
 
 app = FastAPI(
     title="DOG Writer MVP",
@@ -207,30 +256,94 @@ app.include_router(grammar_router)
 # Health endpoints
 @app.get("/")
 async def root():
-    db_health = db_service.health_check()
-    return {
-        "message": "DOG Writer - AI Writing Assistant MVP",
-        "version": "3.0.0-MVP",
-        "status": "healthy",
-        "database": db_health['status'],
-        "features": [
-            "ai_writing_assistance",
-            "document_management",
-            "grammar_checking",
-            "template_system",
-            "folder_organization",
-            "auto_save"
-        ]
-    }
+    """Root endpoint for Railway health checks"""
+    try:
+        db_health = db_service.health_check()
+        return {
+            "message": "DOG Writer - AI Writing Assistant MVP",
+            "version": "3.0.0-MVP",
+            "status": "healthy",
+            "database": db_health['status'],
+            "railway_deployment": "success",
+            "features": [
+                "ai_writing_assistance",
+                "document_management",
+                "grammar_checking",
+                "template_system",
+                "folder_organization",
+                "auto_save"
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Root endpoint error: {e}")
+        return {
+            "message": "DOG Writer - AI Writing Assistant MVP",
+            "version": "3.0.0-MVP", 
+            "status": "unhealthy",
+            "error": str(e),
+            "railway_deployment": "partial_failure"
+        }
 
 @app.get("/api/health")
 async def health_check():
-    db_health = db_service.health_check()
-    return {
-        "status": db_health['status'],
-        "timestamp": datetime.utcnow().isoformat(),
-        "database": db_health
-    }
+    """Enhanced health check with detailed diagnostics"""
+    try:
+        # Basic environment check
+        env_status = {
+            "DATABASE_URL": "✅ SET" if os.getenv('DATABASE_URL') else "❌ NOT SET",
+            "JWT_SECRET_KEY": "✅ SET" if os.getenv('JWT_SECRET_KEY') else "❌ NOT SET",
+            "GEMINI_API_KEY": "✅ SET" if os.getenv('GEMINI_API_KEY') else "❌ NOT SET",
+            "OPENAI_API_KEY": "✅ SET" if os.getenv('OPENAI_API_KEY') else "❌ NOT SET",
+        }
+        
+        # Database health check
+        db_health = db_service.health_check()
+        
+        # Overall status
+        overall_status = "healthy" if db_health['status'] == 'healthy' else "unhealthy"
+        if "❌ NOT SET" in env_status.values():
+            overall_status = "unhealthy"
+        
+        response = {
+            "status": overall_status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "environment": env_status,
+            "database": db_health,
+            "version": "3.0.0-MVP",
+            "debug_info": {
+                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+                "platform": sys.platform,
+            }
+        }
+        
+        # Add specific error guidance
+        if overall_status == "unhealthy":
+            response["troubleshooting"] = {
+                "common_issues": [
+                    "DATABASE_URL not set or incorrect format",
+                    "PostgreSQL service not running",
+                    "Using external URL instead of postgres.railway.internal",
+                    "Missing JWT_SECRET_KEY",
+                    "Network connectivity issues"
+                ],
+                "railway_specific": [
+                    "Check Railway PostgreSQL service status",
+                    "Verify environment variables are set in Railway dashboard",
+                    "Use internal URL: postgres.railway.internal:5432",
+                    "Ensure both backend and database services are deployed"
+                ]
+            }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": f"Health check failed: {str(e)}",
+            "error_type": type(e).__name__
+        }
 
 # Authentication endpoints
 @app.post("/api/auth/register")
@@ -768,5 +881,26 @@ async def auto_save_document(document_id: str, content: str = Query(...), user_i
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Better port handling for Railway
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False) 
+    
+    logger.info(f"🚀 Starting DOG Writer on port {port}")
+    logger.info(f"📊 Environment status:")
+    logger.info(f"   DATABASE_URL: {'✅ SET' if os.getenv('DATABASE_URL') else '❌ NOT SET'}")
+    logger.info(f"   JWT_SECRET_KEY: {'✅ SET' if os.getenv('JWT_SECRET_KEY') else '❌ NOT SET'}")
+    
+    # Use hypercorn in production (Railway), uvicorn for local development
+    if os.getenv("RAILWAY_ENVIRONMENT"):
+        # Production Railway deployment
+        logger.info("🚂 Running on Railway - using hypercorn for dual-stack binding")
+        import subprocess
+        subprocess.run([
+            "python", "-m", "hypercorn", "main:app",
+            "--bind", f"[::]:{port}",
+            "--bind", f"0.0.0.0:{port}"
+        ])
+    else:
+        # Local development
+        logger.info("💻 Running locally - using uvicorn")
+        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True) 
