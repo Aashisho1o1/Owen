@@ -931,31 +931,13 @@ async def auto_save_document(document_id: str, content: str = Query(...), user_i
         raise HTTPException(status_code=500, detail="Failed to auto-save document")
 
 if __name__ == "__main__":
-    import uvicorn
-    
-    # Better port handling for Railway
-    port = int(os.getenv("PORT", 8000))
-    
-    logger.info(f"🚀 Starting DOG Writer on port {port}")
-    logger.info(f"📊 Environment status:")
-    logger.info(f"   DATABASE_URL: {'✅ SET' if os.getenv('DATABASE_URL') else '❌ NOT SET'}")
-    logger.info(f"   JWT_SECRET_KEY: {'✅ SET' if os.getenv('JWT_SECRET_KEY') else '❌ NOT SET'}")
-    
-    # Use hypercorn in production (Railway), uvicorn for local development
-    if os.getenv("RAILWAY_ENVIRONMENT"):
-        # Production Railway deployment
-        logger.info("🚂 Running on Railway - using hypercorn for dual-stack binding")
-        
-        # Use exec to replace the process properly - this fixes port binding issues
-        import os
-        os.execvp("python", [
-            "python", "-m", "hypercorn", "main:app",
-            "--bind", f"[::]:{port}",
-            "--bind", f"0.0.0.0:{port}",
-            "--access-logfile", "-",
-            "--error-logfile", "-"
-        ])
-    else:
-        # Local development
+    # On Railway, the start.sh script handles process startup
+    # This section only runs for local development
+    if not os.getenv("RAILWAY_ENVIRONMENT"):
+        import uvicorn
+        port = int(os.getenv("PORT", 8000))
         logger.info("💻 Running locally - using uvicorn")
-        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True) 
+        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    else:
+        logger.info("🚂 Railway detected - startup handled by start.sh script")
+        # Don't start anything here on Railway - let start.sh handle it 
