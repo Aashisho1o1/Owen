@@ -29,13 +29,14 @@ class GeminiService(BaseLLMService):
                 genai.configure(api_key=self.api_key)
                 logger.info("✅ Gemini API configured successfully")
                 
-                # Try different model names in order of preference
+                # PRIORITIZE STABLE 1.5 MODELS FOR MVP - MUCH SIMPLER AND RELIABLE
+                # 2.5 models have thinking mode complexity that can cause issues
                 model_preferences = [
-                    'gemini-2.5-flash',        # User's preferred model - fast with thinking capabilities
-                    'gemini-2.5-pro',          # Most capable but slower/more expensive
-                    'gemini-1.5-pro',          # Stable fallback
-                    'gemini-1.5-flash',        # Fast alternative
+                    'gemini-1.5-pro',          # Most stable and reliable for MVP
+                    'gemini-1.5-flash',        # Fast and stable alternative
                     'gemini-pro',              # Legacy fallback
+                    'gemini-2.5-flash',        # Only try 2.5 if 1.5 unavailable
+                    'gemini-2.5-pro',          # Last resort
                 ]
                 
                 for model_name in model_preferences:
@@ -53,8 +54,8 @@ class GeminiService(BaseLLMService):
                     self.available = False
                     return
                 
-                # Configure generation settings for optimal performance
-                # For Gemini 2.5 Flash: Balance thinking vs speed for writing feedback
+                # Configure generation settings optimized for writing feedback
+                # Simpler config for 1.5 models - no thinking mode complexity
                 base_config = {
                     "temperature": 0.7,
                     "top_p": 0.8,
@@ -63,16 +64,11 @@ class GeminiService(BaseLLMService):
                     "candidate_count": 1
                 }
                 
-                # Configure thinking mode based on model type
-                if self.model_name and '2.5' in self.model_name:
-                    if 'flash' in self.model_name.lower():
-                        # For 2.5 Flash: Use moderate thinking for balanced performance
-                        # Thinking budget of 1024 tokens is good for writing feedback
-                        logger.info("🚀 Gemini 2.5 Flash detected - optimizing for writing feedback with moderate thinking")
-                        # Note: Thinking config will be set per request when needed
-                    else:
-                        # For 2.5 Pro: Can use more thinking if needed
-                        logger.info("🧠 Gemini 2.5 Pro detected - full thinking capabilities available")
+                # Log which model type we're using
+                if self.model_name and '1.5' in self.model_name:
+                    logger.info(f"🚀 Using stable Gemini 1.5 model: {self.model_name} - Optimized for MVP reliability")
+                elif self.model_name and '2.5' in self.model_name:
+                    logger.info(f"⚠️ Using Gemini 2.5 model: {self.model_name} - May have thinking mode complexity")
                 
                 self.generation_config = genai.types.GenerationConfig(**base_config)
                 
@@ -188,96 +184,105 @@ class GeminiService(BaseLLMService):
         return await self.generate_structured(prompt, {})
     
     async def generate_with_conversation_history(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """Generate response with conversation history"""
+        """Generate response with conversation history - handles multiple input formats"""
         def _generate():
             try:
-                # Convert messages to Gemini format
-                chat = self.model.start_chat(history=[])
+                # Handle different message formats from chat router vs direct calls
+                if len(messages) == 1 and "parts" in messages[0]:
+                    # Format from chat router: [{"role": "user", "parts": [prompt]}]
+                    prompt = messages[0]["parts"][0]
+                    logger.info("Using single prompt format from chat router")
+                    
+                    response = self.model.generate_content(
+                        prompt,
+                        generation_config=self.generation_config,
+                        safety_settings=self.safety_settings
+                    )
+                else:
+                    # Standard conversation format: [{"role": "user", "content": "message"}]
+                    logger.info("Using conversation history format")
+                    chat = self.model.start_chat(history=[])
+                    
+                    # Add conversation history (all but last message)
+                    for message in messages[:-1]:
+                        if message.get('role') == 'user':
+                            content = message.get('content', message.get('parts', [''])[0])
+                            chat.send_message(content)
+                    
+                    # Generate response to the last message
+                    last_message = messages[-1]
+                    last_content = last_message.get('content', last_message.get('parts', [''])[0])
+                    
+                    response = chat.send_message(
+                        last_content,
+                        generation_config=self.generation_config,
+                        safety_settings=self.safety_settings
+                    )
                 
-                # Add conversation history
-                for message in messages[:-1]:
-                    if message['role'] == 'user':
-                        response = chat.send_message(message['content'])
+                # ROBUST RESPONSE EXTRACTION - Handle all possible response structures
+                response_text = None
                 
-                # Generate response to the last message
-                last_message = messages[-1]['content']
-                response = chat.send_message(
-                    last_message,
-                    generation_config=self.generation_config,
-                    safety_settings=self.safety_settings
-                )
-                
-                # Safely extract text from response
+                # Method 1: Direct text attribute (most common)
                 if hasattr(response, 'text') and response.text:
-                    return response.text
+                    response_text = response.text
+                    logger.info("✅ Extracted text using direct .text attribute")
+                
+                # Method 2: Extract from candidates (backup method)
                 elif hasattr(response, 'candidates') and response.candidates:
                     candidate = response.candidates[0]
+                    
+                    # Try candidate.content.parts[0].text
                     if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
                         parts = candidate.content.parts
-                        if parts and hasattr(parts[0], 'text'):
-                            return parts[0].text
+                        if parts and hasattr(parts[0], 'text') and parts[0].text:
+                            response_text = parts[0].text
+                            logger.info("✅ Extracted text from candidate.content.parts")
+                    
+                    # Try candidate.text directly
+                    elif hasattr(candidate, 'text') and candidate.text:
+                        response_text = candidate.text
+                        logger.info("✅ Extracted text from candidate.text")
                 
-                # Fallback for safety-blocked responses
-                return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                # Method 3: Check for blocked response
+                if not response_text:
+                    # Check if response was blocked by safety filters
+                    if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                        feedback = response.prompt_feedback
+                        if hasattr(feedback, 'block_reason') and feedback.block_reason:
+                            logger.warning(f"Response blocked by safety filters: {feedback.block_reason}")
+                            return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                    
+                    # Check candidate finish reason
+                    if hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'finish_reason'):
+                            reason = candidate.finish_reason
+                            if reason == genai.types.FinishReason.SAFETY:
+                                return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                            elif reason == genai.types.FinishReason.MAX_TOKENS:
+                                return "Response was too long. Please try a shorter prompt or request."
+                            elif reason == genai.types.FinishReason.RECITATION:
+                                return "Response blocked due to recitation concerns. Please try rephrasing your request."
+                            else:
+                                logger.warning(f"Response finished with reason: {reason}")
+                    
+                    # If still no text, return fallback message
+                    logger.error("Could not extract text from Gemini response using any method")
+                    logger.error(f"Response structure: {type(response)}, has text: {hasattr(response, 'text')}, has candidates: {hasattr(response, 'candidates')}")
+                    return "I'm unable to generate a response right now. Please try rephrasing your request."
+                
+                return response_text
                 
             except Exception as e:
                 logger.error(f"Error in conversation generation: {e}")
                 if 'safety' in str(e).lower():
                     return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                # Re-raise the exception so it gets caught by _make_api_call for proper error handling
                 raise e
         
         return await self._make_api_call(_generate, "conversation generation")
     
-    async def generate_text_with_thinking(self, prompt: str, thinking_budget: int = 1024, **kwargs) -> str:
-        """Generate text with configurable thinking mode for writing feedback"""
-        def _generate():
-            try:
-                # Create generation config with thinking if supported
-                config = self.generation_config
-                if self.model_name and '2.5' in self.model_name:
-                    # Use thinking for better writing feedback quality
-                    config = genai.types.GenerationConfig(
-                        temperature=0.7,
-                        top_p=0.8,
-                        top_k=40,
-                        max_output_tokens=8192,
-                        candidate_count=1
-                    )
-                    # Note: Thinking config would be added here when the API supports it
-                    # For now, thinking is enabled by default on 2.5 models
-                
-                response = self.model.generate_content(
-                    prompt,
-                    generation_config=config,
-                    safety_settings=self.safety_settings
-                )
-                
-                # Handle blocked responses
-                if not response.text:
-                    if response.prompt_feedback:
-                        feedback = response.prompt_feedback
-                        if feedback.block_reason:
-                            return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
-                    
-                    # Check if response was blocked
-                    if hasattr(response, 'candidates') and response.candidates:
-                        candidate = response.candidates[0]
-                        if hasattr(candidate, 'finish_reason'):
-                            if candidate.finish_reason == genai.types.FinishReason.SAFETY:
-                                return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
-                            elif candidate.finish_reason == genai.types.FinishReason.MAX_TOKENS:
-                                return "Response was too long. Please try a shorter prompt or request."
-                    
-                    return "I'm unable to generate a response right now. Please try rephrasing your request."
-                
-                return response.text
-                
-            except Exception as e:
-                if 'safety' in str(e).lower():
-                    return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
-                raise e
-        
-        return await self._make_api_call(_generate, "text generation with thinking")
+    # Thinking mode removed for MVP - using stable 1.5 models for simplicity
     
     def is_available(self) -> bool:
         """Check if the service is available and properly configured"""
