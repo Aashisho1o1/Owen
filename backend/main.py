@@ -332,7 +332,8 @@ async def health_check(request: Request = None):
         # CORS debugging information
         cors_info = {
             "allowed_origins": [
-                "https://frontend-production-88b0.up.railway.app",
+                "https://frontend-production-e178.up.railway.app",  # NEW frontend URL
+                "https://frontend-production-88b0.up.railway.app",  # Keep old as backup
                 "https://owen-ai-writer.vercel.app",
                 "http://localhost:3000",
                 "http://localhost:3001", 

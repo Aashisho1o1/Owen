@@ -216,7 +216,7 @@ export const useChat = ({
         responseData: typedError.response?.data,
         hasRequest: !!typedError.request,
         userMessage: typedError.userMessage,
-                    apiUrl: 'https://backend-production-1429.up.railway.app',
+                    apiUrl: 'https://backend-production-1d73.up.railway.app',
         timestamp: new Date().toISOString()
       });
       
@@ -267,7 +267,7 @@ export const useChat = ({
       
       // Set global error only for critical connection-related issues
       if (setApiGlobalError && (errorType === 'network' || errorType === 'timeout' || errorType === 'auth')) {
-        setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: https://backend-production-1429.up.railway.app. Please check if the server is running.`);
+        setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: https://backend-production-1d73.up.railway.app. Please check if the server is running.`);
       }
     }
   }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId]);

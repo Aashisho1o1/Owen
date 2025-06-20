@@ -36,27 +36,17 @@ const MAX_CACHE_SIZE = 500;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const DEBOUNCE_DELAY = 500; // 500ms
 
+// Grammar checking service
 class GrammarService {
-  private cache = new Map<string, { result: GrammarCheckResult; timestamp: number }>();
-  private debounceTimers = new Map<string, NodeJS.Timeout>();
-  private lastChecks = new Map<string, number>();
-  
-  private readonly CACHE_TTL = CACHE_TTL;
-  private readonly DEBOUNCE_DELAY = DEBOUNCE_DELAY;
-  private readonly MAX_TEXT_LENGTH = MAX_TEXT_LENGTH;
-  private readonly API_BASE_URL = this.getApiBaseUrl();
+  private baseURL: string;
+  private cache: Map<string, any> = new Map();
+  private lastRequestTime: number = 0;
+  private readonly DEBOUNCE_MS = 1000;
 
-  /**
-   * Get API base URL from environment with fallback
-   */
-  private getApiBaseUrl(): string {
-    // Try multiple environment variable names for flexibility
-    return (
-      process.env.REACT_APP_API_URL ||
-      process.env.VITE_API_URL ||
-      import.meta.env?.VITE_API_URL ||
-              'https://backend-production-1429.up.railway.app'
-    );
+  constructor() {
+    // Use environment variable or fallback to production URL
+    this.baseURL = import.meta.env.VITE_API_URL || 
+      'https://backend-production-1d73.up.railway.app';
   }
 
   /**
@@ -67,8 +57,8 @@ class GrammarService {
       throw new Error('Input must be a string');
     }
 
-    if (text.length > this.MAX_TEXT_LENGTH) {
-      throw new Error(`Text too long. Maximum ${this.MAX_TEXT_LENGTH} characters allowed`);
+    if (text.length > MAX_TEXT_LENGTH) {
+      throw new Error(`Text too long. Maximum ${MAX_TEXT_LENGTH} characters allowed`);
     }
 
     // Basic sanitization - remove null bytes and normalize whitespace
@@ -167,7 +157,7 @@ class GrammarService {
     }
     
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/grammar/check`, {
+      const response = await fetch(`${this.baseURL}/api/grammar/check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +182,7 @@ class GrammarService {
         timestamp: Date.now()
       });
       
-      this.lastChecks.set(textHash, Date.now());
+      this.lastRequestTime = Date.now();
       return result;
       
     } catch (error) {
@@ -213,7 +203,7 @@ class GrammarService {
     }
     
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/grammar/check`, {
+      const response = await fetch(`${this.baseURL}/api/grammar/check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +245,7 @@ class GrammarService {
     onUpdate: (issues: GrammarIssue[], type: string) => void
   ): Promise<void> {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/grammar/stream-check`, {
+      const response = await fetch(`${this.baseURL}/api/grammar/stream-check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +294,7 @@ class GrammarService {
   checkRealTimeDebounced(
     text: string, 
     callback: (result: GrammarCheckResult) => void,
-    delay = this.DEBOUNCE_DELAY
+    delay = this.DEBOUNCE_MS
   ): void {
     const textHash = this.generateHash(text);
     
@@ -339,7 +329,7 @@ class GrammarService {
     const cached = this.cache.get(textHash);
     if (!cached) return null;
     
-    const isExpired = Date.now() - cached.timestamp > this.CACHE_TTL;
+    const isExpired = Date.now() - cached.timestamp > CACHE_TTL;
     if (isExpired) {
       this.cache.delete(textHash);
       return null;
@@ -349,10 +339,10 @@ class GrammarService {
   }
   
   private shouldDebounce(textHash: string): boolean {
-    const lastCheck = this.lastChecks.get(textHash);
+    const lastCheck = this.lastRequestTime;
     if (!lastCheck) return false;
     
-    return Date.now() - lastCheck < this.DEBOUNCE_DELAY;
+    return Date.now() - lastCheck < this.DEBOUNCE_MS;
   }
   
   private getEmptyResult(text: string, checkType: 'real_time' | 'comprehensive'): GrammarCheckResult {
@@ -371,7 +361,7 @@ class GrammarService {
    */
   clearCache(): void {
     this.cache.clear();
-    this.lastChecks.clear();
+    this.lastRequestTime = 0;
     
     // Clear all debounce timers
     this.debounceTimers.forEach(timer => clearTimeout(timer));

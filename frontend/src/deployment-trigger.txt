@@ -2,5 +2,5 @@
 
 Frontend deployment trigger - 2025-06-19T01:00:00Z - Fix Mixed Content: Force redeploy with HTTPS VITE_API_URL env var
 Force redeploy: Wed Jun 18 17:37:22 PDT 2025
-CRITICAL FIX: Mixed Content error resolved - VITE_API_URL must be https://backend-production-1429.up.railway.app
+CRITICAL FIX: Mixed Content error resolved - VITE_API_URL must be https://backend-production-1d73.up.railway.app
 Force redeploy: Wed Jun 18 18:25:00 PDT 2025 - Backend API endpoints added (folders, series, templates, goals)

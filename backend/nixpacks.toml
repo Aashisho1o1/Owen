@@ -1,0 +1,17 @@
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.install]
+cmds = ["chmod +x start.sh"]
+
+[start]
+cmd = "./start.sh"
+
+[variables]
+PYTHONPATH = "/app"
+PORT = "8080"
+
+# Override Railway's auto-detection
+[nixpacks]
+# Force Railway to use our start command instead of auto-detecting main.py
+app = "backend" 

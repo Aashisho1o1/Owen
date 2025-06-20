@@ -1,9 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-// Normalise base URL: ensure it includes protocol so we never end up with
-//   "backend-production-xxxx.up.railway.app" (missing scheme) which the browser
-//   treats as a relative path.
-const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
+// Get API URL from environment variable or fallback to production
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1d73.up.railway.app';
 const API_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
 
 // Debug logging for API configuration

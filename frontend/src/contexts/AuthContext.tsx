@@ -67,20 +67,20 @@ interface AuthContextType {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Ensure the base URL always contains a protocol (http/https)
-const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1429.up.railway.app';
-const API_BASE_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
+// API Configuration
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1d73.up.railway.app';
+const API_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
 
 // Debug log to show which API URL is being used
 console.log('🌐 API Configuration:', { 
   VITE_API_URL: import.meta.env.VITE_API_URL,
-  API_BASE_URL: API_BASE_URL,
+  API_BASE_URL: API_URL,
   mode: import.meta.env.MODE
 });
 
 // Configure axios instance
 const apiInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   timeout: 10000,
   // 🔒 Security headers
   headers: {
@@ -302,8 +302,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Debug logging
     console.log('🔐 Login attempt:', { 
       email: data.email, 
-      apiUrl: API_BASE_URL,
-      fullUrl: `${API_BASE_URL}/api/auth/login`
+      apiUrl: API_URL,
+      fullUrl: `${API_URL}/api/auth/login`
     });
     
     try {
@@ -350,8 +350,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('📝 Register attempt:', { 
       email: data.email, 
       name: data.name,
-      apiUrl: API_BASE_URL,
-      fullUrl: `${API_BASE_URL}/api/auth/register`
+      apiUrl: API_URL,
+      fullUrl: `${API_URL}/api/auth/register`
     });
     
     try {

@@ -147,29 +147,31 @@ SOLUTION_APPLIED=REMOVED_PROBLEMATIC_STARTUP_BLOCK
 # Removed the entire if __name__ == "__main__" block from main.py
 # Railway should only use start.sh script to start hypercorn server
 
-CORS-FRONTEND-URL-UPDATE-2025-01-27-19:30:00Z
+CORS-FINAL-FIX-2025-01-27-19:45:00Z
 
-# 🔧 NEW CORS FIX: Frontend URL mismatch identified
-# Problem: New backend doesn't have new frontend URL in CORS origins
+# 🔧 FINAL CORS FIX: Health endpoint debug info corrected
+# Problem: Health endpoint was showing incorrect CORS origins list
 
-ISSUE_IDENTIFIED=CORS_ORIGIN_MISMATCH
-OLD_FRONTEND=https://frontend-production-88b0.up.railway.app
-NEW_FRONTEND=https://frontend-production-e178.up.railway.app
-NEW_BACKEND=https://backend-production-1d73.up.railway.app
+ISSUE_IDENTIFIED=CORS_DEBUG_INFO_MISMATCH
+FRONTEND_URL=https://frontend-production-e178.up.railway.app
+BACKEND_URL=https://backend-production-1d73.up.railway.app
 
 # ERROR ANALYSIS:
 # ❌ CORS policy blocking requests from new frontend
 # ❌ "No 'Access-Control-Allow-Origin' header is present"
 # ❌ net::ERR_FAILED on both /api/health and /api/auth/register
+# ❌ Health endpoint was showing old frontend URL in debug info
 
 # SOLUTION APPLIED:
-# 1. Updated main.py CORS middleware to include new frontend URL
-# 2. Updated backend/config/security.py ALLOWED_ORIGINS
-# 3. Added new frontend as primary, kept old as backup
+# 1. ✅ main.py CORS middleware already has correct new frontend URL
+# 2. ✅ backend/config/security.py ALLOWED_ORIGINS already correct
+# 3. ✅ Updated health endpoint debug info to match actual CORS config
+# 4. ✅ Triggering fresh deployment to restart backend with clean state
 
 # EXPECTED RESULT:
 # ✅ CORS preflight requests should now pass
 # ✅ /api/health should be accessible from new frontend
 # ✅ User registration should work properly
+# ✅ Debug info in health endpoint will show correct origins
 
-DEPLOYMENT_TRIGGER=CORS_FRONTEND_URL_FIX_2025_01_27_19_30
+DEPLOYMENT_TRIGGER=CORS_FINAL_FIX_2025_01_27_19_45
