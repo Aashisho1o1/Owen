@@ -129,11 +129,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             logger.error(f"Security middleware error: {e}")
-            # Don't expose internal errors
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Internal server error"}
-            )
+            # Re-raise the exception instead of masking it
+            # This allows FastAPI's built-in error handling to work properly
+            raise e
     
     def _get_client_ip(self, request: Request) -> str:
         """Get real client IP address handling proxies"""
