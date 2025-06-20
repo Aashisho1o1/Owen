@@ -46,7 +46,7 @@ class LLMService:
         if SERVICES_AVAILABLE:
             self.providers = {
                 "Google Gemini": gemini_service,
-                "OpenAI": openai_service,
+                "OpenAI GPT": openai_service,
             }
             self.default_provider = self._get_default_provider()
         else:
