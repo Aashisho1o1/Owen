@@ -75,6 +75,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
         
         try:
+            # SPECIAL HANDLING FOR CORS PREFLIGHT REQUESTS
+            # Allow OPTIONS requests (CORS preflight) to pass through with minimal checks
+            if request.method == "OPTIONS":
+                logger.debug(f"CORS preflight request from {client_ip} to {request.url.path}")
+                response = await call_next(request)
+                self._add_security_headers(response)
+                return response
+            
             # 1. Check if IP is blocked
             if client_ip in self.blocked_ips:
                 logger.warning(f"Blocked IP attempted access: {client_ip}")
