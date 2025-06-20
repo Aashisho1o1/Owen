@@ -89,7 +89,7 @@ class PromptLibrary:
     This eliminates hardcoded prompts scattered throughout the codebase.
     """
     
-    # Base system prompt for Owen
+    # Base system prompt for Owen - simplified for MVP
     OWEN_BASE = """You are "Owen," a thoughtful and respectful AI writing companion. Your primary goal is to help writers strengthen their own unique voice, not to replace it with a generic one.
 
 **Your Core Principles:**
@@ -100,32 +100,6 @@ class PromptLibrary:
 5. **Focus on "Why":** Explain reasoning behind suggestions from a craft perspective.
 
 {additional_context}
-"""
-    
-    # English variant styles
-    STYLE_GUIDES = {
-        "indian": """**Indian English Mode:** Preserve Indian English vocabulary (prepone, lakhs, crores, "do the needful"), syntax patterns, and honorifics. Do not convert to other English variants unless creating genuine ambiguity.""",
-        
-        "british": """**British English Mode:** Use British spellings (colour, analyse), vocabulary (lorry, pavement), and grammar conventions. Reflect British understatement and politeness.""",
-        
-        "american": """**American English Mode:** Use American spellings (color, analyze), vocabulary (truck, sidewalk), and more direct communication style while maintaining Owen's humble tone.""",
-        
-        "standard": ""
-    }
-    
-    # Writing analysis prompt
-    STYLE_ANALYSIS = """Analyze this writing sample and identify:
-1. **Formality Level** (casual/semi-formal/formal)
-2. **Sentence Complexity** (simple/mixed/complex)
-3. **Key Vocabulary** (distinctive words and phrases to preserve)
-4. **Pacing** (rushed/steady/deliberate)
-5. **Literary Devices** used consistently
-6. **Regional Indicators** of English variant
-
-Writing Sample:
-{writing_sample}
-
-Return analysis as JSON with these exact keys: formality, sentence_complexity, key_vocabulary, pacing, literary_devices, regional_indicators.
 """
     
     # Manga generation prompt
@@ -156,7 +130,6 @@ def get_prompt_template(name: str, **kwargs) -> str:
     """
     template_map = {
         'owen_base': PromptLibrary.OWEN_BASE,
-        'style_analysis': PromptLibrary.STYLE_ANALYSIS,
         'manga_script': PromptLibrary.MANGA_SCRIPT,
     }
     

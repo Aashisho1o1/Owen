@@ -101,10 +101,11 @@ class PostgreSQLService:
                 return cursor.rowcount
     
     def init_database(self):
-        """Initialize essential database schema - simple but flexible for future expansion"""
+        """Initialize clean MVP database schema - optimized for core features only"""
         
+        # CLEAN SLATE MVP SCHEMA - Remove all unnecessary complexity
         schema_queries = [
-            # Users table - Core authentication
+            # 1. USERS TABLE - Essential authentication only
             '''
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -115,78 +116,41 @@ class PostgreSQLService:
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT TRUE,
-                email_verified BOOLEAN DEFAULT FALSE,
                 last_login TIMESTAMPTZ,
                 failed_login_attempts INTEGER DEFAULT 0,
-                account_locked_until TIMESTAMPTZ,
-                login_count INTEGER DEFAULT 0,
-                preferences JSONB DEFAULT '{}'
+                account_locked_until TIMESTAMPTZ
             )
             ''',
             
-            # Documents table - Core document management (flexible for future features)
+            # 2. DOCUMENTS TABLE - Core document management (simplified)
             '''
             CREATE TABLE IF NOT EXISTS documents (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id VARCHAR(36) PRIMARY KEY,  -- UUID as string for simplicity
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 title VARCHAR(500) NOT NULL,
-                content TEXT,
-                document_type VARCHAR(50) DEFAULT 'novel',
-                folder_id UUID REFERENCES folders(id) ON DELETE SET NULL,
-                series_id UUID REFERENCES series(id) ON DELETE SET NULL,
+                content TEXT DEFAULT '',
+                folder_id VARCHAR(36) REFERENCES folders(id) ON DELETE SET NULL,
                 status VARCHAR(20) DEFAULT 'draft',
-                tags JSONB DEFAULT '[]',
-                is_favorite BOOLEAN DEFAULT FALSE,
                 word_count INTEGER DEFAULT 0,
-                metadata JSONB DEFAULT '{}',
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             ''',
             
-            # Document versions for change tracking
-            '''
-            CREATE TABLE IF NOT EXISTS document_versions (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-                version_number INTEGER NOT NULL,
-                title VARCHAR(500) NOT NULL,
-                content TEXT,
-                word_count INTEGER DEFAULT 0,
-                change_summary TEXT,
-                is_auto_save BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-            ''',
-            
-            # Folders for organization
+            # 3. FOLDERS TABLE - Simple organization
             '''
             CREATE TABLE IF NOT EXISTS folders (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                id VARCHAR(36) PRIMARY KEY,  -- UUID as string
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 name VARCHAR(100) NOT NULL,
-                parent_id UUID REFERENCES folders(id) ON DELETE CASCADE,
-                color VARCHAR(7),
+                parent_id VARCHAR(36) REFERENCES folders(id) ON DELETE CASCADE,
+                color VARCHAR(7) DEFAULT '#3B82F6',
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             ''',
             
-            # Series for multi-document projects
-            '''
-            CREATE TABLE IF NOT EXISTS series (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                name VARCHAR(100) NOT NULL,
-                description TEXT,
-                total_chapters INTEGER DEFAULT 0,
-                total_words INTEGER DEFAULT 0,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-            ''',
-            
-            # Refresh tokens for JWT management
+            # 4. REFRESH TOKENS - JWT authentication
             '''
             CREATE TABLE IF NOT EXISTS refresh_tokens (
                 id SERIAL PRIMARY KEY,
@@ -200,7 +164,7 @@ class PostgreSQLService:
             )
             ''',
             
-            # Login logs for security
+            # 5. LOGIN LOGS - Basic security tracking
             '''
             CREATE TABLE IF NOT EXISTS login_logs (
                 id SERIAL PRIMARY KEY,
@@ -213,73 +177,96 @@ class PostgreSQLService:
             )
             ''',
             
-            # User sessions
+            # 6. USER PREFERENCES - Minimal MVP preferences
             '''
-            CREATE TABLE IF NOT EXISTS user_sessions (
+            CREATE TABLE IF NOT EXISTS user_preferences (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                session_id VARCHAR(255) UNIQUE NOT NULL,
+                user_corrections TEXT[] DEFAULT '{}',
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMPTZ NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE,
-                ip_address INET,
-                last_activity TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id)
+            )
+            ''',
+            
+            # 7. USER FEEDBACK - Essential for AI learning
+            '''
+            CREATE TABLE IF NOT EXISTS user_feedback (
+                id VARCHAR(255) PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                original_message TEXT NOT NULL,
+                ai_response TEXT NOT NULL,
+                user_feedback TEXT NOT NULL,
+                correction_type VARCHAR(50) NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             '''
         ]
         
-        # Essential performance indexes
+        # Essential performance indexes only
         index_queries = [
+            # User indexes
             'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
             'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
+            
+            # Document indexes
             'CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_documents_folder_id ON documents(folder_id)',
-            'CREATE INDEX IF NOT EXISTS idx_documents_series_id ON documents(series_id)',
             'CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON documents(updated_at)',
-            'CREATE INDEX IF NOT EXISTS idx_document_versions_document_id ON document_versions(document_id)',
+            
+            # Folder indexes
             'CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_series_user_id ON series(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_id)',
+            
+            # Auth indexes
             'CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at)',
             'CREATE INDEX IF NOT EXISTS idx_login_logs_user_id ON login_logs(user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at)'
+            
+            # Preference indexes
+            'CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id)'
         ]
         
-        # Execute all schema creation
-        for query in schema_queries:
-            try:
-                self.execute_query(query)
-            except Exception as e:
-                logger.error(f"Failed to execute schema query: {e}")
-                # Continue with other queries
-        
-        # Execute all indexes
-        for query in index_queries:
-            try:
-                self.execute_query(query)
-            except Exception as e:
-                logger.error(f"Failed to create index: {e}")
-                # Continue with other indexes
-        
-        # Migration: Add missing columns to existing databases
-        migration_queries = [
-            # Add login_count column if it doesn't exist
-            '''
-            ALTER TABLE users 
-            ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0
-            '''
+        # DROP old tables that are no longer needed for MVP
+        cleanup_queries = [
+            'DROP TABLE IF EXISTS document_versions CASCADE',
+            'DROP TABLE IF EXISTS series CASCADE', 
+            'DROP TABLE IF EXISTS user_sessions CASCADE'
         ]
         
-        for query in migration_queries:
+        logger.info("🗄️ Creating clean MVP database schema...")
+        
+        # Execute cleanup first
+        for query in cleanup_queries:
             try:
                 self.execute_query(query)
-                logger.info(f"Migration executed successfully: {query.strip()}")
+                logger.info(f"✅ Cleaned up unused table: {query.split()[4]}")
             except Exception as e:
-                logger.error(f"Migration failed: {e}")
-                # Continue with other migrations
+                logger.warning(f"Cleanup query failed (might not exist): {e}")
         
-        logger.info("Essential PostgreSQL schema initialized successfully")
+        # Execute schema creation
+        for i, query in enumerate(schema_queries, 1):
+            try:
+                self.execute_query(query)
+                table_name = query.split()[5]  # Extract table name
+                logger.info(f"✅ {i}/7 Created MVP table: {table_name}")
+            except Exception as e:
+                logger.error(f"❌ Failed to create table {i}/7: {e}")
+                raise DatabaseError(f"Schema creation failed: {e}")
+        
+        # Execute indexes
+        for i, query in enumerate(index_queries, 1):
+            try:
+                self.execute_query(query)
+                index_name = query.split()[5]  # Extract index name
+                logger.info(f"📊 {i}/{len(index_queries)} Created index: {index_name}")
+            except Exception as e:
+                logger.warning(f"Index creation failed: {e}")
+        
+        logger.info("🚀 Clean MVP database schema initialized successfully!")
+        logger.info("📋 MVP Tables: users, documents, folders, refresh_tokens, login_logs, user_preferences, user_feedback")
+        logger.info("🗑️ Removed: document_versions, series, user_sessions (not needed for MVP)")
     
     def health_check(self) -> Dict[str, Any]:
         """Check database connectivity and status"""
@@ -301,12 +288,15 @@ class PostgreSQLService:
             result = self.execute_query("SELECT version()", fetch='one')
             user_count = self.execute_query("SELECT COUNT(*) as count FROM users", fetch='one')
             doc_count = self.execute_query("SELECT COUNT(*) as count FROM documents", fetch='one')
+            folder_count = self.execute_query("SELECT COUNT(*) as count FROM folders", fetch='one')
             
             return {
                 "status": "healthy",
                 "database_version": result['version'] if result else "unknown",
                 "total_users": user_count['count'] if user_count else 0,
                 "total_documents": doc_count['count'] if doc_count else 0,
+                "total_folders": folder_count['count'] if folder_count else 0,
+                "schema": "MVP_v3.0",
                 "timestamp": datetime.now().isoformat()
             }
         except Exception as e:
@@ -318,12 +308,74 @@ class PostgreSQLService:
     
     def close(self):
         """Close all database connections"""
-        if hasattr(self, 'pool') and self.pool:
+        if self.pool:
             try:
                 self.pool.closeall()
                 logger.info("Database connections closed")
             except Exception as e:
-                logger.error(f"Error closing database connections: {e}")
+                logger.error(f"Error closing connections: {e}")
+
+    # === USER PREFERENCES METHODS (Essential for MVP) ===
+    
+    def get_user_preferences(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get simplified user preferences from database"""
+        try:
+            result = self.execute_query(
+                """SELECT user_corrections 
+                   FROM user_preferences WHERE user_id = %s""",
+                (user_id,),
+                fetch='one'
+            )
+            
+            if not result:
+                return None
+                
+            return {
+                "user_corrections": result.get('user_corrections', [])
+            }
+        except Exception as e:
+            logger.error(f"Error getting user preferences: {e}")
+            return None
+    
+    def create_default_preferences(self, user_id: int) -> Dict[str, Any]:
+        """Create minimal default preferences for new user"""
+        try:
+            default_prefs = {
+                "user_corrections": []
+            }
+            
+            # Insert default preferences
+            self.execute_query(
+                """INSERT INTO user_preferences 
+                   (user_id, user_corrections, created_at, updated_at)
+                   VALUES (%s, %s, %s, %s)
+                   ON CONFLICT (user_id) DO NOTHING""",
+                (user_id, "[]", datetime.utcnow(), datetime.utcnow())
+            )
+            
+            return default_prefs
+        except Exception as e:
+            logger.error(f"Error creating default preferences: {e}")
+            return {}
+    
+    def add_user_feedback(self, user_id: int, original_message: str, ai_response: str, 
+                         user_feedback: str, correction_type: str) -> bool:
+        """Add user feedback for AI responses"""
+        try:
+            feedback_id = f"feedback_{user_id}_{int(datetime.utcnow().timestamp())}"
+            
+            self.execute_query(
+                """INSERT INTO user_feedback 
+                   (id, user_id, original_message, ai_response, user_feedback, 
+                    correction_type, created_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (feedback_id, user_id, original_message, ai_response, user_feedback, 
+                 correction_type, datetime.utcnow())
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error adding user feedback: {e}")
+            return False
 
 # Global database service instance
 db_service = PostgreSQLService() 

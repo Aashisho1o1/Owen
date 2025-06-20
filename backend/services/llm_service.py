@@ -16,8 +16,6 @@ import json
 import logging
 from typing import Dict, Any, List, Optional, Union
 
-from services.persona_service import create_writer_persona
-
 logger = logging.getLogger(__name__)
 
 # Import specialized services
@@ -101,42 +99,30 @@ class LLMService:
                            editor_text: str,
                            author_persona: str,
                            help_focus: str,
-                           user_style_profile: Optional[Dict] = None,
                            user_corrections: Optional[List] = None,
                            highlighted_text: Optional[str] = None) -> str:
-        """Assemble a complete chat prompt using modular components"""
+        """Assemble a simplified chat prompt for MVP"""
         
         # Build context parts
         context_parts = []
         
         # Add author persona
         if author_persona:
-            persona = create_writer_persona(author_persona)
-            if persona:
-                persona_context = f"""**Author Persona: {author_persona}**
-Writing Style: {persona.get('writing_style', 'Unique style')}
-Voice: {persona.get('voice', 'Distinctive voice')}"""
-                context_parts.append(persona_context)
+            persona_context = f"""**Author Persona: {author_persona}**
+Writing a {author_persona.lower()} story with their unique style and voice."""
+            context_parts.append(persona_context)
         
-        # Add user style profile
-        if user_style_profile:
-            profile_context = "**Your Personal Writing Style:**"
-            for key, value in user_style_profile.items():
-                if value:
-                    profile_context += f"\n- {key.title()}: {value}"
-            context_parts.append(profile_context)
-        
-        # Add user corrections
+        # Add user corrections (keep simple)
         if user_corrections:
             corrections_context = "**Remember these preferences:**"
-            for correction in user_corrections[-3:]:
+            for correction in user_corrections[-3:]:  # Only last 3
                 corrections_context += f"\n- {correction}"
             context_parts.append(corrections_context)
         
-        # PRIORITY: Add highlighted text if available (this is what user selected for feedback)
+        # PRIORITY: Add highlighted text if available
         if highlighted_text and highlighted_text.strip():
             highlight_context = f"""**🎯 SELECTED TEXT FOR ANALYSIS:**
-The user has specifically highlighted this text for your attention:
+The user has highlighted this text for your attention:
 "{highlighted_text}"
 
 Please focus your response on this selected text."""
@@ -147,18 +133,17 @@ Please focus your response on this selected text."""
 Help Focus: {help_focus}
 User Message: {user_message}"""
         
-        # Only include full editor content if no highlighted text (to avoid confusion)
+        # Only include full editor content if no highlighted text
         if not highlighted_text or not highlighted_text.strip():
             task_context += f"""
 Full Editor Content: {editor_text[:300]}{'...' if len(editor_text) > 300 else ''}"""
         else:
-            # Just show a brief context if highlighted text is available
             task_context += f"""
 Editor Context: {len(editor_text)} characters total"""
         
         context_parts.append(task_context)
         
-        # Base Owen prompt
+        # Simplified Owen prompt - no multi-lingual complexity
         base_prompt = """You are "Owen," a thoughtful AI writing companion. Help writers strengthen their unique voice.
 
 **Core Principles:**
@@ -171,27 +156,6 @@ Editor Context: {len(editor_text)} characters total"""
         # Combine all parts
         additional_context = '\n\n'.join(context_parts)
         return base_prompt + additional_context
-    
-    async def analyze_writing_style(self, writing_sample: str) -> Dict[str, Any]:
-        """Analyze writing style using available LLM"""
-        if not SERVICES_AVAILABLE:
-            # Fallback analysis
-            return {
-                "formality": "semi-formal",
-                "sentence_complexity": "mixed",
-                "key_vocabulary": [],
-                "pacing": "steady",
-                "literary_devices": [],
-                "regional_indicators": "standard"
-            }
-        
-        for service in self.providers.values():
-            if service.is_available():
-                return await service.analyze_writing_style(writing_sample)
-        
-        raise LLMError("No LLM providers available for style analysis")
-    
-
 
 # Global instance for backward compatibility
 llm_service = LLMService()

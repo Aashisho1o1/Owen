@@ -6,12 +6,11 @@ import logging
 
 # Import security services
 from services.auth_service import auth_service, AuthenticationError
-from services.validation_service import ChatMessageModel, UserFeedbackModel, input_validator
+from services.validation_service import input_validator
 
 # Change relative imports to absolute imports
 from models.schemas import (
-    ChatRequest, ChatResponse, WritingSampleRequest, WritingSampleResponse,
-    UserFeedbackRequest, OnboardingRequest, OnboardingResponse
+    ChatRequest, ChatResponse, UserFeedbackRequest
 )
 from services.llm_service import LLMService
 from services.database import db_service
@@ -51,15 +50,8 @@ async def chat(
         logger.info(f"🎯 Help focus: {request.help_focus}")
 
         
-        # Get user preferences - now user_id comes from JWT token
-        user_preferences = request.user_preferences
-        
-        # If no preferences provided, try to load from database
-        if not user_preferences:
-            user_preferences = db_service.get_user_preferences(user_id)
-            if not user_preferences:
-                # Create default preferences for new user
-                user_preferences = db_service.create_default_preferences(user_id)
+        # Simplified user preferences - just basic corrections
+        user_preferences = request.user_preferences or {"user_corrections": []}
         
         # Get highlighted text directly from request - this is the user's selection
         highlighted_text = None
@@ -74,14 +66,13 @@ async def chat(
                 highlighted_text = input_validator.validate_text_input(parts[1])
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
-        # Use the new modular prompt assembly system
+        # Use the simplified prompt assembly system
         final_prompt = llm_service.assemble_chat_prompt(
             user_message=validated_message,
             editor_text=validated_editor_text,
             author_persona=request.author_persona,
             help_focus=request.help_focus,
-            user_style_profile=user_preferences.writing_style_profile,
-            user_corrections=user_preferences.user_corrections,
+            user_corrections=user_preferences.get("user_corrections", []),
             highlighted_text=highlighted_text
         )
         
@@ -184,44 +175,6 @@ async def chat(
             thinking_trail=None
         )
 
-@router.post("/analyze-writing", response_model=WritingSampleResponse)
-async def analyze_writing_sample(
-    request: WritingSampleRequest,
-    user_id: int = Depends(get_current_user_id)
-):
-    """Analyze a user's writing sample to create a personalized style profile."""
-    try:
-        # Validate writing sample
-        validated_sample = input_validator.validate_text_input(request.writing_sample)
-        
-        # Analyze the writing style using LLM
-        style_profile = await llm_service.analyze_writing_style(validated_sample)
-        
-        # Save the style profile to database
-        if not style_profile.get("error"):
-            success = db_service.save_writing_style_profile(user_id, style_profile)
-            if not success:
-                return WritingSampleResponse(
-                    style_profile=style_profile,
-                    success=False,
-                    error="Failed to save style profile to database"
-                )
-        
-        return WritingSampleResponse(
-            style_profile=style_profile,
-            success=True
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error analyzing writing sample: {e}")
-        return WritingSampleResponse(
-            style_profile={},
-            success=False,
-            error=str(e)
-        )
-
 @router.post("/feedback")
 async def submit_user_feedback(
     request: UserFeedbackRequest,
@@ -257,49 +210,6 @@ async def submit_user_feedback(
     except Exception as e:
         print(f"Error submitting user feedback: {e}")
         return {"status": "error", "message": str(e)}
-
-@router.post("/onboarding", response_model=OnboardingResponse)
-async def complete_onboarding(
-    request: OnboardingRequest,
-    user_id: int = Depends(get_current_user_id)
-):
-    """Complete user onboarding and save initial preferences."""
-    try:
-        # Validate onboarding data
-        validated_writing_type = input_validator.validate_text_input(request.writing_type)
-        validated_feedback_style = input_validator.validate_text_input(request.feedback_style)
-        validated_primary_goal = input_validator.validate_text_input(request.primary_goal)
-        
-        success = db_service.complete_onboarding(
-            user_id=user_id,
-            writing_type=validated_writing_type,
-            feedback_style=validated_feedback_style,
-            primary_goal=validated_primary_goal
-        )
-        
-        if success:
-            # Get updated preferences
-            user_preferences = db_service.get_user_preferences(user_id)
-            
-            return OnboardingResponse(
-                success=True,
-                message="Onboarding completed successfully",
-                user_preferences=user_preferences
-            )
-        else:
-            return OnboardingResponse(
-                success=False,
-                message="Failed to complete onboarding"
-            )
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error completing onboarding: {e}")
-        return OnboardingResponse(
-            success=False,
-            message="An internal error occurred while completing onboarding."
-        )
 
 @router.get("/preferences")
 async def get_user_preferences(user_id: int = Depends(get_current_user_id)):

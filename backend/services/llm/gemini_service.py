@@ -176,13 +176,6 @@ class GeminiService(BaseLLMService):
             logger.error(f"Invalid JSON from Gemini: {cleaned_result}")
             raise LLMError(f"Invalid JSON response from Gemini: {str(e)}")
     
-    async def analyze_writing_style(self, writing_sample: str) -> Dict[str, Any]:
-        """Analyze writing style using Gemini's advanced language understanding"""
-        from .base_service import get_prompt_template
-        
-        prompt = get_prompt_template('style_analysis', writing_sample=writing_sample)
-        return await self.generate_structured(prompt, {})
-    
     async def generate_with_conversation_history(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """Generate response with conversation history - handles multiple input formats"""
         def _generate():
