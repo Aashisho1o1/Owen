@@ -31,7 +31,8 @@ class GeminiService(BaseLLMService):
                 
                 # Try different model names in order of preference
                 model_preferences = [
-                    'gemini-2.5-pro',          # User's preferred model - latest and most capable
+                    'gemini-2.5-flash',        # User's preferred model - fast with thinking capabilities
+                    'gemini-2.5-pro',          # Most capable but slower/more expensive
                     'gemini-1.5-pro',          # Stable fallback
                     'gemini-1.5-flash',        # Fast alternative
                     'gemini-pro',              # Legacy fallback
@@ -53,8 +54,7 @@ class GeminiService(BaseLLMService):
                     return
                 
                 # Configure generation settings for optimal performance
-                # For Gemini 2.5 models, thinking mode is on by default which can increase latency
-                # We can adjust this based on the model being used
+                # For Gemini 2.5 Flash: Balance thinking vs speed for writing feedback
                 base_config = {
                     "temperature": 0.7,
                     "top_p": 0.8,
@@ -63,12 +63,16 @@ class GeminiService(BaseLLMService):
                     "candidate_count": 1
                 }
                 
-                # If using Gemini 2.5, we can disable thinking for faster responses when needed
+                # Configure thinking mode based on model type
                 if self.model_name and '2.5' in self.model_name:
-                    # For production, we may want to disable thinking for speed
-                    # This can be adjusted based on use case
-                    base_config["response_schema"] = {"thinking": False}
-                    logger.info("🧠 Gemini 2.5 detected - thinking mode can be controlled for performance")
+                    if 'flash' in self.model_name.lower():
+                        # For 2.5 Flash: Use moderate thinking for balanced performance
+                        # Thinking budget of 1024 tokens is good for writing feedback
+                        logger.info("🚀 Gemini 2.5 Flash detected - optimizing for writing feedback with moderate thinking")
+                        # Note: Thinking config will be set per request when needed
+                    else:
+                        # For 2.5 Pro: Can use more thinking if needed
+                        logger.info("🧠 Gemini 2.5 Pro detected - full thinking capabilities available")
                 
                 self.generation_config = genai.types.GenerationConfig(**base_config)
                 
@@ -186,24 +190,94 @@ class GeminiService(BaseLLMService):
     async def generate_with_conversation_history(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """Generate response with conversation history"""
         def _generate():
-            # Convert messages to Gemini format
-            chat = self.model.start_chat(history=[])
-            
-            # Add conversation history
-            for message in messages[:-1]:
-                if message['role'] == 'user':
-                    chat.send_message(message['content'])
-            
-            # Generate response to the last message
-            last_message = messages[-1]['content']
-            response = chat.send_message(
-                last_message,
-                generation_config=self.generation_config,
-                safety_settings=self.safety_settings
-            )
-            return response.text
+            try:
+                # Convert messages to Gemini format
+                chat = self.model.start_chat(history=[])
+                
+                # Add conversation history
+                for message in messages[:-1]:
+                    if message['role'] == 'user':
+                        response = chat.send_message(message['content'])
+                
+                # Generate response to the last message
+                last_message = messages[-1]['content']
+                response = chat.send_message(
+                    last_message,
+                    generation_config=self.generation_config,
+                    safety_settings=self.safety_settings
+                )
+                
+                # Safely extract text from response
+                if hasattr(response, 'text') and response.text:
+                    return response.text
+                elif hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        parts = candidate.content.parts
+                        if parts and hasattr(parts[0], 'text'):
+                            return parts[0].text
+                
+                # Fallback for safety-blocked responses
+                return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                
+            except Exception as e:
+                logger.error(f"Error in conversation generation: {e}")
+                if 'safety' in str(e).lower():
+                    return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                raise e
         
         return await self._make_api_call(_generate, "conversation generation")
+    
+    async def generate_text_with_thinking(self, prompt: str, thinking_budget: int = 1024, **kwargs) -> str:
+        """Generate text with configurable thinking mode for writing feedback"""
+        def _generate():
+            try:
+                # Create generation config with thinking if supported
+                config = self.generation_config
+                if self.model_name and '2.5' in self.model_name:
+                    # Use thinking for better writing feedback quality
+                    config = genai.types.GenerationConfig(
+                        temperature=0.7,
+                        top_p=0.8,
+                        top_k=40,
+                        max_output_tokens=8192,
+                        candidate_count=1
+                    )
+                    # Note: Thinking config would be added here when the API supports it
+                    # For now, thinking is enabled by default on 2.5 models
+                
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config=config,
+                    safety_settings=self.safety_settings
+                )
+                
+                # Handle blocked responses
+                if not response.text:
+                    if response.prompt_feedback:
+                        feedback = response.prompt_feedback
+                        if feedback.block_reason:
+                            return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                    
+                    # Check if response was blocked
+                    if hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'finish_reason'):
+                            if candidate.finish_reason == genai.types.FinishReason.SAFETY:
+                                return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                            elif candidate.finish_reason == genai.types.FinishReason.MAX_TOKENS:
+                                return "Response was too long. Please try a shorter prompt or request."
+                    
+                    return "I'm unable to generate a response right now. Please try rephrasing your request."
+                
+                return response.text
+                
+            except Exception as e:
+                if 'safety' in str(e).lower():
+                    return "I apologize, but I cannot generate a response to that request due to safety guidelines. Please try rephrasing your question."
+                raise e
+        
+        return await self._make_api_call(_generate, "text generation with thinking")
     
     def is_available(self) -> bool:
         """Check if the service is available and properly configured"""
