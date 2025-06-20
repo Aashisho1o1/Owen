@@ -48,3 +48,36 @@ EXPECTED_OUTPUT=DETAILED_STARTUP_DIAGNOSTICS
 # 6. Start normally if all tests pass
 
 RAILWAY_REBUILD_TRIGGER=TRUE
+
+NETWORK-BINDING-FIX-2025-06-20-22:00:00Z
+
+# 🔧 CRITICAL FIX: Railway Network Binding Issue
+# Root cause identified: Debug script was using uvicorn instead of hypercorn
+# Railway requires hypercorn with dual-stack IPv6/IPv4 binding for external access
+
+DEPLOYMENT_STATUS=NETWORK_BINDING_FIX
+ISSUE_IDENTIFIED=UVICORN_VS_HYPERCORN_BINDING_PROBLEM
+SOLUTION_APPLIED=HYPERCORN_DUAL_STACK_BINDING
+
+# DIAGNOSIS COMPLETE:
+# ✅ Backend starts successfully (all tests pass)
+# ✅ Database connects properly
+# ✅ FastAPI app initializes correctly  
+# ❌ HTTP requests fail due to incorrect network binding
+
+# CHANGES MADE:
+# 1. Fixed railway_test.py to use hypercorn instead of uvicorn
+# 2. Restored normal main.py startup with proper Railway detection
+# 3. Using same dual-stack binding as start.sh script
+# 4. This should resolve CORS/ERR_FAILED issues
+
+EXPECTED_RESULT=BACKEND_ACCESSIBLE_VIA_HTTP
+BINDING_METHOD=HYPERCORN_DUAL_STACK_IPV4_IPV6
+
+# Technical details:
+# - Railway needs [::]:{port} for IPv6 
+# - Railway needs 0.0.0.0:{port} for IPv4
+# - uvicorn doesn't bind correctly to Railway's network interface
+# - hypercorn provides proper dual-stack support
+
+RAILWAY_REBUILD_TIMESTAMP=2025-06-20T22:00:00Z
