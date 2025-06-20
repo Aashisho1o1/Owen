@@ -226,7 +226,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const documentsHook = useDocuments();
   const { editorContent, setEditorContent } = useEditor({
-    initialContent: documentsHook.currentDocument?.content || 'Once upon a time, in a bustling city, a young detective named Kenji stumbled upon a mysterious diary. His partner, a seasoned veteran named Rina, always told him to trust his gut.'
+    initialContent: documentsHook.currentDocument?.content || ''
   });
 
   // Handle save checkpoint

@@ -40,6 +40,11 @@ class ChatRequest(BaseModel):
     # NEW: Enhanced fields for personalized assistance
     user_preferences: Optional[UserPreferences] = None
     feedback_on_previous: Optional[str] = None  # User feedback on previous response
+    
+    # Highlighted text support - CRITICAL for user selections
+    highlighted_text: Optional[str] = None  # Text user highlighted for feedback
+    highlight_id: Optional[str] = None  # ID of the highlight for tracking
+    english_variant: Optional[str] = "US"  # Language variant preference
 
 class ChatResponse(BaseModel):
     dialogue_response: str

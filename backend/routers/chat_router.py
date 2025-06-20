@@ -39,6 +39,16 @@ async def chat(
         validated_message = input_validator.validate_chat_message(request.message)
         validated_editor_text = input_validator.validate_text_input(request.editor_text or "")
         validated_llm_provider = input_validator.validate_llm_provider(request.llm_provider)
+        
+        # DEBUG: Log what content is being sent to AI
+        logger.info(f"🔍 CHAT DEBUG - User ID: {user_id}")
+        logger.info(f"📝 Message: {validated_message[:200]}..." if len(validated_message) > 200 else f"📝 Message: {validated_message}")
+        logger.info(f"📄 Editor text length: {len(validated_editor_text)} chars")
+        if validated_editor_text and len(validated_editor_text) > 0:
+            editor_preview = validated_editor_text[:300] + "..." if len(validated_editor_text) > 300 else validated_editor_text
+            logger.info(f"📄 Editor content preview: {editor_preview}")
+        logger.info(f"🎭 Author persona: {request.author_persona}")
+        logger.info(f"🎯 Help focus: {request.help_focus}")
 
         
         # Get user preferences - now user_id comes from JWT token
@@ -51,12 +61,18 @@ async def chat(
                 # Create default preferences for new user
                 user_preferences = db_service.create_default_preferences(user_id)
         
-        # Extract highlighted text safely
+        # Get highlighted text directly from request - this is the user's selection
         highlighted_text = None
-        if "improve this text:" in validated_message and '"' in validated_message:
+        if request.highlighted_text:
+            highlighted_text = input_validator.validate_text_input(request.highlighted_text)
+            logger.info(f"📝 User highlighted text received: {highlighted_text[:100]}..." if len(highlighted_text) > 100 else f"📝 User highlighted text: {highlighted_text}")
+        
+        # DEPRECATED: Old method of extracting from message - keeping as fallback
+        elif "improve this text:" in validated_message and '"' in validated_message:
             parts = validated_message.split('"')
             if len(parts) >= 3:
                 highlighted_text = input_validator.validate_text_input(parts[1])
+                logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
         # Use the new modular prompt assembly system
         final_prompt = llm_service.assemble_chat_prompt(
@@ -113,10 +129,10 @@ async def chat(
                             ai_response_dict = json.loads(json_match.group(0))
                         except json.JSONDecodeError:
                             print(f"Regex found potential JSON, but failed to parse: {json_match.group(0)}")
-                            ai_response_dict = {"dialogue_response": cleaned_text[:1000]}
+                            ai_response_dict = {"dialogue_response": cleaned_text}
                     else:
                         print(f"Response is not JSON and regex failed. Using raw text: {cleaned_text[:200]}...")
-                        ai_response_dict = {"dialogue_response": cleaned_text[:1000]}
+                        ai_response_dict = {"dialogue_response": cleaned_text}
             else:
                 ai_response_dict = {"dialogue_response": "Error: AI response was empty."}
 
@@ -124,8 +140,11 @@ async def chat(
                 dialogue_content = ai_response_dict.get("text", str(ai_response_dict))
                 ai_response_dict["dialogue_response"] = dialogue_content if isinstance(dialogue_content, str) else "Error: AI response format was incorrect (missing dialogue_response)."
             
-            # Validate and sanitize the AI response
-            sanitized_response = input_validator.validate_text_input(ai_response_dict["dialogue_response"])
+            # Validate AI response length but don't HTML escape since it's from our trusted LLM
+            response_text = ai_response_dict["dialogue_response"]
+            if len(response_text) > 10000:  # Reasonable limit for AI responses
+                response_text = response_text[:10000] + "... [Response truncated]"
+            sanitized_response = response_text
             
             # Store user feedback if provided
             if request.feedback_on_previous:
@@ -145,7 +164,7 @@ async def chat(
         except Exception as json_error:
             print(f"JSON parsing error in main chat: {json_error}. Raw response: {str(response_text)[:200]}...")
             return ChatResponse(
-                dialogue_response=str(response_text)[:1000] if response_text else "Error: Could not parse the AI's response.",
+                dialogue_response=str(response_text) if response_text else "Error: Could not parse the AI's response.",
                 thinking_trail=thinking_trail
             )
             

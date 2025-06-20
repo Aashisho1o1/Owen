@@ -15,6 +15,10 @@ from typing import Dict, List, Optional, Set
 from contextlib import asynccontextmanager
 from enum import Enum
 
+# Load environment variables from .env file for local development
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Depends, status, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

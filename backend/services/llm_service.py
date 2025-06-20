@@ -133,11 +133,29 @@ Voice: {persona.get('voice', 'Distinctive voice')}"""
                 corrections_context += f"\n- {correction}"
             context_parts.append(corrections_context)
         
+        # PRIORITY: Add highlighted text if available (this is what user selected for feedback)
+        if highlighted_text and highlighted_text.strip():
+            highlight_context = f"""**🎯 SELECTED TEXT FOR ANALYSIS:**
+The user has specifically highlighted this text for your attention:
+"{highlighted_text}"
+
+Please focus your response on this selected text."""
+            context_parts.append(highlight_context)
+        
         # Add current task context
         task_context = f"""**Current Task:**
 Help Focus: {help_focus}
-Editor Content: {editor_text[:300]}{'...' if len(editor_text) > 300 else ''}
 User Message: {user_message}"""
+        
+        # Only include full editor content if no highlighted text (to avoid confusion)
+        if not highlighted_text or not highlighted_text.strip():
+            task_context += f"""
+Full Editor Content: {editor_text[:300]}{'...' if len(editor_text) > 300 else ''}"""
+        else:
+            # Just show a brief context if highlighted text is available
+            task_context += f"""
+Editor Context: {len(editor_text)} characters total"""
+        
         context_parts.append(task_context)
         
         # Base Owen prompt

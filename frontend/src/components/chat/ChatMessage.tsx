@@ -16,15 +16,23 @@ interface ChatMessageProps {
   message: ChatMessage;
 }
 
+// HTML entity decoder function
+const decodeHtmlEntities = (text: string): string => {
+  const textArea = document.createElement('textarea');
+  textArea.innerHTML = text;
+  return textArea.value;
+};
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const renderMessageContent = (msg: ChatMessage) => {
+    // Decode HTML entities first
+    let content = decodeHtmlEntities(msg.content);
+    
     if (msg.role === 'user') {
-      return renderTextWithLineBreaks(msg.content);
+      return renderTextWithLineBreaks(content);
     }
 
     // AI message formatting with markdown-like syntax
-    const content = msg.content;
-    
     // Handle code blocks
     if (content.includes('```')) {
       return renderCodeBlocks(content);
