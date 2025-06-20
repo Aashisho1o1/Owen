@@ -1,1 +1,1 @@
-web: cd backend && chmod +x start.sh && ./start.sh 
+web: echo "🚀 Procfile starting..." && cd backend && echo "📁 Changed to backend directory" && chmod +x start.sh && echo "🔧 Made start.sh executable" && ./start.sh 

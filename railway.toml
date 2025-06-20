@@ -10,12 +10,10 @@ restartPolicyMaxRetries = 10
 [deploy.healthcheckPath]
 path = "/api/health"
 
+# FORCE PRODUCTION ENVIRONMENT - Always use start.sh script
 [environments.production]
-# Production environment - uses Railway environment variables
 startCommand = "cd backend && chmod +x start.sh && ./start.sh"
 buildCommand = "cd backend && pip install -r requirements.txt"
 
-[environments.development]
-# Development environment
-startCommand = "cd backend && python main.py"
-buildCommand = "cd backend && pip install -r requirements.txt" 
+# Remove development environment to prevent confusion
+# Railway should always use production configuration for deployment 

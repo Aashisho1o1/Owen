@@ -141,14 +141,28 @@ SOLUTION_APPLIED=REMOVED_PROBLEMATIC_STARTUP_BLOCK
 # 1. Detecting Railway environment
 # 2. Logging "Railway detected - startup handled by start.sh script"  
 # 3. Then EXITING the Python process
-# 4. This prevented start.sh from properly running hypercorn
+# 4. This prevented start.sh from running hypercorn server
 
-# FIX APPLIED:
-# - Removed the entire if __name__ == "__main__" block from main.py
-# - Railway should only use start.sh to start the hypercorn server
-# - No direct execution of main.py needed on Railway
+# COMPREHENSIVE SOLUTION APPLIED:
+# 1. Removed problematic if __name__ == "__main__" block from main.py
+# 2. Fixed railway.toml to force production environment
+# 3. Enhanced Procfile with debugging output
+# 4. Railway should only use start.sh script to start hypercorn
 
-EXPECTED_RESULT=START_SH_RUNS_HYPERCORN_SUCCESSFULLY
-STARTUP_METHOD=PROCFILE_TO_START_SH_TO_HYPERCORN
+RAILWAY_CONFIG_FIX=APPLIED_2025-01-27-19:00:00Z
+
+# NEW ISSUE IDENTIFIED: Railway was using DEVELOPMENT environment
+# Development environment runs: "python main.py" (WRONG)
+# Production environment runs: "./start.sh" (CORRECT)
+# Fixed railway.toml to remove development environment confusion
+
+EXPECTED_BEHAVIOR_AFTER_FIX:
+# 1. Railway reads Procfile: "web: echo '🚀 Procfile starting...' && cd backend && ..."
+# 2. Procfile executes start.sh script
+# 3. start.sh runs nuclear process cleanup
+# 4. start.sh starts hypercorn server on port 8080
+# 5. Backend becomes accessible at /api/health
+
+DEPLOY_TRIGGER_2025-01-27-19:00:00Z
 
 RAILWAY_REBUILD_TRIGGER=TRUE
