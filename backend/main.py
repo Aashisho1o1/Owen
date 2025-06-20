@@ -930,14 +930,5 @@ async def auto_save_document(document_id: str, content: str = Query(...), user_i
         logger.error(f"Error auto-saving document: {e}")
         raise HTTPException(status_code=500, detail="Failed to auto-save document")
 
-if __name__ == "__main__":
-    # On Railway, the start.sh script handles process startup
-    # This section only runs for local development
-    if not os.getenv("RAILWAY_ENVIRONMENT"):
-        import uvicorn
-        port = int(os.getenv("PORT", 8000))
-        logger.info("💻 Running locally - using uvicorn")
-        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
-    else:
-        logger.info("🚂 Railway detected - startup handled by start.sh script")
-        # Don't start anything here on Railway - let start.sh handle it 
+# Railway uses start.sh script to start the hypercorn server
+# No direct execution needed in main.py 

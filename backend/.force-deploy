@@ -118,3 +118,37 @@ PORT_BINDING_STRATEGY=fresh_container
 # - Create completely fresh container
 # - Release port 8080 properly
 # - Start with clean process table
+
+Force deploy after fixing main.py startup issue - 2025-01-27-18:45
+
+MAIN-PY-STARTUP-FIX-2025-01-27-18:45:00Z
+
+# 🔧 CRITICAL FIX: main.py startup issue identified
+# Problem: main.py was detecting Railway but then exiting before start.sh could run
+
+DEPLOYMENT_STATUS=MAIN_PY_STARTUP_FIX
+ISSUE_IDENTIFIED=MAIN_PY_IF_NAME_MAIN_BLOCK_CAUSING_EXIT
+SOLUTION_APPLIED=REMOVED_PROBLEMATIC_STARTUP_BLOCK
+
+# DIAGNOSIS:
+# ✅ JWT_SECRET_KEY properly configured  
+# ✅ Railway detected
+# ❌ main.py exits after detection instead of letting start.sh run
+# ❌ hypercorn never starts because main.py process exits early
+
+# ROOT CAUSE:
+# The if __name__ == "__main__" block in main.py was:
+# 1. Detecting Railway environment
+# 2. Logging "Railway detected - startup handled by start.sh script"  
+# 3. Then EXITING the Python process
+# 4. This prevented start.sh from properly running hypercorn
+
+# FIX APPLIED:
+# - Removed the entire if __name__ == "__main__" block from main.py
+# - Railway should only use start.sh to start the hypercorn server
+# - No direct execution of main.py needed on Railway
+
+EXPECTED_RESULT=START_SH_RUNS_HYPERCORN_SUCCESSFULLY
+STARTUP_METHOD=PROCFILE_TO_START_SH_TO_HYPERCORN
+
+RAILWAY_REBUILD_TRIGGER=TRUE
