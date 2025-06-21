@@ -84,18 +84,12 @@ class AuthService:
     def register_user(self, username: str, email: str, password: str, name: str = None) -> Dict[str, Any]:
         """Register a new user"""
         try:
-            # Validate email with better error messages
+            # Validate email
             try:
                 valid_email = validate_email(email)
                 email = valid_email.email
             except EmailNotValidError as e:
-                error_msg = str(e)
-                if "example.com" in error_msg or "does not accept email" in error_msg:
-                    raise AuthenticationError("Please use a real email address. Test domains like 'example.com' are not accepted.")
-                elif "domain name" in error_msg.lower():
-                    raise AuthenticationError("Please enter a valid email address with a real domain.")
-                else:
-                    raise AuthenticationError(f"Invalid email format: {error_msg}")
+                raise AuthenticationError(f"Invalid email: {e}")
             
             # Check if user already exists
             existing_user = self.db.execute_query(
@@ -105,7 +99,7 @@ class AuthService:
             )
             
             if existing_user:
-                raise AuthenticationError("An account with this email address already exists. Please use a different email or try logging in.")
+                raise AuthenticationError("User with this email or username already exists")
             
             # Hash password
             password_hash = self._hash_password(password)

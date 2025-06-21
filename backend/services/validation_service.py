@@ -90,7 +90,8 @@ class SimpleInputValidator:
         if not provider:
             raise ValidationError("LLM provider cannot be empty")
         
-        valid_providers = ["Google Gemini", "OpenAI GPT-4", "OpenAI GPT-3.5"]
+        # Updated to match actual provider names used by LLM service and frontend
+        valid_providers = ["Google Gemini", "OpenAI GPT"]
         if provider not in valid_providers:
             raise ValidationError(f"Invalid LLM provider. Must be one of: {valid_providers}")
         
