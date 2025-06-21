@@ -226,6 +226,40 @@ class GeminiService(BaseLLMService):
             log_api_error("gemini", error_msg, {"prompt_length": len(prompt)})
             raise LLMError(error_msg)
     
+    async def generate_with_conversation_history(self, messages: List[Dict[str, Any]], **kwargs) -> str:
+        """Generate response with conversation history using Gemini."""
+        if not self.is_available():
+            raise LLMError("Gemini service not available")
+        
+        try:
+            # Convert messages to Gemini format
+            # Gemini expects a list of parts, not the OpenAI format
+            conversation_parts = []
+            
+            for message in messages:
+                role = message.get('role', 'user')
+                content = message.get('content', '')
+                
+                # Handle different message formats
+                if 'parts' in message:
+                    # Already in Gemini format
+                    conversation_parts.extend(message['parts'])
+                else:
+                    # Convert from OpenAI format
+                    conversation_parts.append(content)
+            
+            # Join all conversation parts into a single prompt
+            # For Gemini, we'll treat the conversation as a single context
+            conversation_prompt = '\n\n'.join(str(part) for part in conversation_parts)
+            
+            # Generate response using the conversation prompt
+            return await self.generate_response(conversation_prompt, **kwargs)
+            
+        except Exception as e:
+            error_msg = f"Gemini conversation generation failed: {str(e)}"
+            log_api_error("gemini", error_msg, {"messages_count": len(messages)})
+            raise LLMError(error_msg)
+    
     # Required abstract methods from BaseLLMService
     async def generate_text(self, prompt: str, **kwargs) -> str:
         """Generate text using Gemini - maps to generate_response."""
