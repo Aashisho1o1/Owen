@@ -50,8 +50,19 @@ async def chat(
         logger.info(f"🎯 Help focus: {request.help_focus}")
 
         
-        # Simplified user preferences - just basic corrections
-        user_preferences = request.user_preferences or {"user_corrections": []}
+        # Simplified user preferences - handle both Pydantic model and dict cases
+        user_preferences = request.user_preferences
+        if user_preferences is None:
+            user_corrections = []
+        elif hasattr(user_preferences, 'user_corrections'):
+            # It's a Pydantic UserPreferences model
+            user_corrections = user_preferences.user_corrections or []
+        elif isinstance(user_preferences, dict):
+            # It's a dictionary (fallback case)
+            user_corrections = user_preferences.get("user_corrections", [])
+        else:
+            # Unknown type, default to empty list
+            user_corrections = []
         
         # Get highlighted text directly from request - this is the user's selection
         highlighted_text = None
@@ -72,7 +83,7 @@ async def chat(
             editor_text=validated_editor_text,
             author_persona=request.author_persona,
             help_focus=request.help_focus,
-            user_corrections=user_preferences.get("user_corrections", []),
+            user_corrections=user_corrections,
             highlighted_text=highlighted_text
         )
         

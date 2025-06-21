@@ -108,6 +108,16 @@ class OpenAIService(BaseLLMService):
         except LLMError:
             # Don't raise exception for image generation failures - return None instead
             return None
+    
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get information about the OpenAI service."""
+        return {
+            'available': self.is_available(),
+            'model_name': 'gpt-4',
+            'api_key_configured': bool(self.api_key),
+            'service_type': 'OpenAI GPT',
+            'client_type': 'openai.OpenAI'
+        }
 
 # Global instance
 openai_service = OpenAIService() 

@@ -234,6 +234,63 @@ class GeminiService(BaseLLMService):
     async def generate_structured(self, prompt: str, schema: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Generate structured data using Gemini - maps to generate_json_response."""
         return await self.generate_json_response(prompt, **kwargs)
+    
+    async def generate_with_conversation_history(self, messages: List[Dict[str, Any]], **kwargs) -> str:
+        """Generate response with conversation history using Gemini."""
+        if not self.is_available():
+            raise LLMError("Gemini service not available")
+        
+        try:
+            # Convert messages to Gemini format and process conversation history
+            conversation_parts = []
+            for message in messages:
+                role = message.get('role', 'user')
+                content = message.get('content', '')
+                
+                # Handle different message formats
+                if 'parts' in message:
+                    # Already in Gemini format
+                    conversation_parts.append(message)
+                else:
+                    # Convert from standard format to Gemini format
+                    if role == 'user':
+                        conversation_parts.append({
+                            "role": "user", 
+                            "parts": [content]
+                        })
+                    elif role == 'assistant':
+                        conversation_parts.append({
+                            "role": "model", 
+                            "parts": [content]
+                        })
+            
+            # If only one message and it's already formatted for Gemini, use it directly
+            if len(conversation_parts) == 1 and isinstance(conversation_parts[0].get('parts'), list):
+                prompt_content = conversation_parts[0]['parts'][0]
+                return await self.generate_response(prompt_content, **kwargs)
+            
+            # For multi-turn conversation, use chat format
+            # Convert to simple prompt for now (Gemini chat requires more complex setup)
+            combined_prompt = ""
+            for part in conversation_parts:
+                role = part.get('role', 'user')
+                parts = part.get('parts', [])
+                content = parts[0] if parts else ""
+                
+                if role == 'user':
+                    combined_prompt += f"User: {content}\n"
+                elif role == 'model':
+                    combined_prompt += f"Assistant: {content}\n"
+            
+            # Add instruction for assistant to respond
+            combined_prompt += "Assistant:"
+            
+            return await self.generate_response(combined_prompt, **kwargs)
+            
+        except Exception as e:
+            error_msg = f"Gemini conversation generation failed: {str(e)}"
+            log_api_error("gemini", error_msg, {"messages_count": len(messages)})
+            raise LLMError(error_msg)
 
 
 # Global instance
