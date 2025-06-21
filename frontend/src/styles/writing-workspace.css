@@ -1,0 +1,127 @@
+/**
+ * WritingWorkspace Styles
+ * Clean, focused layout for the main writing interface
+ */
+
+.writing-workspace {
+  height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.workspace-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  transition: all var(--transition-normal);
+  gap: 0;
+}
+
+/* Editor-only layout (default) */
+.workspace-layout.editor-only {
+  justify-content: center;
+}
+
+.workspace-layout.editor-only .workspace-editor {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* With chat layout */
+.workspace-layout.with-chat {
+  justify-content: stretch;
+}
+
+.workspace-layout.with-chat .workspace-editor {
+  width: 50%;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-light);
+}
+
+.workspace-layout.with-chat .workspace-chat {
+  width: 50%;
+  flex-shrink: 0;
+}
+
+/* Workspace panels */
+.workspace-editor,
+.workspace-chat {
+  background: var(--bg-elevated);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+  height: 100%;
+}
+
+/* Chat toggle button */
+.chat-toggle-button {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary-600);
+  color: white;
+  border: none;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-toggle-button:hover {
+  background: var(--primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+.chat-toggle-button.active {
+  background: var(--primary-700);
+}
+
+.chat-toggle-button svg {
+  transition: transform var(--transition-fast);
+}
+
+.chat-toggle-button.active svg {
+  transform: rotate(180deg);
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .workspace-layout.with-chat {
+    flex-direction: column;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 100%;
+    height: 50%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 100%;
+    height: 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: 100%;
+    padding: var(--space-2);
+  }
+  
+  .chat-toggle-button {
+    bottom: var(--space-4);
+    right: var(--space-4);
+    width: 48px;
+    height: 48px;
+  }
+} 

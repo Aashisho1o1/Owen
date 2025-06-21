@@ -1,11 +1,8 @@
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Paragraph from '@tiptap/extension-paragraph';
-import React, { useCallback, useEffect, useState, forwardRef } from 'react';
-import { useAppContext } from '../contexts/AppContext';
-import { grammarService, GrammarIssue, GrammarCheckResult } from '../services/grammarService';
-import { usePopper } from 'react-popper';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { EditorView, keymap, placeholder } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { useEditorContext } from '../contexts/EditorContext';
+import { useChatContext } from '../contexts/ChatContext';
 import '../styles/editor.css';
 
 interface EditorProps {
@@ -14,30 +11,29 @@ interface EditorProps {
   onTextHighlighted?: (text: string) => void;
 }
 
-const Editor = forwardRef<HTMLDivElement, EditorProps>(({ 
-  content: contentProp, 
-  onChange: onChangeProp, 
-  onTextHighlighted: onTextHighlightedProp 
-}, ref) => {
-  // Use context values as fallback if props are not provided
+const Editor: React.FC<EditorProps> = ({ 
+  content, 
+  onChange, 
+  onTextHighlighted 
+}) => {
   const { 
-    editorContent: contextContent, 
-    setEditorContent: contextOnChange,
-    handleTextHighlighted: contextOnTextHighlighted
-  } = useAppContext();
-
-  // Use props if provided, otherwise use context
-  const content = contentProp !== undefined ? contentProp : contextContent;
-  const onChange = onChangeProp || contextOnChange;
-  const onTextHighlighted = onTextHighlightedProp || contextOnTextHighlighted;
+    editorContent, 
+    setEditorContent,
+    handleSaveCheckpoint
+  } = useEditorContext();
+  
+  const {
+    handleTextHighlighted,
+    clearTextHighlight
+  } = useChatContext();
 
   const [fontSize, setFontSize] = useState('16px');
   const [fontFamily, setFontFamily] = useState('Inter');
   
   // Grammar checking state - restored but simplified
-  const [grammarIssues, setGrammarIssues] = useState<GrammarIssue[]>([]);
+  const [grammarIssues, setGrammarIssues] = useState<any[]>([]); // Changed from GrammarIssue[] to any[] as GrammarIssue is removed
   const [isCheckingGrammar, setIsCheckingGrammar] = useState(false);
-  const [hoveredIssue, setHoveredIssue] = useState<GrammarIssue | null>(null);
+  const [hoveredIssue, setHoveredIssue] = useState<any | null>(null); // Changed from GrammarIssue | null to any | null
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   
   const editor = useEditor({
@@ -64,14 +60,14 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     
     setIsCheckingGrammar(true);
     
-    grammarService.checkRealTimeDebounced(text, (result: GrammarCheckResult) => {
+    grammarService.checkRealTimeDebounced(text, (result: any) => { // Changed from GrammarCheckResult to any
       setGrammarIssues(result.issues);
       setIsCheckingGrammar(false);
     });
   }, []);
 
   // Apply grammar suggestion
-  const applySuggestion = useCallback((issue: GrammarIssue, suggestion: string) => {
+  const applySuggestion = useCallback((issue: any, suggestion: string) => { // Changed from GrammarIssue to any
     if (!editor) return;
     
     const currentText = editor.getText();
@@ -300,7 +296,7 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
   }, [editor, handleSelectionChange]);
 
   return (
-    <div className="editor-container" ref={ref}>
+    <div className="editor-container">
       <div className="editor-header">
         <h2>Text Content</h2>
         <p className="selection-hint">

@@ -4,12 +4,12 @@
  * Main chat interface with contextual conversation starters and clean controls.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useAppContext } from '../contexts/AppContext';
-import { useAuth } from '../contexts/AuthContext';
-import { ChatMessage } from './chat/ChatMessage';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatInput } from './chat/ChatInput';
+import { ChatMessage } from './chat/ChatMessage';
 import { ThinkingTrail } from './chat/ThinkingTrail';
+import { logger } from '../utils/logger';
+import { useChatContext } from '../contexts/ChatContext';
 
 // Constants moved outside component to prevent re-creation on each render
 const AUTHOR_PERSONAS = [
@@ -92,57 +92,46 @@ const isUserAuthenticated = () => {
 const ChatPane: React.FC = () => {
   // Check authentication status
   const isAuthenticated = () => {
-    try {
-      const accessToken = localStorage.getItem('owen_access_token');
-      return !!accessToken;
-    } catch {
-      return false;
-    }
+    const token = localStorage.getItem('owen_access_token');
+    return !!token;
   };
 
-  const [userAuthenticated, setUserAuthenticated] = useState(isAuthenticated());
-
-  // Check auth status on mount and when localStorage changes
-  useEffect(() => {
-    const checkAuth = () => {
-      setUserAuthenticated(isAuthenticated());
-    };
-
-    checkAuth();
-    
-    // Listen for storage changes (when user logs in/out)
-    window.addEventListener('storage', checkAuth);
-    
-    // Also check periodically in case tokens are updated programmatically
-    const interval = setInterval(checkAuth, 1000);
-
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const { 
-    messages, 
-    handleSendMessage, 
+  const {
+    messages,
+    handleSendMessage,
     thinkingTrail,
-    highlightedText,
-    helpFocus,
-    setHelpFocus,
-    authorPersona,
-    setAuthorPersona,
-    selectedLLM,
-    setSelectedLLM,
     isStreaming,
     streamText,
     isThinking,
     chatApiError,
     apiGlobalError,
     checkApiConnection,
-    showAuthModal,
-    setShowAuthModal,
-    setAuthMode
-  } = useAppContext();
+    userPreferences,
+    setUserPreferences,
+    feedbackOnPrevious,
+    setFeedbackOnPrevious,
+    // Chat settings
+    authorPersona,
+    setAuthorPersona,
+    helpFocus,
+    setHelpFocus,
+    selectedLLM,
+    setSelectedLLM,
+    // 🚨 CRITICAL FIX: Add missing text highlighting properties
+    highlightedText,
+    setHighlightedText,
+    highlightedTextId,
+    setHighlightedTextId,
+    handleTextHighlighted,
+    clearTextHighlight,
+    // Personalization features
+    showOnboarding,
+    setShowOnboarding,
+    loadUserPreferences,
+    submitFeedback,
+    analyzeWritingSample,
+    completeOnboarding,
+  } = useChatContext();
 
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

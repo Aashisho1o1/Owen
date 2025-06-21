@@ -1,30 +1,17 @@
 // Template Fix Deployment - 2024
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDocuments } from '../hooks/useDocuments';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppContext } from '../contexts/AppContext';
+import { useUIContext } from '../contexts/UIContext';
+import DocumentManager from '../components/DocumentManager';
 import { Document } from '../services/api';
 
 
 import './DocumentsPage.css';
 
 const DocumentsPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
-  const { setShowAuthModal, setAuthMode } = useAppContext();
-  const { 
-    documents, 
-    templates,
-    isLoading, 
-    error, 
-    createDocument, 
-    deleteDocument, 
-    updateDocument,
-    createFromTemplate,
-    getRecentDocuments,
-    refreshAll 
-  } = useDocuments();
+  const { user, isAuthenticated } = useAuth();
+  const { setShowAuthModal, setAuthMode } = useUIContext();
   
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');

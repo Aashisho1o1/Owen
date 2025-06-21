@@ -1,13 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useAppContext } from '../contexts/AppContext';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from 'react';
+import { useEditorContext } from '../contexts/EditorContext';
 
 const DocumentTitleBar: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const { documentManager } = useAppContext();
+  const { documentManager } = useEditorContext();
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [newTitle, setNewTitle] = useState('');
 
   const { currentDocument, hasUnsavedChanges, isSaving, setCurrentTitle } = documentManager;
 

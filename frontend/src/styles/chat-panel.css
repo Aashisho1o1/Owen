@@ -1,0 +1,14 @@
+/**
+ * ChatPanel Styles
+ * Container for chat functionality
+ */
+
+.chat-panel-container {
+  height: 100%;
+  width: 100%;
+  background: var(--chat-bg, var(--bg-elevated));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+} 

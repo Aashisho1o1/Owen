@@ -2,8 +2,9 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { Mark } from '@tiptap/core';
-import React, { useCallback, useEffect, useState, forwardRef } from 'react';
-import { useAppContext } from '../contexts/AppContext';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { useChatContext } from '../contexts/ChatContext';
+import { useEditorContext } from '../contexts/EditorContext';
 import '../styles/highlightable-editor.css';
 
 // Custom highlight extension with multiple colors
@@ -90,24 +91,28 @@ interface HighlightInfo {
   timestamp: number;
 }
 
-const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>(({ 
-  content: contentProp, 
-  onChange: onChangeProp, 
-  onTextHighlighted: onTextHighlightedProp,
-  onHighlightRemoved: onHighlightRemovedProp
-}, ref) => {
+const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
+  content,
+  onChange,
+  onTextHighlighted,
+  onHighlightRemoved
+}) => {
+  const { 
+    handleTextHighlighted,
+    clearTextHighlight 
+  } = useChatContext();
+
   // Use context values as fallback if props are not provided
   const { 
     editorContent: contextContent, 
-    setEditorContent: contextOnChange,
-    handleTextHighlighted: contextOnTextHighlighted
-  } = useAppContext();
+    setEditorContent: contextOnChange
+  } = useEditorContext();
 
   // Use props if provided, otherwise use context
-  const content = contentProp !== undefined ? contentProp : contextContent;
-  const onChange = onChangeProp || contextOnChange;
-  const onTextHighlighted = onTextHighlightedProp || contextOnTextHighlighted;
-  const onHighlightRemoved = onHighlightRemovedProp || (() => {});
+  const contentProp = content !== undefined ? content : contextContent;
+  const onChangeProp = onChange || contextOnChange;
+  const onTextHighlightedProp = onTextHighlighted || (() => {}); // Default to no-op if not provided
+  const onHighlightRemovedProp = onHighlightRemoved || (() => {});
 
   const [highlights, setHighlights] = useState<HighlightInfo[]>([]);
   const [showHighlightTooltip, setShowHighlightTooltip] = useState(false);
@@ -122,10 +127,10 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
         multicolor: true,
       }),
     ],
-    content: content || '',
+    content: contentProp || '',
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
-      onChange(newContent);
+      onChangeProp(newContent);
     },
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
@@ -175,7 +180,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
     setHighlights(prev => [...prev, highlightInfo]);
 
     // Notify parent component with highlight type
-    onTextHighlighted(selectedText, highlightId);
+    onTextHighlightedProp(selectedText, highlightId);
 
     // Hide tooltip and clear selection
     setShowHighlightTooltip(false);
@@ -184,7 +189,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
 
     // Clear the text selection
     editor.commands.setTextSelection(to);
-  }, [editor, selectedText, onTextHighlighted]);
+  }, [editor, selectedText, onTextHighlightedProp]);
 
   // Function to create highlight and send to chat with specific request type
   const createHighlightAndSendToChat = useCallback((color: string, requestType: string) => {
@@ -211,7 +216,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
     setHighlights(prev => [...prev, highlightInfo]);
 
     // Notify parent component with the highlighted text and request type
-    onTextHighlighted(selectedText, highlightId);
+    onTextHighlightedProp(selectedText, highlightId);
 
     // Hide tooltip and clear selection
     setShowHighlightTooltip(false);
@@ -232,7 +237,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
       }
     });
     window.dispatchEvent(event);
-  }, [editor, selectedText, onTextHighlighted]);
+  }, [editor, selectedText, onTextHighlightedProp]);
 
   // Improved tooltip positioning to avoid covering text
   const getTooltipPosition = useCallback((coords: { left: number; top: number }) => {
@@ -325,8 +330,8 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
     setHighlights(prev => prev.filter(h => h.id !== highlightId));
 
     // Notify parent component
-    onHighlightRemoved(highlightId);
-  }, [editor, highlights, onHighlightRemoved]);
+    onHighlightRemovedProp(highlightId);
+  }, [editor, highlights, onHighlightRemovedProp]);
 
   // Handle clicking on existing highlights
   useEffect(() => {
@@ -355,10 +360,10 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
 
   // Update editor content when the content prop changes
   useEffect(() => {
-    if (editor && content && editor.getHTML() !== content) {
-      editor.commands.setContent(content);
+    if (editor && contentProp && editor.getHTML() !== contentProp) {
+      editor.commands.setContent(contentProp);
     }
-  }, [content, editor]);
+  }, [contentProp, editor]);
 
   // Auto-hide tooltip after 5 seconds of no interaction
   useEffect(() => {
@@ -373,7 +378,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
   }, [showHighlightTooltip]);
 
   return (
-    <div className="highlightable-editor-container" ref={ref}>
+    <div className="highlightable-editor-container">
       <div className="editor-wrapper">
         <EditorContent 
           editor={editor} 
@@ -476,7 +481,7 @@ const HighlightableEditor = forwardRef<HTMLDivElement, HighlightableEditorProps>
       </div>
     </div>
   );
-});
+};
 
 HighlightableEditor.displayName = 'HighlightableEditor';
 

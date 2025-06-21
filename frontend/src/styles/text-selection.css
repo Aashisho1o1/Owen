@@ -1,0 +1,57 @@
+/**
+ * TextSelectionHandler Styles
+ * Floating AI button for text selection
+ */
+
+.text-selection-boundary {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.floating-ai-button {
+  position: absolute;
+  background: var(--primary-600);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.floating-ai-button:hover {
+  background: var(--primary-700);
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+.floating-ai-button:active {
+  transform: translateX(-50%) translateY(0px);
+}
+
+/* Animation for appearing */
+.floating-ai-button {
+  animation: fadeInUp 0.2s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+} 

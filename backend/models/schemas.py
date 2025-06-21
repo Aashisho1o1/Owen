@@ -3,10 +3,6 @@ from typing import List, Optional, Dict, Any
 import re
 from pydantic import field_validator
 
-# ============================================================================
-# CORE MVP SCHEMAS ONLY - SIMPLIFIED, NO COMPLEX ONBOARDING
-# ============================================================================
-
 # === AUTHENTICATION SCHEMAS ===
 class UserRegistrationRequest(BaseModel):
     """Request to register a new user account."""

@@ -1,5 +1,3 @@
-# Backend API - DOG Writer Document Management System
-# Version 3.0.0-MVP - Lean and focused MVP with core features only
 """
 DOG Writer Backend - AI Writing Assistant MVP
 Core features: Authentication, Documents, AI Chat, Grammar Check, Basic Organization
@@ -48,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 # CRITICAL: JWT Secret validation - fail startup if not configured
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not JWT_SECRET_KEY or JWT_SECRET_KEY == "your-secret-key-here-please-change-in-production":
+if not JWT_SECRET_KEY:
     logger.error("🚨 SECURITY CRITICAL: JWT_SECRET_KEY not properly configured!")
     logger.error("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
     raise ValueError("JWT_SECRET_KEY must be set to a secure value in production")

@@ -1,0 +1,28 @@
+/**
+ * EditorPanel Styles
+ * Clean layout for the editor panel
+ */
+
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.editor-container {
+  flex: 1;
+  position: relative;
+  padding: var(--space-4);
+  background: var(--editor-content-bg, var(--bg-primary));
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Focus styles for better UX */
+.editor-panel:focus-within {
+  box-shadow: 0 0 0 2px var(--primary-200);
+} 

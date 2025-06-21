@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppContext } from '../contexts/AppContext';
+import { useEditorContext } from '../contexts/EditorContext';
 
 const DocumentHelp: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const { documentManager } = useAppContext();
+  const { documentManager } = useEditorContext();
   const [showHelp, setShowHelp] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
