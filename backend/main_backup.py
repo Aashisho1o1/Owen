@@ -394,8 +394,7 @@ async def health_check(request: Request = None):
         return {
             "status": "unhealthy",
             "timestamp": datetime.utcnow().isoformat(),
-            "error": f"Health check failed: {str(e)}",
-            "error_type": type(e).__name__
+            "error": "An internal error has occurred. Please contact support."
         }
 
 # Authentication endpoints
