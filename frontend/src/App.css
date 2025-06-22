@@ -623,7 +623,7 @@ body {
 
 /* Enhanced Chat Input Container - REDUCED SPACING */
 .chat-input-container {
-  padding: 0.75rem; /* REDUCED from 1rem for less spacing */
+  padding: 10px; /* FURTHER REDUCED for minimal spacing */
   background: var(--bg-elevated);
   border-top: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
