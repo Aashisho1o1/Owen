@@ -312,3 +312,4 @@ export const useChat = ({
     handleSaveCheckpoint,
     fullResponse,
   };
+};
