@@ -293,20 +293,8 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           <button
             className="floating-ai-button"
             style={{ 
-              position: 'absolute',
               top: selection.top, 
-              left: selection.left,
-              zIndex: 1000,
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-              animation: 'fadeIn 0.2s ease-out'
+              left: selection.left
             }}
             onClick={handleAskAI}
             aria-label={`Ask AI about selected text: ${selection.text.substring(0, 50)}...`}

@@ -467,7 +467,7 @@ body {
   transform: scale(0.95);
 }
 
-.floating-ai-button {
+.floating-ai-button-global {
   position: fixed;
   right: 1.5rem;
   bottom: 5.5rem;
@@ -485,7 +485,7 @@ body {
   backdrop-filter: blur(12px);
 }
 
-.floating-ai-button:hover {
+.floating-ai-button-global:hover {
   background: var(--bg-accent);
   border-color: var(--border-accent);
   transform: translateY(-2px);

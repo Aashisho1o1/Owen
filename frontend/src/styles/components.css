@@ -1595,52 +1595,7 @@
   gap: var(--space-1);
 }
 
-.contextual-prompt-button {
-  padding: 4px 6px;
-  background: var(--bg-elevated) !important;
-  color: var(--gray-800) !important;
-  border: 1px solid var(--border-medium) !important;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.2;
-  transition: all var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-xs);
-  max-width: 100%;
-  word-wrap: break-word;
-}
-
-.contextual-prompt-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.08), transparent);
-  transition: left 0.5s ease;
-}
-
-.contextual-prompt-button:hover {
-  background: var(--primary-50) !important;
-  color: var(--gray-900) !important;
-  border-color: var(--primary-300) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-.contextual-prompt-button:hover::before {
-  left: 100%;
-}
-
-.contextual-prompt-button:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-xs);
-}
+/* Old contextual-prompt-button styling removed - now using unified styling above */
 
 /* Chat Error Box */
 .chat-error-box {
@@ -1785,4 +1740,185 @@
   box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2) !important;
   background: white !important;
   color: var(--gray-900) !important;
+}
+
+/* ============= UNIFIED FLOATING AI BUTTON STYLING ============= */
+/* This replaces all scattered floating AI button styles */
+.floating-ai-button {
+  /* Core positioning and layout */
+  position: absolute !important;
+  z-index: 1000 !important;
+  white-space: nowrap !important;
+  
+  /* Beautiful design */
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  
+  /* Perfect sizing */
+  padding: 6px 10px !important;
+  font-size: var(--text-sm) !important;
+  font-weight: var(--font-medium) !important;
+  line-height: 1.2 !important;
+  
+  /* Smooth interactions */
+  cursor: pointer !important;
+  transition: all var(--transition-fast) !important;
+  box-shadow: var(--shadow-lg) !important;
+  
+  /* Default transform for text selection */
+  transform: translateX(-50%) !important;
+  
+  /* Subtle entrance animation */
+  animation: fadeInUp 0.2s ease-out !important;
+}
+
+.floating-ai-button:hover {
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-800) 100%) !important;
+  transform: translateX(-50%) translateY(-2px) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+.floating-ai-button:active {
+  transform: translateX(-50%) translateY(0px) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* Animation for floating AI button */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Global floating AI button variant (for different positioning) */
+.floating-ai-button-global {
+  position: fixed !important;
+  right: 1.5rem !important;
+  bottom: 5.5rem !important;
+  transform: none !important; /* Override the translateX(-50%) for global positioning */
+  
+  /* Inherit all other styles from .floating-ai-button */
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  padding: 6px 10px !important;
+  font-size: var(--text-sm) !important;
+  font-weight: var(--font-medium) !important;
+  line-height: 1.2 !important;
+  cursor: pointer !important;
+  transition: all var(--transition-fast) !important;
+  box-shadow: var(--shadow-lg) !important;
+  z-index: 40 !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.floating-ai-button-global:hover {
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-800) 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+/* ============= UNIFIED CONTEXTUAL PROMPT BUTTON STYLING ============= */
+/* This replaces all scattered contextual prompt button styles */
+.contextual-prompt-button,
+.suggested-question-button,
+.starter-question-button {
+  /* Core layout */
+  display: block !important;
+  width: 100% !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  position: relative !important;
+  overflow: hidden !important;
+  
+  /* Perfect sizing for readability */
+  padding: 8px 12px !important;
+  margin: 4px 0 !important;
+  border-radius: var(--radius-md) !important;
+  
+  /* Beautiful, high-contrast design that works everywhere */
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: var(--gray-900) !important;
+  border: 1px solid var(--border-medium) !important;
+  
+  /* Typography for perfect readability */
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  
+  /* Smooth interactions */
+  transition: all var(--transition-normal) !important;
+  box-shadow: var(--shadow-xs) !important;
+  backdrop-filter: blur(8px) !important;
+  
+  /* Text handling */
+  word-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* Subtle shimmer effect */
+.contextual-prompt-button::before,
+.suggested-question-button::before,
+.starter-question-button::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.1), transparent) !important;
+  transition: left 0.5s ease !important;
+}
+
+/* Enhanced hover state */
+.contextual-prompt-button:hover,
+.suggested-question-button:hover,
+.starter-question-button:hover {
+  background: rgba(240, 253, 250, 0.98) !important;
+  color: var(--gray-900) !important;
+  border-color: var(--primary-400) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.contextual-prompt-button:hover::before,
+.suggested-question-button:hover::before,
+.starter-question-button:hover::before {
+  left: 100% !important;
+}
+
+/* Active state */
+.contextual-prompt-button:active,
+.suggested-question-button:active,
+.starter-question-button:active {
+  transform: translateY(0) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+/* Special styling when text is highlighted - ensures maximum readability */
+.highlighted-text-box .contextual-prompt-button,
+.highlighted-text-box .suggested-question-button,
+.highlighted-text-box .starter-question-button {
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: var(--gray-900) !important;
+  border: 2px solid var(--primary-200) !important;
+  font-weight: 700 !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.highlighted-text-box .contextual-prompt-button:hover,
+.highlighted-text-box .suggested-question-button:hover,
+.highlighted-text-box .starter-question-button:hover {
+  background: var(--primary-50) !important;
+  color: var(--gray-900) !important;
+  border-color: var(--primary-500) !important;
+  box-shadow: var(--shadow-lg) !important;
 } 
