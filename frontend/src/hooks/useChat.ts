@@ -181,7 +181,7 @@ export const useChat = ({
         chat_history: `(${requestPayload.chat_history.length} messages)` // Prevent circular ref
       });
       
-      const response = await api.post('/api/chat/', requestPayload);
+      const response = await api.sendChatMessage(requestPayload);
 
       console.log('📥 Received chat response:', response);
       
@@ -278,7 +278,7 @@ export const useChat = ({
   const handleSaveCheckpoint = useCallback(async () => {
     logger.log("Save Checkpoint clicked");
     try {
-      await api.createCheckpoint({ editor_text: editorContent, chat_history: messages });
+      await api.saveCheckpoint({ editor_text: editorContent, chat_history: messages });
       logger.log("Checkpoint saved successfully.");
     } catch (error) {
       const typedError = error as ApiError;

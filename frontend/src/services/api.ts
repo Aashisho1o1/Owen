@@ -47,6 +47,7 @@ const api = {
   sendChatMessage: apiServices.sendChatMessage,
   submitUserFeedback: apiServices.submitUserFeedback,
   getUserPreferences: apiServices.getUserPreferences,
+  saveCheckpoint: apiServices.saveCheckpoint,
   
   // Search
   searchDocuments: apiServices.searchDocuments,
