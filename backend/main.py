@@ -208,7 +208,7 @@ async def root():
             "message": "DOG Writer - AI Writing Assistant MVP",
             "version": "3.1.0-REFACTORED", 
             "status": "unhealthy",
-            "error": str(e),
+            "error": "An internal error occurred.",
             "railway_deployment": "partial_failure"
         }
 
@@ -298,8 +298,8 @@ async def health_check(request: Request = None):
         return {
             "status": "unhealthy",
             "timestamp": datetime.utcnow().isoformat(),
-            "error": f"Health check failed: {str(e)}",
-            "error_type": type(e).__name__
+            "error": "An internal error occurred.",
+            "error_type": "InternalError"
         }
 
 # Railway uses start.sh script to start the hypercorn server
