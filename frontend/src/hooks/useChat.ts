@@ -269,7 +269,8 @@ export const useChat = ({
       setThinkingTrail(`Error occurred: ${errorType} - ${specificApiError}`);
       
       // Set global error only for critical connection-related issues
-      if (setApiGlobalError && (errorType === 'network' || errorType === 'timeout' || errorType === 'auth')) {
+      // Don't set global error for auth issues if they happen right after login
+      if (setApiGlobalError && (errorType === 'network' || errorType === 'timeout')) {
         setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: https://backend-production-1d73.up.railway.app. Please check if the server is running.`);
       }
     }

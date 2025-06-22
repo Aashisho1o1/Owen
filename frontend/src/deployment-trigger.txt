@@ -4,3 +4,11 @@ Frontend deployment trigger - 2025-06-19T01:00:00Z - Fix Mixed Content: Force re
 Force redeploy: Wed Jun 18 17:37:22 PDT 2025
 CRITICAL FIX: Mixed Content error resolved - VITE_API_URL must be https://backend-production-1d73.up.railway.app
 Force redeploy: Wed Jun 18 18:25:00 PDT 2025 - Backend API endpoints added (folders, series, templates, goals)
+
+Deployment trigger update: Fixed authentication timing race condition
+- Removed automatic health check after sign-in that was causing "Could not connect to backend API" error
+- Improved error handling in useApiHealth to distinguish between network and auth errors  
+- Prevented global errors for authentication issues that should be handled by individual components
+- Fixed the red error banner that appeared after successful sign-in
+- Build: index-CpzRQ-Nq.js
+- Timestamp: 2025-06-22T18:15:00Z

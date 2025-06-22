@@ -19,8 +19,24 @@ export const useApiHealth = (): UseApiHealthReturn => {
       logger.log("API health check successful from useApiHealth.");
     } catch (error) {
       logger.error('API health check failed in useApiHealth:', error);
-      // Set the error message that will be displayed
-      setApiGlobalError('Could not connect to the backend API. Please ensure the server is running and accessible.');
+      
+      // Be more specific about when to show the connection error
+      // Don't show connection errors for authentication issues (401, 403)
+      const isAuthError = error?.response?.status === 401 || error?.response?.status === 403;
+      const isServerError = error?.response?.status >= 500;
+      const isNetworkError = !error?.response || error?.code === 'ECONNREFUSED' || error?.message?.includes('Network Error');
+      
+      if (isAuthError) {
+        // Don't show global error for auth issues - these are handled by individual components
+        logger.warn('Health check failed due to authentication - this is normal and will be handled by auth components');
+        setApiGlobalError(null);
+      } else if (isNetworkError || isServerError) {
+        // Only show connection error for actual network/server issues
+        setApiGlobalError('Could not connect to the backend API. Please ensure the server is running and accessible.');
+      } else {
+        // Other HTTP errors (400, 404, etc.) - show a generic message
+        setApiGlobalError(`API request failed with status ${error?.response?.status || 'unknown'}. Please try again.`);
+      }
     }
   }, [setApiGlobalError]);
 
