@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { checkApiHealth } from '../services/api';
 import { logger } from '../utils/logger';
 
@@ -19,15 +19,10 @@ export const useApiHealth = (): UseApiHealthReturn => {
       logger.log("API health check successful from useApiHealth.");
     } catch (error) {
       logger.error('API health check failed in useApiHealth:', error);
-      // It's often better to let the consuming component/service decide on the exact user-facing message
-      // For now, we'll set a generic one.
+      // Set the error message that will be displayed
       setApiGlobalError('Could not connect to the backend API. Please ensure the server is running and accessible.');
     }
   }, [setApiGlobalError]);
-
-  useEffect(() => {
-    checkApiConnection();
-  }, [checkApiConnection]); // run on mount and if checkApiConnection identity changes (it shouldn't due to useCallback)
 
   const clearApiGlobalError = useCallback(() => {
     setApiGlobalError(null);

@@ -169,6 +169,10 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     if (isAuthenticated && !authLoading) {
       logger.info('🔐 User authenticated, loading preferences...');
       loadUserPreferences();
+      // Also run a health check now that authentication is ready
+      originalCheckApiConnection().catch(error => {
+        logger.warn('Health check failed after authentication:', error);
+      });
     } else if (!authLoading) {
       logger.info('👤 User not authenticated, using default preferences');
       // Reset to default preferences when not authenticated
@@ -178,7 +182,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
         english_variant: 'US'
       });
     }
-  }, [isAuthenticated, authLoading]); // Depend on authentication state
+  }, [isAuthenticated, authLoading, originalCheckApiConnection]); // Depend on authentication state
 
   const loadUserPreferences = async () => {
     try {
