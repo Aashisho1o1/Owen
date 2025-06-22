@@ -22,7 +22,7 @@ import {
 
 export const sendChatMessage = async (chatData: ChatRequest): Promise<ChatResponse> => {
   return safeApiCall(async () => {
-    const response = await apiClient.post('/api/chat', chatData);
+    const response = await apiClient.post('/api/chat/', chatData);
     return response.data;
   });
 };
