@@ -89,11 +89,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <div className="chat-input-container">
-      {/* Suggested Questions */}
-      {suggestedQuestions.length > 0 && (
+      {/* Suggested Questions - Only show when no text is highlighted */}
+      {suggestedQuestions.length > 0 && !highlightedText && (
         <div className="suggested-questions">
           <div className="suggested-questions-title">
-            {highlightedText ? "Quick questions about your selection:" : "Suggested questions:"}
+            Suggested questions:
           </div>
           <div className="suggested-questions-list">
             {suggestedQuestions.map((question, index) => (
