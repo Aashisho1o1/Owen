@@ -3,6 +3,8 @@ import { ChatMessage } from '../services/api';
 import { useApiHealth } from '../hooks/useApiHealth';
 import { useChat } from '../hooks/useChat';
 import { logger } from '../utils/logger';
+import { apiClient } from '../services/api/client';
+import { getUserPreferences, submitUserFeedback } from '../services/api/chat';
 
 interface WritingStyleProfile {
   formality?: string;
@@ -164,8 +166,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   const loadUserPreferences = async () => {
     try {
-      const response = await fetch('/api/chat/preferences');
-      const data = await response.json();
+      const data = await getUserPreferences();
       
       if (data.status === 'success' && data.preferences) {
         setUserPreferences(data.preferences);
@@ -182,20 +183,12 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   const submitFeedback = async (originalMessage: string, aiResponse: string, feedback: string, type: string) => {
     try {
-      const response = await fetch('/api/chat/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          original_message: originalMessage,
-          ai_response: aiResponse,
-          user_feedback: feedback,
-          correction_type: type
-        })
+      const data = await submitUserFeedback({
+        original_message: originalMessage,
+        ai_response: aiResponse,
+        user_feedback: feedback,
+        correction_type: type
       });
-      
-      const data = await response.json();
       
       if (data.status === 'success') {
         // Reload preferences to get updated corrections
@@ -208,17 +201,11 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   const analyzeWritingSample = async (sample: string): Promise<WritingStyleProfile | null> => {
     try {
-      const response = await fetch('/api/chat/analyze-writing', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          writing_sample: sample
-        })
+      const response = await apiClient.post('/api/chat/analyze-writing', {
+        writing_sample: sample
       });
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success && data.style_profile) {
         // Update user preferences with analyzed style
@@ -239,15 +226,9 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   const completeOnboarding = async (onboardingData: OnboardingData) => {
     try {
-      const response = await fetch('/api/chat/onboarding', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(onboardingData)
-      });
+      const response = await apiClient.post('/api/chat/onboarding', onboardingData);
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success && data.user_preferences) {
         setUserPreferences(data.user_preferences);
