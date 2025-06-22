@@ -269,53 +269,16 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     setHighlightedText(text);
     setHighlightedTextId(highlightId || null);
     
-    // Apply visual highlighting in editor using DOM manipulation
-    // This creates a persistent visual indication of what's being discussed
-    try {
-      // Remove any existing active discussion highlights
-      const existingHighlights = document.querySelectorAll('.highlight-active-discussion');
-      existingHighlights.forEach(el => {
-        el.classList.remove('highlight-active-discussion');
-      });
-      
-      // Find and highlight the selected text in the editor
-      const editorContent = document.querySelector('.ProseMirror, .highlightable-editor');
-      if (editorContent && text.trim()) {
-        const walker = document.createTreeWalker(
-          editorContent,
-          NodeFilter.SHOW_TEXT,
-          null,
-          false
-        );
-        
-        let textNode;
-        while (textNode = walker.nextNode()) {
-          const nodeText = textNode.textContent || '';
-          const textIndex = nodeText.indexOf(text);
-          
-          if (textIndex !== -1) {
-            // Create a highlight span for the active discussion
-            const range = document.createRange();
-            range.setStart(textNode, textIndex);
-            range.setEnd(textNode, textIndex + text.length);
-            
-            const highlightSpan = document.createElement('mark');
-            highlightSpan.className = 'highlight-active-discussion';
-            highlightSpan.setAttribute('data-discussion-active', 'true');
-            
-            try {
-              range.surroundContents(highlightSpan);
-              break; // Only highlight the first occurrence
-            } catch (e) {
-              // Range intersects with existing markup, skip
-              console.warn('Could not apply active discussion highlight:', e);
-            }
-          }
-        }
+    // Instead of DOM manipulation, dispatch a custom event that the editor can listen to
+    // This allows the TipTap editor to handle highlighting through its own extension system
+    const highlightEvent = new CustomEvent('applyActiveDiscussionHighlight', {
+      detail: { 
+        text, 
+        highlightId: highlightId || `active-discussion-${Date.now()}`,
+        action: 'add'
       }
-    } catch (error) {
-      console.warn('Error applying visual highlight:', error);
-    }
+    });
+    window.dispatchEvent(highlightEvent);
     
     logger.log('Text highlighted for AI feedback:', { 
       text: text.substring(0, 50) + '...', 
@@ -325,26 +288,26 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   }, []);
 
   const clearTextHighlight = useCallback(() => {
+    const previousText = highlightedText;
+    const previousId = highlightedTextId;
+    
     setHighlightedText('');
     setHighlightedTextId(null);
     
-    // Remove visual highlighting from editor
-    try {
-      const activeHighlights = document.querySelectorAll('.highlight-active-discussion[data-discussion-active="true"]');
-      activeHighlights.forEach(highlight => {
-        // Replace the highlight element with its text content
-        const parent = highlight.parentNode;
-        if (parent) {
-          parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight);
-          parent.normalize(); // Merge adjacent text nodes
+    // Dispatch event to remove active discussion highlighting
+    if (previousText) {
+      const clearEvent = new CustomEvent('applyActiveDiscussionHighlight', {
+        detail: { 
+          text: previousText, 
+          highlightId: previousId || `active-discussion-${Date.now()}`,
+          action: 'remove'
         }
       });
-    } catch (error) {
-      console.warn('Error removing visual highlight:', error);
+      window.dispatchEvent(clearEvent);
     }
     
     logger.log('Text highlight cleared');
-  }, []);
+  }, [highlightedText, highlightedTextId]);
 
   // Build context value
   const value: ChatContextType = {

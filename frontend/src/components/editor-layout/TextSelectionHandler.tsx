@@ -29,6 +29,7 @@ export const TextSelectionHandler: React.FC = () => {
   // Connect to ChatContext - proper dependency injection
   const { 
     setHighlightedText, 
+    handleTextHighlighted,
     isChatVisible, 
     openChatWithText 
   } = useChatContext();
@@ -89,7 +90,10 @@ export const TextSelectionHandler: React.FC = () => {
   const handleAskAI = useCallback(() => {
     if (!selection) return;
 
-    // Update highlighted text in context
+    // Apply visual highlighting through ChatContext
+    handleTextHighlighted(selection.text);
+    
+    // Update highlighted text in context (for chat display)
     setHighlightedText(selection.text);
     
     // Open chat with the selected text
@@ -97,7 +101,7 @@ export const TextSelectionHandler: React.FC = () => {
     
     // Clear selection
     setSelection(null);
-  }, [selection, setHighlightedText, openChatWithText]);
+  }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
 
   /**
    * Set up event listeners for text selection

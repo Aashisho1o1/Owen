@@ -20,6 +20,8 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
   onSelectionChange,
   onHighlightClick
 }) => {
+  const [activeDiscussionId, setActiveDiscussionId] = useState<string | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -48,6 +50,83 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
       }
     },
   });
+
+  // Handle active discussion highlighting events from ChatContext
+  useEffect(() => {
+    const handleActiveDiscussionHighlight = (event: CustomEvent) => {
+      if (!editor) return;
+
+      const { text, highlightId, action } = event.detail;
+      
+      if (action === 'add') {
+        // Remove any existing active discussion highlight
+        if (activeDiscussionId) {
+          // Find and remove the previous active discussion highlight
+          const doc = editor.state.doc;
+          let foundPrevious = false;
+          
+          doc.descendants((node, pos) => {
+            if (foundPrevious) return false;
+            
+            node.marks.forEach((mark) => {
+              if (mark.type.name === 'customHighlight' && 
+                  mark.attrs.id === activeDiscussionId) {
+                const from = pos;
+                const to = pos + node.nodeSize;
+                editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+                foundPrevious = true;
+              }
+            });
+          });
+        }
+
+        // Find the text in the document and highlight it
+        const docText = editor.state.doc.textContent;
+        const textIndex = docText.indexOf(text);
+        
+        if (textIndex !== -1) {
+          const from = textIndex;
+          const to = textIndex + text.length;
+          
+          // Apply the active discussion highlight
+          editor.chain()
+            .focus()
+            .setTextSelection({ from, to })
+            .setHighlight({ 
+              color: 'active-discussion',
+              id: highlightId 
+            })
+            .run();
+          
+          setActiveDiscussionId(highlightId);
+        }
+      } else if (action === 'remove') {
+        // Remove the active discussion highlight
+        if (activeDiscussionId) {
+          const doc = editor.state.doc;
+          
+          doc.descendants((node, pos) => {
+            node.marks.forEach((mark) => {
+              if (mark.type.name === 'customHighlight' && 
+                  mark.attrs.id === activeDiscussionId) {
+                const from = pos;
+                const to = pos + node.nodeSize;
+                editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+              }
+            });
+          });
+          
+          setActiveDiscussionId(null);
+        }
+      }
+    };
+
+    window.addEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
+    
+    return () => {
+      window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
+    };
+  }, [editor, activeDiscussionId]);
 
   // Handle clicking on existing highlights
   useEffect(() => {
@@ -97,6 +176,8 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
 
 // Forward ref version for accessing editor instance
 export const EditorCoreWithRef = React.forwardRef<{ editor: any }, EditorCoreProps>((props, ref) => {
+  const [activeDiscussionId, setActiveDiscussionId] = useState<string | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -124,6 +205,82 @@ export const EditorCoreWithRef = React.forwardRef<{ editor: any }, EditorCorePro
       }
     },
   });
+
+  // Handle active discussion highlighting events from ChatContext
+  useEffect(() => {
+    const handleActiveDiscussionHighlight = (event: CustomEvent) => {
+      if (!editor) return;
+
+      const { text, highlightId, action } = event.detail;
+      
+      if (action === 'add') {
+        // Remove any existing active discussion highlight
+        if (activeDiscussionId) {
+          const doc = editor.state.doc;
+          let foundPrevious = false;
+          
+          doc.descendants((node, pos) => {
+            if (foundPrevious) return false;
+            
+            node.marks.forEach((mark) => {
+              if (mark.type.name === 'customHighlight' && 
+                  mark.attrs.id === activeDiscussionId) {
+                const from = pos;
+                const to = pos + node.nodeSize;
+                editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+                foundPrevious = true;
+              }
+            });
+          });
+        }
+
+        // Find the text in the document and highlight it
+        const docText = editor.state.doc.textContent;
+        const textIndex = docText.indexOf(text);
+        
+        if (textIndex !== -1) {
+          const from = textIndex;
+          const to = textIndex + text.length;
+          
+          // Apply the active discussion highlight
+          editor.chain()
+            .focus()
+            .setTextSelection({ from, to })
+            .setHighlight({ 
+              color: 'active-discussion',
+              id: highlightId 
+            })
+            .run();
+          
+          setActiveDiscussionId(highlightId);
+        }
+      } else if (action === 'remove') {
+        // Remove the active discussion highlight
+        if (activeDiscussionId) {
+          const doc = editor.state.doc;
+          
+          doc.descendants((node, pos) => {
+            node.marks.forEach((mark) => {
+              if (mark.type.name === 'customHighlight' && 
+                  mark.attrs.id === activeDiscussionId) {
+                const from = pos;
+                const to = pos + node.nodeSize;
+                editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+              }
+            });
+          });
+          
+          setActiveDiscussionId(null);
+        }
+      }
+    };
+
+    window.addEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
+    
+    return () => {
+      window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
+    };
+  }, [editor, activeDiscussionId]);
 
   React.useImperativeHandle(ref, () => ({
     editor
