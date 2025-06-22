@@ -12,3 +12,21 @@ Deployment trigger update: Fixed authentication timing race condition
 - Fixed the red error banner that appeared after successful sign-in
 - Build: index-CpzRQ-Nq.js
 - Timestamp: 2025-06-22T18:15:00Z
+
+Deployment trigger update: Enhanced highlighting system and AI integration
+- Added distinctive "active discussion" highlighting with fire emoji and pulsing animation
+- Enhanced highlighted text display in chat with word count and status indicators
+- Made highlighted text persistent across chat setting changes (personas, help focus, model)
+- Added visual highlighting in editor that persists during AI conversation
+- Improved AI prompt assembly to prioritize highlighted text over full document content
+- Added input helper text showing whether AI is analyzing selected text or full document
+- Enhanced error handling and visual feedback for text selection
+- Build: index-D6EDS8sS.js
+- Timestamp: 2025-01-06T20:30:00Z
+
+Key Features Added:
+🎯 Persistent highlighting with fire emoji animation
+📊 Word/character count display for selected text
+🔥 "Active discussion" visual marker in editor
+💡 Clear AI analysis status indicators
+⚡ Highlighting preserved during chat setting changes

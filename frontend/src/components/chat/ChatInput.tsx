@@ -80,6 +80,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     return "Type your writing question here...";
   };
 
+  const getInputHelperText = () => {
+    if (highlightedText) {
+      return `🎯 AI will focus on your ${highlightedText.split(/\s+/).length} word selection`;
+    }
+    return "⌘ + Enter to send • AI will analyze your full document";
+  };
+
   return (
     <div className="chat-input-container">
       {/* Suggested Questions */}
@@ -145,11 +152,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         
         {/* Character count and keyboard hint */}
         <div className="input-footer">
+          <span className="input-helper-text">
+            {getInputHelperText()}
+          </span>
           <span className="character-count">
             {message.length}/2000
-          </span>
-          <span className="keyboard-hint">
-            Press Ctrl+Enter to send
           </span>
         </div>
       </form>

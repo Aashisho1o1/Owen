@@ -9,6 +9,7 @@ interface HighlightedTextDisplayProps {
 /**
  * Molecular Component: Highlighted Text Display
  * Single Responsibility: Display selected text and provide contextual prompts
+ * Enhanced: Shows AI analysis status and makes highlighting context clear
  */
 export const HighlightedTextDisplay: React.FC<HighlightedTextDisplayProps> = ({
   highlightedText,
@@ -17,20 +18,40 @@ export const HighlightedTextDisplay: React.FC<HighlightedTextDisplayProps> = ({
 }) => {
   if (!highlightedText) return null;
 
+  const wordCount = highlightedText.split(/\s+/).length;
+  const charCount = highlightedText.length;
+
   return (
     <div className="highlighted-text-box">
-      <div className="highlighted-title">📝 Selected Text for Analysis:</div>
-      <div className="highlighted-content">"{highlightedText}"</div>
+      <div className="highlighted-title">
+        🎯 AI is analyzing this selected text
+      </div>
+      
+      <div className="highlighted-meta">
+        📊 {wordCount} words • {charCount} characters
+      </div>
+      
+      <div className="highlighted-content">
+        {highlightedText}
+      </div>
+      
+      <div className="highlight-status">
+        <div className="status-indicator">
+          <span className="status-dot active"></span>
+          <span className="status-text">All AI responses will focus on this text until you select something new</span>
+        </div>
+      </div>
       
       {contextualPrompts.length > 0 && (
         <div className="contextual-prompts">
-          <div className="contextual-prompts-title">💡 Ask me about this text:</div>
+          <div className="contextual-prompts-title">💡 Quick questions about this text:</div>
           <div className="contextual-prompts-list">
             {contextualPrompts.map((prompt, index) => (
               <button
                 key={index}
                 className="contextual-prompt-button"
                 onClick={() => onPromptClick(prompt)}
+                title={`Ask: ${prompt}`}
               >
                 {prompt}
               </button>

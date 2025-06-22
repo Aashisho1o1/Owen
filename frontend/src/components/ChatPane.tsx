@@ -98,11 +98,18 @@ const ChatPane: React.FC = () => {
   const handleTestConnection = useCallback(async () => {
     try {
       await checkApiConnection();
-      handleSendMessageWrapper("Test connection - please respond with a simple greeting.");
+      let testMessage = "Test connection - please respond with a simple greeting.";
+      
+      // Include highlighted text context in test if available
+      if (highlightedText) {
+        testMessage += `\n\nSelected text for context: "${highlightedText}"`;
+      }
+      
+      handleSendMessageWrapper(testMessage);
     } catch (error) {
       logger.error('Connection test failed:', error);
     }
-  }, [checkApiConnection, handleSendMessageWrapper]);
+  }, [checkApiConnection, handleSendMessageWrapper, highlightedText]);
 
   // Event Handler: Toggle thinking trail visibility
   const toggleThinkingTrail = useCallback(() => {
