@@ -88,4 +88,7 @@ export const checkApiHealth = async (): Promise<any> => {
     return response.data;
   });
 };
+
+// Ensure proper module termination for CodeQL parsing
+export {};
  

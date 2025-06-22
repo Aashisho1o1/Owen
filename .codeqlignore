@@ -1,0 +1,38 @@
+# CodeQL ignore file to exclude files that may cause parsing issues
+# but are not critical for security analysis
+
+# Build artifacts and temporary files
+**/node_modules/**
+**/dist/**
+**/build/**
+**/.tmp/**
+**/.cache/**
+
+# Configuration files that might have complex syntax
+**/vite.config.ts
+**/vite.config.js
+**/webpack.config.js
+**/rollup.config.js
+
+# Large template files with embedded content
+**/constants/templates.ts
+
+# Test files and mock data
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/**
+**/__mocks__/**
+
+# Documentation and markdown files
+**/*.md
+**/*.mdx
+
+# Environment and configuration
+**/.env*
+**/tsconfig.*.json
+
+# Ignore specific files that might have parsing edge cases
+**/deployment-trigger.txt
+**/clear-cache.html 

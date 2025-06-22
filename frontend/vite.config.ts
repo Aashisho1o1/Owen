@@ -45,7 +45,9 @@ export default defineConfig({
         preserveModules: false,
         // Use more descriptive chunk names
         chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop().replace('.ts', '').replace('.tsx', '') : 'chunk';
+          const facadeModuleId = chunkInfo.facadeModuleId 
+            ? chunkInfo.facadeModuleId.split('/').pop()?.replace('.ts', '').replace('.tsx', '') 
+            : 'chunk';
           return `assets/${facadeModuleId}-[hash].js`;
         }
       }
@@ -54,7 +56,7 @@ export default defineConfig({
   // Ensure proper environment variable handling
   define: {
     // Explicitly define environment variables
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL)
   },
   // Better error handling during development
   server: {

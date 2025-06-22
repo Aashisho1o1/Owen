@@ -193,5 +193,7 @@ export interface UserProfile {
   username: string;
   name: string;
   email: string;
-} 
- 
+}
+
+// Explicit module termination to ensure proper CodeQL parsing
+export {}; 
