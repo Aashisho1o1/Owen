@@ -424,30 +424,3 @@ class AuthService:
 
 # Global auth service instance
 auth_service = AuthService()
-
-    def cleanup_expired_tokens(self):
-        """Clean up expired refresh tokens"""
-        try:
-            deleted_count = self.db.execute_query(
-                "DELETE FROM refresh_tokens WHERE expires_at < %s",
-                (datetime.utcnow(),),
-                fetch='none'
-            )
-            if deleted_count and deleted_count > 0:
-                logger.info(f"Cleaned up {deleted_count} expired refresh tokens")
-        except Exception as e:
-            logger.error(f"Error cleaning up expired tokens: {e}")
-
-    def revoke_user_tokens(self, user_id: int):
-        """Revoke all refresh tokens for a user (useful for logout all devices)"""
-        try:
-            self.db.execute_query(
-                "UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = %s",
-                (user_id,)
-            )
-            logger.info(f"Revoked all tokens for user {user_id}")
-        except Exception as e:
-            logger.error(f"Error revoking tokens for user {user_id}: {e}")
-
-# Global auth service instance
-auth_service = AuthService()
