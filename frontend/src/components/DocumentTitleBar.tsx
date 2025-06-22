@@ -50,7 +50,7 @@ const DocumentTitleBar: React.FC<DocumentTitleBarProps> = ({
     if (title.trim() !== currentDocument.title) {
       // If we have a setCurrentTitle function, use it to update the document
       if (setCurrentTitle) {
-        setCurrentTitle(title.trim());
+      setCurrentTitle(title.trim());
       }
       // Also call external title change handler if provided
       if (externalOnTitleChange) {

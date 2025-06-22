@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useCa
 import { ChatMessage } from '../services/api';
 import { useApiHealth } from '../hooks/useApiHealth';
 import { useChat } from '../hooks/useChat';
+import { useAuth } from './AuthContext';
 import { logger } from '../utils/logger';
 import { apiClient } from '../services/api/client';
 import { getUserPreferences, submitUserFeedback } from '../services/api/chat';
@@ -88,6 +89,9 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   children, 
   editorContent 
 }) => {
+  // Get authentication state
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  
   // Chat visibility state
   const [isChatVisible, setIsChatVisible] = useState(false);
   
@@ -159,13 +163,31 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     highlightedTextId: highlightedTextId || undefined, // Convert null to undefined
   });
 
-  // Load user preferences on mount
+  // Load user preferences ONLY when authenticated
   useEffect(() => {
-    loadUserPreferences();
-  }, []);
+    // Only load preferences if user is authenticated and auth is not loading
+    if (isAuthenticated && !authLoading) {
+      logger.info('🔐 User authenticated, loading preferences...');
+      loadUserPreferences();
+    } else if (!authLoading) {
+      logger.info('👤 User not authenticated, using default preferences');
+      // Reset to default preferences when not authenticated
+      setUserPreferences({
+        onboarding_completed: false,
+        user_corrections: [],
+        english_variant: 'US'
+      });
+    }
+  }, [isAuthenticated, authLoading]); // Depend on authentication state
 
   const loadUserPreferences = async () => {
     try {
+      // Double-check authentication before making the API call
+      if (!isAuthenticated) {
+        logger.warn('❌ Attempted to load preferences without authentication');
+        return;
+      }
+      
       const data = await getUserPreferences();
       
       if (data.status === 'success' && data.preferences) {
@@ -178,6 +200,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
       }
     } catch (error) {
       logger.error('Error loading user preferences:', error);
+      // Don't show global error for preferences - this is expected when not authenticated
     }
   };
 
