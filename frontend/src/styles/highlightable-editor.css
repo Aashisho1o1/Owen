@@ -59,23 +59,39 @@
   position: absolute;
 }
 
-/* Active Discussion Highlight - Applied via JavaScript */
+/* Active Discussion Highlight - Applied via JavaScript - SUPER VISIBLE */
 .active-discussion-highlight {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.35) 0%, rgba(255, 193, 7, 0.3) 100%);
-  color: #d84315 !important;
-  border: 2px solid #ff9800;
-  border-radius: 6px;
-  padding: 2px 4px;
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: #ff9800;
-  text-decoration-style: wavy;
-  position: relative;
-  z-index: 15;
-  animation: activeDiscussionPulse 2s ease-in-out infinite;
+  background: #ffeb3b !important; /* Bright yellow background */
+  color: #d84315 !important; /* Orange-red text */
+  border: 3px solid #ff9800 !important; /* Thick orange border */
+  border-radius: 4px !important;
+  padding: 3px 6px !important;
+  font-weight: bold !important;
+  text-decoration: underline !important;
+  text-decoration-color: #ff9800 !important;
+  text-decoration-thickness: 2px !important;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.7) !important; /* Strong glow */
+  display: inline !important;
+  position: relative !important;
+  z-index: 100 !important;
+  animation: strongHighlightPulse 2s ease-in-out infinite !important;
 }
 
-/* Animation for active discussion highlighting */
+/* Strong animation for active discussion highlighting */
+@keyframes strongHighlightPulse {
+  0%, 100% {
+    background: #ffeb3b !important;
+    box-shadow: 0 0 5px rgba(255, 152, 0, 0.5) !important;
+    transform: scale(1) !important;
+  }
+  50% {
+    background: #ffc107 !important;
+    box-shadow: 0 0 15px rgba(255, 152, 0, 0.8) !important;
+    transform: scale(1.02) !important;
+  }
+}
+
+/* Legacy animation kept for compatibility */
 @keyframes activeDiscussionPulse {
   0%, 100% {
     box-shadow: 
@@ -93,6 +109,29 @@
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
+}
+
+/* Override any editor styles that might interfere with highlighting */
+.ProseMirror .active-discussion-highlight,
+.tiptap .active-discussion-highlight,
+.editor-content .active-discussion-highlight,
+.highlightable-editor .active-discussion-highlight {
+  background: #ffeb3b !important;
+  color: #d84315 !important;
+  border: 3px solid #ff9800 !important;
+  font-weight: bold !important;
+  text-decoration: underline !important;
+  display: inline !important;
+  z-index: 100 !important;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.7) !important;
+}
+
+/* Make sure highlights are visible in dark theme */
+.theme-dark .active-discussion-highlight {
+  background: #ffc107 !important;
+  color: #bf360c !important;
+  border: 3px solid #ff9800 !important;
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.8) !important;
 }
 
 /* Custom Highlight Styles - Improved for readability */
