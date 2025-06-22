@@ -166,7 +166,7 @@
 .contextual-prompt-button,
 .starter-question-button {
   color: var(--gray-800) !important;
-  background: var(--bg-elevated) !important;
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(255, 255, 255, 0.95) 100%) !important;
   border: 1px solid var(--border-medium) !important;
   border-radius: var(--radius-xl);
   padding: var(--space-3) var(--space-4);
@@ -178,6 +178,9 @@
   backdrop-filter: blur(8px);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
 }
 
 .suggested-question-button::before,
@@ -197,7 +200,7 @@
 .contextual-prompt-button:hover,
 .starter-question-button:hover {
   color: var(--gray-900) !important;
-  background: var(--primary-50) !important;
+  background: linear-gradient(135deg, var(--primary-50) 0%, rgba(240, 253, 250, 0.98) 100%) !important;
   border-color: var(--primary-300) !important;
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);

@@ -35,13 +35,6 @@ export const HighlightedTextDisplay: React.FC<HighlightedTextDisplayProps> = ({
         {highlightedText}
       </div>
       
-      <div className="highlight-status">
-        <div className="status-indicator">
-          <span className="status-dot active"></span>
-          <span className="status-text">All AI responses will focus on this text until you select something new</span>
-        </div>
-      </div>
-      
       {contextualPrompts.length > 0 && (
         <div className="contextual-prompts">
           <div className="contextual-prompts-title">💡 Quick questions about this text:</div>

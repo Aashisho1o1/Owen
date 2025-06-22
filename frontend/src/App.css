@@ -392,18 +392,23 @@ body {
   gap: 0.5rem;
   border-bottom: 1px solid var(--border-lighter);
   font-size: 0.875rem;
-  color: var(--text-primary);
+  color: var(--gray-800) !important;
+  background: var(--bg-elevated) !important;
+  font-weight: 500;
 }
 
 .dropdown-option:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: var(--primary-50) !important;
+  color: var(--gray-900) !important;
+  border-left: 3px solid var(--primary-500);
+  transform: translateX(2px);
 }
 
 .dropdown-option.selected {
-  background: var(--bg-accent);
-  color: var(--text-accent);
+  background: var(--primary-100) !important;
+  color: var(--gray-900) !important;
   font-weight: 600;
+  border-left: 3px solid var(--primary-600);
 }
 
 .check-mark {
