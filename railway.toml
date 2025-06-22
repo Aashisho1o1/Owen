@@ -10,9 +10,9 @@ restartPolicyMaxRetries = 10
 [deploy.healthcheckPath]
 path = "/api/health"
 
-# FORCE PRODUCTION ENVIRONMENT - Always use start.sh script
+# DEBUGGING MODE - Use simple startup script with diagnostics
 [environments.production]
-startCommand = "cd backend && chmod +x start.sh && ./start.sh"
+startCommand = "cd backend && chmod +x start_simple.sh && ./start_simple.sh"
 buildCommand = "cd backend && pip install -r requirements.txt"
 
 # Remove development environment to prevent confusion
