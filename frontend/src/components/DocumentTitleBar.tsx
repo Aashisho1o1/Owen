@@ -1,24 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useEditorContext } from '../contexts/EditorContext';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DocumentTitleBarProps {
-  title: string;
-  onTitleChange: (title: string) => void;
-  isEditing: boolean;
-  onEditToggle: () => void;
+  title?: string;
+  onTitleChange?: (title: string) => void;
+  isEditing?: boolean;
+  onEditToggle?: () => void;
 }
 
 const DocumentTitleBar: React.FC<DocumentTitleBarProps> = ({
-  title,
-  onTitleChange,
-  isEditing,
-  onEditToggle
+  title: externalTitle,
+  onTitleChange: externalOnTitleChange,
+  isEditing: externalIsEditing,
+  onEditToggle: externalOnEditToggle
 }) => {
   const { documentManager } = useEditorContext();
   const { isAuthenticated } = useAuth();
+  
+  // Internal state for when used without props
+  const [internalTitle, setInternalTitle] = useState('');
+  const [internalIsEditing, setInternalIsEditing] = useState(false);
 
   const { currentDocument, hasUnsavedChanges, isSaving, setCurrentTitle } = documentManager;
+
+  // Use external props if provided, otherwise use internal state and current document
+  const title = externalTitle !== undefined ? externalTitle : (currentDocument?.title || internalTitle || 'Untitled Document');
+  const isEditing = externalIsEditing !== undefined ? externalIsEditing : internalIsEditing;
+  const onTitleChange = externalOnTitleChange || setInternalTitle;
+  const onEditToggle = externalOnEditToggle || (() => setInternalIsEditing(!internalIsEditing));
 
   const handleTitleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,13 +48,21 @@ const DocumentTitleBar: React.FC<DocumentTitleBarProps> = ({
     }
 
     if (title.trim() !== currentDocument.title) {
-      setCurrentTitle(title.trim());
+      // If we have a setCurrentTitle function, use it to update the document
+      if (setCurrentTitle) {
+        setCurrentTitle(title.trim());
+      }
+      // Also call external title change handler if provided
+      if (externalOnTitleChange) {
+        externalOnTitleChange(title.trim());
+      }
     }
     onEditToggle();
   };
 
   const handleCancelEdit = () => {
-    onTitleChange(currentDocument?.title || '');
+    const resetTitle = currentDocument?.title || '';
+    onTitleChange(resetTitle);
     onEditToggle();
   };
 
@@ -217,3 +235,5 @@ const DocumentTitleBar: React.FC<DocumentTitleBarProps> = ({
     </div>
   );
 };
+
+export default DocumentTitleBar;
