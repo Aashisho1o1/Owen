@@ -59,6 +59,42 @@
   position: absolute;
 }
 
+/* Active Discussion Highlight - Applied via JavaScript */
+.active-discussion-highlight {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.35) 0%, rgba(255, 193, 7, 0.3) 100%);
+  color: #d84315 !important;
+  border: 2px solid #ff9800;
+  border-radius: 6px;
+  padding: 2px 4px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: #ff9800;
+  text-decoration-style: wavy;
+  position: relative;
+  z-index: 15;
+  animation: activeDiscussionPulse 2s ease-in-out infinite;
+}
+
+/* Animation for active discussion highlighting */
+@keyframes activeDiscussionPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 2px rgba(255, 152, 0, 0.2),
+      0 2px 8px rgba(255, 152, 0, 0.15);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 4px rgba(255, 152, 0, 0.3),
+      0 4px 12px rgba(255, 152, 0, 0.25);
+  }
+}
+
+/* Animation for fire emoji */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
 /* Custom Highlight Styles - Improved for readability */
 .highlightable-editor mark[data-color] {
   padding: 1px 2px;
@@ -97,19 +133,6 @@
   text-underline-offset: 2px;
 }
 
-@keyframes activeDiscussionPulse {
-  0%, 100% {
-    box-shadow: 
-      0 0 0 2px rgba(255, 152, 0, 0.2),
-      0 2px 8px rgba(255, 152, 0, 0.15);
-  }
-  50% {
-    box-shadow: 
-      0 0 0 4px rgba(255, 152, 0, 0.3),
-      0 4px 12px rgba(255, 152, 0, 0.25);
-  }
-}
-
 .highlightable-editor mark.highlight-active-discussion::before,
 .highlightable-editor mark[data-color="active-discussion"]::before {
   content: '🔥';
@@ -120,11 +143,6 @@
   z-index: 20;
   animation: bounce 1.5s ease-in-out infinite;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
 }
 
 .highlightable-editor mark.highlight-active-discussion:hover,
@@ -180,6 +198,18 @@
   transform: translateY(-0.5px);
   box-shadow: 0 2px 8px rgba(249, 115, 22, 0.15);
   opacity: 1;
+}
+
+/* Highlight fade-in animation */
+@keyframes highlightFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Highlight Tooltip - Positioned to avoid covering text */

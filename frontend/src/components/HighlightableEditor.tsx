@@ -8,42 +8,25 @@
  * - Follows React best practices for maintainability
  */
 
-import React, { useCallback, useRef, useState } from 'react';
-import { Editor } from '@tiptap/react';
-import { useChatContext } from '../contexts/ChatContext';
+import React, { useEffect } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { useEditorContext } from '../contexts/EditorContext';
-import {
-  HighlightManager,
-  EditorCoreWithRef,
-  HighlightTooltip,
-  HighlightsSidebar
-} from './editor-features';
 import '../styles/highlightable-editor.css';
 
 interface HighlightableEditorProps {
   content?: string;
   onChange?: (content: string) => void;
-  onTextHighlighted?: (text: string, highlightId: string) => void;
-  onHighlightRemoved?: (highlightId: string) => void;
 }
 
 /**
- * Template Component: HighlightableEditor
- * 
- * CLEAN ARCHITECTURE IMPLEMENTATION:
- * - Single Responsibility: Coordinate editor and highlighting functionality
- * - Composition: Uses specialized components for each concern
- * - Separation of Concerns: UI logic separated from business logic
- * - Testability: Each sub-component can be tested independently
+ * Simple HighlightableEditor that works with CSS-based highlighting
+ * Uses DOM manipulation for highlighting which is simpler and more reliable
  */
 const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   content,
-  onChange,
-  onTextHighlighted,
-  onHighlightRemoved
+  onChange
 }) => {
-  // Context integration
-  const { handleTextHighlighted } = useChatContext();
   const { 
     editorContent: contextContent, 
     setEditorContent: contextOnChange
@@ -52,134 +35,129 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Use props if provided, otherwise use context
   const contentProp = content !== undefined ? content : contextContent;
   const onChangeProp = onChange || contextOnChange;
-  const onTextHighlightedProp = onTextHighlighted || (() => {});
-  const onHighlightRemovedProp = onHighlightRemoved || (() => {});
 
-  // Local state for UI interactions
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-  const [selectedText, setSelectedText] = useState('');
-  
-  // Ref to access editor instance
-  const editorRef = useRef<{ editor: Editor | null } | null>(null);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+    ],
+    content: contentProp || '',
+    onUpdate: ({ editor }) => {
+      const newContent = editor.getHTML();
+      onChangeProp(newContent);
+    },
+  });
 
-  // Handle text selection from editor
-  const handleSelectionChange = useCallback((text: string, position: { x: number; y: number }) => {
-    if (text.trim() && text.length > 2) {
-      setSelectedText(text);
-      setTooltipPosition(position);
-      setShowTooltip(true);
-    } else {
-      setShowTooltip(false);
-      setSelectedText('');
+  // Handle active discussion highlighting from ChatContext using DOM manipulation
+  useEffect(() => {
+    const handleActiveDiscussionHighlight = (event: CustomEvent) => {
+      if (!editor) return;
+
+      const { text, action } = event.detail;
+      const editorElement = editor.view.dom;
+      
+      if (action === 'add' && text) {
+        // Remove existing highlights
+        const existingHighlights = editorElement.querySelectorAll('.active-discussion-highlight');
+        existingHighlights.forEach(el => {
+          const parent = el.parentNode;
+          if (parent) {
+            parent.replaceChild(document.createTextNode(el.textContent || ''), el);
+            parent.normalize();
+          }
+        });
+        
+        // Find and highlight the text using TreeWalker
+        const walker = document.createTreeWalker(
+          editorElement,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        let textNode;
+        while ((textNode = walker.nextNode())) {
+          const nodeValue = textNode.nodeValue || '';
+          const index = nodeValue.indexOf(text);
+          
+          if (index >= 0) {
+            const range = document.createRange();
+            range.setStart(textNode, index);
+            range.setEnd(textNode, index + text.length);
+            
+            const span = document.createElement('span');
+            span.className = 'active-discussion-highlight';
+            span.style.cssText = `
+              background: linear-gradient(135deg, rgba(255, 215, 0, 0.35) 0%, rgba(255, 193, 7, 0.3) 100%);
+              color: #d84315 !important;
+              border: 2px solid #ff9800;
+              border-radius: 6px;
+              padding: 2px 4px;
+              font-weight: 700;
+              text-decoration: underline;
+              text-decoration-color: #ff9800;
+              text-decoration-style: wavy;
+              position: relative;
+              animation: activeDiscussionPulse 2s ease-in-out infinite;
+            `;
+            
+            try {
+              range.surroundContents(span);
+              
+              // Add fire emoji indicator
+              const emoji = document.createElement('span');
+              emoji.textContent = '🔥';
+              emoji.style.cssText = `
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                font-size: 12px;
+                z-index: 20;
+                animation: bounce 1.5s ease-in-out infinite;
+              `;
+              span.appendChild(emoji);
+              
+              break; // Only highlight the first occurrence
+            } catch (e) {
+              console.log('Could not apply highlighting:', e);
+            }
+          }
+        }
+      } else if (action === 'remove') {
+        // Remove all highlights
+        const highlights = editorElement.querySelectorAll('.active-discussion-highlight');
+        highlights.forEach(el => {
+          const parent = el.parentNode;
+          if (parent) {
+            parent.replaceChild(document.createTextNode(el.textContent || ''), el);
+            parent.normalize();
+          }
+        });
+      }
+    };
+
+    window.addEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
+    
+    return () => {
+      window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
+    };
+  }, [editor]);
+
+  // Update editor content when the content prop changes
+  useEffect(() => {
+    if (editor && contentProp && editor.getHTML() !== contentProp) {
+      editor.commands.setContent(contentProp);
     }
-  }, []);
-
-  // Handle highlight click
-  const handleHighlightClick = useCallback((highlightId: string) => {
-    console.log('Clicked highlight:', highlightId);
-    // Could implement highlight editing or context menu here
-  }, []);
-
-  // Handle tooltip cancel
-  const handleTooltipCancel = useCallback(() => {
-    setShowTooltip(false);
-    setSelectedText('');
-  }, []);
+  }, [contentProp, editor]);
 
   return (
     <div className="highlightable-editor-container">
-      <HighlightManager>
-        {({ highlights, createHighlight, removeHighlight }) => {
-          // Handle creating highlight with chat integration
-          const handleCreateHighlight = (color: string) => {
-            if (!selectedText || !editorRef.current?.editor) return;
-
-            const editor = editorRef.current.editor;
-            const { from, to } = editor.state.selection;
-
-            // Create highlight in editor
-            const highlightId = createHighlight(selectedText, color, { from, to });
-            
-            // Apply highlight in TipTap editor
-            editor.chain().focus().setHighlight({ 
-              color, 
-              id: highlightId 
-            }).run();
-
-            // Integrate with chat context
-            handleTextHighlighted(selectedText);
-            
-            // Notify parent component
-            onTextHighlightedProp(selectedText, highlightId);
-
-            // Clear selection and hide tooltip
-            setShowTooltip(false);
-            setSelectedText('');
-            editor.commands.setTextSelection(to);
-          };
-
-          // Handle removing highlight
-          const handleRemoveHighlight = (highlightId: string) => {
-            if (!editorRef.current?.editor) return;
-
-            const editor = editorRef.current.editor;
-            const highlight = highlights.find(h => h.id === highlightId);
-            
-            if (highlight) {
-              // Remove from editor
-              const { from, to } = highlight.position;
-              editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
-              
-              // Remove from state
-              removeHighlight(highlightId);
-              
-              // Notify parent
-              onHighlightRemovedProp(highlightId);
-            }
-          };
-
-          // Handle clearing all highlights
-          const handleClearAllHighlights = () => {
-            highlights.forEach(highlight => {
-              handleRemoveHighlight(highlight.id);
-            });
-          };
-
-          return (
-            <>
-              {/* Editor Core */}
-              <EditorCoreWithRef
-                ref={editorRef}
-                content={contentProp}
-                onChange={onChangeProp}
-                onSelectionChange={handleSelectionChange}
-                onHighlightClick={handleHighlightClick}
-              />
-              
-              {/* Highlight Tooltip */}
-              <HighlightTooltip
-                isVisible={showTooltip}
-                position={tooltipPosition}
-                selectedText={selectedText}
-                onCreateHighlight={handleCreateHighlight}
-                onCancel={handleTooltipCancel}
-              />
-              
-              {/* Highlights Sidebar */}
-              <HighlightsSidebar
-                highlights={highlights}
-                onRemoveHighlight={handleRemoveHighlight}
-                onClearAll={handleClearAllHighlights}
-              />
-            </>
-          );
-        }}
-      </HighlightManager>
+      <div className="editor-wrapper">
+        <EditorContent 
+          editor={editor} 
+          className="highlightable-editor"
+        />
+      </div>
     </div>
   );
 };
-
-HighlightableEditor.displayName = 'HighlightableEditor';
 
 export default HighlightableEditor; 
