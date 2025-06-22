@@ -1,11 +1,11 @@
 /**
- * DOG Writer Design System
+ * DOG Writer Design System - Enhanced Aesthetic Palette
  * 
- * A minimalist, clean design system focusing on:
- * - Clean typography and spacing
- * - Subtle shadows and borders
- * - Cohesive color palette
- * - Organized visual hierarchy
+ * A sophisticated, writer-friendly design system focusing on:
+ * - Warm, inviting colors that inspire creativity
+ * - Excellent contrast for comfortable reading
+ * - Subtle elegance that doesn't distract from writing
+ * - Cohesive color relationships throughout
  */
 
 /* ============= CSS RESET & BASE ============= */
@@ -27,35 +27,47 @@ body {
   line-height: 1.5;
 }
 
-/* ============= COLOR SYSTEM WITH CONTRAST ASSURANCE ============= */
+/* ============= ENHANCED AESTHETIC COLOR SYSTEM ============= */
 
 :root {
-  /* Primary Colors */
-  --primary-50: #f0f9ff;
-  --primary-100: #e0f2fe;
-  --primary-200: #bae6fd;
-  --primary-300: #7dd3fc;
-  --primary-400: #38bdf8;
-  --primary-500: #0ea5e9;
-  --primary-600: #0284c7;
-  --primary-700: #0369a1;
-  --primary-800: #075985;
-  --primary-900: #0c4a6e;
-  --primary-dark: #1e293b;
+  /* Primary Colors - Sophisticated Teal with Warmth */
+  --primary-50: #f0fdfa;
+  --primary-100: #ccfbf1;
+  --primary-200: #99f6e4;
+  --primary-300: #5eead4;
+  --primary-400: #2dd4bf;
+  --primary-500: #14b8a6;
+  --primary-600: #0d9488;
+  --primary-700: #0f766e;
+  --primary-800: #115e59;
+  --primary-900: #134e4a;
+  --primary-dark: #0c3b36;
 
-  /* Error Colors */
-  --error-50: #fef2f2;
-  --error-100: #fee2e2;
-  --error-200: #fecaca;
-  --error-300: #fca5a5;
-  --error-400: #f87171;
-  --error-500: #ef4444;
-  --error-600: #dc2626;
-  --error-700: #b91c1c;
-  --error-800: #991b1b;
-  --error-900: #7f1d1d;
+  /* Secondary Colors - Warm Amber Accents */
+  --secondary-50: #fffbeb;
+  --secondary-100: #fef3c7;
+  --secondary-200: #fde68a;
+  --secondary-300: #fcd34d;
+  --secondary-400: #fbbf24;
+  --secondary-500: #f59e0b;
+  --secondary-600: #d97706;
+  --secondary-700: #b45309;
+  --secondary-800: #92400e;
+  --secondary-900: #78350f;
 
-  /* Success Colors */
+  /* Error Colors - Refined Red */
+  --error-50: #fdf2f8;
+  --error-100: #fce7f3;
+  --error-200: #fbcfe8;
+  --error-300: #f9a8d4;
+  --error-400: #f472b6;
+  --error-500: #ec4899;
+  --error-600: #db2777;
+  --error-700: #be185d;
+  --error-800: #9d174d;
+  --error-900: #831843;
+
+  /* Success Colors - Natural Green */
   --success-50: #f0fdf4;
   --success-100: #dcfce7;
   --success-200: #bbf7d0;
@@ -67,60 +79,58 @@ body {
   --success-800: #166534;
   --success-900: #14532d;
 
-  /* Neutral Colors - Clean Grays */
-  --gray-50: #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
+  /* Neutral Colors - Warm Grays with Subtle Beige Undertones */
+  --gray-50: #fafaf9;
+  --gray-100: #f5f5f4;
+  --gray-200: #e7e5e4;
+  --gray-300: #d6d3d1;
+  --gray-400: #a8a29e;
+  --gray-500: #78716c;
+  --gray-600: #57534e;
+  --gray-700: #44403c;
+  --gray-800: #292524;
+  --gray-900: #1c1917;
 
-  /* Success/Error Colors */
-  --success-100: #dcfce7;
-  --success-300: #86efac;
-  --success-500: #10b981;
-  --success-600: #059669;
-  --success-700: #047857;
-  --error-500: #ef4444;
-  --error-600: #dc2626;
-  --error-700: #b91c1c;
-  --warning-500: #f59e0b;
+  /* Warning Colors */
+  --warning-500: var(--secondary-500);
+  --warning-600: var(--secondary-600);
 
-  /* Background Colors - WCAG AA Compliant */
-  --bg-primary: #ffffff;
-  --bg-secondary: var(--gray-50);
-  --bg-tertiary: var(--gray-100);
-  --bg-elevated: #ffffff;
+  /* Background Colors - Sophisticated and Warm */
+  --bg-primary: #fefefe;               /* Pure, clean white with warmth */
+  --bg-secondary: var(--gray-50);      /* Subtle warm off-white */
+  --bg-tertiary: var(--gray-100);      /* Light warm gray */
+  --bg-elevated: #ffffff;              /* Crisp white for elevated elements */
+  --bg-accent: var(--primary-50);      /* Subtle teal accent background */
 
-  /* Text Colors - WCAG AA Compliant Contrasts */
-  --text-primary: var(--gray-900);    /* 21:1 contrast on white */
-  --text-secondary: var(--gray-600);  /* 7:1 contrast on white */
-  --text-tertiary: var(--gray-500);   /* 4.5:1 contrast on white */
-  --text-inverse: #ffffff;            /* 21:1 contrast on dark backgrounds */
+  /* Text Colors - Enhanced Contrast with Warmth */
+  --text-primary: var(--gray-900);     /* Deep warm charcoal - 21:1 contrast */
+  --text-secondary: var(--gray-700);   /* Medium warm gray - 8:1 contrast */
+  --text-tertiary: var(--gray-600);    /* Lighter warm gray - 5:1 contrast */
+  --text-accent: var(--primary-700);   /* Teal accent text */
+  --text-inverse: #ffffff;             /* Pure white for dark backgrounds */
 
-  /* Chat-Specific High Contrast Colors */
-  --chat-text-primary: #1a1a1a;      /* Extra dark for chat messages */
-  --chat-text-secondary: #4a4a4a;    /* High contrast secondary text */
-  --chat-bg-user: var(--primary-600);
-  --chat-bg-ai: #ffffff;
-  --chat-border: var(--gray-300);
+  /* Chat-Specific Enhanced Colors */
+  --chat-text-primary: #1c1917;        /* Extra dark warm gray for chat */
+  --chat-text-secondary: #44403c;      /* High contrast secondary */
+  --chat-bg-user: var(--primary-600);  /* Sophisticated teal for user messages */
+  --chat-bg-ai: var(--bg-elevated);    /* Clean white for AI messages */
+  --chat-bg-highlight: var(--secondary-50); /* Warm amber highlight */
+  --chat-border: var(--gray-300);      /* Subtle warm borders */
 
-  /* Border Colors */
-  --border-light: var(--gray-200);
-  --border-lighter: var(--gray-100);
-  --border-medium: var(--gray-300);
-  --border-dark: var(--gray-400);
+  /* Border Colors - Sophisticated and Subtle */
+  --border-light: var(--gray-200);     /* Very light warm border */
+  --border-lighter: var(--gray-100);   /* Almost invisible warm border */
+  --border-medium: var(--gray-300);    /* Standard warm border */
+  --border-dark: var(--gray-400);      /* Stronger warm border */
+  --border-accent: var(--primary-300); /* Teal accent border */
 
-  /* Shadow System */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  /* Enhanced Shadow System with Warmth */
+  --shadow-xs: 0 1px 2px 0 rgba(28, 25, 23, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(28, 25, 23, 0.1), 0 1px 2px 0 rgba(28, 25, 23, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(28, 25, 23, 0.1), 0 2px 4px -1px rgba(28, 25, 23, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(28, 25, 23, 0.1), 0 4px 6px -2px rgba(28, 25, 23, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(28, 25, 23, 0.1), 0 10px 10px -5px rgba(28, 25, 23, 0.04);
+  --shadow-accent: 0 4px 14px -2px rgba(20, 184, 166, 0.15);
 
   /* Spacing System (8px base) */
   --space-1: 0.25rem;   /* 4px */
@@ -134,11 +144,12 @@ body {
   --space-12: 3rem;     /* 48px */
   --space-16: 4rem;     /* 64px */
 
-  /* Border Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  /* Border Radius - Soft and Elegant */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
   --radius-full: 9999px;
 
   /* Typography Scale */
@@ -157,38 +168,49 @@ body {
   --font-semibold: 600;
   --font-bold: 700;
 
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 200ms ease;
-  --transition-slow: 300ms ease;
+  /* Enhanced Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ============= DARK THEME SUPPORT WITH HIGH CONTRAST ============= */
+/* ============= DARK THEME SUPPORT WITH ENHANCED AESTHETICS ============= */
 .theme-dark {
-  /* Dark theme background colors */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-elevated: #1e293b;
+  /* Dark theme background colors - Warm and Sophisticated */
+  --bg-primary: #1c1917;               /* Deep warm charcoal */
+  --bg-secondary: #292524;             /* Rich warm gray */
+  --bg-tertiary: #44403c;              /* Medium warm gray */
+  --bg-elevated: #292524;              /* Elevated warm gray */
+  --bg-accent: #0c3b36;                /* Dark teal accent */
 
-  /* Dark theme text colors - WCAG AA compliant */
-  --text-primary: #f8fafc;          /* 21:1 contrast on dark */
-  --text-secondary: #cbd5e1;        /* 7:1 contrast on dark */
-  --text-tertiary: #94a3b8;         /* 4.5:1 contrast on dark */
-  --text-inverse: #0f172a;          /* For light backgrounds */
+  /* Dark theme text colors - High contrast with warmth */
+  --text-primary: #fafaf9;             /* Warm off-white - 21:1 contrast */
+  --text-secondary: #e7e5e4;           /* Light warm gray - 8:1 contrast */
+  --text-tertiary: #d6d3d1;            /* Medium warm gray - 5:1 contrast */
+  --text-accent: var(--primary-300);   /* Light teal accent */
+  --text-inverse: #1c1917;             /* For light backgrounds */
 
   /* Dark theme chat colors */
-  --chat-text-primary: #f8fafc;     /* High contrast white for dark mode */
-  --chat-text-secondary: #e2e8f0;   /* High contrast secondary */
-  --chat-bg-user: var(--primary-600);
-  --chat-bg-ai: var(--bg-secondary);
-  --chat-border: var(--gray-600);
+  --chat-text-primary: #fafaf9;        /* High contrast warm white */
+  --chat-text-secondary: #e7e5e4;      /* High contrast secondary */
+  --chat-bg-user: var(--primary-600);  /* Teal user messages */
+  --chat-bg-ai: var(--bg-secondary);   /* Warm gray AI messages */
+  --chat-bg-highlight: #78350f;        /* Dark amber highlight */
+  --chat-border: var(--gray-600);      /* Medium gray borders */
 
   /* Dark theme borders */
   --border-light: var(--gray-600);
   --border-lighter: var(--gray-700);
   --border-medium: var(--gray-500);
   --border-dark: var(--gray-400);
+  --border-accent: var(--primary-500);
+
+  /* Dark theme shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
 }
 
 /* ============= ACCESSIBILITY AND CONTRAST UTILITIES ============= */
@@ -203,16 +225,13 @@ button, input, select, textarea {
   :root {
     --text-primary: #000000;
     --text-secondary: #333333;
-    --text-tertiary: #666666;
-    --border-light: #333333;
     --border-medium: #666666;
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   }
   
   .theme-dark {
     --text-primary: #ffffff;
     --text-secondary: #cccccc;
-    --text-tertiary: #999999;
-    --border-light: #cccccc;
     --border-medium: #999999;
   }
 }
@@ -223,17 +242,18 @@ button, input, select, textarea {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-/* ============= CHAT INTERFACE CONTRAST OVERRIDES ============= */
+/* ============= ENHANCED COMPONENT BASE STYLES ============= */
 
-/* Ensure chat messages always have proper contrast */
+/* Message content with beautiful contrast */
 .message-content,
-.ai-message .message-content,
-.user-message .message-content {
-  /* Force high contrast for all text content */
+.user-message .message-content,
+.ai-message .message-content {
   color: var(--chat-text-primary) !important;
+  line-height: 1.6;
 }
 
 .user-message .message-content {
@@ -242,24 +262,24 @@ button, input, select, textarea {
 
 .ai-message .message-content {
   color: var(--chat-text-primary) !important;
-  background: var(--chat-bg-ai) !important;
+  background: var(--chat-bg-ai);
 }
 
-/* Ensure all chat UI elements have proper contrast */
+/* Chat container enhancements */
 .chat-container,
-.chat-container * {
-  /* Establish baseline contrast */
-  color: var(--text-primary);
+.messages-container,
+.chat-input-container {
+  background: var(--bg-primary);
 }
 
 .chat-input-container input,
-.chat-input-container textarea,
-.chat-input-container button {
+.chat-input-container textarea {
   color: var(--text-primary) !important;
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-medium);
 }
 
-/* ============= UTILITY CLASSES ============= */
-
+/* Base layout components */
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -268,62 +288,60 @@ button, input, select, textarea {
 
 .card {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
 }
 
 .card-elevated {
   box-shadow: var(--shadow-md);
 }
 
+/* Enhanced Button Styles */
 .button-primary {
-  background: var(--primary-600);
+  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
   color: var(--text-inverse);
   border: none;
-  border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-6);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-semibold);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-sm);
 }
 
 .button-primary:hover {
-  background: var(--primary-700);
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
 .button-secondary {
-  background: var(--bg-primary);
+  background: var(--bg-elevated);
   color: var(--text-primary);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-6);
-  font-size: var(--text-sm);
+  border-radius: var(--radius-lg);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-normal);
 }
 
 .button-secondary:hover {
   background: var(--bg-secondary);
   border-color: var(--border-dark);
+  transform: translateY(-1px);
 }
 
 .button-ghost {
   background: transparent;
   color: var(--text-secondary);
   border: none;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-sm);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-normal);
 }
 
 .button-ghost:hover {
@@ -331,148 +349,86 @@ button, input, select, textarea {
   color: var(--text-primary);
 }
 
+/* Enhanced Form Elements */
 .input-field {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text-primary);
-  transition: all var(--transition-fast);
   width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  transition: all var(--transition-normal);
 }
 
 .input-field:focus {
   outline: none;
-  border-color: var(--primary-400);
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 
 .select-field {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-xs);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
   color: var(--text-primary);
-  transition: all var(--transition-fast);
+  font-size: var(--text-base);
+  cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 8px center;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2378716c' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right var(--space-3) center;
   background-repeat: no-repeat;
-  background-size: 12px;
-  padding-right: var(--space-8);
-  min-width: 0;
+  background-size: 16px 16px;
+  padding-right: var(--space-12);
+  transition: all var(--transition-normal);
 }
 
 .select-field:focus {
   outline: none;
-  border-color: var(--primary-400);
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
 }
 
-/* ============= LAYOUT UTILITIES ============= */
+/* ============= UTILITY CLASSES ============= */
 
-.flex {
-  display: flex;
-}
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: var(--space-2); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
 
-.flex-col {
-  flex-direction: column;
-}
+/* Typography utilities */
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-lg { font-size: var(--text-lg); }
+.text-xl { font-size: var(--text-xl); }
+.text-2xl { font-size: var(--text-2xl); }
+.font-medium { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold { font-weight: var(--font-bold); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
 
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.gap-2 {
-  gap: var(--space-2);
-}
-
-.gap-4 {
-  gap: var(--space-4);
-}
-
-.gap-6 {
-  gap: var(--space-6);
-}
-
-.w-full {
-  width: 100%;
-}
-
-.h-full {
-  height: 100%;
-}
-
-/* ============= TEXT UTILITIES ============= */
-
-.text-xs {
-  font-size: var(--text-xs);
-}
-
-.text-sm {
-  font-size: var(--text-sm);
-}
-
-.text-base {
-  font-size: var(--text-base);
-}
-
-.text-lg {
-  font-size: var(--text-lg);
-}
-
-.text-xl {
-  font-size: var(--text-xl);
-}
-
-.text-2xl {
-  font-size: var(--text-2xl);
-}
-
-.font-medium {
-  font-weight: var(--font-medium);
-}
-
-.font-semibold {
-  font-weight: var(--font-semibold);
-}
-
-.font-bold {
-  font-weight: var(--font-bold);
-}
-
-.text-primary {
-  color: var(--text-primary);
-}
-
-.text-secondary {
-  color: var(--text-secondary);
-}
-
-.text-tertiary {
-  color: var(--text-tertiary);
-}
-
-/* ============= RESPONSIVE UTILITIES ============= */
+/* ============= RESPONSIVE DESIGN ============= */
 
 @media (max-width: 768px) {
   .container {
-    padding: 0 var(--space-3);
+    padding: 0 var(--space-4);
   }
   
   .button-primary,
-  .button-secondary {
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--text-xs);
+  .button-secondary,
+  .button-ghost {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
   }
 } 
