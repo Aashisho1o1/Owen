@@ -59,13 +59,15 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       console.log('🎯 HIGHLIGHT EVENT:', { text, action, hasEditor: !!editor });
       
       if (action === 'add' && text) {
-        // Remove existing highlights first
+        // Remove existing highlights first - IMPROVED cleanup
         const existingHighlights = editorElement.querySelectorAll('.active-discussion-highlight');
         console.log('🧹 Removing', existingHighlights.length, 'existing highlights');
         existingHighlights.forEach(el => {
           const parent = el.parentNode;
           if (parent) {
-            parent.replaceChild(document.createTextNode(el.textContent || ''), el);
+            // Create a text node with the original content
+            const textNode = document.createTextNode(el.textContent || '');
+            parent.replaceChild(textNode, el);
             parent.normalize();
           }
         });
@@ -83,9 +85,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             null
           );
           
-                     let currentOffset = 0;
-           const targetStartOffset = textIndex;
-           const targetEndOffset = textIndex + text.length;
+          let currentOffset = 0;
+          const targetStartOffset = textIndex;
+          const targetEndOffset = textIndex + text.length;
           let textNode;
           
           while ((textNode = walker.nextNode())) {
@@ -109,22 +111,11 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
               const highlightText = nodeValue.substring(startInNode, endInNode);
               const afterText = nodeValue.substring(endInNode);
               
-              // Create the highlight span
+              // Create the highlight span with MINIMAL inline styles (let CSS handle it)
               const highlightSpan = document.createElement('span');
               highlightSpan.className = 'active-discussion-highlight';
               highlightSpan.textContent = highlightText;
-              highlightSpan.style.cssText = `
-                background: #ffeb3b !important;
-                color: #d84315 !important;
-                border: 2px solid #ff9800 !important;
-                border-radius: 4px !important;
-                padding: 2px 4px !important;
-                font-weight: bold !important;
-                text-decoration: underline !important;
-                text-decoration-color: #ff9800 !important;
-                box-shadow: 0 0 8px rgba(255, 152, 0, 0.5) !important;
-                display: inline !important;
-              `;
+              // REMOVED inline styles - let CSS handle all styling to avoid conflicts
               
               // Replace the text node with our highlighted version
               const parent = textNode.parentNode;
@@ -149,27 +140,73 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           console.warn('❌ Text not found in editor content');
         }
       } else if (action === 'remove') {
-        // Remove all highlights
+        // IMPROVED: Remove all highlights with better cleanup
         const highlights = editorElement.querySelectorAll('.active-discussion-highlight');
         console.log('🧹 Removing all highlights:', highlights.length);
+        
         highlights.forEach(el => {
           const parent = el.parentNode;
           if (parent) {
-            parent.replaceChild(document.createTextNode(el.textContent || ''), el);
-            parent.normalize();
+            // Create a clean text node without any styling
+            const textNode = document.createTextNode(el.textContent || '');
+            parent.replaceChild(textNode, el);
           }
         });
+        
+        // Normalize all text nodes to merge adjacent ones
+        const walker = document.createTreeWalker(
+          editorElement,
+          NodeFilter.SHOW_ELEMENT,
+          null
+        );
+        
+        let element;
+        const elementsToNormalize = [editorElement];
+        while ((element = walker.nextNode())) {
+          if (element instanceof HTMLElement) {
+            elementsToNormalize.push(element);
+          }
+        }
+        
+        // Normalize in reverse order to avoid DOM structure changes affecting traversal
+        elementsToNormalize.reverse().forEach(el => {
+          if (el && typeof el.normalize === 'function') {
+            el.normalize();
+          }
+        });
+        
+        console.log('🧹 Completed highlight removal and text normalization');
       } else if (action === 'clear-all') {
-        // NEW: Clear all highlights (for unhighlight button)
+        // ENHANCED: Clear all highlights with comprehensive cleanup
         const highlights = editorElement.querySelectorAll('.active-discussion-highlight');
         console.log('🧹 CLEAR-ALL: Removing all highlights:', highlights.length);
+        
+        // Store parent elements that need normalization
+        const parentsToNormalize = new Set();
+        
         highlights.forEach(el => {
           const parent = el.parentNode;
           if (parent) {
-            parent.replaceChild(document.createTextNode(el.textContent || ''), el);
-            parent.normalize();
+            parentsToNormalize.add(parent);
+            // Create a completely clean text node
+            const textNode = document.createTextNode(el.textContent || '');
+            parent.replaceChild(textNode, el);
           }
         });
+        
+        // Normalize all affected parent elements to merge text nodes
+        parentsToNormalize.forEach(parent => {
+          if (parent && typeof (parent as any).normalize === 'function') {
+            (parent as HTMLElement).normalize();
+          }
+        });
+        
+        // Also normalize the entire editor to ensure clean state
+        if (editorElement.normalize) {
+          editorElement.normalize();
+        }
+        
+        console.log('🧹 CLEAR-ALL: Completed comprehensive cleanup and normalization');
       }
     };
 
