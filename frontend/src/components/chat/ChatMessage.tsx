@@ -6,11 +6,7 @@
  */
 
 import React from 'react';
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { ChatMessage } from '../../services/api';
 
 interface ChatMessageProps {
   message: ChatMessage;
@@ -26,7 +22,7 @@ const decodeHtmlEntities = (text: string): string => {
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const renderMessageContent = (msg: ChatMessage) => {
     // Decode HTML entities first
-    let content = decodeHtmlEntities(msg.content);
+    const content = decodeHtmlEntities(msg.content);
     
     if (msg.role === 'user') {
       return renderTextWithLineBreaks(content);

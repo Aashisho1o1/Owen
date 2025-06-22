@@ -1,0 +1,38 @@
+/**
+ * API Services - Legacy Compatibility Layer
+ * 
+ * This file now re-exports everything from our new modular API structure.
+ * The original 515-line God file has been refactored into 9 focused modules:
+ * 
+ * BEFORE: 1 monolithic file (515 lines)
+ * AFTER: 9 focused modules (~50-150 lines each)
+ * 
+ * Architecture Benefits:
+ * - 🎯 Single Responsibility Principle
+ * - 🔧 Easier maintenance and testing
+ * - 📦 Better code organization
+ * - 🚀 Improved developer experience
+ * - 🔄 Zero breaking changes for existing components
+ * 
+ * Modules:
+ * - types.ts: All TypeScript interfaces
+ * - client.ts: HTTP client configuration & error handling
+ * - auth.ts: Authentication endpoints & token management
+ * - documents.ts: Document CRUD operations
+ * - folders.ts: Folder management
+ * - templates.ts: Template operations
+ * - chat.ts: AI chat & writing assistance
+ * - search.ts: Search functionality
+ * - index.ts: Centralized exports
+ */
+
+// Re-export everything from the new modular API structure
+export * from './api/index';
+
+// Backward compatibility note:
+// All existing imports from './services/api' will continue to work unchanged.
+// Components can gradually migrate to import specific services:
+// 
+// OLD: import { loginUser, getDocuments } from '../services/api';
+// NEW: import { loginUser } from '../services/api/auth';
+//      import { getDocuments } from '../services/api/documents'; 

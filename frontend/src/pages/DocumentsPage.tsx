@@ -1,12 +1,9 @@
 // Template Fix Deployment - 2024
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIContext } from '../contexts/UIContext';
-import DocumentManager from '../components/DocumentManager';
-import { Document } from '../services/api';
-
-
+import { useDocuments } from '../hooks/useDocuments';
 import './DocumentsPage.css';
 
 const DocumentsPage: React.FC = () => {

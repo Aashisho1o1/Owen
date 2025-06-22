@@ -1,5 +1,5 @@
 import React from 'react';
-import { EditorPanel } from './editor/EditorPanel';
+import { EditorPanel } from './editor-layout/EditorPanel';
 import { ChatPanel } from './chat/ChatPanel';
 import { useChatContext } from '../contexts/ChatContext';
 import '../styles/writing-workspace.css';

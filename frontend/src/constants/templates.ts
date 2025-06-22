@@ -1,5 +1,3 @@
-import { DocumentTheme } from './documentThemes';
-
 export interface FictionTemplate {
   id: string;
   name: string;

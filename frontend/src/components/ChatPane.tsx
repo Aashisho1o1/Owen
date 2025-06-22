@@ -1,101 +1,41 @@
 /**
- * ChatPane Component - Optimized Chat Interface
+ * ChatPane Component - Clean Architecture Implementation
  * 
- * Main chat interface with contextual conversation starters and clean controls.
+ * REFACTORED using Atomic Design principles:
+ * - Single Responsibility: Coordinate chat workflow
+ * - Delegates specific responsibilities to focused sub-components
+ * - Uses composition over complex state management
+ * - Follows React best practices for maintainability
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ChatInput } from './chat/ChatInput';
-import { ChatMessage } from './chat/ChatMessage';
 import { ThinkingTrail } from './chat/ThinkingTrail';
+import { 
+  ChatHeader,
+  MessagesContainer,
+  generateSuggestedQuestions,
+  generateContextualPrompts
+} from './chat-interface';
 import { logger } from '../utils/logger';
 import { useChatContext } from '../contexts/ChatContext';
 
-// Constants moved outside component to prevent re-creation on each render
-const AUTHOR_PERSONAS = [
-  'Ernest Hemingway',
-  'Virginia Woolf', 
-  'Maya Angelou',
-  'George Orwell',
-  'Toni Morrison',
-  'J.K. Rowling',
-  'Haruki Murakami',
-  'Margaret Atwood'
-];
-
-const HELP_FOCUSES = [
-  'Dialogue Writing',
-  'Scene Description', 
-  'Plot Development',
-  'Character Introduction',
-  'Overall Tone'
-];
-
-const LLM_OPTIONS = [
-  'OpenAI GPT',
-  'Google Gemini',
-  'Anthropic Claude'
-];
-
-// Question templates for each focus area
-const QUESTION_TEMPLATES = {
-  "Dialogue Writing": [
-    "How would {author} improve this dialogue?",
-    "What makes dialogue sound authentic and natural?",
-    "How can I develop distinct character voices?",
-    "What dialogue techniques does {author} use?"
-  ],
-  "Scene Description": [
-    "How would {author} enhance this scene?",
-    "What sensory details would strengthen this setting?",
-    "How can I create more vivid imagery?",
-    "What's {author}'s approach to setting description?"
-  ],
-  "Plot Development": [
-    "How would {author} develop this plot point?",
-    "What narrative techniques would strengthen this section?",
-    "How can I build more tension here?",
-    "What's missing from this story development?"
-  ],
-  "Character Introduction": [
-    "How would {author} introduce this character?",
-    "What character details would make this more compelling?",
-    "How can I establish this character's voice more distinctly?",
-    "What character development techniques should I use?"
-  ],
-  "Overall Tone": [
-    "How would {author} adjust the tone here?",
-    "What stylistic changes would improve consistency?",
-    "How can I modify the mood of this section?",
-    "What tone should I aim for in this piece?"
-  ]
-};
-
-const CONTEXTUAL_PROMPTS = [
-  "Analyze this text in the style of {author}",
-  "How would {author} rewrite this passage?",
-  "What specific improvements would you make to this text?",
-  "Critique this writing focusing on {focus}",
-  "What writing techniques are used here and how can they be improved?"
-];
-
-// Check if user is authenticated by looking for tokens
-const isUserAuthenticated = () => {
-  try {
-    const accessToken = localStorage.getItem('owen_access_token');
-    return !!accessToken;
-  } catch {
-    return false;
-  }
-};
-
+/**
+ * Template Component: ChatPane
+ * 
+ * CLEAN ARCHITECTURE IMPLEMENTATION:
+ * - Single Responsibility: Coordinate chat interface workflow
+ * - Delegates UI rendering to focused sub-components
+ * - Manages business logic coordination
+ * - Handles event orchestration between components
+ * 
+ * RESPONSIBILITIES:
+ * 1. State coordination between sub-components
+ * 2. Business logic orchestration (message handling, prompts)
+ * 3. Event handling coordination
+ * 4. Context integration
+ */
 const ChatPane: React.FC = () => {
-  // Check authentication status
-  const isAuthenticated = () => {
-    const token = localStorage.getItem('owen_access_token');
-    return !!token;
-  };
-
   const {
     messages,
     handleSendMessage,
@@ -106,10 +46,6 @@ const ChatPane: React.FC = () => {
     chatApiError,
     apiGlobalError,
     checkApiConnection,
-    userPreferences,
-    setUserPreferences,
-    feedbackOnPrevious,
-    setFeedbackOnPrevious,
     // Chat settings
     authorPersona,
     setAuthorPersona,
@@ -117,44 +53,24 @@ const ChatPane: React.FC = () => {
     setHelpFocus,
     selectedLLM,
     setSelectedLLM,
-    // 🚨 CRITICAL FIX: Add missing text highlighting properties
+    // Text highlighting
     highlightedText,
-    setHighlightedText,
-    highlightedTextId,
-    setHighlightedTextId,
-    handleTextHighlighted,
-    clearTextHighlight,
-    // Personalization features
-    showOnboarding,
-    setShowOnboarding,
-    loadUserPreferences,
-    submitFeedback,
-    analyzeWritingSample,
-    completeOnboarding,
   } = useChatContext();
 
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Memoized suggested questions to prevent unnecessary recalculations
+  // Business Logic: Generate suggested questions based on current settings
   const suggestedQuestions = useCallback(() => {
-    const templates = QUESTION_TEMPLATES[helpFocus as keyof typeof QUESTION_TEMPLATES] || QUESTION_TEMPLATES["Overall Tone"];
-    return templates.map(template => template.replace('{author}', authorPersona));
+    return generateSuggestedQuestions(helpFocus, authorPersona);
   }, [helpFocus, authorPersona]);
 
-  // Memoized contextual prompts for highlighted text
+  // Business Logic: Generate contextual prompts for highlighted text
   const contextualPrompts = useCallback(() => {
     if (!highlightedText) return [];
-    return CONTEXTUAL_PROMPTS.map(template => 
-      template.replace('{author}', authorPersona).replace('{focus}', helpFocus.toLowerCase())
-    );
+    return generateContextualPrompts(authorPersona, helpFocus);
   }, [highlightedText, authorPersona, helpFocus]);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamText]);
-
+  // Event Handler: Send message with highlighted text context
   const handleSendMessageWrapper = useCallback((message: string) => {
     let finalMessage = message;
     
@@ -166,22 +82,34 @@ const ChatPane: React.FC = () => {
     handleSendMessage(finalMessage);
   }, [highlightedText, handleSendMessage]);
 
-  const handleQuickQuestion = useCallback((questionTemplate: string) => {
-    let finalMessage = questionTemplate;
+  // Event Handler: Handle quick question prompts
+  const handlePromptClick = useCallback((prompt: string) => {
+    let finalMessage = prompt;
     
     // Include highlighted text context if available
     if (highlightedText) {
-      finalMessage = `${questionTemplate}\n\nSelected text: "${highlightedText}"`;
+      finalMessage = `${prompt}\n\nSelected text: "${highlightedText}"`;
     }
     
     handleSendMessageWrapper(finalMessage);
   }, [highlightedText, handleSendMessageWrapper]);
 
+  // Event Handler: Test API connection
+  const handleTestConnection = useCallback(async () => {
+    try {
+      await checkApiConnection();
+      handleSendMessageWrapper("Test connection - please respond with a simple greeting.");
+    } catch (error) {
+      logger.error('Connection test failed:', error);
+    }
+  }, [checkApiConnection, handleSendMessageWrapper]);
+
+  // Event Handler: Toggle thinking trail visibility
   const toggleThinkingTrail = useCallback(() => {
     setShowThinkingTrail(prev => !prev);
   }, []);
 
-  // Handle automatic message sending from highlighted text
+  // Effect: Handle automatic message sending from highlighted text (legacy support)
   useEffect(() => {
     const handleSendChatMessage = (event: CustomEvent) => {
       const { message } = event.detail;
@@ -194,147 +122,30 @@ const ChatPane: React.FC = () => {
 
   return (
     <div className="chat-container">
-      {/* Chat Header with Controls */}
-      <div className="chat-header">
-        <div className="chat-title">
-          <span className="title-icon">💬</span>
-          AI Writing Assistant
-        </div>
-        
-        <div className="chat-controls-simple">
-          <div className="control-select-group">
-            <label>👤</label>
-            <select 
-              value={authorPersona} 
-              onChange={(e) => setAuthorPersona(e.target.value)}
-              className="control-select"
-              aria-label="Select author persona"
-            >
-              {AUTHOR_PERSONAS.map((persona) => (
-                <option key={persona} value={persona}>
-                  {persona}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="control-select-group">
-            <label>🎯</label>
-            <select 
-              value={helpFocus} 
-              onChange={(e) => setHelpFocus(e.target.value)}
-              className="control-select"
-              aria-label="Select writing focus"
-            >
-              {HELP_FOCUSES.map((focus) => (
-                <option key={focus} value={focus}>
-                  {focus}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="control-select-group">
-            <label>🤖</label>
-            <select 
-              value={selectedLLM} 
-              onChange={(e) => setSelectedLLM(e.target.value)}
-              className="control-select"
-              aria-label="Select AI model"
-            >
-              {LLM_OPTIONS.map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      {/* Chat Header with Controls - Molecular Component */}
+      <ChatHeader
+        authorPersona={authorPersona}
+        helpFocus={helpFocus}
+        selectedLLM={selectedLLM}
+        onAuthorPersonaChange={setAuthorPersona}
+        onHelpFocusChange={setHelpFocus}
+        onLLMChange={setSelectedLLM}
+      />
       
-      {/* Messages Container */}
-      <div className="messages-container">
-        {/* Enhanced Highlighted Text Display */}
-        {highlightedText && (
-          <div className="highlighted-text-box">
-            <div className="highlighted-title">📝 Selected Text for Analysis:</div>
-            <div className="highlighted-content">"{highlightedText}"</div>
-            
-            {contextualPrompts().length > 0 && (
-              <div className="contextual-prompts">
-                <div className="contextual-prompts-title">💡 Ask me about this text:</div>
-                <div className="contextual-prompts-list">
-                  {contextualPrompts().map((prompt, index) => (
-                    <button
-                      key={index}
-                      className="contextual-prompt-button"
-                      onClick={() => handleQuickQuestion(prompt)}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {/* API Error Display */}
-        {(chatApiError || apiGlobalError) && (
-          <div className="chat-error-box">
-            <div className="error-icon">⚠️</div>
-            <div className="error-content">
-              <div className="error-title">Connection Issue</div>
-              <div className="error-message">
-                {chatApiError || apiGlobalError}
-              </div>
-              <button 
-                className="test-connection-button"
-                onClick={async () => {
-                  try {
-                    await checkApiConnection();
-                    handleSendMessageWrapper("Test connection - please respond with a simple greeting.");
-                  } catch (error) {
-                    console.error('Connection test failed:', error);
-                  }
-                }}
-              >
-                🔄 Test Connection
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Chat Messages */}
-        {messages.map((msg, index) => (
-          <ChatMessage 
-            key={index} 
-            message={msg}
-          />
-        ))}
-        
-        {/* Streaming Message */}
-        {isStreaming && streamText && (
-          <div className="message ai-message streaming">
-            <div className="message-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-            </div>
-            <div className="message-content">
-              {streamText}
-              <span className="typing-cursor">|</span>
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Messages Container - Organism Component */}
+      <MessagesContainer
+        messages={messages}
+        highlightedText={highlightedText}
+        contextualPrompts={contextualPrompts()}
+        chatApiError={chatApiError}
+        apiGlobalError={apiGlobalError}
+        streamText={streamText}
+        isStreaming={isStreaming}
+        onPromptClick={handlePromptClick}
+        onTestConnection={handleTestConnection}
+      />
 
-      {/* Thinking Trail */}
+      {/* Thinking Trail - Existing Component */}
       <ThinkingTrail 
         trail={thinkingTrail || undefined}
         isThinking={isThinking}
@@ -342,7 +153,7 @@ const ChatPane: React.FC = () => {
         onToggleVisibility={toggleThinkingTrail}
       />
 
-      {/* Chat Input */}
+      {/* Chat Input - Existing Component */}
       <ChatInput 
         onSendMessage={handleSendMessageWrapper}
         isDisabled={isStreaming || isThinking}

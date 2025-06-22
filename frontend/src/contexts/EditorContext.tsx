@@ -1,84 +1,72 @@
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
-import { Document } from '../services/api';
+import { Document, DocumentFolder, DocumentTemplate, SearchResult } from '../services/api/types';
 import { useEditor } from '../hooks/useEditor';
 import { useDocuments } from '../hooks/useDocuments';
 
-export interface EditorContextType {
-  // Editor state
-  editorContent: string;
-  setEditorContent: React.Dispatch<React.SetStateAction<string>>;
+// Define proper types instead of 'any'
+interface DocumentManager {
+  currentDocument: Document | null;
+  documents: Document[];
+  folders: DocumentFolder[];
+  templates: DocumentTemplate[];
+  isLoading: boolean;
+  error: string | null;
+  searchResults: SearchResult[];
+  isSearching: boolean;
+  isSaving: boolean;
+  lastSaved: Date | null;
+  hasUnsavedChanges: boolean;
+  pendingContent: string;
+  pendingTitle: string;
   
-  // Document management
-  documentManager: {
-    // Core state
-    documents: Document[];
-    folders: any[];
-    series: any[];
-    templates: any[];
-    currentDocument: Document | null;
-    isLoading: boolean;
-    error: string | null;
-    
-    // Advanced features
-    versions: any[];
-    searchResults: any[];
-    writingStats: any;
-    writingSessions: any[];
-    writingGoals: any[];
-    
-    // Auto-save status
-    isSaving: boolean;
-    lastSaved: Date | null;
-    hasUnsavedChanges: boolean;
-    
-    // Document operations
-    createDocument: (title: string, documentType?: string, folderId?: string, seriesId?: string) => Promise<Document>;
-    getDocument: (id: string) => Promise<Document>;
-    updateDocument: (id: string, updates: Partial<Document>) => Promise<Document>;
-    deleteDocument: (id: string) => Promise<void>;
-    duplicateDocument: (id: string, newTitle?: string) => Promise<Document>;
-    
-    // Organization
-    createFolder: (name: string, parentId?: string, color?: string) => Promise<any>;
-    createSeries: (name: string, description?: string) => Promise<any>;
-    moveDocument: (documentId: string, folderId?: string, seriesId?: string) => Promise<void>;
-    
-    // Version management
-    loadVersions: (documentId: string) => Promise<void>;
-    restoreVersion: (documentId: string, versionId: string) => Promise<void>;
-    
-    // Search
-    searchDocuments: (searchRequest: any) => Promise<void>;
-    clearSearch: () => void;
-    
-    // Templates
-    createFromTemplate: (templateId: string, title: string, folderId?: string) => Promise<Document>;
-    
-    // Export
-    exportDocument: (documentId: string, format: string, options?: any) => Promise<void>;
-    
-    // Analytics
-    loadWritingStats: (period: 'week' | 'month' | 'year') => Promise<void>;
-    createWritingGoal: (goal: any) => Promise<any>;
-    
-    // Collaboration
-    shareDocument: (documentId: string, email: string, permission: 'view' | 'comment' | 'edit') => Promise<void>;
-    
-    // Document synchronization
-    setCurrentDocument: (document: Document | null) => void;
-    saveCurrentDocument: () => Promise<void>;
-    
-    // Utility functions
-    getWordCount: (text: string) => number;
-    getDocumentsByFolder: (folderId: string) => Document[];
-    getDocumentsBySeries: (seriesId: string) => Document[];
-    getRecentDocuments: (limit?: number) => Document[];
-    getTotalWordCount: () => number;
-    refreshAll: () => Promise<void>;
-  };
+  // Methods
+  createDocument: (title: string, documentType?: string, folderId?: string) => Promise<Document>;
+  getDocument: (id: string) => Promise<Document>;
+  updateDocument: (id: string, updates: Partial<Document>) => Promise<Document>;
+  deleteDocument: (id: string) => Promise<void>;
+  duplicateDocument: (id: string, newTitle?: string) => Promise<Document>;
+  setCurrentDocument: (document: Document | null) => void;
+  updateContent: (content: string) => void;
+  updateTitle: (title: string) => void;
+  saveNow: () => Promise<void>;
+  refreshAll: () => Promise<void>;
+  saveCurrentDocument?: () => Promise<void>;
+}
 
-  // Actions
-  handleSaveCheckpoint: () => void;
+interface EditorActions {
+  openDocument: (document: Document) => void;
+  closeDocument: () => void;
+  createNewDocument: (title?: string) => Promise<void>;
+  saveDocument: () => Promise<void>;
+  autoSave: (content: string) => void;
+}
+
+interface EditorState {
+  isDocumentOpen: boolean;
+  isEditorFocused: boolean;
+  hasUnsavedChanges: boolean;
+  wordCount: number;
+  lastSaved: Date | null;
+}
+
+interface EditorContextType {
+  // Document Management
+  documentManager: DocumentManager;
+  
+  // Editor State
+  editorState?: EditorState;
+  
+  // Editor Actions
+  editorActions?: EditorActions;
+  
+  // Editor Content
+  editorContent: string;
+  setEditorContent: (content: string) => void;
+  
+  // Utility functions
+  setCurrentTitle?: (title: string) => void;
+  setCurrentContent?: (content: string) => void;
+  handleSaveCheckpoint: () => Promise<void>;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -96,7 +84,7 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         content: editorContent
       });
     }
-  }, [documentsHook.currentDocument, documentsHook.updateDocument, editorContent]);
+  }, [documentsHook, editorContent]);
 
   // Add the missing saveCurrentDocument method
   const saveCurrentDocument = useCallback(async () => {
@@ -105,7 +93,7 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         content: editorContent
       });
     }
-  }, [documentsHook.currentDocument, documentsHook.updateDocument, editorContent]);
+  }, [documentsHook, editorContent]);
 
   // Build context value
   const value: EditorContextType = {

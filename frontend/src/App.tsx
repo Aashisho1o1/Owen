@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import WritingWorkspace from './components/WritingWorkspace';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
@@ -12,7 +12,7 @@ import { useUIContext } from './contexts/UIContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { DocumentThemeProvider } from './contexts/DocumentThemeContext';
 
-// Top Navigation Bar with Documents, Settings, Auth in top right
+// Top Navigation Bar with Documents, Profile, Auth in top right
 const TopNavigation: React.FC = () => {
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
@@ -54,7 +54,7 @@ const TopNavigation: React.FC = () => {
           </Link>
           
           <button className="nav-action-button" onClick={() => setShowProfileModal(true)}>
-            ⚙️ Settings
+            👤 Profile
           </button>
           
           {isAuthenticated ? (

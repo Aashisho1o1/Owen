@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { sendChatMessage, buildChatRequest } from '../services/api/chat';
+import { useAuth } from '../contexts/AuthContext';
+import { useApiHealth } from './useApiHealth';
 import api, { ChatMessage, ChatRequest, ChatResponse, UserPreferences } from '../services/api';
 import { logger } from '../utils/logger';
 
@@ -309,4 +312,3 @@ export const useChat = ({
     handleSaveCheckpoint,
     fullResponse,
   };
-}; 

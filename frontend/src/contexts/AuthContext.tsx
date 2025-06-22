@@ -8,7 +8,16 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-import api from '../services/api';
+import { 
+  loginUser, 
+  registerUser, 
+  logoutUser, 
+  getUserProfile, 
+  setAuthTokens, 
+  clearAuthTokens, 
+  getStoredTokens, 
+  isTokenExpired 
+} from '../services/api/auth';
 
 // Types for authentication
 interface UserProfile {
@@ -462,4 +471,3 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 

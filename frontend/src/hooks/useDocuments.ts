@@ -1,39 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import api, { 
-  Document, 
-  DocumentVersion, 
-  DocumentFolder, 
-  DocumentSeries, 
-  DocumentTemplate,
-  WritingGoal,
-  WritingSession,
-  SearchRequest,
-  SearchResult,
-  ExportRequest
-} from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import * as api from '../services/api';
+import { 
+  Document, 
+  DocumentFolder, 
+  DocumentTemplate,
+  SearchRequest,
+  SearchResult
+} from '../services/api';
 
+// MVP-focused DocumentState - removed analytics, versions, series, goals
 interface DocumentState {
   documents: Document[];
   folders: DocumentFolder[];
-  series: DocumentSeries[];
   templates: DocumentTemplate[];
-  writingGoals: WritingGoal[];
   currentDocument: Document | null;
   isLoading: boolean;
   error: string | null;
   
-  // Version management
-  versions: DocumentVersion[];
-  isLoadingVersions: boolean;
-  
   // Search
   searchResults: SearchResult[];
   isSearching: boolean;
-  
-  // Analytics
-  writingStats: any;
-  writingSessions: WritingSession[];
   
   // Auto-save
   isSaving: boolean;
@@ -43,29 +30,20 @@ interface DocumentState {
   pendingTitle: string;
 }
 
+// MVP-focused UseDocumentsReturn interface
 interface UseDocumentsReturn extends DocumentState {
   // Document CRUD
-  createDocument: (title: string, documentType?: string, folderId?: string, seriesId?: string) => Promise<Document>;
+  createDocument: (title: string, documentType?: string, folderId?: string) => Promise<Document>;
   getDocument: (id: string) => Promise<Document>;
   updateDocument: (id: string, updates: Partial<Document>) => Promise<Document>;
   deleteDocument: (id: string) => Promise<void>;
   duplicateDocument: (id: string, newTitle?: string) => Promise<Document>;
   
-  // Version management
-  loadVersions: (documentId: string) => Promise<void>;
-  restoreVersion: (documentId: string, versionId: string) => Promise<void>;
-  compareVersions: (documentId: string, v1: string, v2: string) => Promise<any>;
-  
   // Folder management
   createFolder: (name: string, parentId?: string, color?: string) => Promise<DocumentFolder>;
   updateFolder: (id: string, updates: Partial<DocumentFolder>) => Promise<DocumentFolder>;
   deleteFolder: (id: string, moveDocumentsTo?: string) => Promise<void>;
-  moveDocument: (documentId: string, folderId?: string, seriesId?: string) => Promise<void>;
-  
-  // Series management
-  createSeries: (name: string, description?: string) => Promise<DocumentSeries>;
-  updateSeries: (id: string, updates: Partial<DocumentSeries>) => Promise<DocumentSeries>;
-  deleteSeries: (id: string) => Promise<void>;
+  moveDocument: (documentId: string, folderId?: string) => Promise<void>;
   
   // Search
   searchDocuments: (searchRequest: SearchRequest) => Promise<void>;
@@ -74,31 +52,15 @@ interface UseDocumentsReturn extends DocumentState {
   // Templates
   createFromTemplate: (templateId: string, title: string, folderId?: string) => Promise<Document>;
   
-  // Export
-  exportDocument: (documentId: string, format: string, options?: any) => Promise<void>;
-  
-  // Writing goals & analytics
-  createWritingGoal: (goal: Omit<WritingGoal, 'id' | 'user_id' | 'current_words'>) => Promise<WritingGoal>;
-  loadWritingStats: (period: 'week' | 'month' | 'year') => Promise<void>;
-  loadWritingSessions: (documentId?: string, dateRange?: { start: string; end: string }) => Promise<void>;
-  
   // Auto-save & sync
   setCurrentDocument: (document: Document | null) => void;
   updateContent: (content: string) => void;
   updateTitle: (title: string) => void;
   saveNow: () => Promise<void>;
   
-  // Backup
-  createBackup: () => Promise<{ backup_id: string; download_url: string }>;
-  
-  // Collaboration
-  shareDocument: (documentId: string, email: string, permission: 'view' | 'comment' | 'edit') => Promise<void>;
-  
   // Utility functions
   getWordCount: (text: string) => number;
   getDocumentsByFolder: (folderId: string) => Document[];
-  getDocumentsBySeries: (seriesId: string) => Document[];
-  getFolderTree: () => DocumentFolder[];
   getRecentDocuments: (limit?: number) => Document[];
   getTotalWordCount: () => number;
   
@@ -111,18 +73,12 @@ export const useDocuments = (): UseDocumentsReturn => {
   const [state, setState] = useState<DocumentState>({
     documents: [],
     folders: [],
-    series: [],
     templates: [],
-    writingGoals: [],
     currentDocument: null,
     isLoading: false,
     error: null,
-    versions: [],
-    isLoadingVersions: false,
     searchResults: [],
     isSearching: false,
-    writingStats: null,
-    writingSessions: [],
     isSaving: false,
     lastSaved: null,
     hasUnsavedChanges: false,
@@ -206,9 +162,7 @@ export const useDocuments = (): UseDocumentsReturn => {
         ...prev,
         documents: documents.documents || [],
         folders,
-        series: [], // Empty array for MVP - series feature removed
         templates,
-        writingGoals: [], // Empty array for MVP - goals feature removed
         isLoading: false
       }));
     } catch (error) {
@@ -224,12 +178,11 @@ export const useDocuments = (): UseDocumentsReturn => {
     refreshAll();
   }, [refreshAll]);
 
-  // Document CRUD operations
+  // Document CRUD operations - simplified without series
   const createDocument = useCallback(async (
     title: string, 
     documentType: string = 'novel', 
-    folderId?: string, 
-    seriesId?: string
+    folderId?: string
   ): Promise<Document> => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
@@ -238,8 +191,7 @@ export const useDocuments = (): UseDocumentsReturn => {
         title,
         content: '',
         document_type: documentType,
-        folder_id: folderId,
-        series_id: seriesId
+        folder_id: folderId
       });
       
       setState(prev => ({
@@ -250,10 +202,10 @@ export const useDocuments = (): UseDocumentsReturn => {
       
       return document;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         error: error instanceof Error ? error.message : 'Failed to create document',
-        isLoading: false 
+        isLoading: false
       }));
       throw error;
     }
@@ -262,15 +214,11 @@ export const useDocuments = (): UseDocumentsReturn => {
   const getDocument = useCallback(async (id: string): Promise<Document> => {
     try {
       const document = await api.getDocument(id);
-      setState(prev => ({
-        ...prev,
-        documents: prev.documents.map(doc => doc.id === id ? document : doc)
-      }));
       return document;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to get document' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to get document'
       }));
       throw error;
     }
@@ -278,17 +226,21 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   const updateDocument = useCallback(async (id: string, updates: Partial<Document>): Promise<Document> => {
     try {
-      const document = await api.updateDocument(id, updates);
+      const updatedDocument = await api.updateDocument(id, updates);
+      
       setState(prev => ({
         ...prev,
-        documents: prev.documents.map(doc => doc.id === id ? document : doc),
-        currentDocument: prev.currentDocument?.id === id ? document : prev.currentDocument
+        documents: prev.documents.map(doc => 
+          doc.id === id ? updatedDocument : doc
+        ),
+        currentDocument: prev.currentDocument?.id === id ? updatedDocument : prev.currentDocument
       }));
-      return document;
+      
+      return updatedDocument;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to update document' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to update document'
       }));
       throw error;
     }
@@ -297,15 +249,16 @@ export const useDocuments = (): UseDocumentsReturn => {
   const deleteDocument = useCallback(async (id: string): Promise<void> => {
     try {
       await api.deleteDocument(id);
+      
       setState(prev => ({
         ...prev,
         documents: prev.documents.filter(doc => doc.id !== id),
         currentDocument: prev.currentDocument?.id === id ? null : prev.currentDocument
       }));
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to delete document' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to delete document'
       }));
       throw error;
     }
@@ -313,75 +266,46 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   const duplicateDocument = useCallback(async (id: string, newTitle?: string): Promise<Document> => {
     try {
-      const document = await api.duplicateDocument(id, newTitle);
+      const originalDoc = state.documents.find(doc => doc.id === id);
+      if (!originalDoc) throw new Error('Document not found');
+      
+      const duplicatedDoc = await api.createDocument({
+        title: newTitle || `${originalDoc.title} (Copy)`,
+        content: originalDoc.content,
+        document_type: originalDoc.document_type,
+        folder_id: originalDoc.folder_id
+      });
+      
       setState(prev => ({
         ...prev,
-        documents: [document, ...prev.documents]
+        documents: [duplicatedDoc, ...prev.documents]
       }));
-      return document;
+      
+      return duplicatedDoc;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to duplicate document' 
-      }));
-      throw error;
-    }
-  }, []);
-
-  // Version management
-  const loadVersions = useCallback(async (documentId: string): Promise<void> => {
-    try {
-      setState(prev => ({ ...prev, isLoadingVersions: true }));
-      const versions = await api.getDocumentVersions(documentId);
-      setState(prev => ({ ...prev, versions, isLoadingVersions: false }));
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to load versions',
-        isLoadingVersions: false 
-      }));
-    }
-  }, []);
-
-  const restoreVersion = useCallback(async (documentId: string, versionId: string): Promise<void> => {
-    try {
-      const document = await api.restoreDocumentVersion(documentId, versionId);
       setState(prev => ({
         ...prev,
-        documents: prev.documents.map(doc => doc.id === documentId ? document : doc),
-        currentDocument: prev.currentDocument?.id === documentId ? document : prev.currentDocument
-      }));
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to restore version' 
+        error: error instanceof Error ? error.message : 'Failed to duplicate document'
       }));
       throw error;
     }
-  }, []);
-
-  const compareVersions = useCallback(async (documentId: string, v1: string, v2: string): Promise<any> => {
-    try {
-      return await api.compareVersions(documentId, v1, v2);
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to compare versions' 
-      }));
-      throw error;
-    }
-  }, []);
+  }, [state.documents]);
 
   // Folder management
   const createFolder = useCallback(async (name: string, parentId?: string, color?: string): Promise<DocumentFolder> => {
     try {
-      const folder = await api.createFolder(name, parentId, color);
-      setState(prev => ({ ...prev, folders: [...prev.folders, folder] }));
+      const folder = await api.createFolder({ name, parent_id: parentId, color });
+      
+      setState(prev => ({
+        ...prev,
+        folders: [...prev.folders, folder]
+      }));
+      
       return folder;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to create folder' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to create folder'
       }));
       throw error;
     }
@@ -389,16 +313,20 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   const updateFolder = useCallback(async (id: string, updates: Partial<DocumentFolder>): Promise<DocumentFolder> => {
     try {
-      const folder = await api.updateFolder(id, updates);
+      const updatedFolder = await api.updateFolder(id, updates);
+      
       setState(prev => ({
         ...prev,
-        folders: prev.folders.map(f => f.id === id ? folder : f)
+        folders: prev.folders.map(folder => 
+          folder.id === id ? updatedFolder : folder
+        )
       }));
-      return folder;
+      
+      return updatedFolder;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to update folder' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to update folder'
       }));
       throw error;
     }
@@ -406,200 +334,102 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   const deleteFolder = useCallback(async (id: string, moveDocumentsTo?: string): Promise<void> => {
     try {
-      await api.deleteFolder(id, moveDocumentsTo);
+      await api.deleteFolder(id);
+      
       setState(prev => ({
         ...prev,
-        folders: prev.folders.filter(f => f.id !== id)
+        folders: prev.folders.filter(folder => folder.id !== id),
+        documents: prev.documents.map(doc => 
+          doc.folder_id === id 
+            ? { ...doc, folder_id: moveDocumentsTo || undefined }
+            : doc
+        )
       }));
-      // Refresh documents to update folder assignments
-      await refreshAll();
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to delete folder' 
-      }));
-      throw error;
-    }
-  }, [refreshAll]);
-
-  const moveDocument = useCallback(async (documentId: string, folderId?: string, seriesId?: string): Promise<void> => {
-    try {
-      const document = await api.moveDocument(documentId, folderId, seriesId);
       setState(prev => ({
         ...prev,
-        documents: prev.documents.map(doc => doc.id === documentId ? document : doc)
-      }));
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to move document' 
+        error: error instanceof Error ? error.message : 'Failed to delete folder'
       }));
       throw error;
     }
   }, []);
 
-  // Series management
-  const createSeries = useCallback(async (name: string, description?: string): Promise<DocumentSeries> => {
+  const moveDocument = useCallback(async (documentId: string, folderId?: string): Promise<void> => {
     try {
-      const series = await api.createSeries(name, description);
-      setState(prev => ({ ...prev, series: [...prev.series, series] }));
-      return series;
+      await api.updateDocument(documentId, { folder_id: folderId });
+      
+      setState(prev => ({
+        ...prev,
+        documents: prev.documents.map(doc => 
+          doc.id === documentId ? { ...doc, folder_id: folderId } : doc
+        )
+      }));
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to create series' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to move document'
       }));
       throw error;
     }
   }, []);
 
-  const updateSeries = useCallback(async (id: string, updates: Partial<DocumentSeries>): Promise<DocumentSeries> => {
-    try {
-      const series = await api.updateSeries(id, updates);
-      setState(prev => ({
-        ...prev,
-        series: prev.series.map(s => s.id === id ? series : s)
-      }));
-      return series;
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to update series' 
-      }));
-      throw error;
-    }
-  }, []);
-
-  const deleteSeries = useCallback(async (id: string): Promise<void> => {
-    try {
-      await api.deleteSeries(id);
-      setState(prev => ({
-        ...prev,
-        series: prev.series.filter(s => s.id !== id)
-      }));
-      // Refresh documents to update series assignments
-      await refreshAll();
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to delete series' 
-      }));
-      throw error;
-    }
-  }, [refreshAll]);
-
-  // Search
+  // Search functionality
   const searchDocuments = useCallback(async (searchRequest: SearchRequest): Promise<void> => {
     try {
       setState(prev => ({ ...prev, isSearching: true }));
+      
       const results = await api.searchDocuments(searchRequest);
-      setState(prev => ({ ...prev, searchResults: results, isSearching: false }));
+      
+      setState(prev => ({
+        ...prev,
+        searchResults: results,
+        isSearching: false
+      }));
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to search documents',
-        isSearching: false 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Search failed',
+        isSearching: false
       }));
     }
   }, []);
 
   const clearSearch = useCallback(() => {
-    setState(prev => ({ ...prev, searchResults: [] }));
+    setState(prev => ({
+      ...prev,
+      searchResults: [],
+      isSearching: false
+    }));
   }, []);
 
-  // Templates
+  // Template functionality
   const createFromTemplate = useCallback(async (templateId: string, title: string, folderId?: string): Promise<Document> => {
     try {
-      const document = await api.createDocumentFromTemplate(templateId, title, folderId);
+      const document = await api.createDocumentFromTemplate({
+        template_id: templateId,
+        title,
+        folder_id: folderId
+      });
+      
       setState(prev => ({
         ...prev,
         documents: [document, ...prev.documents]
       }));
+      
       return document;
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to create document from template' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to create document from template'
       }));
       throw error;
     }
   }, []);
 
-  // Export
-  const exportDocument = useCallback(async (documentId: string, format: string, options?: any): Promise<void> => {
-    try {
-      const blob = await api.exportDocument({
-        document_id: documentId,
-        format: format as any,
-        ...options
-      });
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `document.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to export document' 
-      }));
-      throw error;
-    }
-  }, []);
-
-  // Writing goals & analytics
-  const createWritingGoal = useCallback(async (goal: Omit<WritingGoal, 'id' | 'user_id' | 'current_words'>): Promise<WritingGoal> => {
-    try {
-      const newGoal = await api.createWritingGoal(goal);
-      setState(prev => ({ ...prev, writingGoals: [...prev.writingGoals, newGoal] }));
-      return newGoal;
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to create writing goal' 
-      }));
-      throw error;
-    }
-  }, []);
-
-  const loadWritingStats = useCallback(async (period: 'week' | 'month' | 'year'): Promise<void> => {
-    try {
-      const stats = await api.getWritingStats(period);
-      setState(prev => ({ ...prev, writingStats: stats }));
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to load writing stats' 
-      }));
-    }
-  }, []);
-
-  const loadWritingSessions = useCallback(async (documentId?: string, dateRange?: { start: string; end: string }): Promise<void> => {
-    try {
-      const sessions = await api.getWritingSessions(documentId, dateRange);
-      setState(prev => ({ ...prev, writingSessions: sessions }));
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to load writing sessions' 
-      }));
-    }
-  }, []);
-
-  // Auto-save & sync
+  // Auto-save and content management
   const setCurrentDocument = useCallback((document: Document | null) => {
-    // Save any pending changes before switching
-    if (state.hasUnsavedChanges && state.currentDocument) {
-      performAutoSave();
-    }
-    
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       currentDocument: document,
       pendingContent: document?.content || '',
       pendingTitle: document?.title || '',
@@ -610,13 +440,13 @@ export const useDocuments = (): UseDocumentsReturn => {
       lastContentRef.current = document.content;
       lastTitleRef.current = document.title;
     }
-  }, [state.hasUnsavedChanges, state.currentDocument, performAutoSave]);
+  }, []);
 
   const updateContent = useCallback((content: string) => {
     setState(prev => ({
       ...prev,
       pendingContent: content,
-      hasUnsavedChanges: content !== lastContentRef.current || prev.pendingTitle !== lastTitleRef.current
+      hasUnsavedChanges: true
     }));
   }, []);
 
@@ -624,39 +454,13 @@ export const useDocuments = (): UseDocumentsReturn => {
     setState(prev => ({
       ...prev,
       pendingTitle: title,
-      hasUnsavedChanges: title !== lastTitleRef.current || prev.pendingContent !== lastContentRef.current
+      hasUnsavedChanges: true
     }));
   }, []);
 
-  const saveNow = useCallback(async (): Promise<void> => {
+  const saveNow = useCallback(async () => {
     await performAutoSave();
   }, [performAutoSave]);
-
-  // Backup
-  const createBackup = useCallback(async (): Promise<{ backup_id: string; download_url: string }> => {
-    try {
-      return await api.createBackup();
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to create backup' 
-      }));
-      throw error;
-    }
-  }, []);
-
-  // Collaboration
-  const shareDocument = useCallback(async (documentId: string, email: string, permission: 'view' | 'comment' | 'edit'): Promise<void> => {
-    try {
-      await api.shareDocument(documentId, email, permission);
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to share document' 
-      }));
-      throw error;
-    }
-  }, []);
 
   // Utility functions
   const getWordCount = useCallback((text: string): number => {
@@ -666,23 +470,6 @@ export const useDocuments = (): UseDocumentsReturn => {
   const getDocumentsByFolder = useCallback((folderId: string): Document[] => {
     return state.documents.filter(doc => doc.folder_id === folderId);
   }, [state.documents]);
-
-  const getDocumentsBySeries = useCallback((seriesId: string): Document[] => {
-    return state.documents.filter(doc => doc.series_id === seriesId)
-      .sort((a, b) => (a.chapter_number || 0) - (b.chapter_number || 0));
-  }, [state.documents]);
-
-  const getFolderTree = useCallback((): DocumentFolder[] => {
-    const buildTree = (parentId?: string): DocumentFolder[] => {
-      return state.folders
-        .filter(folder => folder.parent_id === parentId)
-        .map(folder => ({
-          ...folder,
-          children: buildTree(folder.id)
-        }));
-    };
-    return buildTree();
-  }, [state.folders]);
 
   const getRecentDocuments = useCallback((limit: number = 5): Document[] => {
     return [...state.documents]
@@ -701,36 +488,22 @@ export const useDocuments = (): UseDocumentsReturn => {
     updateDocument,
     deleteDocument,
     duplicateDocument,
-    loadVersions,
-    restoreVersion,
-    compareVersions,
     createFolder,
     updateFolder,
     deleteFolder,
     moveDocument,
-    createSeries,
-    updateSeries,
-    deleteSeries,
     searchDocuments,
     clearSearch,
     createFromTemplate,
-    exportDocument,
-    createWritingGoal,
-    loadWritingStats,
-    loadWritingSessions,
     setCurrentDocument,
     updateContent,
     updateTitle,
     saveNow,
-    createBackup,
-    shareDocument,
     getWordCount,
     getDocumentsByFolder,
-    getDocumentsBySeries,
-    getFolderTree,
     getRecentDocuments,
     getTotalWordCount,
-    refreshAll,
+    refreshAll
   };
 };
 

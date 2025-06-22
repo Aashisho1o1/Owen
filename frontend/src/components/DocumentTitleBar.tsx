@@ -1,47 +1,51 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useEditorContext } from '../contexts/EditorContext';
+import { useAuth } from '../contexts/AuthContext';
 
-const DocumentTitleBar: React.FC = () => {
+interface DocumentTitleBarProps {
+  title: string;
+  onTitleChange: (title: string) => void;
+  isEditing: boolean;
+  onEditToggle: () => void;
+}
+
+const DocumentTitleBar: React.FC<DocumentTitleBarProps> = ({
+  title,
+  onTitleChange,
+  isEditing,
+  onEditToggle
+}) => {
   const { documentManager } = useEditorContext();
-  const [isEditing, setIsEditing] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
+  const { isAuthenticated } = useAuth();
 
   const { currentDocument, hasUnsavedChanges, isSaving, setCurrentTitle } = documentManager;
 
-  useEffect(() => {
-    if (currentDocument) {
-      setEditTitle(currentDocument.title);
-    }
-  }, [currentDocument]);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
+  const handleTitleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onEditToggle();
+  };
 
   const handleStartEdit = () => {
     if (!currentDocument) return;
-    setIsEditing(true);
+    onEditToggle();
   };
 
   const handleSaveTitle = () => {
-    if (!currentDocument || !editTitle.trim()) {
-      setEditTitle(currentDocument?.title || '');
-      setIsEditing(false);
+    if (!currentDocument || !title.trim()) {
+      onTitleChange(currentDocument?.title || '');
+      onEditToggle();
       return;
     }
 
-    if (editTitle.trim() !== currentDocument.title) {
-      setCurrentTitle(editTitle.trim());
+    if (title.trim() !== currentDocument.title) {
+      setCurrentTitle(title.trim());
     }
-    setIsEditing(false);
+    onEditToggle();
   };
 
   const handleCancelEdit = () => {
-    setEditTitle(currentDocument?.title || '');
-    setIsEditing(false);
+    onTitleChange(currentDocument?.title || '');
+    onEditToggle();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -62,38 +66,36 @@ const DocumentTitleBar: React.FC = () => {
 
   const saveStatus = getSaveStatus();
 
+  if (isEditing) {
+    return (
+      <div className="document-title-bar editing">
+        <form onSubmit={handleTitleSubmit} className="title-edit-form">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            className="title-input"
+            autoFocus
+            onBlur={handleSaveTitle}
+            onKeyDown={handleKeyDown}
+          />
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="document-title-bar">
-      <div className="title-section">
-        {currentDocument ? (
-          <>
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={handleKeyDown}
-                className="title-input"
-                placeholder="Document title..."
-              />
-            ) : (
-              <h1 
-                className="document-title"
-                onClick={handleStartEdit}
-                title="Click to edit title"
-              >
-                {currentDocument.title}
-              </h1>
-            )}
-          </>
-        ) : (
-          <h1 className="document-title untitled">
-            Untitled Document
-          </h1>
-        )}
-      </div>
+      <h1 className="document-title" onClick={handleStartEdit}>
+        {title || 'Untitled Document'}
+      </h1>
+      <button 
+        className="edit-title-button" 
+        onClick={handleStartEdit}
+        aria-label="Edit title"
+      >
+        ✏️
+      </button>
 
       {saveStatus && (
         <div className={`save-status ${isSaving ? 'saving' : hasUnsavedChanges ? 'unsaved' : 'saved'}`}>
@@ -215,5 +217,3 @@ const DocumentTitleBar: React.FC = () => {
     </div>
   );
 };
-
-export default DocumentTitleBar; 

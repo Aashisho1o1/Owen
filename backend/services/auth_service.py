@@ -422,6 +422,9 @@ class AuthService:
         except Exception as e:
             logger.error(f"Error revoking tokens for user {user_id}: {e}")
 
+# Global auth service instance
+auth_service = AuthService()
+
     def cleanup_expired_tokens(self):
         """Clean up expired refresh tokens"""
         try:

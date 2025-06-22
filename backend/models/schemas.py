@@ -2,6 +2,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import re
 from pydantic import field_validator
+from enum import Enum
+
+# === ENUMS ===
+class DocumentStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
 
 # === AUTHENTICATION SCHEMAS ===
 class UserRegistrationRequest(BaseModel):
@@ -37,6 +44,17 @@ class UserRegistrationRequest(BaseModel):
             raise ValueError('Password must contain at least one number')
         return v
 
+class UserCreate(BaseModel):
+    """User creation model for main.py compatibility"""
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., min_length=8, description="Password (min 8 characters)")
+    name: str = Field(..., min_length=2, description="User's full name")
+
+class UserLogin(BaseModel):
+    """User login model"""
+    email: str
+    password: str
+
 class UserLoginRequest(BaseModel):
     """Request to log in a user."""
     username: str = Field(description="Username or email")
@@ -50,9 +68,55 @@ class UserLoginResponse(BaseModel):
     expires_in: int
     user: Dict[str, Any]
 
+class TokenResponse(BaseModel):
+    """Token response model"""
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int = 1800  # 30 minutes
+    user: dict
+
 class TokenRefreshRequest(BaseModel):
     """Request to refresh access token."""
     refresh_token: str
+
+class RefreshTokenRequest(BaseModel):
+    """Refresh token request model for main.py compatibility"""
+    refresh_token: str
+
+# === DOCUMENT SCHEMAS ===
+class DocumentCreate(BaseModel):
+    """Document creation model"""
+    title: str = Field(..., min_length=1, max_length=200)
+    content: str = ""
+    template_id: Optional[str] = None
+    folder_id: Optional[str] = None
+    status: DocumentStatus = DocumentStatus.DRAFT
+
+class DocumentUpdate(BaseModel):
+    """Document update model"""
+    title: Optional[str] = None
+    content: Optional[str] = None
+    status: Optional[DocumentStatus] = None
+    folder_id: Optional[str] = None
+
+class DocumentFromTemplateCreate(BaseModel):
+    """Create document from template model"""
+    template_id: str = Field(..., description="Template ID to use")
+    title: str = Field(..., min_length=1, max_length=200, description="Document title")
+    folder_id: Optional[str] = None
+
+# === FOLDER SCHEMAS ===
+class FolderCreate(BaseModel):
+    """Folder creation model"""
+    name: str = Field(..., min_length=1, max_length=100)
+    parent_id: Optional[str] = None
+    color: Optional[str] = "#3B82F6"
+
+class FolderUpdate(BaseModel):
+    """Folder update model"""
+    name: Optional[str] = None
+    color: Optional[str] = None
 
 # === CHAT SCHEMAS (Core MVP Feature) ===
 class ChatMessage(BaseModel):

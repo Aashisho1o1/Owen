@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
+import { checkApiHealth } from '../services/api';
 import { logger } from '../utils/logger';
 
 export interface UseApiHealthReturn {
@@ -14,7 +14,7 @@ export const useApiHealth = (): UseApiHealthReturn => {
 
   const checkApiConnection = useCallback(async () => {
     try {
-      await api.healthCheck();
+      await checkApiHealth();
       setApiGlobalError(null);
       logger.log("API health check successful from useApiHealth.");
     } catch (error) {
