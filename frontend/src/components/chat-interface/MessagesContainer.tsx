@@ -3,6 +3,7 @@ import { ChatMessage } from '../chat/ChatMessage';
 import { HighlightedTextDisplay } from './HighlightedTextDisplay';
 import { ErrorDisplay } from './ErrorDisplay';
 import { StreamingMessage } from './StreamingMessage';
+import { UnhighlightButton } from './UnhighlightButton';
 import { ChatMessage as ChatMessageType } from '../../services/api';
 
 interface MessagesContainerProps {
@@ -41,12 +42,15 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
   return (
     <div className="messages-container">
-      {/* Highlighted Text Display */}
+      {/* Highlighted Text Display with Unhighlight Button */}
       <HighlightedTextDisplay
         highlightedText={highlightedText || ''}
         contextualPrompts={contextualPrompts}
         onPromptClick={onPromptClick}
       />
+      
+      {/* Unhighlight Button - appears when text is highlighted */}
+      <UnhighlightButton className="unhighlight-in-chat" />
       
       {/* Error Display */}
       <ErrorDisplay

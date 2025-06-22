@@ -1742,6 +1742,60 @@
   color: var(--gray-900) !important;
 }
 
+/* ============= UNHIGHLIGHT BUTTON STYLING ============= */
+.unhighlight-button {
+  /* Core design */
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  
+  /* Perfect sizing */
+  padding: 6px 10px !important;
+  font-size: var(--text-sm) !important;
+  font-weight: var(--font-medium) !important;
+  line-height: 1.2 !important;
+  
+  /* Interactive states */
+  cursor: pointer !important;
+  transition: all var(--transition-fast) !important;
+  white-space: nowrap !important;
+  
+  /* Visual enhancement */
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+  backdrop-filter: blur(8px) !important;
+  
+  /* Positioning for inline use */
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin: 2px !important;
+}
+
+.unhighlight-button:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+}
+
+.unhighlight-button:active {
+  transform: translateY(0px) !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Specific positioning for unhighlight button in header */
+.unhighlight-in-header {
+  margin-left: auto !important;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+}
+
+/* Specific positioning for unhighlight button in chat */
+.unhighlight-in-chat {
+  margin: 8px 0 !important;
+  align-self: flex-start !important;
+}
+
 /* ============= UNIFIED FLOATING AI BUTTON STYLING ============= */
 /* This replaces all scattered floating AI button styles */
 .floating-ai-button {

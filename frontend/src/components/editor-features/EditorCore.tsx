@@ -117,6 +117,29 @@ export const EditorCore: React.FC<EditorCoreProps> = ({
           });
           
           setActiveDiscussionId(null);
+        } else if (action === 'clear-all') {
+          // NEW: Clear all highlights (for unhighlight button)
+          const doc = editor.state.doc;
+          const highlightsToRemove: { from: number; to: number }[] = [];
+          
+          doc.descendants((node, pos) => {
+            node.marks.forEach((mark) => {
+              if (mark.type.name === 'customHighlight') {
+                highlightsToRemove.push({
+                  from: pos,
+                  to: pos + node.nodeSize
+                });
+              }
+            });
+          });
+          
+          // Remove all highlights
+          highlightsToRemove.forEach(({ from, to }) => {
+            editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+          });
+          
+          setActiveDiscussionId(null);
+          console.log('🧹 CLEAR-ALL: Removed', highlightsToRemove.length, 'highlights from TipTap editor');
         }
       }
     };
@@ -271,6 +294,29 @@ export const EditorCoreWithRef = React.forwardRef<{ editor: any }, EditorCorePro
           });
           
           setActiveDiscussionId(null);
+        } else if (action === 'clear-all') {
+          // NEW: Clear all highlights (for unhighlight button)
+          const doc = editor.state.doc;
+          const highlightsToRemove: { from: number; to: number }[] = [];
+          
+          doc.descendants((node, pos) => {
+            node.marks.forEach((mark) => {
+              if (mark.type.name === 'customHighlight') {
+                highlightsToRemove.push({
+                  from: pos,
+                  to: pos + node.nodeSize
+                });
+              }
+            });
+          });
+          
+          // Remove all highlights
+          highlightsToRemove.forEach(({ from, to }) => {
+            editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+          });
+          
+          setActiveDiscussionId(null);
+          console.log('�� CLEAR-ALL: Removed', highlightsToRemove.length, 'highlights from TipTap editor (WithRef)');
         }
       }
     };

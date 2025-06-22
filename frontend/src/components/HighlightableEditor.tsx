@@ -159,6 +159,17 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             parent.normalize();
           }
         });
+      } else if (action === 'clear-all') {
+        // NEW: Clear all highlights (for unhighlight button)
+        const highlights = editorElement.querySelectorAll('.active-discussion-highlight');
+        console.log('🧹 CLEAR-ALL: Removing all highlights:', highlights.length);
+        highlights.forEach(el => {
+          const parent = el.parentNode;
+          if (parent) {
+            parent.replaceChild(document.createTextNode(el.textContent || ''), el);
+            parent.normalize();
+          }
+        });
       }
     };
 

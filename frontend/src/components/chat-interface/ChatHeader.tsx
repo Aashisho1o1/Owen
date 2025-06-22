@@ -1,4 +1,5 @@
 import React from 'react';
+import { UnhighlightButton } from './UnhighlightButton';
 
 // Constants
 const AUTHOR_PERSONAS = [
@@ -52,6 +53,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       <div className="chat-title">
         <span className="title-icon">💬</span>
         AI Writing Assistant
+        <UnhighlightButton className="unhighlight-in-header" />
       </div>
       
       <div className="chat-controls-simple">

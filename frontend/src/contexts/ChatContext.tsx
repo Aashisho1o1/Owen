@@ -54,6 +54,7 @@ export interface ChatContextType {
   setHighlightedTextId: React.Dispatch<React.SetStateAction<string | null>>;
   handleTextHighlighted: (text: string, highlightId?: string) => void;
   clearTextHighlight: () => void;
+  clearAllTextHighlights: () => void;
   
   // Chat state
   messages: ChatMessage[];
@@ -266,11 +267,28 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   // Text highlighting handlers
   const handleTextHighlighted = useCallback((text: string, highlightId?: string) => {
+    // ENHANCEMENT: Always clear previous highlights before adding new ones
+    if (highlightedText && highlightedText !== text) {
+      // Clear the previous highlight first
+      const clearEvent = new CustomEvent('applyActiveDiscussionHighlight', {
+        detail: { 
+          text: highlightedText, 
+          highlightId: highlightedTextId || `active-discussion-${Date.now()}`,
+          action: 'remove'
+        }
+      });
+      window.dispatchEvent(clearEvent);
+      
+      logger.log('🧹 Cleared previous highlight before applying new one:', { 
+        previousText: highlightedText.substring(0, 50) + '...',
+        newText: text.substring(0, 50) + '...'
+      });
+    }
+    
     setHighlightedText(text);
     setHighlightedTextId(highlightId || null);
     
-    // Instead of DOM manipulation, dispatch a custom event that the editor can listen to
-    // This allows the TipTap editor to handle highlighting through its own extension system
+    // Apply new highlight
     const highlightEvent = new CustomEvent('applyActiveDiscussionHighlight', {
       detail: { 
         text, 
@@ -280,12 +298,12 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     });
     window.dispatchEvent(highlightEvent);
     
-    logger.log('Text highlighted for AI feedback:', { 
+    logger.log('✨ Text highlighted for AI feedback:', { 
       text: text.substring(0, 50) + '...', 
       highlightId,
       timestamp: new Date().toISOString()
     });
-  }, []);
+  }, [highlightedText, highlightedTextId]);
 
   const clearTextHighlight = useCallback(() => {
     const previousText = highlightedText;
@@ -304,10 +322,30 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
         }
       });
       window.dispatchEvent(clearEvent);
+      
+      logger.log('🧹 Text highlight cleared:', { 
+        clearedText: previousText.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
     }
-    
-    logger.log('Text highlight cleared');
   }, [highlightedText, highlightedTextId]);
+
+  // NEW: Force clear all highlights (for unhighlight button)
+  const clearAllTextHighlights = useCallback(() => {
+    // Clear state
+    setHighlightedText('');
+    setHighlightedTextId(null);
+    
+    // Dispatch event to remove ALL highlights from the editor
+    const clearAllEvent = new CustomEvent('applyActiveDiscussionHighlight', {
+      detail: { 
+        action: 'clear-all'
+      }
+    });
+    window.dispatchEvent(clearAllEvent);
+    
+    logger.log('🧹 All text highlights cleared');
+  }, []);
 
   // Build context value
   const value: ChatContextType = {
@@ -326,6 +364,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     setHighlightedTextId,
     handleTextHighlighted,
     clearTextHighlight,
+    clearAllTextHighlights,
     messages,
     handleSendMessage,
     thinkingTrail,
