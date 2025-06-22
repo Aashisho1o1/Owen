@@ -30,3 +30,14 @@ Key Features Added:
 🔥 "Active discussion" visual marker in editor
 💡 Clear AI analysis status indicators
 ⚡ Highlighting preserved during chat setting changes
+
+deployment_trigger_202412271534
+COMPREHENSIVE TEXT HIGHLIGHTING FIXES:
+✅ Fixed TipTap editor integration with ChatContext highlighting
+✅ Replaced DOM manipulation with proper event system
+✅ Enhanced active discussion visual styling (fire emoji, underline, gradient, pulsing)
+✅ Text highlighting persists across chat setting changes  
+✅ Proper integration with TextSelectionHandler
+✅ ChatInput shows correct context (selection vs full document)
+✅ Using TipTap extension system for robust highlighting
+✅ Visual highlighting with distinctive orange/gold styling
