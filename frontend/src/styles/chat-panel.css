@@ -22,7 +22,7 @@
 .chat-input-container {
   background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-accent) 100%);
   border-top: 1px solid var(--border-light);
-  padding: var(--space-5);
+  padding: var(--space-3);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(12px);
 }
@@ -160,13 +160,13 @@
   color: var(--chat-text-primary) !important;
 }
 
-/* ============= INTERACTIVE ELEMENTS WITH BEAUTIFUL AESTHETICS ============= */
+/* ============= INTERACTIVE ELEMENTS WITH BEAUTIFUL AESTHETICS - FIXED CONTRAST ============= */
 
 .suggested-question-button,
 .contextual-prompt-button,
 .starter-question-button {
-  color: var(--text-primary) !important;
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--secondary-50) 100%) !important;
+  color: var(--gray-800) !important;
+  background: var(--bg-elevated) !important;
   border: 1px solid var(--border-medium) !important;
   border-radius: var(--radius-xl);
   padding: var(--space-3) var(--space-4);
@@ -189,20 +189,18 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(252, 211, 77, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.08), transparent);
   transition: left 0.5s ease;
 }
 
 .suggested-question-button:hover,
 .contextual-prompt-button:hover,
 .starter-question-button:hover {
-  color: var(--text-primary) !important;
-  background: linear-gradient(135deg, var(--secondary-50) 0%, var(--secondary-100) 100%) !important;
-  border-color: var(--border-accent) !important;
-  transform: translateY(-1px) scale(1.01);
-  box-shadow: 
-    var(--shadow-sm),
-    0 0 15px rgba(252, 211, 77, 0.1);
+  color: var(--gray-900) !important;
+  background: var(--primary-50) !important;
+  border-color: var(--primary-300) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .suggested-question-button:hover::before,

@@ -1155,7 +1155,7 @@
   width: 100%;
 }
 
-/* Enhanced Highlighted Text Display - Beautiful Writer-Friendly Aesthetics */
+/* Enhanced Highlighted Text Display - FIXED CONTRAST FOR READABILITY */
 .highlighted-text-box {
   background: linear-gradient(135deg, var(--secondary-50) 0%, #fff9e6 100%) !important;
   border: 2px solid var(--secondary-300) !important;
@@ -1202,7 +1202,7 @@
 .highlighted-title {
   font-size: var(--text-sm);
   font-weight: var(--font-bold);
-  color: var(--text-primary) !important;
+  color: var(--gray-900) !important; /* FIXED: Dark text for contrast */
   margin-bottom: var(--space-3);
   display: flex;
   align-items: center;
@@ -1220,11 +1220,11 @@
 
 .highlighted-content {
   font-size: var(--text-base);
-  color: var(--text-primary) !important;
+  color: var(--gray-900) !important; /* FIXED: Dark text for excellent contrast */
   font-style: italic;
   font-weight: 600 !important;
   line-height: 1.7;
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(255, 255, 255, 0.98) !important; /* FIXED: Solid white background */
   padding: var(--space-5);
   border-radius: var(--radius-lg);
   border-left: 4px solid var(--secondary-400);
@@ -1242,7 +1242,7 @@
   top: -8px;
   left: 8px;
   font-size: 28px;
-  color: var(--secondary-500) !important;
+  color: var(--secondary-600) !important; /* FIXED: Darker for better contrast */
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -1253,7 +1253,7 @@
   bottom: -18px;
   right: 8px;
   font-size: 28px;
-  color: var(--secondary-500) !important;
+  color: var(--secondary-600) !important; /* FIXED: Darker for better contrast */
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -1261,7 +1261,7 @@
 /* Enhanced meta information */
 .highlighted-meta {
   font-size: var(--text-xs);
-  color: var(--text-secondary) !important;
+  color: var(--gray-700) !important; /* FIXED: Dark text for contrast */
   margin-bottom: var(--space-2);
   font-weight: 600;
   text-align: right;
@@ -1300,7 +1300,7 @@
 
 .status-text {
   font-size: var(--text-xs);
-  color: var(--text-primary) !important;
+  color: var(--gray-900) !important; /* FIXED: Dark text for excellent contrast */
   font-weight: 600 !important;
   line-height: 1.4;
 }
@@ -1352,12 +1352,12 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-primary) !important;
+  color: var(--gray-900) !important; /* FIXED: Dark text for excellent contrast */
 }
 
 .welcome-content p {
   margin: 0 0 1.5rem 0;
-  color: var(--text-secondary) !important;
+  color: var(--gray-700) !important; /* FIXED: Dark gray for good contrast */
   line-height: 1.6;
   text-align: left;
 }
@@ -1371,7 +1371,7 @@
   margin: 0 0 1rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary) !important;
+  color: var(--gray-900) !important; /* FIXED: Dark text for excellent contrast */
 }
 
 .starter-questions {
@@ -1384,10 +1384,10 @@
 
 .starter-question-button {
   padding: var(--space-2) var(--space-3) !important;
-  background-color: var(--bg-primary) !important;
-  border: 1px solid var(--border-light) !important;
+  background-color: var(--bg-elevated) !important; /* FIXED: Light background */
+  border: 1px solid var(--border-medium) !important;
   border-radius: var(--radius-md) !important;
-  color: var(--text-secondary) !important;
+  color: var(--gray-800) !important; /* FIXED: Dark text for excellent contrast */
   font-size: var(--text-xs) !important;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -1402,9 +1402,9 @@
 }
 
 .starter-question-button:hover {
-  background-color: var(--primary-50) !important;
+  background-color: var(--primary-50) !important; /* FIXED: Light teal background on hover */
   border-color: var(--primary-300) !important;
-  color: var(--primary-700) !important;
+  color: var(--gray-900) !important; /* FIXED: Even darker text on hover */
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm) !important;
 }
@@ -1569,17 +1569,20 @@
   51%, 100% { opacity: 0; }
 }
 
-/* Contextual Prompts for Highlighted Text - ENHANCED CONTRAST */
+/* ============= INTERACTIVE ELEMENTS WITH IMPROVED CONTRAST ============= */
+
 .contextual-prompts {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 2px solid var(--primary-300);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
 }
 
 .contextual-prompts-title {
   font-size: var(--text-sm);
-  font-weight: var(--font-bold) !important; /* Increased weight */
-  color: #1a1a1a !important; /* Very dark text for maximum contrast */
+  font-weight: var(--font-semibold);
+  color: var(--gray-800) !important; /* FIXED: Dark text for contrast */
   margin-bottom: var(--space-3);
   display: flex;
   align-items: center;
@@ -1592,26 +1595,21 @@
   gap: var(--space-2);
 }
 
-/* Enhanced Contextual Prompt Buttons - Beautiful and Professional */
 .contextual-prompt-button {
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--secondary-50) 100%) !important;
-  color: var(--text-primary) !important;
-  border: 2px solid var(--secondary-200) !important;
-  border-radius: var(--radius-xl);
-  padding: var(--space-4) var(--space-5);
-  margin: var(--space-2) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated) !important;
+  color: var(--gray-800) !important; /* FIXED: Dark text for excellent contrast */
+  border: 1px solid var(--border-medium) !important;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--transition-normal);
-  font-size: var(--text-sm);
-  font-weight: 600 !important;
-  line-height: 1.5;
   text-align: left;
-  display: block;
-  width: 100%;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-xs);
 }
 
 .contextual-prompt-button::before {
@@ -1621,18 +1619,16 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(252, 211, 77, 0.15), transparent);
-  transition: left 0.6s ease;
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.08), transparent);
+  transition: left 0.5s ease;
 }
 
 .contextual-prompt-button:hover {
-  background: linear-gradient(135deg, var(--secondary-50) 0%, var(--secondary-100) 100%) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--secondary-300) !important;
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 
-    var(--shadow-md),
-    0 0 20px rgba(252, 211, 77, 0.15);
+  background: var(--primary-50) !important;
+  color: var(--gray-900) !important; /* FIXED: Even darker on hover */
+  border-color: var(--primary-300) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .contextual-prompt-button:hover::before {
@@ -1640,8 +1636,8 @@
 }
 
 .contextual-prompt-button:active {
-  transform: translateY(0) scale(1);
-  transition: transform 0.1s ease;
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Chat Error Box */
