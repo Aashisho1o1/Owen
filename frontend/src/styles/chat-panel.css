@@ -1,6 +1,6 @@
 /**
- * ChatPanel Styles
- * Container for chat functionality
+ * ChatPanel Styles - ACCESSIBILITY & CONTRAST FOCUSED
+ * Container for chat functionality with guaranteed text readability
  */
 
 .chat-panel-container {
@@ -11,4 +11,198 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* Ensure all text is readable */
+  color: var(--text-primary);
+}
+
+/* ============= CHAT INPUT ACCESSIBILITY ============= */
+
+.chat-input-container {
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-light);
+  padding: var(--space-4);
+}
+
+.chat-textarea,
+.chat-input-form input,
+.chat-input-form textarea {
+  color: var(--text-primary) !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-medium) !important;
+}
+
+.chat-textarea:focus,
+.chat-input-form input:focus,
+.chat-input-form textarea:focus {
+  color: var(--text-primary) !important;
+  border-color: var(--primary-500) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+.chat-textarea::placeholder,
+.chat-input-form input::placeholder,
+.chat-input-form textarea::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* ============= CHAT MESSAGES HIGH CONTRAST ============= */
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  /* Ensure scrollable content has proper text color */
+  color: var(--text-primary);
+}
+
+.message {
+  margin-bottom: var(--space-4);
+  /* Force text color inheritance */
+  color: var(--text-primary);
+}
+
+/* User messages - white text on blue background */
+.user-message .message-content {
+  background: var(--chat-bg-user) !important;
+  color: var(--text-inverse) !important;
+  border: none !important;
+}
+
+.user-message .message-content,
+.user-message .message-content *,
+.user-message .message-content p,
+.user-message .message-content span,
+.user-message .message-content div {
+  color: var(--text-inverse) !important;
+}
+
+/* AI messages - dark text on white background */
+.ai-message .message-content {
+  background: var(--bg-elevated) !important;
+  color: var(--chat-text-primary) !important;
+  border: 1px solid var(--border-light) !important;
+}
+
+.ai-message .message-content,
+.ai-message .message-content *,
+.ai-message .message-content p,
+.ai-message .message-content span,
+.ai-message .message-content div {
+  color: var(--chat-text-primary) !important;
+}
+
+/* ============= QUESTION BUTTONS AND INTERACTIVITY ============= */
+
+.suggested-question-button,
+.contextual-prompt-button,
+.starter-question-button {
+  color: var(--text-primary) !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-medium) !important;
+}
+
+.suggested-question-button:hover,
+.contextual-prompt-button:hover,
+.starter-question-button:hover {
+  color: var(--primary-800) !important;
+  background: var(--primary-50) !important;
+  border-color: var(--primary-400) !important;
+}
+
+/* ============= DARK THEME OVERRIDES ============= */
+
+.theme-dark .chat-panel-container {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.theme-dark .chat-textarea,
+.theme-dark .chat-input-form input,
+.theme-dark .chat-input-form textarea {
+  color: var(--text-primary) !important;
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.theme-dark .user-message .message-content {
+  color: var(--text-inverse) !important;
+}
+
+.theme-dark .ai-message .message-content {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.theme-dark .ai-message .message-content,
+.theme-dark .ai-message .message-content *,
+.theme-dark .ai-message .message-content p,
+.theme-dark .ai-message .message-content span,
+.theme-dark .ai-message .message-content div {
+  color: var(--text-primary) !important;
+}
+
+/* ============= FORCE TEXT VISIBILITY IN ALL SCENARIOS ============= */
+
+/* Nuclear option: ensure no white text on white backgrounds */
+.chat-panel-container *:not(.user-message *) {
+  color: var(--text-primary) !important;
+}
+
+.chat-panel-container .user-message * {
+  color: var(--text-inverse) !important;
+}
+
+/* Streaming message indicators */
+.streaming-message,
+.typing-indicator {
+  color: var(--text-primary) !important;
+}
+
+/* Error messages and alerts */
+.chat-error-box,
+.chat-error-box * {
+  color: var(--error-700) !important;
+}
+
+.chat-error-box .error-title {
+  color: var(--error-800) !important;
+}
+
+/* ============= ACCESSIBILITY FEATURES ============= */
+
+/* Focus indicators for keyboard navigation */
+.chat-panel-container button:focus,
+.chat-panel-container input:focus,
+.chat-panel-container textarea:focus {
+  outline: 2px solid var(--primary-500) !important;
+  outline-offset: 2px !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ai-message .message-content {
+    color: #000000 !important;
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+  }
+  
+  .user-message .message-content {
+    color: #ffffff !important;
+    background: #000000 !important;
+    border: 2px solid #ffffff !important;
+  }
+  
+  .theme-dark .ai-message .message-content {
+    color: #ffffff !important;
+    background: #000000 !important;
+    border: 2px solid #ffffff !important;
+  }
+  
+  .theme-dark .user-message .message-content {
+    color: #000000 !important;
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+  }
 } 
