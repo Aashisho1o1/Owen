@@ -2,6 +2,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { ChatProvider } from './ChatContext';
 import { EditorProvider, useEditorContext } from './EditorContext';
 import { UIProvider } from './UIContext';
+import { DocumentThemeProvider } from './DocumentThemeContext';
 
 // Simple coordinating context that just provides access to other contexts
 export interface AppContextType {
@@ -14,13 +15,15 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // Coordinating provider that combines all specialized providers
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return (
-    <UIProvider>
-      <EditorProvider>
-        <AppProviderInner>
-          {children}
-        </AppProviderInner>
-      </EditorProvider>
-    </UIProvider>
+    <DocumentThemeProvider>
+      <UIProvider>
+        <EditorProvider>
+          <AppProviderInner>
+            {children}
+          </AppProviderInner>
+        </EditorProvider>
+      </UIProvider>
+    </DocumentThemeProvider>
   );
 };
 
