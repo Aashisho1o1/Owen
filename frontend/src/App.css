@@ -509,111 +509,112 @@ body {
 /* Enhanced Responsive Design */
 @media (max-width: 768px) {
   .nav-container {
-    padding: var(--space-2) var(--space-3);
-    flex-direction: column;
-    gap: var(--space-2);
-    min-height: auto;
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  /* Hide Documents and Profile buttons on mobile */
+  .nav-actions .nav-action-button:nth-child(1),  /* Documents button */
+  .nav-actions .nav-action-button:nth-child(2) { /* Profile button */
+    display: none !important;
   }
 
   .nav-brand {
-    align-self: center;
-    margin-bottom: var(--space-1);
+    flex: 1;
   }
 
   .nav-actions {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    gap: var(--space-2);
+    gap: 0.5rem;
+    flex-shrink: 0;
   }
 
   .nav-action-button {
-    flex: 1;
-    max-width: 180px;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
     min-height: var(--touch-target-min);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     border-radius: var(--radius-lg);
     white-space: nowrap;
-    transition: all var(--transition-normal);
+  }
+
+  /* Improve auth buttons layout on mobile */
+  .auth-buttons {
+    gap: 0.5rem;
+  }
+
+  .auth-buttons .nav-action-button {
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+    min-width: 80px;
+    justify-content: center;
   }
 
   .nav-action-button.secondary {
     background: var(--bg-elevated);
-    color: var(--text-primary);
+    color: var(--gray-700) !important;
     border: 1px solid var(--border-medium);
   }
 
   .nav-action-button.secondary:hover {
-    background: var(--bg-accent);
-    border-color: var(--border-strong);
+    background: var(--bg-secondary);
+    color: var(--gray-800) !important;
   }
 
   .nav-action-button.primary {
     background: var(--primary-600);
-    color: var(--text-inverse);
+    color: white !important;
     border: 1px solid var(--primary-600);
   }
 
   .nav-action-button.primary:hover {
     background: var(--primary-700);
-    border-color: var(--primary-700);
+    color: white !important;
   }
 
-  /* User menu on mobile */
+  /* Authenticated user button styling */
   .nav-user-button {
-    width: 100%;
-    max-width: 360px;
-    margin: 0 auto;
-    min-height: var(--touch-target-min);
-    padding: var(--space-3) var(--space-4);
+    padding: 0.625rem 1rem;
     background: var(--bg-elevated);
+    color: var(--gray-800) !important;
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    cursor: pointer;
-    transition: all var(--transition-normal);
+    font-size: 0.75rem;
+    min-height: var(--touch-target-min);
   }
 
   .nav-user-button:hover {
-    background: var(--bg-accent);
-    border-color: var(--border-strong);
+    background: var(--bg-secondary);
+    color: var(--gray-900) !important;
   }
 
   .nav-user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
   }
 
   .nav-user-name {
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--text-primary);
+    font-size: 0.75rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
+  /* Fix writing interface layout to use more space without Documents/Profile buttons */
   .writing-interface.with-chat {
-    flex-direction: column;
+    padding: 0;
   }
 
   .writing-interface.with-chat .editor-panel {
-    width: 100%;
-    height: 60vh;
+    width: 50%;
+    /* Remove left padding that was causing the layout issue */
+    padding: 0;
+    margin: 0;
   }
 
   .chat-panel {
-    width: 100%;
-    height: 40vh;
-    border-left: none;
-    border-top: 1px solid var(--border-light);
+    width: 50%;
+    /* Remove right padding that was causing the layout issue */
+    padding: 0;
+    margin: 0;
   }
 
   .chat-panel.closed {
