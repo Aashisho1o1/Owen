@@ -8,7 +8,7 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--bg-elevated);
+  background: #ffffff !important; /* FORCE WHITE BACKGROUND */
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -17,12 +17,30 @@
   flex: 1;
   position: relative;
   padding: var(--space-4);
-  background: var(--editor-content-bg, var(--bg-primary));
+  background: #ffffff !important; /* FORCE WHITE BACKGROUND */
   overflow-y: auto;
   min-height: 0;
+  color: #1f2937 !important; /* FORCE DARK TEXT FOR CONTRAST */
 }
 
 /* Focus styles for better UX */
 .editor-panel:focus-within {
   box-shadow: 0 0 0 2px var(--primary-200);
+}
+
+/* Ensure all child elements have proper contrast */
+.editor-panel *,
+.editor-container * {
+  background-color: inherit;
+  color: #1f2937 !important;
+}
+
+/* Exception for elements that should maintain their styling */
+.editor-panel .highlight,
+.editor-panel .active-discussion-highlight,
+.editor-panel mark,
+.editor-panel button,
+.editor-panel .button-primary,
+.editor-panel .button-secondary {
+  color: inherit !important;
 } 

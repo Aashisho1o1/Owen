@@ -12,14 +12,14 @@
   height: 100%;
   border-radius: var(--rounded-xl);
   overflow: hidden;
-  background-color: var(--editor-bg);
+  background-color: #ffffff !important;
   border: 1px solid var(--border-primary);
 }
 
 .editor-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-primary);
-  background-color: var(--bg-secondary);
+  background-color: #ffffff !important;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -30,13 +30,13 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1f2937 !important;
 }
 
 .selection-hint {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: #6b7280 !important;
   font-style: italic;
 }
 
@@ -50,13 +50,13 @@
   width: 100%;
   min-height: 400px;
   padding: var(--space-6);
-  background: var(--bg-elevated);
+  background: #ffffff !important;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   font-family: 'Georgia', 'Times New Roman', serif;
   font-size: var(--text-base);
   line-height: 1.8;
-  color: var(--text-primary);
+  color: #1f2937 !important;
   outline: none;
   resize: none;
   transition: all var(--transition-normal);
@@ -78,7 +78,8 @@
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-size: var(--text-base) !important;
   line-height: 1.8 !important;
-  color: var(--text-primary) !important;
+  color: #1f2937 !important;
+  background: #ffffff !important;
   min-height: 400px !important;
   overflow-wrap: break-word;
   word-wrap: break-word;
@@ -88,7 +89,7 @@
 .ql-container {
   border: 1px solid var(--border-light) !important;
   border-radius: var(--radius-lg) !important;
-  background: var(--bg-elevated) !important;
+  background: #ffffff !important;
   transition: all var(--transition-normal);
 }
 
@@ -102,7 +103,7 @@
   border-bottom: none !important;
   border-top-left-radius: var(--radius-lg) !important;
   border-top-right-radius: var(--radius-lg) !important;
-  background: var(--bg-secondary) !important;
+  background: #f8fafc !important;
   padding: var(--space-3) var(--space-4) !important;
 }
 
@@ -297,18 +298,18 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-4) var(--space-6);
-  background: var(--bg-elevated);
+  background: #ffffff !important;
   border-bottom: 1px solid var(--border-light);
   flex-wrap: wrap;
   gap: var(--space-3);
 }
 
 .document-title-input {
-  background: none;
+  background: #ffffff !important;
   border: none;
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
-  color: var(--text-primary);
+  color: #1f2937 !important;
   outline: none;
   min-width: 200px;
   flex: 1;
@@ -318,8 +319,12 @@
 }
 
 .document-title-input:focus {
-  background: var(--bg-secondary);
+  background: #f8fafc !important;
   box-shadow: 0 0 0 2px var(--primary-200);
+}
+
+.document-title-input::placeholder {
+  color: #9ca3af !important;
 }
 
 .document-meta {
@@ -820,4 +825,71 @@
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* ============= LIGHT MODE FORCED OVERRIDES ============= */
+
+/* Override any theme-specific dark styling for light mode */
+:root .editor-container,
+:root .editor-content,
+:root .highlightable-editor,
+:root .ql-editor,
+:root .ql-container,
+:root .document-title-bar,
+:root .document-title-input {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Ensure text contrast in all editor areas */
+:root .editor-container *,
+:root .editor-content *,
+:root .highlightable-editor *,
+:root .ql-editor *,
+:root .document-title-input {
+  color: #1f2937 !important;
+}
+
+/* Exception for highlighted text which should maintain its colors */
+:root .highlight,
+:root .active-discussion-highlight,
+:root mark {
+  color: inherit !important;
+}
+
+/* ============= ADDITIONAL EDITOR FIXES ============= */
+
+/* Ensure TipTap editor content is properly styled */
+.ProseMirror {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  outline: none;
+  border: none;
+}
+
+.ProseMirror p {
+  color: #1f2937 !important;
+  margin: 0.5em 0;
+}
+
+.ProseMirror.is-empty::before {
+  color: #9ca3af !important;
+  font-style: italic;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* Fix for any wrapper containers that might be dark */
+.highlightable-editor-container,
+.editor-wrapper {
+  background: #ffffff !important;
+}
+
+.editor-wrapper {
+  background: #ffffff !important;
+  border-radius: 16px;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 } 

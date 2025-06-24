@@ -67,12 +67,35 @@
 /* ============= WORKSPACE PANELS ============= */
 .workspace-editor,
 .workspace-chat {
-  background: var(--bg-elevated);
+  background: #ffffff !important;
   overflow: hidden;
   transition: all var(--transition-normal);
   height: 100%;
   position: relative;
   box-sizing: border-box;
+  color: #1f2937 !important;
+}
+
+/* Ensure all child elements maintain proper contrast */
+.workspace-editor *,
+.workspace-chat * {
+  color: #1f2937 !important;
+}
+
+/* Exception for elements that should maintain their styling */
+.workspace-editor .highlight,
+.workspace-editor .active-discussion-highlight,
+.workspace-editor mark,
+.workspace-editor button,
+.workspace-editor .button-primary,
+.workspace-editor .button-secondary,
+.workspace-chat .highlight,
+.workspace-chat .active-discussion-highlight,
+.workspace-chat mark,
+.workspace-chat button,
+.workspace-chat .button-primary,
+.workspace-chat .button-secondary {
+  color: inherit !important;
 }
 
 /* ============= RESPONSIVE CHAT TOGGLE BUTTON ============= */
