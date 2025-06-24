@@ -74,8 +74,9 @@ const AppContent: React.FC = () => {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<DocumentEditor />} />
+        <Route path="/" element={<DocumentsPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/document/:documentId" element={<DocumentEditor />} />
       </Routes>
     </AppLayout>
   );
