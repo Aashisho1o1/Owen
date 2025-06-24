@@ -12,6 +12,69 @@ import { useUIContext } from './contexts/UIContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { DocumentThemeProvider } from './contexts/DocumentThemeContext';
 
+// Mobile Floating Auth Button - Creative solution for mobile authentication
+const MobileAuthFloat: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  const { setShowAuthModal, setAuthMode } = useUIContext();
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleAuthClick = () => {
+    if (isAuthenticated) {
+      setShowProfileModal(true);
+    } else {
+      setAuthMode('signin');
+      setShowAuthModal(true);
+    }
+  };
+
+  // Only render on mobile when navigation is hidden
+  if (!isMobile) return null;
+
+  return (
+    <>
+      <div className="mobile-auth-float">
+        {isAuthenticated ? (
+          <button 
+            className="mobile-profile-button" 
+            onClick={handleAuthClick}
+            aria-label="Open profile menu"
+          >
+            <div className="mobile-profile-avatar">
+              {user?.display_name ? user.display_name.charAt(0).toUpperCase() : user?.username ? user.username.charAt(0).toUpperCase() : '👤'}
+            </div>
+          </button>
+        ) : (
+          <button 
+            className="mobile-auth-button" 
+            onClick={handleAuthClick}
+            aria-label="Sign in to your account"
+          >
+            Sign In
+          </button>
+        )}
+      </div>
+
+      {/* User Profile Modal for mobile */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+    </>
+  );
+};
+
 // Top Navigation Bar with Documents, Profile, Auth in top right
 const TopNavigation: React.FC = () => {
   const location = useLocation();
@@ -93,6 +156,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="app-main">
         {children}
       </main>
+      {/* Add mobile floating auth button */}
+      <MobileAuthFloat />
     </div>
   );
 };

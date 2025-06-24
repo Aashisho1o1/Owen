@@ -16,7 +16,7 @@
 
 /* ============= NAVIGATION ============= */
 
-.main-navigation {
+.top-navigation {
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-light);
   padding: var(--space-1) 0;
@@ -628,129 +628,157 @@
 /* ============= RESPONSIVE DESIGN ============= */
 
 @media (max-width: 768px) {
-  .main-navigation {
+  .top-navigation {
+    display: none !important;
+  }
+
+  .app-layout {
+    min-height: 100vh;
+    padding-top: 0;
+  }
+
+  .app-main {
+    height: 100vh;
+    padding-top: 0;
+  }
+
+  .mobile-auth-float {
+    position: fixed;
+    top: var(--space-3);
+    right: var(--space-3);
+    z-index: 200;
+    display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    text-align: center;
-    padding: var(--space-3) var(--space-4);
-    min-height: auto;
+    pointer-events: none;
   }
 
-  .nav-brand {
-    order: 1;
-    margin-bottom: var(--space-2);
+  .mobile-auth-float > * {
+    pointer-events: auto;
   }
 
-  .nav-links {
-    order: 2;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-2);
-  }
-
-  .nav-link {
-    flex: 0 0 auto;
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    min-height: var(--touch-target-min);
+  .mobile-auth-button {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+    color: var(--text-inverse);
+    border: none;
+    border-radius: var(--radius-full);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: var(--space-2);
     white-space: nowrap;
-    border-radius: var(--radius-md);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-light);
-  }
-
-  .nav-auth {
-    order: 3;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  .nav-user-menu {
-    width: 100%;
-    max-width: 300px;
-  }
-
-  .nav-user-button {
-    width: 100%;
+    box-shadow: 
+      0 4px 12px rgba(59, 130, 246, 0.25),
+      0 2px 4px rgba(0, 0, 0, 0.1);
     min-height: var(--touch-target-min);
-    padding: var(--space-3) var(--space-4);
+    min-width: auto;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .mobile-auth-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+      0 6px 16px rgba(59, 130, 246, 0.35),
+      0 3px 6px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, var(--primary-700), var(--primary-800));
+  }
+
+  .mobile-auth-button:active {
+    transform: translateY(0) scale(0.98);
+    transition: all 0.1s ease;
+  }
+
+  .mobile-auth-button::before {
+    content: '👤';
+    font-size: var(--text-sm);
+    margin-right: var(--space-1);
+  }
+
+  .mobile-profile-button {
+    background: linear-gradient(135deg, var(--success-600), var(--success-700));
+    color: var(--text-inverse);
+    border: none;
+    border-radius: var(--radius-full);
+    padding: var(--space-2);
+    cursor: pointer;
+    transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    border-radius: var(--radius-lg);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-light);
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    box-shadow: 
+      0 4px 12px rgba(34, 197, 94, 0.25),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
-  .nav-user-avatar {
-    width: 32px;
-    height: 32px;
+  .mobile-profile-button:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 
+      0 6px 16px rgba(34, 197, 94, 0.35),
+      0 3px 6px rgba(0, 0, 0, 0.15);
   }
 
-  .nav-user-name {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
+  .mobile-profile-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    background: var(--bg-inverse);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
   }
 
   .auth-modal, .user-profile-modal {
     margin: var(--space-2);
     max-width: calc(100vw - var(--space-4));
     width: 100%;
+    max-height: calc(100vh - var(--space-4));
+    overflow-y: auto;
   }
 
-  .nav-auth-buttons {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    max-width: 400px;
-    gap: var(--space-2);
-    justify-content: center;
+  .auth-modal-overlay {
+    z-index: 300;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-auth-float {
+    top: var(--space-2);
+    right: var(--space-2);
   }
 
-  .nav-auth-button {
-    flex: 1;
-    min-height: var(--touch-target-min);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-    text-align: center;
-    border: 1px solid var(--border-medium);
-    transition: all var(--transition-normal);
+  .mobile-auth-button {
+    padding: var(--space-2) var(--space-3);
+    font-size: 10px;
+    gap: var(--space-1);
   }
 
-  .nav-auth-button.secondary {
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-    border-color: var(--border-medium);
+  .mobile-auth-button::before {
+    font-size: var(--text-xs);
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-auth-float {
+    top: var(--space-2);
+    right: var(--space-2);
   }
 
-  .nav-auth-button.secondary:hover {
-    background: var(--bg-accent);
-    border-color: var(--border-strong);
-  }
-
-  .nav-auth-button.primary {
-    background: var(--primary-600);
-    color: var(--text-inverse);
-    border-color: var(--primary-600);
-  }
-
-  .nav-auth-button.primary:hover {
-    background: var(--primary-700);
-    border-color: var(--primary-700);
+  .mobile-auth-button {
+    padding: var(--space-1) var(--space-3);
+    font-size: 10px;
   }
 }
 
@@ -874,7 +902,7 @@
 
 /* ============= MAIN CONTENT ============= */
 
-.main-content {
+.app-main {
   flex: 1;
   position: relative;
 }
