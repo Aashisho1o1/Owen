@@ -1,6 +1,6 @@
 /**
  * WritingWorkspace Styles
- * Clean, focused layout for the main writing interface
+ * Comprehensive responsive layout for optimal writing experience across all devices
  */
 
 .writing-workspace {
@@ -9,6 +9,8 @@
   position: relative;
   overflow: hidden;
   background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
 }
 
 .workspace-layout {
@@ -17,51 +19,59 @@
   width: 100%;
   transition: all var(--transition-normal);
   gap: 0;
+  flex: 1;
 }
 
-/* Editor-only layout (default) */
+/* ============= EDITOR-ONLY LAYOUT (DEFAULT) ============= */
 .workspace-layout.editor-only {
   justify-content: center;
 }
 
 .workspace-layout.editor-only .workspace-editor {
   width: 100%;
-  max-width: 1000px;
+  max-width: var(--container-xl);
   margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
 }
 
-/* With chat layout */
+/* ============= WITH CHAT LAYOUT ============= */
 .workspace-layout.with-chat {
   justify-content: stretch;
 }
 
 .workspace-layout.with-chat .workspace-editor {
   width: 50%;
+  min-width: 400px;
   flex-shrink: 0;
   border-right: 1px solid var(--border-light);
+  padding: 0;
 }
 
 .workspace-layout.with-chat .workspace-chat {
   width: 50%;
+  min-width: 400px;
   flex-shrink: 0;
+  padding: 0;
 }
 
-/* Workspace panels */
+/* ============= WORKSPACE PANELS ============= */
 .workspace-editor,
 .workspace-chat {
   background: var(--bg-elevated);
   overflow: hidden;
   transition: all var(--transition-normal);
   height: 100%;
+  position: relative;
 }
 
-/* Chat toggle button */
+/* ============= RESPONSIVE CHAT TOGGLE BUTTON ============= */
 .chat-toggle-button {
   position: fixed;
   bottom: var(--space-6);
   right: var(--space-6);
-  width: 56px;
-  height: 56px;
+  width: var(--touch-target-large);
+  height: var(--touch-target-large);
   border-radius: 50%;
   background: var(--primary-600);
   color: white;
@@ -73,6 +83,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  backdrop-filter: blur(8px);
+  
+  /* Ensure good touch target for mobile */
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
 }
 
 .chat-toggle-button:hover {
@@ -83,18 +98,28 @@
 
 .chat-toggle-button.active {
   background: var(--primary-700);
+  box-shadow: var(--shadow-md);
 }
 
 .chat-toggle-button svg {
   transition: transform var(--transition-fast);
+  width: 20px;
+  height: 20px;
 }
 
 .chat-toggle-button.active svg {
   transform: rotate(180deg);
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
+/* ============= RESPONSIVE BREAKPOINTS ============= */
+
+/* Small phones (320px - 479px) */
+@media (max-width: 479px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: 100%;
+    padding: 0 var(--space-2);
+  }
+  
   .workspace-layout.with-chat {
     flex-direction: column;
   }
@@ -102,6 +127,7 @@
   .workspace-layout.with-chat .workspace-editor {
     width: 100%;
     height: 50%;
+    min-width: unset;
     border-right: none;
     border-bottom: 1px solid var(--border-light);
   }
@@ -109,19 +135,231 @@
   .workspace-layout.with-chat .workspace-chat {
     width: 100%;
     height: 50%;
+    min-width: unset;
+  }
+  
+  .chat-toggle-button {
+    bottom: var(--space-3);
+    right: var(--space-3);
+    width: var(--touch-target-comfortable);
+    height: var(--touch-target-comfortable);
+  }
+  
+  .chat-toggle-button svg {
+    width: 18px;
+    height: 18px;
   }
 }
 
-@media (max-width: 768px) {
+/* Large phones (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
   .workspace-layout.editor-only .workspace-editor {
     max-width: 100%;
-    padding: var(--space-2);
+    padding: 0 var(--space-3);
+  }
+  
+  .workspace-layout.with-chat {
+    flex-direction: column;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 100%;
+    height: 55%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 100%;
+    height: 45%;
+    min-width: unset;
   }
   
   .chat-toggle-button {
     bottom: var(--space-4);
     right: var(--space-4);
-    width: 48px;
-    height: 48px;
+    width: var(--touch-target-comfortable);
+    height: var(--touch-target-comfortable);
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-lg);
+    padding: 0 var(--space-4);
+  }
+  
+  .workspace-layout.with-chat {
+    flex-direction: column;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 100%;
+    height: 60%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 100%;
+    height: 40%;
+    min-width: unset;
+  }
+}
+
+/* Small laptops (1024px - 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-lg);
+    padding: 0 var(--space-6);
+  }
+  
+  .workspace-layout.with-chat .workspace-editor {
+    width: 55%;
+    min-width: 450px;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 45%;
+    min-width: 400px;
+  }
+}
+
+/* Desktops (1280px - 1535px) */
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-xl);
+    padding: 0 var(--space-8);
+  }
+  
+  .workspace-layout.with-chat .workspace-editor {
+    width: 55%;
+    min-width: 500px;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 45%;
+    min-width: 450px;
+  }
+}
+
+/* Large desktops (1536px+) */
+@media (min-width: 1536px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-2xl);
+    padding: 0 var(--space-10);
+  }
+  
+  .workspace-layout.with-chat .workspace-editor {
+    width: 60%;
+    min-width: 600px;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 40%;
+    min-width: 500px;
+  }
+}
+
+/* ============= LANDSCAPE ORIENTATION OPTIMIZATION ============= */
+
+/* Landscape phones */
+@media (max-width: 767px) and (orientation: landscape) {
+  .workspace-layout.with-chat {
+    flex-direction: row;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 60%;
+    height: 100%;
+    border-right: 1px solid var(--border-light);
+    border-bottom: none;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 40%;
+    height: 100%;
+  }
+}
+
+/* Landscape tablets */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: landscape) {
+  .workspace-layout.with-chat {
+    flex-direction: row;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 60%;
+    height: 100%;
+    border-right: 1px solid var(--border-light);
+    border-bottom: none;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 40%;
+    height: 100%;
+  }
+}
+
+/* ============= ACCESSIBILITY ENHANCEMENTS ============= */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .workspace-layout,
+  .workspace-editor,
+  .workspace-chat,
+  .chat-toggle-button,
+  .chat-toggle-button svg {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .workspace-editor,
+  .workspace-chat {
+    border-color: var(--text-primary);
+  }
+  
+  .chat-toggle-button {
+    border: 2px solid var(--text-primary);
+  }
+}
+
+/* Focus management for keyboard navigation */
+.workspace-layout:focus-within {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+.chat-toggle-button:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+}
+
+/* ============= PRINT STYLES ============= */
+@media print {
+  .writing-workspace {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .workspace-layout {
+    flex-direction: column;
+  }
+  
+  .workspace-chat,
+  .chat-toggle-button {
+    display: none;
+  }
+  
+  .workspace-editor {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: none !important;
   }
 } 

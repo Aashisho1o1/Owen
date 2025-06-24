@@ -2,6 +2,7 @@
  * ChatPanel Styles - Sophisticated Writer's Interface
  * Enhanced with warm, inviting colors and perfect contrast
  * for a beautiful writing experience that inspires creativity
+ * Fully responsive design for all screen sizes
  */
 
 .chat-panel-container {
@@ -22,9 +23,10 @@
 .chat-input-container {
   background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-accent) 100%);
   border-top: 1px solid var(--border-light);
-  padding: 8px !important;
+  padding: var(--space-3);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(12px);
+  flex-shrink: 0;
 }
 
 .chat-textarea,
@@ -37,6 +39,12 @@
   transition: all var(--transition-normal);
   font-weight: 500;
   line-height: 1.6;
+  font-size: var(--text-base);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--input-height-md);
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
 }
 
 .chat-textarea:focus,
@@ -59,20 +67,51 @@
   font-weight: 400;
 }
 
+/* Send button styling */
+.chat-input-form button[type="submit"],
+.chat-send-button {
+  background: var(--primary-600);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-6);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  min-height: var(--button-height-md);
+  min-width: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.chat-input-form button[type="submit"]:hover,
+.chat-send-button:hover {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
 /* ============= BEAUTIFUL CHAT MESSAGES WITH ENHANCED AESTHETICS ============= */
 
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-5);
+  padding: var(--space-4);
   color: var(--text-primary);
   background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%);
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .message {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
   color: var(--text-primary);
   animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 @keyframes messageSlideIn {
@@ -101,6 +140,9 @@
   overflow: hidden;
   font-weight: 500;
   line-height: 1.6;
+  max-width: 85%;
+  margin-left: auto;
+  margin-right: 0;
 }
 
 .user-message .message-content::before {
@@ -127,7 +169,7 @@
   color: var(--chat-text-primary) !important;
   border: 1px solid var(--border-light) !important;
   border-radius: var(--radius-xl);
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   box-shadow: 
     var(--shadow-sm),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -136,6 +178,9 @@
   font-weight: 500;
   line-height: 1.7;
   letter-spacing: 0.01em;
+  max-width: 85%;
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .ai-message .message-content::before {
@@ -159,10 +204,6 @@
 .ai-message .message-content div {
   color: var(--chat-text-primary) !important;
 }
-
-/* ============= INTERACTIVE ELEMENTS WITH BEAUTIFUL AESTHETICS - FIXED CONTRAST ============= */
-
-/* NOTE: Contextual prompt button styling moved to components.css for unified management */
 
 /* ============= ENHANCED DARK THEME WITH SOPHISTICATED AESTHETICS ============= */
 
@@ -209,54 +250,52 @@
   color: var(--text-primary) !important;
 }
 
-/* ============= ENHANCED WELCOME AND EMPTY STATES ============= */
+/* ============= WELCOME AND STATUS MESSAGES ============= */
 
 .chat-welcome,
-.chat-empty-state {
-  text-align: center;
-  padding: var(--space-8);
-  color: var(--text-secondary) !important;
-  background: linear-gradient(135deg, var(--bg-accent) 0%, rgba(255, 255, 255, 0.05) 100%);
-  border-radius: var(--radius-xl);
-  margin: var(--space-4);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-xs);
-}
-
 .chat-welcome h3,
-.chat-empty-state h3 {
-  color: var(--text-primary) !important;
-  font-weight: 600;
+.chat-welcome p {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: var(--space-6) var(--space-4);
+  background: var(--bg-accent);
+  border-radius: var(--radius-lg);
+  margin: var(--space-4);
+}
+
+.chat-welcome h3 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
   margin-bottom: var(--space-3);
-  font-size: var(--text-lg);
+  color: var(--text-primary);
 }
 
-.chat-welcome p,
-.chat-empty-state p {
-  color: var(--text-secondary) !important;
+.chat-welcome p {
+  font-size: var(--text-base);
   line-height: 1.6;
-  font-style: italic;
+  margin: 0;
+  padding: 0;
+  background: none;
 }
 
-/* ============= STREAMING MESSAGE ENHANCEMENTS ============= */
-
-.streaming-message,
-.typing-indicator {
-  color: var(--text-primary) !important;
-  animation: pulse 2s ease-in-out infinite;
-}
-
+/* Streaming message indicator */
 .streaming-message {
-  position: relative;
-  padding-left: var(--space-6);
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .streaming-message::before {
-  content: '✨';
-  position: absolute;
-  left: 0;
-  top: 0;
-  animation: float 2s ease-in-out infinite;
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--primary-500);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .typing-indicator {
@@ -264,120 +303,266 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--bg-accent);
-  border-radius: var(--radius-lg);
-  margin: var(--space-2) 0;
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 .typing-indicator::before {
-  content: '💭';
-  font-size: var(--text-sm);
+  content: '⋯';
+  font-size: var(--text-lg);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* ============= ERROR STATES WITH BEAUTIFUL STYLING ============= */
-
+/* Error display */
 .chat-error-box {
-  background: linear-gradient(135deg, var(--error-50) 0%, rgba(255, 245, 245, 0.8) 100%) !important;
-  border: 1px solid var(--error-200) !important;
-  border-radius: var(--radius-xl);
+  background: var(--error-50);
+  border: 1px solid var(--error-500);
+  border-radius: var(--radius-lg);
   padding: var(--space-4);
-  margin: var(--space-3) 0;
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(8px);
+  margin: var(--space-4);
+  color: var(--error-600);
 }
 
 .chat-error-box * {
-  color: var(--error-700) !important;
+  color: var(--error-600) !important;
 }
 
 .chat-error-box .error-title {
-  color: var(--error-800) !important;
-  font-weight: 600;
-  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
   margin-bottom: var(--space-2);
 }
 
-/* ============= ACCESSIBILITY AND INTERACTION ENHANCEMENTS ============= */
+/* ============= INTERACTION ENHANCEMENTS ============= */
 
-/* Enhanced focus indicators for keyboard navigation */
 .chat-panel-container button:focus,
 .chat-panel-container input:focus,
 .chat-panel-container textarea:focus {
-  outline: 2px solid var(--primary-500) !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15) !important;
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
 }
 
-/* Smooth scrolling for messages */
+/* Enhanced scrollbar for messages */
 .messages-container {
-  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
 }
 
 .messages-container::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .messages-container::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: transparent;
   border-radius: var(--radius-sm);
 }
 
 .messages-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--border-medium) 0%, var(--border-dark) 100%);
+  background: var(--border-medium);
   border-radius: var(--radius-sm);
   transition: background var(--transition-normal);
 }
 
 .messages-container::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--border-dark) 0%, var(--text-tertiary) 100%);
+  background: var(--border-strong);
 }
 
-/* ============= HIGH CONTRAST MODE SUPPORT ============= */
+/* ============= ACCESSIBILITY ENHANCEMENTS ============= */
 
 @media (prefers-contrast: high) {
   .ai-message .message-content {
-    color: #000000 !important;
-    background: #ffffff !important;
-    border: 2px solid #000000 !important;
-    box-shadow: none !important;
+    border-color: var(--text-primary) !important;
+    background: var(--bg-elevated) !important;
   }
   
   .user-message .message-content {
-    color: #ffffff !important;
-    background: #000000 !important;
-    border: 2px solid #ffffff !important;
-    box-shadow: none !important;
+    background: var(--primary-700) !important;
   }
   
   .theme-dark .ai-message .message-content {
-    color: #ffffff !important;
-    background: #000000 !important;
-    border: 2px solid #ffffff !important;
+    border-color: var(--text-primary) !important;
+    background: var(--bg-secondary) !important;
   }
   
   .theme-dark .user-message .message-content {
-    color: #000000 !important;
-    background: #ffffff !important;
-    border: 2px solid #000000 !important;
+    background: var(--primary-500) !important;
   }
 }
 
-/* ============= REDUCED MOTION SUPPORT ============= */
-
 @media (prefers-reduced-motion: reduce) {
   .message,
-  .streaming-message,
-  .typing-indicator,
-  .suggested-question-button,
-  .contextual-prompt-button,
-  .starter-question-button {
-    animation: none !important;
-    transition: none !important;
+  .streaming-message::before,
+  .typing-indicator::before {
+    animation: none;
   }
   
   .suggested-question-button:hover,
-  .contextual-prompt-button:hover,
-  .starter-question-button:hover {
-    transform: none !important;
+  .chat-textarea:focus,
+  .chat-input-form input:focus,
+  .chat-input-form textarea:focus {
+    transform: none;
   }
+}
+
+/* ============= RESPONSIVE DESIGN ============= */
+
+/* Small phones (320px - 479px) */
+@media (max-width: 479px) {
+  .chat-panel-container {
+    border-radius: 0;
+  }
+  
+  .chat-input-container {
+    padding: var(--space-2);
+  }
+  
+  .messages-container {
+    padding: var(--space-2);
+  }
+  
+  .message {
+    margin-bottom: var(--space-3);
+  }
+  
+  .user-message .message-content,
+  .ai-message .message-content {
+    max-width: 95%;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+  }
+  
+  .chat-textarea,
+  .chat-input-form input,
+  .chat-input-form textarea {
+    font-size: var(--text-sm);
+    min-height: var(--input-height-sm);
+  }
+  
+  .chat-send-button {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+    min-height: var(--button-height-sm);
+  }
+  
+  .chat-welcome {
+    margin: var(--space-2);
+    padding: var(--space-4) var(--space-3);
+  }
+}
+
+/* Large phones (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .chat-input-container {
+    padding: var(--space-3);
+  }
+  
+  .messages-container {
+    padding: var(--space-3);
+  }
+  
+  .user-message .message-content,
+  .ai-message .message-content {
+    max-width: 90%;
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .chat-textarea,
+  .chat-input-form input,
+  .chat-input-form textarea {
+    font-size: var(--text-base);
+  }
+  
+  .chat-send-button {
+    padding: var(--space-3) var(--space-5);
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .user-message .message-content,
+  .ai-message .message-content {
+    max-width: 80%;
+  }
+  
+  .messages-container {
+    padding: var(--space-4);
+  }
+  
+  .chat-input-container {
+    padding: var(--space-4);
+  }
+}
+
+/* Large screens (1024px+) */
+@media (min-width: 1024px) {
+  .user-message .message-content,
+  .ai-message .message-content {
+    max-width: 75%;
+  }
+  
+  .messages-container {
+    padding: var(--space-5);
+  }
+  
+  .chat-input-container {
+    padding: var(--space-4);
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 767px) and (orientation: landscape) {
+  .messages-container {
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  .chat-input-container {
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  .user-message .message-content,
+  .ai-message .message-content {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+  
+  .chat-textarea,
+  .chat-input-form input,
+  .chat-input-form textarea {
+    min-height: var(--input-height-sm);
+  }
+}
+
+/* Print styles */
+@media print {
+  .chat-panel-container {
+    background: white;
+    box-shadow: none;
+  }
+  
+  .chat-input-container {
+    display: none;
+  }
+  
+  .user-message .message-content,
+  .ai-message .message-content {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+  }
+  
+  .ai-message .message-content::before {
+    display: none;
+  }
+}
+
+/* Keyframe animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 } 
