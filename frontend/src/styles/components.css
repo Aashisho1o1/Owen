@@ -630,37 +630,245 @@
 @media (max-width: 768px) {
   .main-navigation {
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
     text-align: center;
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    min-height: auto;
+  }
+
+  .nav-brand {
+    order: 1;
+    margin-bottom: var(--space-2);
   }
 
   .nav-links {
     order: 2;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .nav-link {
+    flex: 0 0 auto;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
   }
 
   .nav-auth {
     order: 3;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .nav-user-menu {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .nav-user-button {
+    width: 100%;
+    min-height: var(--touch-target-min);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+  }
+
+  .nav-user-avatar {
+    width: 32px;
+    height: 32px;
   }
 
   .nav-user-name {
-    display: none;
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
   }
 
   .auth-modal, .user-profile-modal {
     margin: var(--space-2);
     max-width: calc(100vw - var(--space-4));
+    width: 100%;
   }
 
   .nav-auth-buttons {
-    flex-direction: column;
+    display: flex;
+    flex-direction: row;
     width: 100%;
-    gap: var(--space-1);
+    max-width: 400px;
+    gap: var(--space-2);
+    justify-content: center;
   }
 
   .nav-auth-button {
-    width: 100%;
+    flex: 1;
+    min-height: var(--touch-target-min);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
     justify-content: center;
+    white-space: nowrap;
+    text-align: center;
+    border: 1px solid var(--border-medium);
+    transition: all var(--transition-normal);
+  }
+
+  .nav-auth-button.secondary {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+  }
+
+  .nav-auth-button.secondary:hover {
+    background: var(--bg-accent);
+    border-color: var(--border-strong);
+  }
+
+  .nav-auth-button.primary {
+    background: var(--primary-600);
+    color: var(--text-inverse);
+    border-color: var(--primary-600);
+  }
+
+  .nav-auth-button.primary:hover {
+    background: var(--primary-700);
+    border-color: var(--primary-700);
+  }
+}
+
+/* ============= ENHANCED MOBILE CHAT TOGGLE BUTTON ============= */
+
+/* Chat toggle button - REPOSITIONED for better mobile access */
+.chat-toggle-button {
+  position: fixed;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  background: var(--primary-600);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  min-height: var(--touch-target-min);
+  min-width: auto;
+}
+
+.chat-toggle-button:hover {
+  background: var(--primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+.chat-toggle-button.active {
+  background: var(--error-600);
+}
+
+.chat-toggle-button.active:hover {
+  background: var(--error-700);
+}
+
+/* ============= MOBILE-SPECIFIC CHAT TOGGLE ADJUSTMENTS ============= */
+
+@media (max-width: 768px) {
+  .chat-toggle-button {
+    bottom: var(--space-3);
+    right: var(--space-3);
+    padding: var(--space-3) var(--space-3);
+    min-height: var(--touch-target-large);
+    min-width: var(--touch-target-large);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .chat-toggle-button span {
+    display: none; /* Hide text on small screens, keep icon only */
+  }
+
+  .chat-toggle-button::before {
+    content: '💬';
+    font-size: var(--text-lg);
+  }
+
+  .chat-toggle-button.active::before {
+    content: '✕';
+    font-size: var(--text-base);
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-toggle-button {
+    bottom: var(--space-2);
+    right: var(--space-2);
+    min-height: 56px;
+    min-width: 56px;
+    padding: var(--space-3);
+  }
+}
+
+/* ============= ENHANCED MOBILE CONTENT LAYOUT ============= */
+
+@media (max-width: 768px) {
+  .content-wrapper {
+    padding: var(--space-2);
+  }
+
+  .writing-interface {
+    gap: 0;
+    padding: 0;
+    height: calc(100vh - 140px); /* Account for navigation height */
+  }
+
+  .writing-interface.with-chat {
+    flex-direction: column;
+  }
+
+  .writing-interface.with-chat .editor-panel {
+    width: 100%;
+    height: 50%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+  }
+
+  .writing-interface.with-chat .chat-panel {
+    width: 100%;
+    height: 50%;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    border-top: 1px solid var(--border-light);
+  }
+
+  .editor-panel,
+  .chat-panel {
+    border-radius: var(--radius-lg);
   }
 }
 
@@ -789,42 +997,7 @@
   display: none;
 }
 
-/* Chat toggle button */
-.chat-toggle-button {
-  position: fixed;
-  bottom: var(--space-6);
-  right: var(--space-6);
-  background: var(--primary-600);
-  color: var(--text-inverse);
-  border: none;
-  border-radius: var(--radius-full);
-  padding: var(--space-4) var(--space-5);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-  box-shadow: var(--shadow-lg);
-  z-index: 100;
-  min-height: 48px;
-}
-
-.chat-toggle-button:hover {
-  background: var(--primary-700);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-xl);
-}
-
-.chat-toggle-button.active {
-  background: var(--error-600);
-}
-
-.chat-toggle-button.active:hover {
-  background: var(--error-700);
-}
+/* Chat toggle button styles moved to mobile section above */
 
 .editor-container {
   height: 100%;
