@@ -7,8 +7,22 @@ import { useDocuments } from '../hooks/useDocuments';
 import './DocumentsPage.css';
 
 const DocumentsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { setShowAuthModal, setAuthMode } = useUIContext();
+  
+  // Destructure all needed values from useDocuments
+  const {
+    documents,
+    templates,
+    isLoading,
+    refreshAll,
+    createFromTemplate,
+    createDocument,
+    deleteDocument,
+    updateDocument,
+    getRecentDocuments
+  } = useDocuments();
   
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +45,7 @@ const DocumentsPage: React.FC = () => {
 
     try {
       const newDoc = await createFromTemplate(template.id, `New ${template.title}`);
-      navigate(`/editor/${newDoc.id}`);
+      navigate(`/document/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create document from template:', error);
       alert('Failed to create document. Please try again.');
@@ -47,7 +61,7 @@ const DocumentsPage: React.FC = () => {
 
     try {
       const newDoc = await createDocument('Untitled Document', 'novel');
-      navigate(`/editor/${newDoc.id}`);
+      navigate(`/document/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create blank document:', error);
       alert('Failed to create document. Please try again.');
