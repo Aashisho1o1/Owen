@@ -8,21 +8,47 @@
 .chat-panel-container {
   height: 100%;
   width: 100%;
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: #fefefe !important; /* Force light background */
   border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  color: var(--text-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #1f2937 !important; /* Force dark text */
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(8px);
+}
+
+/* FIXED: Chat Header - Force light background and dark text */
+.chat-header {
+  background: #fefefe !important;
+  color: #1f2937 !important;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.chat-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  margin: 0;
+}
+
+.chat-title h3 {
+  color: #1f2937 !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  margin: 0;
 }
 
 /* ============= ENHANCED CHAT INPUT WITH AESTHETIC APPEAL ============= */
 
 .chat-input-container {
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-accent) 100%);
-  border-top: 1px solid var(--border-light);
+  background: #fefefe !important; /* Force light background */
+  border-top: 1px solid #e5e7eb;
   padding: var(--space-3);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(12px);
@@ -32,9 +58,9 @@
 .chat-textarea,
 .chat-input-form input,
 .chat-input-form textarea {
-  color: var(--text-primary) !important;
-  background: var(--bg-elevated) !important;
-  border: 1px solid var(--border-medium) !important;
+  color: #1f2937 !important; /* Force dark text */
+  background: #ffffff !important; /* Force white background */
+  border: 1px solid #d1d5db !important;
   border-radius: var(--radius-xl);
   transition: all var(--transition-normal);
   font-weight: 500;
@@ -50,19 +76,20 @@
 .chat-textarea:focus,
 .chat-input-form input:focus,
 .chat-input-form textarea:focus {
-  color: var(--text-primary) !important;
-  border-color: var(--primary-500) !important;
+  color: #1f2937 !important; /* Keep dark text on focus */
+  border-color: #3b82f6 !important;
   outline: none !important;
   box-shadow: 
-    0 0 0 3px rgba(20, 184, 166, 0.15) !important,
+    0 0 0 3px rgba(59, 130, 246, 0.15) !important,
     var(--shadow-sm) !important;
   transform: translateY(-1px);
+  background: #ffffff !important;
 }
 
 .chat-textarea::placeholder,
 .chat-input-form input::placeholder,
 .chat-input-form textarea::placeholder {
-  color: var(--text-tertiary) !important;
+  color: #6b7280 !important; /* Medium gray for placeholder */
   font-style: italic;
   font-weight: 400;
 }
@@ -70,8 +97,8 @@
 /* Send button styling */
 .chat-input-form button[type="submit"],
 .chat-send-button {
-  background: var(--primary-600);
-  color: var(--text-inverse);
+  background: #3b82f6 !important;
+  color: white !important;
   border: none;
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-6);
@@ -90,7 +117,7 @@
 
 .chat-input-form button[type="submit"]:hover,
 .chat-send-button:hover {
-  background: var(--primary-700);
+  background: #2563eb !important;
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -101,14 +128,14 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
-  color: var(--text-primary);
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%);
+  color: #1f2937 !important; /* Force dark text */
+  background: #fefefe !important; /* Force light background */
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .message {
   margin-bottom: var(--space-4);
-  color: var(--text-primary);
+  color: #1f2937 !important; /* Force dark text */
   animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -125,16 +152,16 @@
   }
 }
 
-/* Enhanced User Messages - Sophisticated Teal Gradient */
+/* Enhanced User Messages - Sophisticated Blue Gradient */
 .user-message .message-content {
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%) !important;
-  color: var(--text-inverse) !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
   border: none !important;
   border-radius: var(--radius-xl);
   padding: var(--space-4) var(--space-5);
   box-shadow: 
     var(--shadow-md),
-    0 0 20px rgba(20, 184, 166, 0.15);
+    0 0 20px rgba(59, 130, 246, 0.15);
   backdrop-filter: blur(8px);
   position: relative;
   overflow: hidden;
@@ -160,14 +187,14 @@
 .user-message .message-content p,
 .user-message .message-content span,
 .user-message .message-content div {
-  color: var(--text-inverse) !important;
+  color: white !important;
 }
 
-/* Enhanced AI Messages - Clean, Warm Elegance */
+/* Enhanced AI Messages - Clean, Light Elegance */
 .ai-message .message-content {
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(255, 255, 255, 0.98) 100%) !important;
-  color: var(--chat-text-primary) !important;
-  border: 1px solid var(--border-light) !important;
+  background: #ffffff !important; /* Pure white background */
+  color: #1f2937 !important; /* Dark text for contrast */
+  border: 1px solid #e5e7eb !important;
   border-radius: var(--radius-xl);
   padding: var(--space-4) var(--space-5);
   box-shadow: 
@@ -201,8 +228,19 @@
 .ai-message .message-content *,
 .ai-message .message-content p,
 .ai-message .message-content span,
-.ai-message .message-content div {
-  color: var(--chat-text-primary) !important;
+.ai-message .message-content div,
+.ai-message .message-content h1,
+.ai-message .message-content h2,
+.ai-message .message-content h3,
+.ai-message .message-content h4,
+.ai-message .message-content h5,
+.ai-message .message-content h6,
+.ai-message .message-content strong,
+.ai-message .message-content em,
+.ai-message .message-content ul,
+.ai-message .message-content ol,
+.ai-message .message-content li {
+  color: #1f2937 !important; /* Force all text to be dark */
 }
 
 /* ============= ENHANCED DARK THEME WITH SOPHISTICATED AESTHETICS ============= */
@@ -763,4 +801,93 @@
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+/* REMOVE DARK THEME STYLES - Force light theme only */
+.chat-panel-container,
+.chat-header,
+.chat-title,
+.chat-input-container,
+.messages-container,
+.message,
+.ai-message .message-content {
+  background: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Ensure input fields are always light */
+.chat-textarea,
+.chat-input-form input,
+.chat-input-form textarea {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: #d1d5db !important;
+}
+
+.chat-textarea:focus,
+.chat-input-form input:focus,
+.chat-input-form textarea:focus {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* GLOBAL OVERRIDE: Force all chat-related elements to be light */
+/* This ensures no CSS variables or fallbacks can cause dark backgrounds */
+.chat-panel-container *,
+.chat-header *,
+.chat-title *,
+.chat-input-container *,
+.messages-container *,
+.chat-container *,
+[class*="chat-"] {
+  background-color: inherit !important;
+}
+
+/* Specifically target common dark background issues */
+.chat-panel-container,
+.chat-container,
+.chat-header,
+.chat-title,
+.chat-title h1,
+.chat-title h2,
+.chat-title h3,
+.chat-title h4,
+.chat-title span,
+.chat-title div {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Override any CSS variable fallbacks */
+:root .chat-panel-container,
+:root .chat-header,
+:root .chat-title,
+:root .chat-container {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Media query overrides for mobile */
+@media (max-width: 768px) {
+  .chat-panel-container,
+  .chat-header,
+  .chat-title,
+  .chat-container {
+    background: #fefefe !important;
+    background-color: #fefefe !important;
+    color: #1f2937 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-panel-container,
+  .chat-header,
+  .chat-title,
+  .chat-container {
+    background: #fefefe !important;
+    background-color: #fefefe !important;
+    color: #1f2937 !important;
+  }
 } 

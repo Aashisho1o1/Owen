@@ -135,19 +135,20 @@ body {
 
   /* ============= SEMANTIC DESIGN TOKENS ============= */
   /* Background Colors */
-  --bg-primary: var(--gray-50);
-  --bg-secondary: var(--gray-100);
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
   --bg-tertiary: var(--gray-200);
-  --bg-elevated: #ffffff;
-  --bg-accent: var(--primary-50);
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
   --bg-overlay: rgba(0, 0, 0, 0.5);
 
   /* Text Colors */
-  --text-primary: var(--gray-900);
-  --text-secondary: var(--gray-700);
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
   --text-tertiary: var(--gray-500);
   --text-inverse: #ffffff;
   --text-accent: var(--primary-600);
+  --text-muted: #6b7280 !important;
 
   /* Chat-specific colors for excellent contrast */
   --chat-bg-user: var(--primary-500);
@@ -156,9 +157,9 @@ body {
   --chat-text-secondary: var(--gray-700);
 
   /* Border Colors */
-  --border-light: var(--gray-200);
-  --border-medium: var(--gray-300);
-  --border-strong: var(--gray-400);
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
   --border-accent: var(--primary-300);
 
   /* Shadow System */
@@ -511,4 +512,110 @@ button, input, select, textarea {
   .container {
     padding: 0 var(--space-10);
   }
+}
+
+/* ============= FORCE LIGHT THEME OVERRIDES ============= */
+/* Prevent any dark backgrounds or unreadable text */
+
+:root {
+  /* Background colors - Force light values */
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
+  
+  /* Text colors - Force dark values for contrast */
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
+  --text-muted: #6b7280 !important;
+  
+  /* Border colors - Force light values */
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
+}
+
+/* Override dark theme completely - Force light theme */
+.theme-dark {
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
+  --text-muted: #6b7280 !important;
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
+}
+
+/* Force all elements to use light backgrounds */
+body,
+.app-main,
+.app-layout,
+.content-wrapper,
+.writing-interface,
+.editor-panel,
+.chat-panel,
+.chat-container,
+.chat-header,
+.chat-title,
+.editor-wrapper,
+.highlightable-editor {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* ============= FORCE LIGHT THEME OVERRIDES ============= */
+/* Prevent any dark backgrounds or unreadable text */
+
+:root {
+  /* Background colors - Force light values */
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
+  
+  /* Text colors - Force dark values for contrast */
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
+  --text-muted: #6b7280 !important;
+  
+  /* Border colors - Force light values */
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
+}
+
+/* Override dark theme completely - Force light theme */
+.theme-dark {
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
+  --text-muted: #6b7280 !important;
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
+}
+
+/* Force all elements to use light backgrounds */
+body,
+.app-main,
+.app-layout,
+.content-wrapper,
+.writing-interface,
+.editor-panel,
+.chat-panel,
+.chat-container,
+.chat-header,
+.chat-title,
+.editor-wrapper,
+.highlightable-editor {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
 } 

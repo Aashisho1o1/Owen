@@ -1,0 +1,139 @@
+/* ============= LIGHT THEME OVERRIDES ============= */
+/* Fix dark background issues by forcing light colors */
+
+/* Force CSS variables to light values */
+:root {
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
+  --text-muted: #6b7280 !important;
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
+}
+
+/* Override dark theme completely */
+.theme-dark {
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --bg-elevated: #fefefe !important;
+  --bg-accent: #f9fafb !important;
+  --text-primary: #1f2937 !important;
+  --text-secondary: #374151 !important;
+  --text-muted: #6b7280 !important;
+  --border-light: #e5e7eb !important;
+  --border-medium: #d1d5db !important;
+  --border-strong: #9ca3af !important;
+}
+
+/* Force all main layout elements to light */
+body,
+.app,
+.app-main,
+.app-layout,
+.content-wrapper,
+.writing-workspace,
+.workspace-header,
+.workspace-content,
+.editor-section,
+.editor-container,
+.chat-section,
+.writing-interface,
+.editor-panel {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Fix editor background */
+.highlightable-editor,
+.highlightable-editor-container,
+.editor-wrapper,
+.ProseMirror {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Fix chat panel backgrounds */
+.chat-panel,
+.chat-panel-container,
+.chat-container,
+.chat-header,
+.chat-title,
+.chat-input-container,
+.messages-container {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Fix chat title specifically */
+.chat-title,
+.chat-title h1,
+.chat-title h2,
+.chat-title h3,
+.chat-title h4,
+.chat-title span,
+.chat-title div {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #1f2937 !important;
+}
+
+/* Ensure input fields are readable */
+input,
+textarea,
+.document-title-input,
+.chat-textarea {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Mobile overrides */
+@media (max-width: 768px) {
+  body,
+  .app,
+  .app-main,
+  .writing-workspace,
+  .workspace-header,
+  .workspace-content,
+  .editor-section,
+  .editor-container,
+  .chat-section,
+  .chat-panel-container,
+  .chat-header,
+  .chat-title,
+  .highlightable-editor {
+    background: #fefefe !important;
+    background-color: #fefefe !important;
+    color: #1f2937 !important;
+  }
+}
+
+/* Light Theme Overrides - Fix Dark Backgrounds */
+:root {
+  --bg-primary: #fefefe !important;
+  --bg-secondary: #ffffff !important;
+  --text-primary: #1f2937 !important;
+}
+
+body, .app, .writing-workspace, .editor-container, .chat-panel-container {
+  background: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+.chat-header, .chat-title {
+  background: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+.highlightable-editor {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+} 

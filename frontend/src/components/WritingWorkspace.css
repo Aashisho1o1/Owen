@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fefefe; /* Subtle white */
+  background: #fefefe !important; /* Subtle white */
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
@@ -11,7 +11,7 @@
 .writing-workspace.loading {
   justify-content: center;
   align-items: center;
-  background: #fefefe;
+  background: #fefefe !important;
 }
 
 .loading-content {
@@ -34,356 +34,321 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Simplified Header - MVP Version */
-.workspace-header-mvp {
+/* Workspace Header */
+.workspace-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  background: #fefefe !important; /* Subtle white */
+  padding: 1rem 1.5rem;
+  background: #fefefe !important;
   border-bottom: 1px solid #e5e7eb;
-  min-height: 60px;
   flex-shrink: 0;
+  height: 64px;
 }
 
-.title-section {
+.document-title-section {
   flex: 1;
   max-width: 400px;
 }
 
 .document-title-input {
   width: 100%;
-  font-size: 18px !important;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #1f2937 !important;
-  background: transparent !important;
-  border: none !important;
-  outline: none !important;
-  padding: 8px 12px;
-  border-radius: 6px;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
   transition: all 0.2s ease;
 }
 
-.document-title-input:hover {
-  background: #f8fafc !important;
-}
-
 .document-title-input:focus {
-  background: #f1f5f9 !important;
-  box-shadow: 0 0 0 2px #e0e7ff !important;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.document-title-input::placeholder {
-  color: #9ca3af !important;
+.save-status {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
 }
 
-/* MVP Controls */
-.workspace-controls-mvp {
+.save-status.saving {
+  color: #f59e0b;
+}
+
+.save-status.saved {
+  color: #10b981;
+}
+
+.workspace-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 1rem;
 }
 
 .chat-toggle-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #f8fafc !important;
-  color: #4b5563 !important;
-  border: 1px solid #e5e7eb !important;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .chat-toggle-btn:hover {
-  background: #f1f5f9 !important;
-  border-color: #d1d5db !important;
-  transform: translateY(-1px);
+  background: #e5e7eb !important;
 }
 
 .chat-toggle-btn.active {
-  background: #3b82f6 !important;
-  color: white !important;
-  border-color: #3b82f6 !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #3b82f6;
 }
 
-.chat-toggle-btn.active:hover {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
-}
-
-.toggle-icon {
-  font-size: 16px;
-}
-
-.toggle-text {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* Save Status for MVP */
-.save-status-mvp {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-}
-
-.status-saving {
-  color: #f59e0b;
-  font-weight: 500;
-}
-
-.status-saved {
-  color: #10b981;
-  font-weight: 500;
-}
-
-.save-now-btn {
-  padding: 6px 12px;
-  background: #3b82f6 !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.save-now-btn:hover {
-  background: #2563eb !important;
-  transform: translateY(-1px);
-}
-
-/* Main Workspace Content - Maximized vertical space */
+/* Main Content Area */
 .workspace-content {
-  display: flex;
   flex: 1;
-  height: calc(100vh - 60px); /* Full height minus header */
+  display: flex;
   background: #fefefe !important;
+  overflow: hidden;
 }
 
-.workspace-content.editor-only .editor-section {
+.editor-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fefefe !important;
+  transition: all 0.3s ease;
+}
+
+.editor-section.with-chat {
+  width: 60%;
+}
+
+.editor-section.without-chat {
   width: 100%;
 }
 
-.workspace-content.with-chat .editor-section {
-  width: 60%;
-  border-right: 1px solid #e5e7eb;
-}
-
-.workspace-content.with-chat .chat-section {
+.chat-section {
   width: 40%;
-}
-
-/* Writing Area */
-.editor-section {
+  background: #fefefe !important;
+  border-left: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  background: #fefefe !important;
-  color: #1f2937 !important;
-  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.editor-section .highlightable-editor-container {
+.chat-section.hidden {
+  display: none;
+}
+
+/* Editor Container */
+.editor-container {
   flex: 1;
+  padding: 1.5rem;
+  background: #fefefe !important;
+  overflow: auto;
+}
+
+.highlightable-editor {
+  min-height: 100%;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  color: #1f2937 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  outline: none;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+}
+
+.highlightable-editor:focus {
+  border-color: #3b82f6;
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat Panel Container */
+.chat-panel-container {
   height: 100%;
   background: #fefefe !important;
-}
-
-.editor-section .highlightable-editor {
-  height: 100% !important;
-  background: #fefefe !important;
-  color: #1f2937 !important;
-}
-
-.editor-section .ProseMirror {
-  background: #fefefe !important;
-  color: #1f2937 !important;
-  padding: 32px !important;
-  font-size: 16px !important;
-  line-height: 1.7 !important;
-  height: 100% !important;
-  overflow-y: auto;
-}
-
-.editor-section .ProseMirror:focus {
-  outline: none !important;
-}
-
-.editor-section .ProseMirror.is-empty::before {
-  color: #9ca3af !important;
-  content: "Start writing...";
-  font-style: italic;
-  pointer-events: none;
-}
-
-/* Chat Section */
-.chat-section {
+  border-radius: 0;
   display: flex;
   flex-direction: column;
-  background: #fefefe !important;
-  overflow: hidden;
 }
 
-.chat-section .chat-container {
-  height: 100% !important;
-  background: #fefefe !important;
+/* Guest Mode Styles */
+.guest-notice {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #f3d97a;
+  text-align: center;
 }
 
-/* Mobile Responsiveness */
+.guest-notice a {
+  color: #d97706;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+/* Mobile Responsive */
 @media (max-width: 768px) {
-  .workspace-header-mvp {
-    padding: 12px 16px;
+  .workspace-header {
+    padding: 0.75rem 1rem;
     flex-direction: column;
-    gap: 12px;
-    min-height: auto;
+    gap: 0.75rem;
+    height: auto;
+    align-items: stretch;
   }
-  
-  .title-section {
+
+  .document-title-section {
     max-width: none;
-    width: 100%;
   }
-  
-  .workspace-controls-mvp {
-    width: 100%;
-    justify-content: space-between;
+
+  .workspace-controls {
+    justify-content: center;
   }
-  
+
   .workspace-content {
-    height: calc(100vh - 120px); /* Adjust for larger mobile header */
     flex-direction: column;
   }
-  
-  .workspace-content.with-chat .editor-section {
-    width: 100%;
+
+  .editor-section {
+    width: 100% !important;
     height: 60%;
-    border-right: none;
-    border-bottom: 1px solid #e5e7eb;
+    order: 1;
   }
-  
-  .workspace-content.with-chat .chat-section {
-    width: 100%;
+
+  .chat-section {
+    width: 100% !important;
     height: 40%;
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+    order: 2;
   }
-  
-  .workspace-content.editor-only .editor-section {
-    width: 100%;
-    height: 100%;
+
+  .editor-container {
+    padding: 1rem;
   }
-  
-  .editor-section .ProseMirror {
-    padding: 20px !important;
-    font-size: 15px !important;
-  }
-  
-  .chat-toggle-btn .toggle-text {
-    display: none;
+
+  .highlightable-editor {
+    padding: 1rem;
+    font-size: 16px;
   }
 }
 
 @media (max-width: 480px) {
-  .workspace-header-mvp {
-    padding: 8px 12px;
+  .workspace-header {
+    padding: 0.5rem 0.75rem;
   }
-  
+
   .document-title-input {
-    font-size: 16px !important;
-    padding: 6px 8px;
+    font-size: 1rem;
+    padding: 0.5rem;
   }
-  
-  .chat-toggle-btn {
-    padding: 6px 12px;
+
+  .editor-container {
+    padding: 0.75rem;
   }
-  
-  .save-now-btn {
-    padding: 4px 8px;
-    font-size: 12px;
-  }
-  
-  .editor-section .ProseMirror {
-    padding: 16px !important;
-    font-size: 14px !important;
+
+  .highlightable-editor {
+    padding: 0.75rem;
+    font-size: 16px;
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .writing-workspace {
-    background: #1f2937;
-  }
-  
-  .workspace-header-mvp {
-    background: #1f2937;
-    border-bottom-color: #374151;
-  }
-  
-  .document-title-input {
-    color: #f9fafb;
-  }
-  
-  .document-title-input:hover {
-    background: #374151;
-  }
-  
-  .editor-section {
-    background: #1f2937;
-  }
-  
-  .editor-section .highlightable-editor-container {
-    background: #1f2937 !important;
-  }
-  
-  .editor-section .highlightable-editor {
-    background: #1f2937 !important;
-    color: #f9fafb !important;
-  }
-  
-  .editor-section .ProseMirror {
-    background: #1f2937 !important;
-    color: #f9fafb !important;
-  }
-  
-  .chat-section {
-    background: #1f2937;
-  }
-  
-  .chat-section .chat-container {
-    background: #1f2937 !important;
-  }
-  
-  .chat-toggle-btn {
-    background: #374151;
-    color: #f9fafb;
-    border-color: #4b5563;
-  }
-  
-  .chat-toggle-btn:hover {
-    background: #4b5563;
-  }
-  
-  .chat-toggle-btn.active {
-    background: #2563eb;
-    color: white;
-    border-color: #2563eb;
-  }
-  
-  .chat-toggle-btn.active:hover {
-    background: #2563eb;
-    border-color: #2563eb;
-  }
-  
-  .save-now-btn {
-    background: #374151;
-    color: #f9fafb;
-  }
-  
-  .save-now-btn:hover {
-    background: #4b5563;
+/* ============= COMPREHENSIVE DARK BACKGROUND FIXES ============= */
+/* Force all potential problem areas to have light backgrounds */
+
+.writing-workspace,
+.writing-workspace *,
+.workspace-header,
+.workspace-header *,
+.workspace-content,
+.workspace-content *,
+.editor-section,
+.editor-section *,
+.editor-container,
+.editor-container *,
+.chat-section,
+.chat-section *,
+.chat-panel-container,
+.chat-panel-container *,
+.highlightable-editor,
+.highlightable-editor * {
+  background-color: inherit !important;
+}
+
+/* Specific overrides for common problem areas */
+.writing-workspace,
+.workspace-header,
+.workspace-content,
+.editor-section,
+.editor-container,
+.chat-section,
+.chat-panel-container {
+  background: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+.highlightable-editor {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Ensure input fields are always readable */
+.document-title-input,
+.chat-textarea,
+input,
+textarea {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Override any potential CSS variable issues */
+:root .writing-workspace,
+:root .workspace-header,
+:root .workspace-content,
+:root .editor-section,
+:root .editor-container,
+:root .chat-section,
+:root .chat-panel-container,
+:root .highlightable-editor {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Media query overrides */
+@media (max-width: 768px) {
+  .writing-workspace,
+  .workspace-header,
+  .workspace-content,
+  .editor-section,
+  .editor-container,
+  .chat-section,
+  .chat-panel-container,
+  .highlightable-editor {
+    background: #fefefe !important;
+    background-color: #fefefe !important;
+    color: #1f2937 !important;
   }
 } 
