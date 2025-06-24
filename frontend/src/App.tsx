@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import DocumentEditor from './pages/DocumentEditor';
 import DocumentsPage from './pages/DocumentsPage';
+import WritingWorkspace from './components/WritingWorkspace';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import { useAuth } from './contexts/AuthContext';
@@ -74,8 +75,11 @@ const AppContent: React.FC = () => {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<DocumentsPage />} />
+        {/* Default route - direct to writing workspace */}
+        <Route path="/" element={<WritingWorkspace />} />
+        {/* Documents management page */}
         <Route path="/documents" element={<DocumentsPage />} />
+        {/* Individual document editor */}
         <Route path="/document/:documentId" element={<DocumentEditor />} />
       </Routes>
     </AppLayout>

@@ -1,8 +1,10 @@
-import React from 'react';
-import { EditorPanel } from './editor-layout/EditorPanel';
-import { ChatPanel } from './chat/ChatPanel';
-import { useChatContext } from '../contexts/ChatContext';
-import '../styles/writing-workspace.css';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import HighlightableEditor from './HighlightableEditor';
+import ChatPane from './ChatPane';
+import { useDocuments } from '../hooks/useDocuments';
+import { useAuth } from '../contexts/AuthContext';
+import './WritingWorkspace.css';
 
 /**
  * WritingWorkspace - Clean layout component with single responsibility
@@ -18,65 +20,171 @@ import '../styles/writing-workspace.css';
  * - Duplicate context state
  */
 export const WritingWorkspace: React.FC = () => {
-  // Get chat visibility from ChatContext - single source of truth
-  const { isChatVisible, toggleChat } = useChatContext();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const {
+    createDocument,
+    updateContent,
+    updateTitle,
+    saveNow,
+    isSaving,
+    lastSaved,
+    hasUnsavedChanges,
+    currentDocument,
+    setCurrentDocument
+  } = useDocuments();
+
+  const [editorContent, setEditorContent] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('Untitled Document');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [wordCount, setWordCount] = useState(0);
+
+  // Auto-create a blank document when component mounts
+  useEffect(() => {
+    const initializeDocument = async () => {
+      if (!isInitialized && isAuthenticated) {
+        try {
+          console.log('🚀 Creating new blank document...');
+          const newDoc = await createDocument('Untitled Document');
+          setCurrentDocument(newDoc);
+          setEditorContent(newDoc.content || '');
+          setDocumentTitle(newDoc.title);
+          setIsInitialized(true);
+          console.log('✅ Blank document created and ready');
+        } catch (error) {
+          console.error('❌ Failed to create blank document:', error);
+          // Continue with local state even if document creation fails
+          setIsInitialized(true);
+        }
+      } else if (!isAuthenticated) {
+        // Allow writing without authentication, but no saving
+        setIsInitialized(true);
+      }
+    };
+
+    initializeDocument();
+  }, [isAuthenticated, isInitialized, createDocument, setCurrentDocument]);
+
+  // Update document content when editor content changes
+  useEffect(() => {
+    if (currentDocument && editorContent !== currentDocument.content) {
+      updateContent(editorContent);
+    }
+    
+    // Update word count
+    const words = editorContent.trim().split(/\s+/).filter(word => word.length > 0);
+    setWordCount(words.length);
+  }, [editorContent, currentDocument, updateContent]);
+
+  // Update document title when title changes
+  useEffect(() => {
+    if (currentDocument && documentTitle !== currentDocument.title) {
+      updateTitle(documentTitle);
+    }
+  }, [documentTitle, currentDocument, updateTitle]);
+
+  const handleSaveNow = async () => {
+    if (!isAuthenticated) {
+      // Prompt user to sign in
+      alert('Please sign in to save your work');
+      return;
+    }
+    
+    try {
+      await saveNow();
+    } catch (err) {
+      console.error('Failed to save document:', err);
+    }
+  };
+
+  const handleGoToDocuments = () => {
+    navigate('/documents');
+  };
+
+  const formatLastSaved = () => {
+    if (!lastSaved) return 'Never saved';
+    const now = new Date();
+    const diffMs = now.getTime() - lastSaved.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Saved just now';
+    if (diffMins === 1) return 'Saved 1 minute ago';
+    if (diffMins < 60) return `Saved ${diffMins} minutes ago`;
+    return `Saved at ${lastSaved.toLocaleTimeString()}`;
+  };
+
+  if (!isInitialized) {
+    return (
+      <div className="writing-workspace loading">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <p>Preparing your writing space...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="writing-workspace">
-      {/* Main Writing Interface */}
-      <div className={`workspace-layout ${isChatVisible ? 'with-chat' : 'editor-only'}`}>
+      {/* Minimal header - focused on writing */}
+      <div className="workspace-header">
+        <div className="header-left">
+          <input
+            type="text"
+            value={documentTitle}
+            onChange={(e) => setDocumentTitle(e.target.value)}
+            className="document-title-input"
+            placeholder="Give your document a title..."
+          />
+        </div>
         
-        {/* Editor Panel - Always visible */}
-        <div className="workspace-editor">
-          <EditorPanel />
+        <div className="header-center">
+          <div className="save-status">
+            {!isAuthenticated ? (
+              <span className="guest-mode">Guest Mode - Sign in to save</span>
+            ) : isSaving ? (
+              <span className="saving">Saving...</span>
+            ) : hasUnsavedChanges ? (
+              <span className="unsaved">Unsaved changes</span>
+            ) : (
+              <span className="saved">{formatLastSaved()}</span>
+            )}
+          </div>
         </div>
 
-        {/* Chat Panel - Conditionally visible */}
-        {isChatVisible && (
-          <div className="workspace-chat">
-            <ChatPanel />
+        <div className="header-right">
+          <div className="document-stats">
+            <span className="word-count">{wordCount} words</span>
           </div>
-        )}
+          {isAuthenticated && hasUnsavedChanges && (
+            <button onClick={handleSaveNow} className="save-now-btn">
+              Save Now
+            </button>
+          )}
+          <button onClick={handleGoToDocuments} className="documents-btn">
+            All Documents
+          </button>
+        </div>
       </div>
 
-      {/* Chat Toggle Button - Clean separation */}
-      <ChatToggleButton 
-        isActive={isChatVisible}
-        onToggle={toggleChat}
-      />
+      {/* Main writing area with editor and chat side by side */}
+      <div className="workspace-main">
+        <div className="editor-section">
+          <div className="editor-container">
+            <HighlightableEditor
+              content={editorContent}
+              onChange={setEditorContent}
+            />
+          </div>
+        </div>
+
+        {/* Chat panel - always visible on the right */}
+        <div className="chat-section">
+          <ChatPane />
+        </div>
+      </div>
     </div>
   );
 };
-
-/**
- * ChatToggleButton - Single responsibility component
- */
-interface ChatToggleButtonProps {
-  isActive: boolean;
-  onToggle: () => void;
-}
-
-const ChatToggleButton: React.FC<ChatToggleButtonProps> = ({ isActive, onToggle }) => (
-  <button 
-    className={`chat-toggle-button ${isActive ? 'active' : ''}`}
-    onClick={onToggle}
-    title={isActive ? 'Close AI Chat' : 'Open AI Chat'}
-    aria-label={isActive ? 'Close AI Chat' : 'Open AI Chat'}
-  >
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="20" 
-      height="20" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    </svg>
-  </button>
-);
 
 export default WritingWorkspace; 
