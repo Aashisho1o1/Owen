@@ -52,6 +52,112 @@ body, .app, .app-main, .writing-workspace, .workspace-header, .workspace-content
   --bg-elevated: #fefefe !important;
   --text-primary: #1f2937 !important;
 }
+
+/* ============= CRITICAL CHAT TEXT VISIBILITY FIXES ============= */
+/* Force ALL chat content to be readable with dark text on light backgrounds */
+
+.chat-panel-container,
+.chat-panel-container *,
+.messages-container,
+.messages-container *,
+.message,
+.message *,
+.ai-message,
+.ai-message *,
+.chat-welcome,
+.chat-welcome *,
+.welcome-message,
+.welcome-message *,
+.conversation-starters,
+.conversation-starters *,
+.starter-questions,
+.starter-questions *,
+div[class*="chat"],
+div[class*="chat"] *,
+div[class*="message"],
+div[class*="message"] * {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* EXCEPTION: User messages keep blue background with white text */
+.user-message .message-content,
+.user-message .message-content *,
+.user-message .message-content p,
+.user-message .message-content span,
+.user-message .message-content div {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+}
+
+/* AI Messages - Explicit white background and dark text */
+.ai-message .message-content,
+.ai-message .message-content *,
+.ai-message .message-content p,
+.ai-message .message-content span,
+.ai-message .message-content div,
+.ai-message .message-content h1,
+.ai-message .message-content h2,
+.ai-message .message-content h3,
+.ai-message .message-content h4,
+.ai-message .message-content h5,
+.ai-message .message-content h6 {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Chat Header and Title - Maximum specificity */
+.chat-header,
+.chat-header *,
+.chat-title,
+.chat-title *,
+.chat-title h1,
+.chat-title h2,
+.chat-title h3,
+.chat-title h4,
+.chat-title span,
+.chat-title div {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Welcome Messages and Initial AI Content */
+.chat-welcome,
+.chat-welcome *,
+.welcome-message,
+.welcome-message *,
+.starter-question-button,
+.starter-question-button * {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Chat Input Elements */
+.chat-input-container,
+.chat-input-container *,
+.chat-textarea,
+.chat-textarea *,
+.chat-input-form,
+.chat-input-form * {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: #d1d5db !important;
+}
+
+/* Final override - Maximum specificity for AI messages */
+body .chat-panel-container .messages-container .message.ai-message .message-content,
+body .chat-panel-container .messages-container .message.ai-message .message-content *,
+body .chat-panel-container .chat-welcome,
+body .chat-panel-container .chat-welcome *,
+body .chat-panel-container .welcome-message,
+body .chat-panel-container .welcome-message * {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
 `;
 
 // Clean Auth Float Component for MVP - Top right corner

@@ -294,43 +294,60 @@
 .chat-welcome h3,
 .chat-welcome p {
   text-align: center;
-  color: var(--text-secondary);
-  padding: var(--space-6) var(--space-4);
-  background: var(--bg-accent);
-  border-radius: var(--radius-lg);
-  margin: var(--space-4);
+  color: #1f2937 !important; /* Force dark text */
+  padding: 16px 12px;
+  background: #ffffff !important; /* Force white background */
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px;
+  margin: 16px;
 }
 
 .chat-welcome h3 {
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
-  margin-bottom: var(--space-3);
-  color: var(--text-primary);
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  margin-bottom: 12px;
+  color: #1f2937 !important; /* Force dark text */
 }
 
 .chat-welcome p {
-  font-size: var(--text-base);
+  font-size: 14px !important;
   line-height: 1.6;
   margin: 0;
   padding: 0;
-  background: none;
+  background: none !important;
+  color: #1f2937 !important; /* Force dark text */
+}
+
+/* Force all welcome message children to have dark text */
+.chat-welcome *,
+.chat-welcome h1,
+.chat-welcome h2,
+.chat-welcome h3,
+.chat-welcome h4,
+.chat-welcome h5,
+.chat-welcome h6,
+.chat-welcome p,
+.chat-welcome span,
+.chat-welcome div {
+  color: #1f2937 !important;
+  background: transparent !important;
 }
 
 /* Streaming message indicator */
 .streaming-message {
-  color: var(--text-tertiary);
+  color: #6b7280 !important; /* Force medium gray text */
   font-style: italic;
-  padding: var(--space-3);
+  padding: 12px;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .streaming-message::before {
   content: '';
   width: 16px;
   height: 16px;
-  border: 2px solid var(--primary-500);
+  border: 2px solid #3b82f6;
   border-top: 2px solid transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -339,35 +356,35 @@
 .typing-indicator {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  color: var(--text-tertiary);
+  gap: 8px;
+  padding: 12px;
+  color: #6b7280 !important; /* Force medium gray text */
   font-style: italic;
 }
 
 .typing-indicator::before {
   content: '⋯';
-  font-size: var(--text-lg);
+  font-size: 18px;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* Error display */
 .chat-error-box {
-  background: var(--error-50);
-  border: 1px solid var(--error-500);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin: var(--space-4);
-  color: var(--error-600);
+  background: #fef2f2 !important; /* Light red background */
+  border: 1px solid #f87171 !important;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px;
+  color: #dc2626 !important; /* Dark red text */
 }
 
 .chat-error-box * {
-  color: var(--error-600) !important;
+  color: #dc2626 !important;
 }
 
 .chat-error-box .error-title {
-  font-weight: var(--font-semibold);
-  margin-bottom: var(--space-2);
+  font-weight: 600;
+  margin-bottom: 8px;
 }
 
 /* ============= INTERACTION ENHANCEMENTS ============= */
@@ -890,4 +907,103 @@
     background-color: #fefefe !important;
     color: #1f2937 !important;
   }
+}
+
+/* ============= COMPREHENSIVE TEXT VISIBILITY FIXES ============= */
+/* These overrides ensure ALL chat content is visible with dark text on light backgrounds */
+
+/* Force all chat-related text to be dark and readable */
+.chat-panel-container,
+.chat-panel-container *,
+.chat-header,
+.chat-header *,
+.chat-title,
+.chat-title *,
+.chat-container,
+.chat-container *,
+.messages-container,
+.messages-container *,
+.chat-welcome,
+.chat-welcome *,
+.message,
+.message *,
+.ai-message,
+.ai-message *,
+.user-message,
+.user-message *,
+.streaming-message,
+.streaming-message *,
+.typing-indicator,
+.typing-indicator *,
+[class*="chat-"],
+[class*="chat-"] *,
+[class*="message-"],
+[class*="message-"] * {
+  color: #1f2937 !important;
+}
+
+/* Exception: Keep user message content white text on blue background */
+.user-message .message-content,
+.user-message .message-content *,
+.user-message .message-content p,
+.user-message .message-content span,
+.user-message .message-content div {
+  color: white !important;
+}
+
+/* Ensure AI messages have white background and dark text */
+.ai-message .message-content,
+.ai-message .message-content *,
+.ai-message .message-content p,
+.ai-message .message-content span,
+.ai-message .message-content div,
+.ai-message .message-content h1,
+.ai-message .message-content h2,
+.ai-message .message-content h3,
+.ai-message .message-content h4,
+.ai-message .message-content h5,
+.ai-message .message-content h6 {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Force chat input elements to be readable */
+.chat-textarea,
+.chat-textarea *,
+.chat-input-form,
+.chat-input-form *,
+.chat-input-container,
+.chat-input-container * {
+  color: #1f2937 !important;
+  background: #ffffff !important;
+}
+
+/* Placeholder text should be medium gray */
+.chat-textarea::placeholder,
+.chat-input-form input::placeholder,
+.chat-input-form textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Buttons should have proper contrast */
+.chat-input-form button[type="submit"],
+.chat-send-button,
+.send-button {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+/* Final catch-all: Any remaining white text issues */
+.chat-panel-container .welcome-message,
+.chat-panel-container .welcome-message *,
+.chat-panel-container .chat-welcome,
+.chat-panel-container .chat-welcome *,
+.chat-panel-container .initial-message,
+.chat-panel-container .initial-message *,
+.chat-panel-container .assistant-message,
+.chat-panel-container .assistant-message *,
+.chat-panel-container .ai-response,
+.chat-panel-container .ai-response * {
+  color: #1f2937 !important;
+  background: #ffffff !important;
 } 

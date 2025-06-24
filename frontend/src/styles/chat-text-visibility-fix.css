@@ -1,0 +1,201 @@
+/**
+ * CRITICAL CHAT TEXT VISIBILITY FIXES
+ * This file ensures all chat content is readable with dark text on light backgrounds
+ * Maximum specificity rules to override any conflicting styles
+ */
+
+/* ============= HIGHEST PRIORITY CHAT FIXES ============= */
+
+/* Force ALL chat content to be readable - Global override */
+.chat-panel-container,
+.chat-panel-container *,
+.chat-container,
+.chat-container *,
+.messages-container,
+.messages-container *,
+.message,
+.message *,
+.ai-message,
+.ai-message *,
+.user-message .message-content,
+.user-message .message-content *,
+.chat-welcome,
+.chat-welcome *,
+.welcome-message,
+.welcome-message *,
+div[class*="chat"],
+div[class*="chat"] *,
+div[class*="message"],
+div[class*="message"] * {
+  /* Force light background and dark text for maximum contrast */
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* EXCEPTION: User messages keep blue background with white text */
+.user-message .message-content,
+.user-message .message-content *,
+.user-message .message-content p,
+.user-message .message-content span,
+.user-message .message-content div,
+.user-message .message-content h1,
+.user-message .message-content h2,
+.user-message .message-content h3,
+.user-message .message-content h4,
+.user-message .message-content h5,
+.user-message .message-content h6 {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+}
+
+/* AI Messages - Explicit white background and dark text */
+.ai-message .message-content,
+.ai-message .message-content *,
+.ai-message .message-content p,
+.ai-message .message-content span,
+.ai-message .message-content div,
+.ai-message .message-content h1,
+.ai-message .message-content h2,
+.ai-message .message-content h3,
+.ai-message .message-content h4,
+.ai-message .message-content h5,
+.ai-message .message-content h6,
+.ai-message .message-content strong,
+.ai-message .message-content em,
+.ai-message .message-content ul,
+.ai-message .message-content ol,
+.ai-message .message-content li {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Chat Header and Title - Force readability */
+.chat-header,
+.chat-header *,
+.chat-title,
+.chat-title *,
+.chat-title h1,
+.chat-title h2,
+.chat-title h3,
+.chat-title h4,
+.chat-title h5,
+.chat-title h6,
+.chat-title span,
+.chat-title div {
+  background: #fefefe !important;
+  background-color: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+/* Welcome Messages and Initial AI Content */
+.chat-welcome,
+.chat-welcome *,
+.welcome-message,
+.welcome-message *,
+.conversation-starters,
+.conversation-starters *,
+.starter-questions,
+.starter-questions *,
+.starter-question-button,
+.starter-question-button * {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Chat Input Elements */
+.chat-input-container,
+.chat-input-container *,
+.chat-textarea,
+.chat-textarea *,
+.chat-input-form,
+.chat-input-form *,
+input[class*="chat"],
+textarea[class*="chat"] {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: #d1d5db !important;
+}
+
+/* Placeholders */
+.chat-textarea::placeholder,
+input[class*="chat"]::placeholder,
+textarea[class*="chat"]::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Buttons */
+button[class*="chat"],
+.chat-send-button,
+.send-button,
+.chat-input-form button[type="submit"] {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+/* Streaming and Status Messages */
+.streaming-message,
+.streaming-message *,
+.typing-indicator,
+.typing-indicator *,
+.chat-error-box,
+.chat-error-box * {
+  color: #1f2937 !important;
+}
+
+/* Mobile Responsive Fixes */
+@media (max-width: 768px) {
+  .chat-panel-container,
+  .chat-panel-container *,
+  .chat-header,
+  .chat-header *,
+  .chat-title,
+  .chat-title *,
+  .messages-container,
+  .messages-container *,
+  .ai-message .message-content,
+  .ai-message .message-content * {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-panel-container,
+  .chat-panel-container *,
+  .chat-header,
+  .chat-header *,
+  .chat-title,
+  .chat-title *,
+  .messages-container,
+  .messages-container *,
+  .ai-message .message-content,
+  .ai-message .message-content * {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+  }
+}
+
+/* Override ANY dark theme or CSS variable fallbacks */
+:root .chat-panel-container,
+:root .chat-panel-container *,
+:root .messages-container,
+:root .messages-container *,
+:root .ai-message .message-content,
+:root .ai-message .message-content * {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Final catch-all - Maximum specificity */
+body .chat-panel-container .messages-container .message.ai-message .message-content,
+body .chat-panel-container .messages-container .message.ai-message .message-content *,
+body .chat-panel-container .welcome-message,
+body .chat-panel-container .welcome-message *,
+body .chat-panel-container .chat-welcome,
+body .chat-panel-container .chat-welcome * {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+} 

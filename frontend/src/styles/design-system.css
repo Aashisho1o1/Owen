@@ -278,17 +278,17 @@ button, input, select, textarea {
 .message-content,
 .user-message .message-content,
 .ai-message .message-content {
-  color: var(--chat-text-primary) !important;
+  color: #1f2937 !important; /* Force dark text */
   line-height: 1.6;
 }
 
 .user-message .message-content {
-  color: var(--text-inverse) !important;
+  color: white !important; /* White text on blue background */
 }
 
 .ai-message .message-content {
-  color: var(--chat-text-primary) !important;
-  background: var(--chat-bg-ai);
+  color: #1f2937 !important; /* Force dark text */
+  background: #ffffff !important; /* Force white background */
 }
 
 /* Chat container enhancements */
