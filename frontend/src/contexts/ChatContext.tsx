@@ -94,7 +94,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   
   // Chat visibility state
-  const [isChatVisible, setIsChatVisible] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(true);
   
   // Core chat settings state
   const [authorPersona, setAuthorPersona] = useState('Ernest Hemingway');
