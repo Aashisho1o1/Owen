@@ -21,7 +21,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   highlightedText 
 }) => {
   const [message, setMessage] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -73,6 +85,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
+  // Mobile-specific: Limit suggested questions to 2 on mobile devices
+  const getMobileSuggestedQuestions = () => {
+    if (isMobile) {
+      return suggestedQuestions.slice(0, 2); // Show only 2 questions on mobile
+    }
+    return suggestedQuestions; // Show all questions on desktop
+  };
+
   const getPlaceholderText = () => {
     if (highlightedText) {
       return "Ask about the selected text or type your own question...";
@@ -90,13 +110,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="chat-input-container">
       {/* Suggested Questions - Only show when no text is highlighted */}
-      {suggestedQuestions.length > 0 && !highlightedText && (
+      {getMobileSuggestedQuestions().length > 0 && !highlightedText && (
         <div className="suggested-questions">
           <div className="suggested-questions-title">
             Suggested questions:
           </div>
           <div className="suggested-questions-list">
-            {suggestedQuestions.map((question, index) => (
+            {getMobileSuggestedQuestions().map((question, index) => (
               <button
                 key={index}
                 className="suggested-question-button"
