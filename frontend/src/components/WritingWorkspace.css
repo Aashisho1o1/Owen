@@ -1,15 +1,17 @@
-/* Writing Workspace - Direct writing interface */
+/* Writing Workspace - Clean MVP Interface */
 .writing-workspace {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: #fefefe; /* Subtle white */
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 .writing-workspace.loading {
   justify-content: center;
   align-items: center;
+  background: #fefefe;
 }
 
 .loading-content {
@@ -20,7 +22,7 @@
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #f3f4f6;
+  border: 3px solid #f1f5f9;
   border-top: 3px solid #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -32,242 +34,281 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Header */
-.workspace-header {
+/* Simplified Header - MVP Version */
+.workspace-header-mvp {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
-  background: #ffffff;
+  padding: 16px 24px;
+  background: #fefefe !important; /* Subtle white */
   border-bottom: 1px solid #e5e7eb;
   min-height: 60px;
   flex-shrink: 0;
 }
 
-.header-left {
+.title-section {
   flex: 1;
-  min-width: 200px;
-}
-
-.header-center {
-  flex: 0 0 auto;
-  margin: 0 20px;
-}
-
-.header-right {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.document-title-input {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-  background: transparent;
-  border: none;
-  outline: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  width: 100%;
   max-width: 400px;
 }
 
+.document-title-input {
+  width: 100%;
+  font-size: 18px !important;
+  font-weight: 600;
+  color: #1f2937 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
 .document-title-input:hover {
-  background: #f9fafb;
+  background: #f8fafc !important;
 }
 
 .document-title-input:focus {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px #3b82f6;
+  background: #f1f5f9 !important;
+  box-shadow: 0 0 0 2px #e0e7ff !important;
 }
 
-.save-status {
-  font-size: 14px;
-  color: #6b7280;
+.document-title-input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* MVP Controls */
+.workspace-controls-mvp {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chat-toggle-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.save-status .saving {
-  color: #f59e0b;
-}
-
-.save-status .unsaved {
-  color: #ef4444;
-}
-
-.save-status .saved {
-  color: #10b981;
-}
-
-.save-status .guest-mode {
-  color: #8b5cf6;
-  font-weight: 500;
-}
-
-.document-stats {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.word-count {
-  font-weight: 500;
-}
-
-.save-now-btn, .documents-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #374151;
+  padding: 8px 16px;
+  background: #f8fafc !important;
+  color: #4b5563 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
+.chat-toggle-btn:hover {
+  background: #f1f5f9 !important;
+  border-color: #d1d5db !important;
+  transform: translateY(-1px);
+}
+
+.chat-toggle-btn.active {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
+}
+
+.chat-toggle-btn.active:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.toggle-icon {
+  font-size: 16px;
+}
+
+.toggle-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Save Status for MVP */
+.save-status-mvp {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.status-saving {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.status-saved {
+  color: #10b981;
+  font-weight: 500;
+}
+
 .save-now-btn {
-  background: #3b82f6;
-  color: #ffffff;
-  border-color: #3b82f6;
+  padding: 6px 12px;
+  background: #3b82f6 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .save-now-btn:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #2563eb !important;
+  transform: translateY(-1px);
 }
 
-.documents-btn:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-/* Main workspace area */
-.workspace-main {
-  flex: 1;
+/* Main Workspace Content - Maximized vertical space */
+.workspace-content {
   display: flex;
-  overflow: hidden;
+  flex: 1;
+  height: calc(100vh - 60px); /* Full height minus header */
+  background: #fefefe !important;
 }
 
+.workspace-content.editor-only .editor-section {
+  width: 100%;
+}
+
+.workspace-content.with-chat .editor-section {
+  width: 60%;
+  border-right: 1px solid #e5e7eb;
+}
+
+.workspace-content.with-chat .chat-section {
+  width: 40%;
+}
+
+/* Writing Area */
 .editor-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: #fefefe !important;
+  color: #1f2937 !important;
   overflow: hidden;
 }
 
-.editor-container {
+.editor-section .highlightable-editor-container {
   flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background: #ffffff !important;
+  height: 100%;
+  background: #fefefe !important;
 }
 
+.editor-section .highlightable-editor {
+  height: 100% !important;
+  background: #fefefe !important;
+  color: #1f2937 !important;
+}
+
+.editor-section .ProseMirror {
+  background: #fefefe !important;
+  color: #1f2937 !important;
+  padding: 32px !important;
+  font-size: 16px !important;
+  line-height: 1.7 !important;
+  height: 100% !important;
+  overflow-y: auto;
+}
+
+.editor-section .ProseMirror:focus {
+  outline: none !important;
+}
+
+.editor-section .ProseMirror.is-empty::before {
+  color: #9ca3af !important;
+  content: "Start writing...";
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* Chat Section */
 .chat-section {
-  width: 400px;
-  border-left: 1px solid #e5e7eb;
-  background: #ffffff;
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fefefe !important;
   overflow: hidden;
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
-  .chat-section {
-    width: 350px;
-  }
-  
-  .workspace-header {
-    padding: 12px 16px;
-  }
-  
-  .header-center {
-    margin: 0 12px;
-  }
+.chat-section .chat-container {
+  height: 100% !important;
+  background: #fefefe !important;
 }
 
+/* Mobile Responsiveness */
 @media (max-width: 768px) {
-  .workspace-main {
+  .workspace-header-mvp {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+    min-height: auto;
+  }
+  
+  .title-section {
+    max-width: none;
+    width: 100%;
+  }
+  
+  .workspace-controls-mvp {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .workspace-content {
+    height: calc(100vh - 120px); /* Adjust for larger mobile header */
     flex-direction: column;
   }
   
-  .editor-section {
-    min-height: 60vh;
-  }
-  
-  .chat-section {
+  .workspace-content.with-chat .editor-section {
     width: 100%;
-    border-left: none;
-    border-top: 1px solid #e5e7eb;
-    height: 40vh;
+    height: 60%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
   }
   
-  .workspace-header {
-    flex-wrap: wrap;
-    min-height: auto;
-    padding: 12px;
+  .workspace-content.with-chat .chat-section {
+    width: 100%;
+    height: 40%;
   }
   
-  .header-left {
-    order: 1;
-    flex: 1 1 100%;
-    margin-bottom: 8px;
+  .workspace-content.editor-only .editor-section {
+    width: 100%;
+    height: 100%;
   }
   
-  .header-center {
-    order: 2;
-    flex: 1 1 auto;
-    margin: 0 8px 0 0;
+  .editor-section .ProseMirror {
+    padding: 20px !important;
+    font-size: 15px !important;
   }
   
-  .header-right {
-    order: 3;
-    flex: 0 0 auto;
-    gap: 8px;
-  }
-  
-  .document-title-input {
-    font-size: 16px;
-    max-width: none;
-  }
-  
-  .save-now-btn, .documents-btn {
-    padding: 6px 10px;
-    font-size: 13px;
+  .chat-toggle-btn .toggle-text {
+    display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .workspace-header {
-    padding: 8px;
+  .workspace-header-mvp {
+    padding: 8px 12px;
   }
   
-  .editor-container {
-    padding: 12px;
+  .document-title-input {
+    font-size: 16px !important;
+    padding: 6px 8px;
   }
   
-  .chat-section {
-    height: 50vh;
+  .chat-toggle-btn {
+    padding: 6px 12px;
   }
   
-  .header-right {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-  }
-  
-  .document-stats {
-    font-size: 12px;
-  }
-  
-  .save-now-btn, .documents-btn {
-    font-size: 12px;
+  .save-now-btn {
     padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .editor-section .ProseMirror {
+    padding: 16px !important;
+    font-size: 14px !important;
   }
 }
 
@@ -277,7 +318,7 @@
     background: #1f2937;
   }
   
-  .workspace-header {
+  .workspace-header-mvp {
     background: #1f2937;
     border-bottom-color: #374151;
   }
@@ -294,22 +335,55 @@
     background: #1f2937;
   }
   
-  .editor-container {
+  .editor-section .highlightable-editor-container {
     background: #1f2937 !important;
+  }
+  
+  .editor-section .highlightable-editor {
+    background: #1f2937 !important;
+    color: #f9fafb !important;
+  }
+  
+  .editor-section .ProseMirror {
+    background: #1f2937 !important;
+    color: #f9fafb !important;
   }
   
   .chat-section {
     background: #1f2937;
-    border-left-color: #374151;
   }
   
-  .documents-btn {
+  .chat-section .chat-container {
+    background: #1f2937 !important;
+  }
+  
+  .chat-toggle-btn {
     background: #374151;
     color: #f9fafb;
     border-color: #4b5563;
   }
   
-  .documents-btn:hover {
+  .chat-toggle-btn:hover {
+    background: #4b5563;
+  }
+  
+  .chat-toggle-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+  }
+  
+  .chat-toggle-btn.active:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+  }
+  
+  .save-now-btn {
+    background: #374151;
+    color: #f9fafb;
+  }
+  
+  .save-now-btn:hover {
     background: #4b5563;
   }
 } 

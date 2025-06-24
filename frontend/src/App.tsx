@@ -3,96 +3,98 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import DocumentEditor from './pages/DocumentEditor';
 import DocumentsPage from './pages/DocumentsPage';
-import WritingWorkspace from './components/WritingWorkspace';
+import { WritingWorkspace } from './components/WritingWorkspace';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
-// Auth Float Component - now used for ALL devices
+// Clean Auth Float Component for MVP - Top right corner
 const AuthFloat: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const [showAuthModal, setShowAuthModal] = React.useState(false);
   const [showProfileModal, setShowProfileModal] = React.useState(false);
 
-  const handleAuthClick = () => {
-    if (isAuthenticated) {
-      setShowProfileModal(true);
-    } else {
-      setShowAuthModal(true);
-    }
-  };
+  if (isAuthenticated && user) {
+    return (
+      <>
+        <div className="auth-float auth-float-mvp">
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="profile-button profile-button-mvp"
+            title="User Profile"
+          >
+            <div className="profile-avatar profile-avatar-mvp">
+              {user.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+          </button>
+        </div>
+        {showProfileModal && (
+          <UserProfileModal
+            isOpen={showProfileModal}
+            onClose={() => setShowProfileModal(false)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
-      <div className="auth-float">
-        {isAuthenticated ? (
-          <button
-            className="profile-button"
-            onClick={handleAuthClick}
-            aria-label="User Profile"
-          >
-            <div className="profile-avatar">
-              {user?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-          </button>
-        ) : (
-          <button
-            className="auth-button"
-            onClick={handleAuthClick}
-          >
-            Sign In
-          </button>
-        )}
+      <div className="auth-float auth-float-mvp">
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="auth-button auth-button-mvp"
+          title="Sign In"
+        >
+          Sign In
+        </button>
       </div>
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
-
-      <UserProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-      />
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="signin"
+        />
+      )}
     </>
   );
 };
 
-// Simplified App Layout without top navigation
-const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <div className="app-layout">
-      <AuthFloat />
-      <main className="app-main">
-        {children}
-      </main>
-    </div>
-  );
-};
+// Clean App Layout for MVP
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="app-layout app-layout-mvp">
+    {children}
+    <AuthFloat />
+  </div>
+);
 
+// Main App Content
 const AppContent: React.FC = () => {
   return (
     <AppLayout>
-      <Routes>
-        {/* Default route - direct to writing workspace */}
-        <Route path="/" element={<WritingWorkspace />} />
-        {/* Documents management page */}
-        <Route path="/documents" element={<DocumentsPage />} />
-        {/* Individual document editor */}
-        <Route path="/document/:documentId" element={<DocumentEditor />} />
-      </Routes>
+      <div className="app-main app-main-mvp">
+        <Routes>
+          {/* MVP Route - Direct to Writing Workspace */}
+          <Route path="/" element={<WritingWorkspace />} />
+          
+          {/* Hidden routes for later use */}
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/document/:documentId" element={<DocumentEditor />} />
+        </Routes>
+      </div>
     </AppLayout>
   );
 };
 
+// Root App Component
 const App: React.FC = () => {
   return (
-    <AppProvider>
-      <Router>
+    <Router>
+      <AppProvider>
         <AppContent />
-      </Router>
-    </AppProvider>
+      </AppProvider>
+    </Router>
   );
 };
 
