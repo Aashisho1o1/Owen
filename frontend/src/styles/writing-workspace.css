@@ -40,25 +40,28 @@
   justify-content: stretch;
   padding: 0;
   margin: 0;
+  gap: 0;
 }
 
 .workspace-layout.with-chat .workspace-editor {
   width: 50%;
-  min-width: 300px;
+  min-width: 280px;
   flex-shrink: 0;
   border-right: 1px solid var(--border-light);
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .workspace-layout.with-chat .workspace-chat {
   width: 50%;
-  min-width: 300px;
+  min-width: 280px;
   flex-shrink: 0;
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* ============= WORKSPACE PANELS ============= */
@@ -120,82 +123,70 @@
 
 /* ============= RESPONSIVE BREAKPOINTS ============= */
 
-/* Small phones (320px - 479px) */
+/* Small phones (320px - 479px) - Optimized mobile experience */
 @media (max-width: 479px) {
   .writing-workspace {
     height: 100vh;
     padding: 0;
     background: var(--bg-primary);
-  }
-
-  .workspace-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 0; /* Remove padding to use full space */
-    margin: 0;  /* Remove margin to use full space */
-  }
-
-  .workspace-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
     overflow: hidden;
-    padding: 0; /* Remove padding to use full space */
-    margin: 0;  /* Remove margin to use full space */
   }
 
-  /* Editor-only mode on mobile */
-  .workspace-content.editor-only {
-    padding: var(--space-1);
-  }
-
-  .workspace-content.editor-only .editor-panel {
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-    padding: 0; /* Remove internal padding */
-    margin: 0;  /* Remove internal margin */
-    box-sizing: border-box;
-  }
-
-  /* Split mode - vertical stack */
-  .workspace-content.split-mode {
-    gap: var(--space-1);
-    padding: var(--space-1);
-  }
-
-  .workspace-content.split-mode .editor-panel {
-    width: 100%;
-    height: 50%;
-    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-sm);
-    border: 1px solid var(--border-light);
-    border-bottom: none;
-    padding: 0; /* Remove internal padding */
-    margin: 0;  /* Remove internal margin */
-    box-sizing: border-box;
-  }
-
-  .workspace-content.split-mode .chat-panel {
-    width: 100%;
-    height: 50%;
-    border-radius: var(--radius-sm) var(--radius-sm) var(--radius-lg) var(--radius-lg);
-    border: 1px solid var(--border-light);
-    border-top: 1px solid var(--border-medium);
-    padding: 0; /* Remove internal padding */
-    margin: 0;  /* Remove internal margin */
-    box-sizing: border-box;
-  }
-
-  /* CRITICAL FIX: Ensure side-by-side layout works properly on mobile */
+  /* CRITICAL: Side-by-side layout optimized for mobile - Full screen utilization */
   .workspace-layout.with-chat {
-    flex-direction: row; /* Keep side-by-side on mobile */
+    flex-direction: row; /* Maintain side-by-side on mobile */
+    height: 100%;
+    width: 100vw; /* Use full viewport width */
     padding: 0;
     margin: 0;
     gap: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 160px; /* Reduced for mobile */
+    max-width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    border-right: 1px solid var(--border-light);
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 160px; /* Reduced for mobile */
+    max-width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Editor-only mode on mobile */
+  .workspace-layout.editor-only {
+    padding: var(--space-1);
+  }
+
+  .workspace-layout.editor-only .workspace-editor {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
   }
 
   .workspace-layout.with-chat .workspace-editor {
@@ -274,82 +265,62 @@
   }
 }
 
-/* Large phones (480px - 767px) */
+/* Large phones (480px - 767px) - Enhanced mobile layout */
 @media (min-width: 480px) and (max-width: 767px) {
   .writing-workspace {
     height: 100vh;
     padding: 0;
-  }
-
-  .workspace-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 0; /* Remove padding to use full space */
-    margin: 0;  /* Remove margin to use full space */
-  }
-
-  .workspace-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+    background: var(--bg-primary);
     overflow: hidden;
-    padding: 0; /* Remove padding to use full space */
-    margin: 0;  /* Remove margin to use full space */
   }
 
-  .workspace-content.editor-only .editor-panel {
-    width: 100%;
-    height: 100%;
-    padding: var(--space-2);
-    box-sizing: border-box;
-  }
-
-  .workspace-content.split-mode {
-    gap: var(--space-1);
-    padding: var(--space-1);
-  }
-
-  .workspace-content.split-mode .editor-panel {
-    width: 100%;
-    height: 55%;
-    padding: 0; /* Remove internal padding */
-    margin: 0;  /* Remove internal margin */
-    box-sizing: border-box;
-  }
-
-  .workspace-content.split-mode .chat-panel {
-    width: 100%;
-    height: 45%;
-    padding: 0; /* Remove internal padding */
-    margin: 0;  /* Remove internal margin */
-    box-sizing: border-box;
-  }
-
-  /* CRITICAL FIX: Ensure side-by-side layout works properly on larger mobile */
+  /* Optimized side-by-side layout for larger mobile screens */
   .workspace-layout.with-chat {
-    flex-direction: row; /* Keep side-by-side on larger mobile */
+    flex-direction: row; /* Maintain side-by-side */
+    height: 100%;
+    width: 100vw; /* Use full viewport width */
     padding: 0;
     margin: 0;
     gap: 0;
+    overflow: hidden;
+    position: relative;
   }
 
   .workspace-layout.with-chat .workspace-editor {
-    width: 50%;
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 200px;
+    max-width: 50vw;
     height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    border-right: 1px solid var(--border-light);
     padding: 0;
     margin: 0;
-    border-right: 1px solid var(--border-light);
     box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
   }
 
   .workspace-layout.with-chat .workspace-chat {
-    width: 50%;
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 200px;
+    max-width: 50vw;
     height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
     padding: 0;
     margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Editor-only mode */
+  .workspace-layout.editor-only .workspace-editor {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    padding: var(--space-2);
     box-sizing: border-box;
   }
 

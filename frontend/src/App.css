@@ -524,8 +524,10 @@ body {
   }
 
   .nav-actions {
+    display: flex !important;
     gap: 0.5rem;
     flex-shrink: 0;
+    align-items: center;
   }
 
   .nav-action-button {
@@ -536,16 +538,23 @@ body {
     white-space: nowrap;
   }
 
-  /* Improve auth buttons layout on mobile */
+  /* Ensure auth buttons are visible and well-styled on mobile */
   .auth-buttons {
+    display: flex !important;
     gap: 0.5rem;
+    flex-shrink: 0;
   }
 
   .auth-buttons .nav-action-button {
+    display: flex !important;
     padding: 0.625rem 1rem;
     font-size: 0.75rem;
     min-width: 80px;
     justify-content: center;
+    background: var(--bg-elevated);
+    color: var(--gray-800) !important;
+    border: 1.5px solid var(--border-medium);
+    transition: all var(--transition-normal);
   }
 
   .nav-action-button.secondary {
