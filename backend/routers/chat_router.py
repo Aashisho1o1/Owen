@@ -34,10 +34,47 @@ async def chat(
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
+        # CRITICAL SECURITY: Rate limiting for chat requests
+        # This prevents abuse and protects against DoS attacks on expensive LLM calls
+        from datetime import datetime, timedelta
+        import time
+        
+        # Simple in-memory rate limiting (should be moved to Redis in production)
+        if not hasattr(chat, '_user_requests'):
+            chat._user_requests = {}
+        
+        now = time.time()
+        minute_ago = now - 60  # 1 minute window
+        
+        # Clean old requests
+        if user_id in chat._user_requests:
+            chat._user_requests[user_id] = [req_time for req_time in chat._user_requests[user_id] if req_time > minute_ago]
+        else:
+            chat._user_requests[user_id] = []
+        
+        # Check rate limit (max 10 requests per minute)
+        if len(chat._user_requests[user_id]) >= 10:
+            logger.warning(f"🚨 SECURITY: Rate limit exceeded for user {user_id}")
+            raise HTTPException(
+                status_code=429, 
+                detail="Rate limit exceeded. Please wait before sending another message."
+            )
+        
+        # Record this request
+        chat._user_requests[user_id].append(now)
+        
         # Validate and sanitize all input data
         validated_message = input_validator.validate_chat_message(request.message)
         validated_editor_text = input_validator.validate_text_input(request.editor_text or "")
         validated_llm_provider = input_validator.validate_llm_provider(request.llm_provider)
+        
+        # SECURITY: Additional length checks for expensive operations
+        total_input_length = len(validated_message) + len(validated_editor_text)
+        if total_input_length > 15000:  # Reasonable limit for LLM processing
+            raise HTTPException(
+                status_code=400,
+                detail="Input too long. Please reduce the length of your message and editor content."
+            )
         
         # DEBUG: Log what content is being sent to AI
         logger.info(f"🔍 CHAT DEBUG - User ID: {user_id}")

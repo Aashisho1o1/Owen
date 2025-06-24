@@ -188,16 +188,19 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           const parent = el.parentNode;
           if (parent) {
             parentsToNormalize.add(parent);
-            // Create a completely clean text node
-            const textNode = document.createTextNode(el.textContent || '');
+            // SECURITY: Safely create text node with sanitized content
+            const textContent = el.textContent || '';
+            // Sanitize the text content to prevent any potential XSS
+            const sanitizedText = textContent.replace(/[<>&"']/g, '');
+            const textNode = document.createTextNode(sanitizedText);
             parent.replaceChild(textNode, el);
           }
         });
         
         // Normalize all affected parent elements to merge text nodes
         parentsToNormalize.forEach(parent => {
-          if (parent && typeof (parent as any).normalize === 'function') {
-            (parent as HTMLElement).normalize();
+          if (parent && parent instanceof HTMLElement && typeof parent.normalize === 'function') {
+            parent.normalize();
           }
         });
         

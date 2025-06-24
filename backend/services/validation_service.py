@@ -19,28 +19,73 @@ class ValidationError(Exception):
 class SimpleInputValidator:
     """Simple input validation for MVP"""
     
-    # Basic dangerous patterns
+    # Enhanced dangerous patterns based on OWASP guidelines
     DANGEROUS_PATTERNS = [
+        # XSS Prevention
         r'<script[^>]*>.*?</script>',  # Script tags
-        r'javascript:',               # Javascript URLs
-        r'onload\s*=',               # Event handlers
-        r'onerror\s*=',
-        r'onclick\s*=',
-        r'DROP\s+TABLE',             # SQL injection
-        r'DELETE\s+FROM',
-        r'INSERT\s+INTO',
-        r'UNION\s+SELECT',
-        r'OR\s+1\s*=\s*1',
-        r';\s*--',                   # SQL comments
+        r'<iframe[^>]*>.*?</iframe>',  # Iframe tags
+        r'<object[^>]*>.*?</object>',  # Object tags
+        r'<embed[^>]*>',               # Embed tags
+        r'javascript:',                # Javascript URLs
+        r'vbscript:',                  # VBScript URLs
+        r'data:text/html',             # Data URLs with HTML
+        r'data:application/javascript', # Data URLs with JS
+        
+        # Event handlers (comprehensive list)
+        r'onload\s*=', r'onerror\s*=', r'onclick\s*=', r'onmouseover\s*=',
+        r'onfocus\s*=', r'onblur\s*=', r'onchange\s*=', r'onsubmit\s*=',
+        r'onkeydown\s*=', r'onkeyup\s*=', r'onmousedown\s*=', r'onmouseup\s*=',
+        
+        # SQL Injection Prevention
+        r'DROP\s+TABLE', r'DELETE\s+FROM', r'INSERT\s+INTO', r'UPDATE\s+.*SET',
+        r'UNION\s+SELECT', r'OR\s+1\s*=\s*1', r'AND\s+1\s*=\s*1',
+        r';\s*--', r'/\*.*\*/', r'EXEC\s*\(', r'SP_EXECUTESQL',
+        r'xp_cmdshell', r'sp_makewebtask',
+        
+        # NoSQL Injection
+        r'\$where', r'\$ne', r'\$gt', r'\$lt', r'\$regex', r'\$in',
+        
+        # LDAP Injection
+        r'\*\)', r'\|\|', r'&\|', r'\(\|',
+        
+        # Command Injection
+        r';\s*cat\s+', r';\s*ls\s+', r';\s*dir\s+', r';\s*rm\s+', r';\s*del\s+',
+        r'`.*`', r'\$\(.*\)', r'&&', r'\|\|', r';\s*wget', r';\s*curl',
+        
+        # Path Traversal
+        r'\.\./.*', r'\.\.\\.*', r'/etc/passwd', r'/etc/shadow',
+        r'C:\\Windows\\System32', r'\.\./', r'\.\.\\',
+        
+        # Server-Side Template Injection
+        r'\{\{.*\}\}', r'\{\%.*\%\}', r'\$\{.*\}',
     ]
     
-    # Basic prompt injection patterns
+    # Enhanced prompt injection patterns
     PROMPT_INJECTION_PATTERNS = [
         r'ignore\s+previous\s+instructions',
-        r'forget\s+everything',
+        r'forget\s+everything\s+above',
         r'new\s+instructions',
         r'override\s+your\s+instructions',
         r'you\s+are\s+now\s+a',
+        r'act\s+as\s+if',
+        r'pretend\s+to\s+be',
+        r'simulate\s+being',
+        r'roleplay\s+as',
+        r'jailbreak',
+        r'developer\s+mode',
+        r'admin\s+mode',
+        r'god\s+mode',
+        r'debug\s+mode',
+        r'maintenance\s+mode',
+        r'bypass\s+safety',
+        r'disable\s+safety',
+        r'ignore\s+safety',
+        r'forget\s+your\s+guidelines',
+        r'new\s+persona',
+        r'different\s+persona',
+        r'switch\s+to',
+        r'change\s+to',
+        r'become\s+[a-z]+',
     ]
     
     def __init__(self):
@@ -48,11 +93,18 @@ class SimpleInputValidator:
         self.max_message_length = 2000
     
     def validate_text_input(self, text: str, max_length: Optional[int] = None) -> str:
-        """Basic text validation and sanitization"""
+        """Enhanced text validation and sanitization with comprehensive security checks"""
         if not isinstance(text, str):
             raise ValidationError("Input must be a string")
         
-        # Check length
+        # Check for null bytes and control characters
+        if '\x00' in text:
+            raise ValidationError("Input contains null bytes which are not allowed")
+        
+        # Remove or replace dangerous Unicode characters
+        text = self._sanitize_unicode(text)
+        
+        # Check length after sanitization
         max_len = max_length or self.max_text_length
         if len(text) > max_len:
             raise ValidationError(f"Text too long. Maximum {max_len} characters allowed")
@@ -60,8 +112,50 @@ class SimpleInputValidator:
         # Check for dangerous patterns
         self._check_dangerous_patterns(text)
         
-        # Basic HTML escape
-        return html.escape(text).strip()
+        # Enhanced HTML escape with additional protections
+        sanitized_text = html.escape(text, quote=True)
+        
+        # Additional sanitization for URLs and special characters
+        sanitized_text = self._sanitize_special_chars(sanitized_text)
+        
+        return sanitized_text.strip()
+    
+    def _sanitize_unicode(self, text: str) -> str:
+        """Sanitize dangerous Unicode characters"""
+        # Remove or replace problematic Unicode characters
+        dangerous_unicode = [
+            '\u202e',  # Right-to-left override
+            '\u200e',  # Left-to-right mark
+            '\u200f',  # Right-to-left mark
+            '\ufeff',  # Zero-width no-break space
+            '\u2028',  # Line separator
+            '\u2029',  # Paragraph separator
+        ]
+        
+        for char in dangerous_unicode:
+            text = text.replace(char, '')
+        
+        # Normalize Unicode to prevent encoding attacks
+        import unicodedata
+        text = unicodedata.normalize('NFKC', text)
+        
+        return text
+    
+    def _sanitize_special_chars(self, text: str) -> str:
+        """Additional sanitization for special characters and sequences"""
+        # Replace multiple consecutive whitespace with single space
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Remove any remaining problematic character sequences
+        problematic_sequences = [
+            r'<!--.*?-->',  # HTML comments
+            r'<!\[CDATA\[.*?\]\]>',  # CDATA sections
+        ]
+        
+        for pattern in problematic_sequences:
+            text = re.sub(pattern, '', text, flags=re.DOTALL)
+        
+        return text
     
     def validate_chat_message(self, message: str) -> str:
         """Validate chat message"""
@@ -98,20 +192,48 @@ class SimpleInputValidator:
         return provider
     
     def _check_dangerous_patterns(self, text: str):
-        """Check for basic dangerous patterns"""
+        """Check for dangerous patterns with enhanced security logging"""
         text_lower = text.lower()
         for pattern in self.DANGEROUS_PATTERNS:
             if re.search(pattern, text_lower, re.IGNORECASE):
-                logger.warning(f"Dangerous pattern detected: {pattern}")
+                # SECURITY: Log potential attack attempts for security monitoring
+                logger.error(f"🚨 SECURITY ALERT: Dangerous pattern detected - Pattern: {pattern}")
+                logger.error(f"🚨 SECURITY ALERT: Input sample: {text[:100]}...")
+                # Store security event for further analysis
+                self._log_security_event("dangerous_pattern", {"pattern": pattern, "input_sample": text[:100]})
                 raise ValidationError("Input contains potentially dangerous content")
     
     def _check_prompt_injection(self, text: str):
-        """Check for basic prompt injection patterns"""
+        """Check for prompt injection patterns with enhanced security logging"""
         text_lower = text.lower()
         for pattern in self.PROMPT_INJECTION_PATTERNS:
             if re.search(pattern, text_lower, re.IGNORECASE):
-                logger.warning(f"Prompt injection attempt detected: {pattern}")
+                # SECURITY: Log potential prompt injection attempts
+                logger.error(f"🚨 SECURITY ALERT: Prompt injection attempt - Pattern: {pattern}")
+                logger.error(f"🚨 SECURITY ALERT: Input sample: {text[:100]}...")
+                # Store security event for further analysis
+                self._log_security_event("prompt_injection", {"pattern": pattern, "input_sample": text[:100]})
                 raise ValidationError("Input appears to contain prompt injection attempt")
+    
+    def _log_security_event(self, event_type: str, details: dict):
+        """Log security events for monitoring and analysis"""
+        try:
+            # Simple file-based logging for MVP (should be enhanced for production)
+            import json
+            from datetime import datetime
+            
+            security_event = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "event_type": event_type,
+                "details": details,
+                "severity": "HIGH"
+            }
+            
+            # Log to application logs
+            logger.critical(f"SECURITY_EVENT: {json.dumps(security_event)}")
+            
+        except Exception as e:
+            logger.error(f"Failed to log security event: {e}")
 
 # Global instance
 input_validator = SimpleInputValidator()

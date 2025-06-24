@@ -128,26 +128,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CRITICAL: CORS middleware MUST be added BEFORE Security middleware
+# CRITICAL SECURITY: Enhanced CORS configuration with security considerations
+# CORS middleware MUST be added BEFORE Security middleware
 # This ensures CORS preflight OPTIONS requests are handled before security checks
+
+# Define allowed origins with validation
+ALLOWED_ORIGINS = [
+    "https://frontend-production-e178.up.railway.app",  # Primary production frontend
+    "https://frontend-production-88b0.up.railway.app",  # Backup frontend
+    "https://owen-ai-writer.vercel.app",               # Vercel deployment
+    # Local development origins
+    "http://localhost:3000", "http://localhost:3001", 
+    "http://localhost:4173", "http://localhost:5173", "http://localhost:5174",
+    "http://localhost:5175", "http://localhost:5176", "http://localhost:5177",
+    "http://localhost:8080"
+]
+
+# Validate origins format for security
+import re
+for origin in ALLOWED_ORIGINS:
+    if not re.match(r'^https?://[a-zA-Z0-9.-]+(?::[0-9]+)?$', origin):
+        logger.error(f"🚨 SECURITY: Invalid origin format detected: {origin}")
+        raise ValueError(f"Invalid CORS origin format: {origin}")
+
+# Log CORS configuration for security audit
+logger.info(f"🔐 CORS: Configured {len(ALLOWED_ORIGINS)} allowed origins")
+logger.info(f"🔐 CORS: Production origins: {[o for o in ALLOWED_ORIGINS if 'localhost' not in o]}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://frontend-production-e178.up.railway.app",  # Your NEW frontend URL
-        "https://frontend-production-88b0.up.railway.app",  # Keep old as backup
-        "https://owen-ai-writer.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "http://localhost:4173",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175", 
-        "http://localhost:5176",
-        "http://localhost:5177",
-        "http://localhost:8080"
-    ],
-    allow_credentials=True,  # Enable credentials for auth tokens
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Added PATCH and explicit OPTIONS
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,  # Required for authentication tokens
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=[
         "Authorization", 
         "Content-Type", 
@@ -157,9 +169,16 @@ app.add_middleware(
         "Content-Language",
         "Origin",
         "Access-Control-Request-Method",
-        "Access-Control-Request-Headers"
+        "Access-Control-Request-Headers",
+        # Security headers
+        "X-CSRF-Token",
+        "X-Requested-With"
     ],
-    expose_headers=["*"],  # Allow frontend to access response headers
+    expose_headers=[
+        "X-Total-Count",
+        "X-Rate-Limit-Remaining", 
+        "X-Rate-Limit-Reset"
+    ],  # Only expose necessary headers for security
 )
 
 # Add security middleware AFTER CORS middleware

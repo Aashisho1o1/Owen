@@ -86,7 +86,25 @@ class PostgreSQLService:
                 self.pool.putconn(conn)
     
     def execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
-        """Execute database query with proper error handling"""
+        """Execute database query with proper error handling and SQL injection protection"""
+        # SECURITY: Validate that query uses parameterized queries only
+        if '%s' not in query and params:
+            raise DatabaseError("Query parameters provided but query doesn't use parameterized placeholders")
+        
+        # SECURITY: Basic SQL injection pattern detection
+        dangerous_patterns = [
+            r';\s*DROP\s+TABLE', r';\s*DELETE\s+FROM', r';\s*INSERT\s+INTO',
+            r'UNION\s+SELECT', r'OR\s+1\s*=\s*1', r'AND\s+1\s*=\s*1',
+            r';\s*--', r'/\*.*\*/', r'EXEC\s*\(', r'SP_EXECUTESQL'
+        ]
+        
+        import re
+        query_upper = query.upper()
+        for pattern in dangerous_patterns:
+            if re.search(pattern, query_upper):
+                logger.error(f"SECURITY: Potentially dangerous SQL pattern detected: {pattern}")
+                raise DatabaseError("Query contains potentially dangerous SQL patterns")
+        
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(query, params)

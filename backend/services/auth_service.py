@@ -17,11 +17,34 @@ from .database import db_service, DatabaseError
 
 logger = logging.getLogger(__name__)
 
-# JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-here-please-change-in-production")
+# JWT Configuration with enhanced security validation
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+# CRITICAL SECURITY: Validate JWT secret key on import
+if not JWT_SECRET_KEY:
+    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY environment variable is not set!")
+    logger.critical("This is a critical security vulnerability that MUST be fixed before deployment")
+    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+    raise ValueError("JWT_SECRET_KEY must be configured for secure authentication")
+
+if len(JWT_SECRET_KEY) < 32:
+    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is too short!")
+    logger.critical(f"Current length: {len(JWT_SECRET_KEY)} characters, minimum required: 32")
+    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+    raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
+
+# Validate JWT secret is not a common weak key
+WEAK_KEYS = ['secret', 'key', 'jwt_secret', 'your_secret_key', 'changeme', 'password', '123456']
+if JWT_SECRET_KEY.lower() in WEAK_KEYS:
+    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is using a common weak value!")
+    logger.critical("This creates a critical security vulnerability")
+    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+    raise ValueError("JWT_SECRET_KEY must not use common weak values")
+
+logger.info("✅ JWT_SECRET_KEY security validation passed")
 
 class AuthenticationError(Exception):
     """Custom exception for authentication errors"""
