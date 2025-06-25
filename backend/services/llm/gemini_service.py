@@ -63,11 +63,14 @@ class GeminiService(BaseLLMService):
             
             # Test available models in order of preference
             model_preferences = [
-                'gemini-2.0-flash-exp',  # Latest experimental model
-                'gemini-2.0-flash',      # Stable 2.0 model
-                'gemini-1.5-pro',        # High-quality model
-                'gemini-1.5-flash',      # Fast model
-                'gemini-pro'             # Fallback model
+                'gemini-2.5-pro',           # Most powerful thinking model (June 2025)
+                'gemini-2.5-flash',         # Best price-performance (June 2025)
+                'gemini-2.5-flash-lite-preview-06-17',  # Most cost-efficient
+                'gemini-2.0-flash-exp',     # Latest experimental 2.0 model
+                'gemini-2.0-flash',         # Stable 2.0 model (fallback)
+                'gemini-1.5-pro',           # Legacy high-quality model
+                'gemini-1.5-flash',         # Legacy fast model
+                'gemini-pro'                # Final fallback
             ]
             
             for model_name in model_preferences:
@@ -127,34 +130,153 @@ class GeminiService(BaseLLMService):
         temperature: float = 0.7,
         **kwargs
     ) -> str:
-        """Generate a response using Gemini."""
+        """Generate a response using Gemini with support for 2.5 thinking models."""
         if not self.is_available():
             raise LLMError("Gemini service not available")
         
         try:
-            # Configure generation parameters
-            generation_config = genai.types.GenerationConfig(
-                max_output_tokens=max_tokens,
-                temperature=temperature,
-                top_p=kwargs.get('top_p', 0.8),
-                top_k=kwargs.get('top_k', 40)
-            )
+            # Configure generation parameters optimized for Gemini 2.5 models
+            # NOTE: Gemini 2.5 Pro has issues with GenerationConfig - use defaults for best compatibility
+            use_config = False  # Disabled for Gemini 2.5 Pro compatibility
             
-            # Generate response
+            if use_config:
+                generation_config = genai.types.GenerationConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=temperature
+                    # Note: top_p and top_k removed for Gemini 2.5 Pro compatibility
+                )
+            
+            # Enhanced safety settings for production use
+            safety_settings = kwargs.get('safety_settings', [])
+            if not safety_settings:
+                # Default safety settings that work well with Gemini 2.5
+                # Use proper genai enums for safety settings
+                try:
+                    safety_settings = [
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+                        },
+                    ]
+                except AttributeError:
+                    # Fallback if enum types are not available - use minimal safety
+                    safety_settings = []
+            
+            # Get current model name for adaptive behavior
+            current_model = self.available_models[0] if self.available_models else 'unknown'
+            
+            # Log which model we're using for debugging
+            logger.info(f"🎯 Using Gemini model: {current_model} for prompt length: {len(prompt)}")
+            
+            # Generate response with enhanced error handling
+            # Always use default settings for Gemini 2.5 Pro compatibility
             response = self.model.generate_content(
                 prompt,
-                generation_config=generation_config,
-                safety_settings=kwargs.get('safety_settings', [])
+                safety_settings=safety_settings
             )
             
-            if not response.text:
-                raise LLMError("Empty response from Gemini")
+            # Check if response was blocked before accessing text
+            if not response.candidates:
+                raise LLMError("No response candidates generated - possibly blocked by safety filters")
             
-            return response.text.strip()
+            candidate = response.candidates[0]
+            
+            # Check safety ratings if response is blocked
+            if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
+                for rating in candidate.safety_ratings:
+                    if hasattr(rating, 'blocked') and rating.blocked:
+                        category = getattr(rating, 'category', 'Unknown')
+                        probability = getattr(rating, 'probability', 'Unknown')
+                        raise LLMError(f"Content blocked by safety filter - Category: {category}, Probability: {probability}")
+            
+            # Check finish reason
+            if hasattr(candidate, 'finish_reason'):
+                finish_reason = candidate.finish_reason
+                logger.info(f"🔍 Finish reason: {finish_reason}")
+                
+                # 1 = STOP (successful), 2 = MAX_TOKENS, 3 = SAFETY, 4 = RECITATION, 5 = OTHER
+                if finish_reason == 3:  # SAFETY
+                    raise LLMError("Content generation stopped due to safety concerns")
+                elif finish_reason == 4:  # RECITATION
+                    raise LLMError("Content generation stopped due to recitation concerns")
+                elif finish_reason == 5:  # OTHER (problematic)
+                    raise LLMError(f"Content generation stopped unexpectedly: {finish_reason}")
+                elif finish_reason == 2:  # MAX_TOKENS
+                    logger.info("ℹ️  Generation stopped due to max tokens limit")
+            
+            # Try to access text with better error handling
+            response_text = None
+            try:
+                response_text = response.text
+                if response_text:
+                    response_text = response_text.strip()
+            except Exception as text_error:
+                logger.warning(f"⚠️  Failed to access response.text: {text_error}")
+                
+                # Try to access through candidate content parts
+                try:
+                    if hasattr(candidate, 'content') and candidate.content:
+                        content = candidate.content
+                        if hasattr(content, 'parts') and content.parts:
+                            parts_text = []
+                            for part in content.parts:
+                                if hasattr(part, 'text') and part.text:
+                                    parts_text.append(part.text)
+                                    logger.info(f"✅ Found part with {len(part.text)} characters")
+                            if parts_text:
+                                response_text = ''.join(parts_text).strip()
+                                logger.info(f"✅ Retrieved text via content parts: {len(response_text)} chars")
+                            else:
+                                logger.warning("⚠️  Content parts exist but no text found in any part")
+                        else:
+                            logger.warning("⚠️  Content exists but no parts found")
+                    else:
+                        logger.warning("⚠️  No content found in candidate")
+                except Exception as parts_error:
+                    logger.error(f"❌ Failed to access content parts: {parts_error}")
+                    
+                    # If all else fails, check for prompt feedback
+                    if hasattr(response, 'prompt_feedback'):
+                        feedback = response.prompt_feedback
+                        if hasattr(feedback, 'block_reason'):
+                            raise LLMError(f"Prompt blocked by safety filters: {feedback.block_reason}")
+                    
+                    raise LLMError(f"Could not access response text: {text_error}")
+            
+            if not response_text:
+                raise LLMError("Empty response from Gemini - content may have been filtered")
+            
+            # Log successful generation with model info
+            logger.info(f"✅ Generated {len(response_text)} characters using {current_model}")
+            
+            return response_text
             
         except Exception as e:
-            error_msg = f"Gemini generation failed: {str(e)}"
-            log_api_error("gemini", error_msg, {"prompt_length": len(prompt)})
+            current_model = self.available_models[0] if self.available_models else 'unknown'
+            error_msg = f"Gemini generation failed with {current_model}: {str(e)}"
+            
+            # Convert context dict to string for logging
+            context_info = {
+                "prompt_length": len(prompt), 
+                "model": current_model,
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            }
+            context_str = str(context_info)
+            
+            log_api_error("gemini", e, context_str)
             raise LLMError(error_msg)
     
     async def generate_json_response(
@@ -183,7 +305,7 @@ class GeminiService(BaseLLMService):
             
         except Exception as e:
             error_msg = f"Gemini JSON generation failed: {str(e)}"
-            log_api_error("gemini", error_msg, {"prompt_length": len(prompt)})
+            log_api_error("gemini", e, f"JSON generation - prompt_length: {len(prompt)}")
             raise LLMError(error_msg)
     
     async def generate_streaming_response(
@@ -199,18 +321,10 @@ class GeminiService(BaseLLMService):
             raise LLMError("Gemini service not available")
         
         try:
-            # Configure generation parameters
-            generation_config = genai.types.GenerationConfig(
-                max_output_tokens=max_tokens,
-                temperature=temperature,
-                top_p=kwargs.get('top_p', 0.8),
-                top_k=kwargs.get('top_k', 40)
-            )
-            
-            # Generate streaming response
+            # Generate streaming response with default settings for Gemini 2.5 Pro compatibility
+            # NOTE: GenerationConfig disabled for Gemini 2.5 Pro compatibility
             response = self.model.generate_content(
                 prompt,
-                generation_config=generation_config,
                 safety_settings=kwargs.get('safety_settings', []),
                 stream=True
             )
@@ -223,7 +337,7 @@ class GeminiService(BaseLLMService):
             
         except Exception as e:
             error_msg = f"Gemini streaming failed: {str(e)}"
-            log_api_error("gemini", error_msg, {"prompt_length": len(prompt)})
+            log_api_error("gemini", e, f"streaming - prompt_length: {len(prompt)}")
             raise LLMError(error_msg)
     
     # Required abstract methods from BaseLLMService
@@ -289,7 +403,7 @@ class GeminiService(BaseLLMService):
             
         except Exception as e:
             error_msg = f"Gemini conversation generation failed: {str(e)}"
-            log_api_error("gemini", error_msg, {"messages_count": len(messages)})
+            log_api_error("gemini", e, f"conversation - messages_count: {len(messages)}")
             raise LLMError(error_msg)
 
 
