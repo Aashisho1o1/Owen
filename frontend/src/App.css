@@ -30,6 +30,36 @@
   --chat-input-border: var(--border-medium);
   --chat-input-focus: var(--primary-500);
   --chat-send-gradient: var(--button-gradient-primary);
+
+  /* Enhanced color palette */
+  --bg-primary: #fdfcfb;
+  --bg-secondary: linear-gradient(135deg, #fdfcfb 0%, #f7f6f4 100%);
+  --bg-elevated: rgba(255, 255, 255, 0.95);
+  --bg-glass: rgba(255, 255, 255, 0.97);
+  
+  /* Warm, sophisticated text colors */
+  --text-primary: #2d3748;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --text-light: #a0aec0;
+  
+  /* Sophisticated accent colors */
+  --accent-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --accent-secondary: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  --accent-tertiary: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  
+  /* Enhanced borders and shadows */
+  --border-subtle: #eeebe6;
+  --border-light: #e2e8f0;
+  --border-medium: #cbd5e0;
+  
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-elevated: 0 4px 6px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.03);
+  
+  /* Glass effect */
+  --backdrop-blur: blur(10px);
+  --backdrop-blur-subtle: blur(5px);
 }
 
 /* Base styles */
@@ -41,7 +71,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background-color: var(--bg-primary);
+  background: linear-gradient(135deg, #fdfcfb 0%, #f7f6f4 100%);
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;

@@ -3,7 +3,8 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fefefe !important; /* Subtle white */
+  background: linear-gradient(135deg, #fdfcfb 0%, #f7f6f4 100%); /* Very subtle gradient */
+  position: relative;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
@@ -39,11 +40,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: #fefefe !important;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.95); /* Slightly transparent white */
+  backdrop-filter: blur(10px); /* Subtle glass effect */
+  border-bottom: 1px solid #e8e6e3; /* Warm light border */
   flex-shrink: 0;
   height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02); /* Very subtle shadow */
 }
 
 .document-title-section {
@@ -53,34 +59,43 @@
 
 .document-title-input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 1.125rem;
+  padding: 16px 32px 8px;
+  font-size: 24px;
   font-weight: 600;
-  color: #1f2937 !important;
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  color: #2d3748;
+  background: transparent;
+  border: none;
   outline: none;
-  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
 }
 
 .document-title-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-bottom-color: #e2e8f0;
+}
+
+.document-title-input::placeholder {
+  color: #a0aec0;
+  font-weight: 400;
 }
 
 .save-status {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-top: 0.25rem;
+  padding: 8px 32px;
+  font-size: 13px;
+  color: #718096;
+  background: transparent;
 }
 
 .save-status.saving {
-  color: #f59e0b;
+  color: #4299e1; /* Soft blue for saving */
 }
 
 .save-status.saved {
-  color: #10b981;
+  color: #48bb78; /* Soft green for saved */
+}
+
+.save-status.unsaved {
+  color: #ed8936; /* Soft orange for unsaved */
 }
 
 .workspace-controls {
@@ -118,15 +133,16 @@
 .workspace-content {
   flex: 1;
   display: flex;
-  background: #fefefe !important;
   overflow: hidden;
+  background: transparent;
 }
 
 .editor-section {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fefefe !important;
+  min-width: 0;
+  background: transparent;
   transition: all 0.3s ease;
 }
 
@@ -139,9 +155,11 @@
 }
 
 .chat-section {
-  width: 40%;
-  background: #fefefe !important;
-  border-left: 1px solid #e5e7eb;
+  width: 400px;
+  background: rgba(255, 255, 255, 0.97); /* Slightly more opaque for contrast */
+  backdrop-filter: blur(10px);
+  border-left: 1px solid #eeebe6; /* Consistent warm border */
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.03); /* Very subtle left shadow */
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
@@ -154,33 +172,69 @@
 /* Editor Container */
 .editor-container {
   flex: 1;
-  padding: 1.5rem;
-  background: #fefefe !important;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: #fefefe; /* Very subtle off-white */
+  margin: 20px; /* Add margin for breathing room */
+  border-radius: 12px; /* Gentle rounded corners */
+  border: 1px solid #eeebe6; /* Warm, subtle border */
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.02),
+    0 1px 3px rgba(0, 0, 0, 0.03); /* Very subtle depth */
+  position: relative;
+  overflow: hidden;
+}
+
+.editor-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); /* Subtle gradient accent */
+  opacity: 0.6;
 }
 
 .highlightable-editor {
-  min-height: 100%;
-  padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  flex: 1;
+  padding: 32px; /* Generous padding for comfortable writing */
+  background: transparent;
   font-size: 16px;
-  line-height: 1.65;
-  color: #1f2937 !important;
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  outline: none;
-  box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
+  line-height: 1.7;
+  color: #2d3748; /* Warm dark text */
+  min-height: 400px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-.highlightable-editor:focus {
-  border-color: #3b82f6;
+/* Placeholder styling to show where to type */
+.highlightable-editor .ProseMirror.is-empty::before {
+  content: 'Start writing your story here...';
+  color: #a0aec0; /* Soft gray placeholder */
+  font-style: italic;
+  position: absolute;
+  pointer-events: none;
+  font-size: 16px;
+}
+
+.highlightable-editor .ProseMirror {
+  outline: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+/* Focus state for better UX */
+.highlightable-editor .ProseMirror:focus {
+  outline: none;
+}
+
+.editor-container:focus-within {
+  border-color: #9f9aed; /* Subtle purple focus */
   box-shadow: 
-    0 0 0 3px rgba(59, 130, 246, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.1);
+    0 4px 6px rgba(0, 0, 0, 0.02),
+    0 1px 3px rgba(0, 0, 0, 0.03),
+    0 0 0 3px rgba(159, 154, 237, 0.1); /* Gentle focus ring */
 }
 
 /* Chat Panel Container */
@@ -245,12 +299,21 @@
   }
 
   .editor-container {
-    padding: 1rem;
+    margin: 10px;
+    border-radius: 8px;
   }
 
   .highlightable-editor {
-    padding: 1rem;
-    font-size: 16px;
+    padding: 20px;
+  }
+
+  .document-title-input {
+    padding: 12px 20px 6px;
+    font-size: 20px;
+  }
+
+  .save-status {
+    padding: 6px 20px;
   }
 }
 
@@ -351,4 +414,31 @@ textarea {
     background-color: #fefefe !important;
     color: #1f2937 !important;
   }
+}
+
+/* Light theme specific overrides */
+body.light-theme .writing-workspace,
+.light-theme .writing-workspace {
+  background: linear-gradient(135deg, #fdfcfb 0%, #f7f6f4 100%);
+}
+
+body.light-theme .editor-container,
+.light-theme .editor-container {
+  background: #fefefe;
+  border-color: #eeebe6;
+}
+
+body.light-theme .highlightable-editor,
+.light-theme .highlightable-editor {
+  color: #2d3748;
+}
+
+/* Ensure text is always visible */
+.writing-workspace,
+.writing-workspace *,
+.editor-container,
+.editor-container *,
+.highlightable-editor,
+.highlightable-editor * {
+  color: #2d3748 !important;
 } 
