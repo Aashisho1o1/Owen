@@ -24,7 +24,6 @@ const HELP_FOCUSES = [
 const LLM_OPTIONS = [
   'OpenAI GPT',
   'Google Gemini',
-  'Anthropic Claude'
 ];
 
 interface ChatHeaderProps {
