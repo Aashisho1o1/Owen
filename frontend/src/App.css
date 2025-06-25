@@ -753,7 +753,7 @@ body {
 /* CRITICAL FIX: Enhanced Chat Input Container for Mobile */
 @media (max-width: 768px) {
   .chat-input-container {
-    padding: var(--space-2) !important;
+    padding: 6px !important;
     background: var(--bg-elevated);
     border-top: 2px solid var(--border-medium);
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
@@ -764,12 +764,12 @@ body {
   .chat-input-form {
     display: flex;
     align-items: flex-end;
-    gap: var(--space-2);
+    gap: 6px;
     width: 100%;
     background: var(--chat-input-bg);
     border: 2px solid var(--chat-input-border);
     border-radius: var(--radius-xl);
-    padding: var(--space-2);
+    padding: 6px;
     transition: all var(--transition-normal);
   }
 
@@ -791,7 +791,7 @@ body {
     width: 100%;
     min-height: var(--input-height-md);
     max-height: 120px;
-    padding: var(--space-3);
+    padding: 10px;
     border: none;
     outline: none;
     resize: vertical;
@@ -819,8 +819,8 @@ body {
   .chat-input-form button[type="submit"] {
     flex: 0 0 auto;
     min-height: var(--touch-target-min);
-    min-width: var(--touch-target-min);
-    padding: var(--space-3);
+    min-width: 40px;
+    padding: 10px;
     background: var(--chat-send-gradient);
     color: var(--text-inverse);
     border: none;
