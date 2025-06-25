@@ -19,13 +19,15 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: text !important;
 }
 
 .editor-wrapper:hover {
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.06),
     0 2px 6px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 0 2px rgba(37, 99, 235, 0.1) !important;
 }
 
 .highlightable-editor {
@@ -39,6 +41,7 @@
   border: none;
   outline: none;
   user-select: text;
+  cursor: text; /* Show text cursor on hover */
 }
 
 /* Tiptap Editor Content */
@@ -50,6 +53,80 @@
   font-size: inherit;
   line-height: inherit;
   color: #1f2937 !important; /* FORCE DARK TEXT */
+  
+  /* CRITICAL: Ensure cursor (caret) is visible and blinking */
+  caret-color: #2563eb !important; /* Blue cursor color */
+}
+
+/* Enhanced Cursor/Caret Styling - Make it very visible */
+.highlightable-editor .ProseMirror:focus {
+  caret-color: #2563eb !important; /* Bright blue cursor when focused */
+}
+
+/* Additional cursor enhancements for better visibility */
+.highlightable-editor .ProseMirror {
+  /* Force cursor to be visible at all times */
+  caret-color: #2563eb !important;
+  
+  /* Ensure proper text selection and cursor behavior */
+  user-select: text !important;
+  cursor: text !important;
+  
+  /* Make sure the editor can receive focus */
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Enhanced focus state for better cursor visibility */
+.highlightable-editor .ProseMirror:focus-within {
+  caret-color: #2563eb !important;
+}
+
+/* Ensure cursor is visible even when editor loses focus */
+.highlightable-editor .ProseMirror:focus-visible {
+  caret-color: #2563eb !important;
+  outline: none !important;
+}
+
+/* Custom blinking cursor implementation for maximum compatibility */
+.highlightable-editor .ProseMirror {
+  position: relative;
+}
+
+/* Custom animated cursor for empty editor state */
+.highlightable-editor .ProseMirror.is-empty:focus::after {
+  content: '|';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #2563eb;
+  font-weight: normal;
+  animation: typewriterBlink 1s infinite;
+  pointer-events: none;
+  z-index: 1000;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Enhanced blinking animation for typewriter-style cursor */
+@keyframes typewriterBlink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Blinking animation for cursor - enhanced visibility */
+@keyframes cursorBlink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
 }
 
 .highlightable-editor .ProseMirror.is-empty::before {
@@ -622,4 +699,47 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Global cursor overrides to ensure visibility */
+.highlightable-editor-container * {
+  caret-color: #2563eb !important;
+}
+
+/* Force cursor visibility in all ProseMirror instances */
+.ProseMirror,
+.ProseMirror * {
+  caret-color: #2563eb !important;
+  cursor: text !important;
+}
+
+/* Enhanced editor focus states */
+.highlightable-editor:focus,
+.highlightable-editor:focus-within,
+.highlightable-editor .ProseMirror:focus,
+.highlightable-editor .ProseMirror:focus-within {
+  caret-color: #2563eb !important;
+  border: 2px solid rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+  outline: none !important;
+}
+
+/* Override any potential conflicts from other stylesheets */
+.highlightable-editor .ProseMirror p {
+  caret-color: #2563eb !important;
+  cursor: text !important;
+}
+
+.highlightable-editor .ProseMirror div {
+  caret-color: #2563eb !important;
+  cursor: text !important;
+}
+
+/* Stronger visual indicator when editor is ready for input */
+.highlightable-editor .ProseMirror.is-empty {
+  position: relative;
+}
+
+.highlightable-editor .ProseMirror.is-empty:focus {
+  background: rgba(37, 99, 235, 0.02) !important;
 } 

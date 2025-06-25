@@ -21,6 +21,45 @@ interface HighlightableEditorProps {
 }
 
 /**
+ * Custom Blinking Cursor Component
+ * Provides a visual cursor when the native cursor might not be visible
+ */
+const BlinkingCursor: React.FC<{ show: boolean }> = ({ show }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    if (!show) return;
+
+    const interval = setInterval(() => {
+      setIsVisible(prev => !prev);
+    }, 500); // Blink every 500ms
+
+    return () => clearInterval(interval);
+  }, [show]);
+
+  if (!show) return null;
+
+  return (
+    <span 
+      className="custom-blinking-cursor"
+      style={{
+        display: 'inline-block',
+        width: '2px',
+        height: '1.2em',
+        backgroundColor: '#2563eb',
+        marginLeft: '1px',
+        opacity: isVisible ? 1 : 0,
+        transition: 'opacity 0.1s ease',
+        position: 'relative',
+        top: '0.1em'
+      }}
+    >
+      |
+    </span>
+  );
+};
+
+/**
  * Simple HighlightableEditor that works with CSS-based highlighting
  * Uses DOM manipulation for highlighting which is simpler and more reliable
  */
@@ -45,6 +84,30 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       onChangeProp(newContent);
+    },
+    // Add editor event handlers for better cursor management
+    onCreate: ({ editor }) => {
+      // Auto-focus the editor when it's created to show cursor
+      setTimeout(() => {
+        editor.commands.focus();
+      }, 100);
+    },
+    onFocus: () => {
+      // Ensure cursor is visible when editor gains focus
+      console.log('🎯 Editor focused - cursor should be visible');
+      setEditorHasFocus(true);
+      setShowCustomCursor(false); // Hide custom cursor when native focus is available
+    },
+    onBlur: () => {
+      // Log when editor loses focus for debugging
+      console.log('🎯 Editor blurred');
+      setEditorHasFocus(false);
+      // Show custom cursor if editor is empty and loses focus
+      setTimeout(() => {
+        if (editor && editor.getHTML().replace(/<[^>]*>/g, '').trim().length === 0) {
+          setShowCustomCursor(true);
+        }
+      }, 100);
     },
   });
 
@@ -231,6 +294,10 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   const [selection, setSelection] = useState<{top: number; left: number; text: string} | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   
+  // Custom cursor state for enhanced visibility
+  const [showCustomCursor, setShowCustomCursor] = useState(false);
+  const [editorHasFocus, setEditorHasFocus] = useState(false);
+  
   // Chat context for highlighting
   const { 
     setHighlightedText, 
@@ -331,13 +398,54 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     };
   }, [handleTextSelection]);
 
+  // Enhanced focus management for cursor visibility
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-focus editor when component mounts or when user clicks
+  useEffect(() => {
+    if (editor && editorContainerRef.current) {
+      // Set up click handler to focus editor
+      const handleContainerClick = (e: MouseEvent) => {
+        if (e.target === editorContainerRef.current || editorContainerRef.current?.contains(e.target as Node)) {
+          editor.commands.focus();
+        }
+      };
+      
+      editorContainerRef.current.addEventListener('click', handleContainerClick);
+      
+      // Auto-focus on mount to show cursor immediately
+      setTimeout(() => {
+        editor.commands.focus();
+      }, 200);
+      
+      return () => {
+        editorContainerRef.current?.removeEventListener('click', handleContainerClick);
+      };
+    }
+  }, [editor]);
+
   return (
-    <div className="highlightable-editor-container">
+    <div className="highlightable-editor-container" ref={editorContainerRef}>
       <div ref={editorRef} className="editor-wrapper">
         <EditorContent 
           editor={editor} 
           className="highlightable-editor"
         />
+        
+        {/* Custom blinking cursor for enhanced visibility */}
+        {showCustomCursor && !editorHasFocus && (
+          <div 
+            style={{
+              position: 'absolute',
+              top: '24px',
+              left: '28px',
+              pointerEvents: 'none',
+              zIndex: 1000
+            }}
+          >
+            <BlinkingCursor show={true} />
+          </div>
+        )}
         
         {/* Floating AI Button for text selection */}
         {selection && (
