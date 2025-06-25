@@ -1592,7 +1592,7 @@
 }
 
 /* Enhanced meta information */
-.highlighted-meta {
+.highlighted-meta { 
   font-size: var(--text-xs);
   color: var(--gray-700) !important; /* FIXED: Dark text for contrast */
   margin-bottom: var(--space-2);

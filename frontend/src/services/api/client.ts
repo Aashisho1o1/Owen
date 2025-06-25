@@ -58,7 +58,7 @@ const handleApiError = (error: AxiosError): never => {
 // Create axios instance with authentication support
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 15000, // Increased timeout for better reliability
+  timeout: 25000, // Increased timeout to 25s for Gemini models
   headers: {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',

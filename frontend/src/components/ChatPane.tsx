@@ -164,7 +164,6 @@ const ChatPane: React.FC = () => {
       <ChatInput 
         onSendMessage={handleSendMessageWrapper}
         isDisabled={isStreaming || isThinking}
-        suggestedQuestions={highlightedText ? contextualPrompts() : suggestedQuestions()}
         highlightedText={highlightedText || undefined}
       />
     </div>

@@ -62,15 +62,17 @@ class GeminiService(BaseLLMService):
             genai.configure(api_key=self.api_key)
             
             # Test available models in order of preference
+            # OPTIMIZED MODEL PREFERENCES - Fast, reliable models only
+            # Removed slow thinking models that cause timeouts
             model_preferences = [
-                'gemini-2.5-pro',           # Most powerful thinking model (June 2025)
-                'gemini-2.5-flash',         # Best price-performance (June 2025)
-                'gemini-2.5-flash-lite-preview-06-17',  # Most cost-efficient
-                'gemini-2.0-flash-exp',     # Latest experimental 2.0 model
-                'gemini-2.0-flash',         # Stable 2.0 model (fallback)
-                'gemini-1.5-pro',           # Legacy high-quality model
-                'gemini-1.5-flash',         # Legacy fast model
-                'gemini-pro'                # Final fallback
+                'gemini-2.0-flash-exp',     # PRIMARY: Latest experimental 2.0 model (fast)
+                'gemini-2.0-flash',         # BACKUP: Stable 2.0 model (fast)
+                'gemini-1.5-flash',         # FALLBACK: Legacy fast model
+                'gemini-1.5-pro',           # FALLBACK: Legacy high-quality model
+                'gemini-pro'                # FINAL: Basic fallback
+                # REMOVED: gemini-2.5-pro (too slow, causes timeouts)
+                # REMOVED: gemini-2.5-flash (too slow, causes timeouts)  
+                # REMOVED: gemini-2.5-flash-lite-preview-06-17 (too slow, causes timeouts)
             ]
             
             for model_name in model_preferences:
@@ -130,14 +132,14 @@ class GeminiService(BaseLLMService):
         temperature: float = 0.7,
         **kwargs
     ) -> str:
-        """Generate a response using Gemini with support for 2.5 thinking models."""
+        """Generate a response using Gemini with optimized fast models (2.0-flash-exp primary)."""
         if not self.is_available():
             raise LLMError("Gemini service not available")
         
         try:
-            # Configure generation parameters optimized for Gemini 2.5 models
-            # NOTE: Gemini 2.5 Pro has issues with GenerationConfig - use defaults for best compatibility
-            use_config = False  # Disabled for Gemini 2.5 Pro compatibility
+            # Configure generation parameters optimized for fast Gemini 2.0 models
+            # NOTE: Using simplified config for maximum speed and compatibility
+            use_config = False  # Disabled for optimal performance
             
             if use_config:
                 generation_config = genai.types.GenerationConfig(
@@ -149,7 +151,7 @@ class GeminiService(BaseLLMService):
             # Enhanced safety settings for production use
             safety_settings = kwargs.get('safety_settings', [])
             if not safety_settings:
-                # Default safety settings that work well with Gemini 2.5
+                # Default safety settings that work well with fast Gemini models
                 # Use proper genai enums for safety settings
                 try:
                     safety_settings = [
@@ -180,12 +182,43 @@ class GeminiService(BaseLLMService):
             # Log which model we're using for debugging
             logger.info(f"🎯 Using Gemini model: {current_model} for prompt length: {len(prompt)}")
             
-            # Generate response with enhanced error handling
-            # Always use default settings for Gemini 2.5 Pro compatibility
-            response = self.model.generate_content(
-                prompt,
-                safety_settings=safety_settings
-            )
+            # Add timeout handling for Gemini 2.5 models - FIXED FOR TIMEOUT ISSUES
+            import asyncio
+            
+            try:
+                # Generate response with timeout protection
+                # Use asyncio.wait_for to add timeout to the synchronous call
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.model.generate_content,
+                        prompt,
+                        safety_settings=safety_settings
+                    ),
+                    timeout=20.0  # 20 second timeout (less than frontend's 25s)
+                )
+                logger.info(f"✅ Gemini response generated successfully in <20s")
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Gemini timeout after 20s with model {current_model}")
+                # Try fallback to faster model if available
+                if len(self.available_models) > 1:
+                    fallback_model = self.available_models[1]  # Try second model
+                    logger.info(f"🔄 Attempting fallback to {fallback_model}")
+                    try:
+                        fallback_genai_model = genai.GenerativeModel(fallback_model)
+                        response = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                fallback_genai_model.generate_content,
+                                prompt,
+                                safety_settings=safety_settings
+                            ),
+                            timeout=15.0  # Shorter timeout for fallback
+                        )
+                        logger.info(f"✅ Fallback model {fallback_model} succeeded")
+                    except Exception as fallback_error:
+                        logger.error(f"❌ Fallback model also failed: {fallback_error}")
+                        raise LLMError(f"Gemini models timed out. Please try a shorter prompt or try again later.")
+                else:
+                    raise LLMError(f"Gemini model {current_model} timed out after 20 seconds. Please try a shorter prompt or try again later.")
             
             # Check if response was blocked before accessing text
             if not response.candidates:

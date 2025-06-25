@@ -2,7 +2,7 @@
  * ChatInput Component - Enhanced Conversational Interface
  * 
  * Handles user input for chat messages with keyboard shortcuts,
- * contextual suggested questions, and improved visual feedback.
+ * and improved visual feedback.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -10,30 +10,16 @@ import React, { useState, useRef, useEffect } from 'react';
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   isDisabled?: boolean;
-  suggestedQuestions?: string[];
   highlightedText?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ 
   onSendMessage, 
   isDisabled = false, 
-  suggestedQuestions = [],
   highlightedText 
 }) => {
   const [message, setMessage] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Check if screen is mobile size
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -72,27 +58,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const handleSuggestedQuestion = (question: string) => {
-    setMessage(question);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-      // Move cursor to end
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.setSelectionRange(question.length, question.length);
-        }
-      }, 0);
-    }
-  };
-
-  // Mobile-specific: Limit suggested questions to 2 on mobile devices
-  const getMobileSuggestedQuestions = () => {
-    if (isMobile) {
-      return suggestedQuestions.slice(0, 2); // Show only 2 questions on mobile
-    }
-    return suggestedQuestions; // Show all questions on desktop
-  };
-
   const getPlaceholderText = () => {
     if (highlightedText) {
       return "Ask about the selected text or type your own question...";
@@ -104,32 +69,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if (highlightedText) {
       return `🎯 AI will focus on your ${highlightedText.split(/\s+/).length} word selection`;
     }
-    return ""; // Removed the keyboard shortcut and AI analyze text
+    return ""; // Clean minimal interface
   };
 
   return (
     <div className="chat-input-container">
-      {/* Suggested Questions - REMOVED for mobile devices to avoid redundancy with highlight suggestions */}
-      {getMobileSuggestedQuestions().length > 0 && !isMobile && (
-        <div className="suggested-questions">
-          <div className="suggested-questions-title">
-            Suggested questions:
-          </div>
-          <div className="suggested-questions-list">
-            {getMobileSuggestedQuestions().map((question, index) => (
-              <button
-                key={index}
-                className="suggested-question-button"
-                onClick={() => handleSuggestedQuestion(question)}
-                disabled={isDisabled}
-                title={`Click to use this question: ${question}`}
-              >
-                {question}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Suggested Questions - REMOVED COMPLETELY as requested by user */}
+      {/* They are redundant since highlighted text already provides contextual suggestions */}
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="chat-input-form">
