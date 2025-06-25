@@ -1009,21 +1009,21 @@
   }
 
   .writing-interface.with-chat {
-    flex-direction: column;
+    flex-direction: row; /* CHANGED: Keep side-by-side on mobile */
   }
 
   .writing-interface.with-chat .editor-panel {
-    width: 100%;
-    height: 50%;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    border-bottom: none;
+    width: 50%; /* CHANGED: 50/50 split instead of stacked */
+    height: 100%; /* CHANGED: Full height instead of 50% */
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg); /* CHANGED: Adjust border radius for side-by-side */
+    border-right: 1px solid var(--border-light); /* CHANGED: Right border instead of bottom */
   }
 
   .writing-interface.with-chat .chat-panel {
-    width: 100%;
-    height: 50%;
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    border-top: 1px solid var(--border-light);
+    width: 50%; /* CHANGED: 50/50 split instead of stacked */
+    height: 100%; /* CHANGED: Full height instead of 50% */
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0; /* CHANGED: Adjust border radius for side-by-side */
+    border-left: 1px solid var(--border-light); /* CHANGED: Left border instead of top */
   }
 
   .editor-panel,

@@ -281,20 +281,20 @@
   }
 
   .workspace-content {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .editor-section {
-    width: 100% !important;
-    height: 60%;
+    width: 50% !important;
+    height: 100%;
     order: 1;
   }
 
   .chat-section {
-    width: 100% !important;
-    height: 40%;
-    border-left: none;
-    border-top: 1px solid #e5e7eb;
+    width: 50% !important;
+    height: 100%;
+    border-left: 1px solid #e5e7eb;
+    border-top: none;
     order: 2;
   }
 
