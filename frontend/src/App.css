@@ -750,10 +750,12 @@ body {
 
 /* ============= ENHANCED MOBILE CHAT INPUT - FIXING SUBMIT BUTTON ISSUE ============= */
 
-/* CRITICAL FIX: Enhanced Chat Input Container for Mobile */
+/* CRITICAL FIX: Enhanced Chat Input Container for Mobile with Maximum Specificity */
 @media (max-width: 768px) {
+  .chat-panel .chat-input-container,
+  .chat-container .chat-input-container,
   .chat-input-container {
-    padding: 6px !important;
+    padding: 2px !important;
     background: var(--bg-elevated);
     border-top: 2px solid var(--border-medium);
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
@@ -761,15 +763,17 @@ body {
     z-index: 10;
   }
 
+  .chat-panel .chat-input-form,
+  .chat-container .chat-input-form,
   .chat-input-form {
     display: flex;
     align-items: flex-end;
-    gap: 6px;
+    gap: 2px !important;
     width: 100%;
     background: var(--chat-input-bg);
     border: 2px solid var(--chat-input-border);
     border-radius: var(--radius-xl);
-    padding: 6px;
+    padding: 2px !important;
     transition: all var(--transition-normal);
   }
 
@@ -927,4 +931,27 @@ body {
   border-color: var(--primary-300);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
+}
+
+/* MAXIMUM SPECIFICITY OVERRIDE: Force chat input width optimization */
+@media (max-width: 768px) {
+  .chat-panel .chat-input-container,
+  .chat-container .chat-input-container,
+  .chat-input-container {
+    padding: 2px !important;
+  }
+
+  .chat-panel .chat-input-form,
+  .chat-container .chat-input-form,  
+  .chat-input-form {
+    gap: 2px !important;
+    padding: 2px !important;
+  }
+
+  .chat-panel .input-wrapper,
+  .chat-container .input-wrapper,
+  .input-wrapper {
+    padding: 0 !important;
+    gap: 2px !important;
+  }
 } 

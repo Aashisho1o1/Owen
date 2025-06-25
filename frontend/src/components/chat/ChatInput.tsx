@@ -104,7 +104,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if (highlightedText) {
       return `🎯 AI will focus on your ${highlightedText.split(/\s+/).length} word selection`;
     }
-    return "⌘ + Enter to send • AI will analyze your full document";
+    return ""; // Removed the keyboard shortcut and AI analyze text
   };
 
   return (
