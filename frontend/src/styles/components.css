@@ -2143,14 +2143,14 @@
     background: var(--bg-primary);
   }
 
-  /* ENHANCED: Clear visual separation for dialogue area */
+  /* ENHANCED: Clear visual separation for dialogue area with better alignment */
   .messages-container {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-3) var(--space-2); /* Reduced horizontal padding for better alignment */
     background: var(--bg-primary);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border: 2px solid var(--border-light);
     border-bottom: none;
-    margin: 0 calc(-1 * var(--space-3));
+    margin: 0; /* Remove negative margins that cause alignment issues */
     position: relative;
     min-height: 200px; /* Ensure minimum dialogue space */
   }
@@ -2170,14 +2170,16 @@
     border: 1px dashed var(--border-light);
   }
 
-  /* Enhanced welcome message styling */
+  /* Enhanced welcome message styling with better alignment */
   .welcome-message {
-    margin: var(--space-3) 0;
-    padding: var(--space-4);
+    margin: var(--space-2) 0; /* Reduced margin for better spacing */
+    padding: var(--space-3) var(--space-2); /* Optimized padding for mobile */
     background: linear-gradient(135deg, var(--primary-50), var(--secondary-50));
     border-radius: var(--radius-lg);
     border: 1px solid var(--primary-200);
     box-shadow: var(--shadow-sm);
+    width: 100%; /* Ensure full width */
+    box-sizing: border-box; /* Include padding in width calculation */
   }
 
   /* Enhanced suggested questions spacing */
@@ -2186,14 +2188,14 @@
     margin-top: var(--space-4);
   }
 
-  /* Enhanced chat input container */
+  /* Enhanced chat input container with better alignment */
   .chat-input-container {
     background: var(--bg-secondary);
     border: 2px solid var(--border-light);
     border-top: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    margin: 0 calc(-1 * var(--space-3));
-    padding: var(--space-3);
+    margin: 0; /* Remove negative margins that cause alignment issues */
+    padding: var(--space-2); /* Reduced padding for better space utilization */
     position: relative;
   }
 
@@ -2202,8 +2204,8 @@
     content: "";
     position: absolute;
     top: 0;
-    left: var(--space-3);
-    right: var(--space-3);
+    left: var(--space-2); /* Adjusted to match new padding */
+    right: var(--space-2); /* Adjusted to match new padding */
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--primary-300), transparent);
   }

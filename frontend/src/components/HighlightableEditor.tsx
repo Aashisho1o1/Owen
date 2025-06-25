@@ -424,7 +424,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     }
   }, [editor]);
 
-  return (
+          return (
     <div className="highlightable-editor-container" ref={editorContainerRef}>
       <div ref={editorRef} className="editor-wrapper">
         <EditorContent 

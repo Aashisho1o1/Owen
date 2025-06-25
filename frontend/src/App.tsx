@@ -168,7 +168,7 @@ const AuthFloat: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = React.useState(false);
 
   if (isAuthenticated && user) {
-    return (
+  return (
       <>
         <div className="auth-float auth-float-mvp">
           <button
@@ -179,16 +179,16 @@ const AuthFloat: React.FC = () => {
             <div className="profile-avatar profile-avatar-mvp">
               {user.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-          </button>
+              </button>
         </div>
         {showProfileModal && (
-          <UserProfileModal
-            isOpen={showProfileModal}
-            onClose={() => setShowProfileModal(false)}
-          />
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
         )}
       </>
-    );
+  );
   }
 
   return (
@@ -201,7 +201,7 @@ const AuthFloat: React.FC = () => {
         >
           Sign In
         </button>
-      </div>
+    </div>
       {showAuthModal && (
         <AuthModal
           isOpen={showAuthModal}
@@ -225,7 +225,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // Main App Content
 const AppContent: React.FC = () => {
   return (
-    <AppLayout>
+      <AppLayout>
       <div className="app-main app-main-mvp">
         <Routes>
           {/* MVP Route - Direct to Writing Workspace */}
@@ -236,7 +236,7 @@ const AppContent: React.FC = () => {
           <Route path="/document/:documentId" element={<DocumentEditor />} />
         </Routes>
       </div>
-    </AppLayout>
+      </AppLayout>
   );
 };
 
@@ -244,9 +244,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
     </Router>
   );
 };
