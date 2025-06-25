@@ -954,4 +954,143 @@ body {
     padding: 0 !important;
     gap: 2px !important;
   }
+}
+
+/* ============= CRITICAL: Chat Input Width Optimization Override ============= */
+/* These rules MUST come last to override chat-panel.css conflicting styles */
+/* This provides maximum width for mobile typing by reducing all unnecessary padding/gaps */
+
+@media (max-width: 479px) {
+  /* ULTRA HIGH SPECIFICITY: Override chat-panel.css @media (max-width: 479px) rules */
+  .chat-panel-container .chat-input-container,
+  .chat-container .chat-input-container,
+  .chat-input-container {
+    padding: 2px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+  }
+
+  .chat-panel-container .chat-input-form,
+  .chat-container .chat-input-form,
+  .chat-input-form {
+    gap: 2px !important;
+    padding: 2px !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .chat-panel-container .input-wrapper,
+  .chat-container .input-wrapper,
+  .input-wrapper {
+    gap: 2px !important;
+    padding: 2px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    background: var(--bg-primary) !important;
+    border: 2px solid var(--border-medium) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  /* Ensure the textarea takes maximum available width */
+  .chat-panel-container .chat-textarea,
+  .chat-container .chat-textarea,
+  .chat-textarea,
+  .chat-panel-container .chat-input-form input,
+  .chat-container .chat-input-form input,
+  .chat-input-form input,
+  .chat-panel-container .chat-input-form textarea,
+  .chat-container .chat-input-form textarea,
+  .chat-input-form textarea {
+    flex: 1 !important;
+    min-height: 40px !important;
+    max-height: 120px !important;
+    font-size: var(--text-base) !important;
+    border: none !important;
+    background: transparent !important;
+    padding: var(--space-2) !important;
+    resize: none !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure send button is compact but touchable */
+  .chat-panel-container .send-button,
+  .chat-container .send-button,
+  .send-button,
+  .chat-panel-container .chat-send-button,
+  .chat-container .chat-send-button,
+  .chat-send-button,
+  .chat-panel-container .chat-input-form button[type="submit"],
+  .chat-container .chat-input-form button[type="submit"],
+  .chat-input-form button[type="submit"] {
+    flex: 0 0 auto !important;
+    min-height: 40px !important;
+    min-width: 40px !important;
+    padding: var(--space-2) !important;
+    margin: 0 !important;
+    background: var(--primary-600) !important;
+    color: var(--text-inverse) !important;
+    border: none !important;
+    border-radius: var(--radius-lg) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all var(--transition-normal) !important;
+    box-shadow: var(--shadow-md) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* MAXIMUM SPECIFICITY: Override chat-panel.css mobile rules for larger mobile screens */
+  .chat-panel-container .chat-input-container,
+  .chat-container .chat-input-container,
+  .chat-input-container {
+    padding: 2px !important;
+    margin: 0 !important;
+  }
+
+  .chat-panel-container .chat-input-form,
+  .chat-container .chat-input-form,
+  .chat-input-form {
+    gap: 2px !important;
+    padding: 2px !important;
+    margin: 0 !important;
+  }
+
+  .chat-panel-container .input-wrapper,
+  .chat-container .input-wrapper,
+  .input-wrapper {
+    gap: 2px !important;
+    padding: 2px !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure the textarea takes maximum available width */
+  .chat-panel-container .chat-textarea,
+  .chat-container .chat-textarea,
+  .chat-textarea {
+    padding: 8px !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure send button is compact but touchable */
+  .chat-panel-container .send-button,
+  .chat-container .send-button,
+  .send-button,
+  .chat-panel-container .chat-send-button,
+  .chat-container .chat-send-button,
+  .chat-send-button,
+  .chat-panel-container .chat-input-form button[type="submit"],
+  .chat-container .chat-input-form button[type="submit"],
+  .chat-input-form button[type="submit"] {
+    padding: 8px !important;
+    margin: 0 !important;
+    min-width: 44px !important;
+    flex-shrink: 0 !important;
+  }
 } 

@@ -8,6 +8,7 @@ import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import { useAuth } from './contexts/AuthContext';
 import './App.css';
+import './styles/chat-input-width-fix.css';
 
 // Light Theme Override Styles to fix dark backgrounds
 const lightThemeOverrides = `
