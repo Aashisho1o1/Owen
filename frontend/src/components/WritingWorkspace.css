@@ -129,6 +129,60 @@
   border-color: #3b82f6;
 }
 
+/* Copy Button Styles - Matching chat toggle design */
+.copy-content-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-content-btn:hover:not(:disabled) {
+  background: #e5e7eb !important;
+}
+
+.copy-content-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Copy button states */
+.copy-content-btn.copying {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #f59e0b;
+}
+
+.copy-content-btn.success {
+  background: #d1fae5 !important;
+  color: #065f46 !important;
+  border-color: #10b981;
+}
+
+.copy-content-btn.error {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #ef4444;
+}
+
+.copy-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.copy-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
 /* Main Content Area */
 .workspace-content {
   flex: 1;
@@ -278,6 +332,20 @@
 
   .workspace-controls {
     justify-content: center;
+  }
+
+  /* Mobile responsive copy button */
+  .copy-content-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .copy-text {
+    display: none; /* Hide text on mobile, show only icon */
+  }
+
+  .copy-icon {
+    font-size: 1.1rem;
   }
 
   .workspace-content {

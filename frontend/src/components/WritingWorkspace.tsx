@@ -38,6 +38,9 @@ export const WritingWorkspace: React.FC = () => {
   const [documentTitle, setDocumentTitle] = useState('Untitled Document');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Copy functionality state
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
 
   // Initialize document on component mount
   useEffect(() => {
@@ -119,6 +122,48 @@ export const WritingWorkspace: React.FC = () => {
     return lastSaved.toLocaleDateString();
   };
 
+  // Copy document content to clipboard
+  const handleCopyContent = async () => {
+    try {
+      setCopyStatus('copying');
+      
+      // Get plain text content (strip HTML tags if present)
+      const textContent = editorContent.replace(/<[^>]*>/g, '').trim();
+      
+      if (!textContent) {
+        setCopyStatus('error');
+        // Show a brief message for empty content
+        console.log('No content to copy');
+        setTimeout(() => setCopyStatus('idle'), 2000);
+        return;
+      }
+
+      // Use modern clipboard API with fallback
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textContent);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textContent;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      
+      setCopyStatus('success');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Failed to copy content:', error);
+      setCopyStatus('error');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="writing-workspace loading">
@@ -146,6 +191,34 @@ export const WritingWorkspace: React.FC = () => {
         
         {/* MVP Controls - Just essentials */}
         <div className="workspace-controls-mvp">
+          {/* Copy Button */}
+          <button
+            onClick={handleCopyContent}
+            className={`copy-content-btn ${copyStatus}`}
+            title="Copy document content to clipboard"
+            disabled={copyStatus === 'copying' || !editorContent.trim()}
+            aria-label={`Copy document content to clipboard. ${
+              copyStatus === 'success' ? 'Content copied successfully!' :
+              copyStatus === 'error' ? 'Failed to copy content' :
+              copyStatus === 'copying' ? 'Copying content...' :
+              !editorContent.trim() ? 'No content to copy' :
+              'Copy document content'
+            }`}
+          >
+            <span className="copy-icon" aria-hidden="true">
+              {copyStatus === 'copying' && '⏳'}
+              {copyStatus === 'success' && '✅'}
+              {copyStatus === 'error' && '❌'}
+              {copyStatus === 'idle' && '📋'}
+            </span>
+            <span className="copy-text">
+              {copyStatus === 'copying' && 'Copying...'}
+              {copyStatus === 'success' && 'Copied!'}
+              {copyStatus === 'error' && 'Failed'}
+              {copyStatus === 'idle' && 'Copy'}
+            </span>
+          </button>
+
           {/* Chat Toggle Button */}
           <button
             onClick={toggleChat}
