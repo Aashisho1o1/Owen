@@ -202,7 +202,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
               />
               <div className="auth-checkbox-custom"></div>
               <span>
-                I agree to the <button type="button" className="auth-link-button">Terms of Service</button> and <button type="button" className="auth-link-button">Privacy Policy</button>
+                I agree to the <button type="button" className="auth-link-button" onClick={() => window.open('https://docs.google.com/document/d/1m2qcsowK3b1TRXi1LwOBP3tNNPpUlYG-iFQond9mZas/edit?usp=sharing', '_blank', 'noopener,noreferrer')}>Terms of Service</button> and <button type="button" className="auth-link-button" onClick={() => window.open('https://docs.google.com/document/d/17dKWwfxF4QaA8Qg3DfiiXjjUukYVigIWRlAr0vPOvGg/edit?usp=sharing', '_blank', 'noopener,noreferrer')}>Privacy Policy</button>
               </span>
             </label>
           </FormField>
