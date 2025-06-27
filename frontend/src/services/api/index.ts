@@ -66,7 +66,9 @@ export {
   analyzeWritingSample,
   completeOnboarding,
   saveCheckpoint,
-  buildChatRequest
+  buildChatRequest,
+  generateSuggestions,
+  acceptSuggestion
 } from './chat';
 
 // === RE-EXPORT SEARCH SERVICES ===

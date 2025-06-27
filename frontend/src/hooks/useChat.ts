@@ -178,7 +178,7 @@ export const useChat = ({
       let response;
       if (shouldUseSuggestions) {
         logger.info('🎯 Using suggestions endpoint for Co-Edit mode with highlighted text');
-        const suggestionsResponse = await api.generateSuggestions(requestPayload);
+        const suggestionsResponse = await generateSuggestions(requestPayload);
         
         // Convert suggestions response to regular chat response format
         response = {
