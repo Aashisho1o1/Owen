@@ -11,6 +11,7 @@ export interface UseEditorReturn {
   highlightedText: string | null;
   handleTextHighlighted: (text: string) => void;
   clearHighlightedText: () => void;
+  updateContent: (newContent: string) => void;
 }
 
 const DEFAULT_INITIAL_CONTENT = 'Once upon a time, in a bustling city, a young detective named Kenji stumbled upon a mysterious diary. His partner, a seasoned veteran named Rina, always told him to trust his gut.';
@@ -32,11 +33,25 @@ export const useEditor = ({
     setHighlightedText(null);
   }, []);
 
+  const updateContent = useCallback((newContent: string) => {
+    setEditorContent(newContent);
+    logger.log("Editor content updated:", { 
+      previousLength: editorContent.length, 
+      newLength: newContent.length 
+    });
+    
+    // Dispatch event to notify other components of content change
+    window.dispatchEvent(new CustomEvent('editorContentUpdated', {
+      detail: { newContent, timestamp: new Date().toISOString() }
+    }));
+  }, [editorContent.length]);
+
   return {
     editorContent,
     setEditorContent,
     highlightedText,
     handleTextHighlighted,
     clearHighlightedText,
+    updateContent,
   };
 }; 

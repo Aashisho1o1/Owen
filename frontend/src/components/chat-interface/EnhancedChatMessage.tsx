@@ -10,7 +10,7 @@ import { ChatMessage } from '../../services/api/types';
 import { SuggestionOption } from '../../services/api/types';
 import { SuggestionsDisplay } from './SuggestionsDisplay';
 import { useChatContext } from '../../contexts/ChatContext';
-import { useEditor } from '../../hooks/useEditor';
+import { useEditorContext } from '../../contexts/EditorContext';
 
 interface EnhancedChatMessageProps {
   message: ChatMessage;
@@ -31,7 +31,7 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
     acceptedSuggestionId 
   } = useChatContext();
   
-  const { updateContent } = useEditor();
+  const { setEditorContent } = useEditorContext();
 
   // HTML entity decoder function
   const decodeHtmlEntities = (text: string): string => {
@@ -145,12 +145,16 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
 
   const handleAcceptSuggestion = async (suggestion: SuggestionOption) => {
     await acceptTextSuggestion(suggestion, (newContent: string, replacementInfo: any) => {
-      // Update the editor content
-      updateContent(newContent);
+      // Update the editor content using EditorContext
+      setEditorContent(newContent);
       
-      // TODO: Add visual feedback for the replacement
-      // This could include highlighting the new text or showing an animation
+      // Add visual feedback for the replacement
       console.log('Content updated with suggestion:', replacementInfo);
+      
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent('suggestionAccepted', {
+        detail: { newContent, replacementInfo, suggestionId: suggestion.id }
+      }));
     });
   };
 

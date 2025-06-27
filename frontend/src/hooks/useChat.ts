@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { sendChatMessage, buildChatRequest } from '../services/api/chat';
+import { sendChatMessage, buildChatRequest, generateSuggestions } from '../services/api/chat';
 import { useAuth } from '../contexts/AuthContext';
 import { useApiHealth } from './useApiHealth';
 import api, { ChatMessage, ChatRequest, ChatResponse, UserPreferences } from '../services/api';
@@ -150,13 +150,8 @@ export const useChat = ({
         authorPersona,
         helpFocus,
         selectedLLM,
-        hasHighlightedText: !!highlightedText
-      });
-      
-      logger.info('📋 Request validation details:', {
-        messageValid: message.length > 0,
-        hasPreferences: !!userPreferences,
-        hasFeedback: !!feedbackOnPrevious
+        hasHighlightedText: !!highlightedText,
+        aiMode
       });
       
       const requestPayload = {
@@ -177,14 +172,29 @@ export const useChat = ({
         ai_mode: aiMode
       };
       
-      // Log only essential request details to avoid circular references
-      logger.info('🔄 API Request:', 'POST', '/api/chat/');
-      logger.info('Request data:', {
-        ...requestPayload,
-        chat_history: `(${requestPayload.chat_history.length} messages)` // Prevent circular ref
-      });
+      // CRITICAL FIX: Use suggestions endpoint for Co-Edit mode with highlighted text
+      const shouldUseSuggestions = aiMode === 'co-edit' && highlightedText && highlightedText.trim().length > 0;
       
-      const response = await api.sendChatMessage(requestPayload);
+      let response;
+      if (shouldUseSuggestions) {
+        logger.info('🎯 Using suggestions endpoint for Co-Edit mode with highlighted text');
+        const suggestionsResponse = await api.generateSuggestions(requestPayload);
+        
+        // Convert suggestions response to regular chat response format
+        response = {
+          dialogue_response: suggestionsResponse.dialogue_response,
+          thinking_trail: suggestionsResponse.thinking_trail,
+          // Store suggestions in a special property that will be handled by ChatContext
+          suggestions: suggestionsResponse.suggestions,
+          has_suggestions: suggestionsResponse.has_suggestions,
+          original_text: suggestionsResponse.original_text
+        };
+        
+        logger.info(`✨ Generated ${suggestionsResponse.suggestions?.length || 0} suggestions automatically`);
+      } else {
+        logger.info('💬 Using regular chat endpoint');
+        response = await api.sendChatMessage(requestPayload);
+      }
 
       console.log('📥 Received chat response:', response);
       
@@ -194,6 +204,18 @@ export const useChat = ({
         setFullResponse(response.dialogue_response);
         setIsStreaming(true); // Start streaming the response
         setThinkingTrail(response.thinking_trail || null);
+        
+        // CRITICAL: Dispatch suggestions to ChatContext if available
+        if (response.suggestions && response.has_suggestions) {
+          // Dispatch custom event to notify ChatContext about suggestions
+          window.dispatchEvent(new CustomEvent('suggestionsGenerated', {
+            detail: {
+              suggestions: response.suggestions,
+              originalText: response.original_text || highlightedText,
+              dialogueResponse: response.dialogue_response
+            }
+          }));
+        }
       } else {
         // Handle cases where dialogue_response might be empty or undefined
         console.warn('⚠️ Empty or invalid response received:', response);
@@ -277,7 +299,7 @@ export const useChat = ({
         setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: https://backend-copy-production-95b5.up.railway.app. Please check if the server is running.`);
       }
     }
-  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId]);
+  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId, aiMode]);
 
   const handleSaveCheckpoint = useCallback(async () => {
     logger.log("Save Checkpoint clicked");

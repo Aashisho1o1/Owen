@@ -81,7 +81,7 @@ export interface ChatContextType {
   isAcceptingSuggestion: boolean;
   acceptedSuggestionId: string | null;
   generateTextSuggestions: (message: string) => Promise<void>;
-  acceptTextSuggestion: (suggestion: SuggestionOption, onContentUpdate: (newContent: string, replacementInfo: any) => void) => Promise<void>;
+  acceptTextSuggestion: (suggestion: SuggestionOption, onContentUpdate?: (newContent: string, replacementInfo: any) => void) => Promise<void>;
   clearSuggestions: () => void;
   
   // API health
@@ -376,7 +376,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     logger.log('🧹 All text highlights cleared');
   }, []);
 
-  // NEW: Generate text suggestions
+  // NEW: Generate text suggestions (kept for manual button, but now mainly handled by useChat)
   const generateTextSuggestions = async (message: string) => {
     if (!highlightedText.trim()) {
       logger.warn('No text highlighted for suggestions');
@@ -413,16 +413,6 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
       if (response.has_suggestions && response.suggestions.length > 0) {
         setCurrentSuggestions(response.suggestions);
         logger.info(`✨ Generated ${response.suggestions.length} suggestions`);
-        
-        // Add the dialogue response as a regular chat message
-        const newMessage: ChatMessage = {
-          role: 'assistant',
-          content: response.dialogue_response
-        };
-        
-        // This would need to be integrated with the existing chat system
-        // For now, we'll just log it
-        logger.info('AI Response:', response.dialogue_response);
       } else {
         logger.warn('No suggestions generated');
       }
@@ -435,10 +425,35 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     }
   };
 
+  // NEW: Listen for suggestions generated automatically by useChat
+  useEffect(() => {
+    const handleSuggestionsGenerated = (event: CustomEvent) => {
+      const { suggestions, originalText, dialogueResponse } = event.detail;
+      
+      logger.info('🎯 Received suggestions from automatic generation:', {
+        suggestionsCount: suggestions?.length || 0,
+        originalText: originalText?.substring(0, 50) + '...',
+        hasDialogueResponse: !!dialogueResponse
+      });
+      
+      if (suggestions && suggestions.length > 0) {
+        setCurrentSuggestions(suggestions);
+        setIsGeneratingSuggestions(false); // Ensure loading state is cleared
+        logger.info(`✨ Set ${suggestions.length} suggestions in context`);
+      } else {
+        logger.warn('No suggestions received in event');
+        setCurrentSuggestions([]);
+      }
+    };
+
+    window.addEventListener('suggestionsGenerated', handleSuggestionsGenerated as EventListener);
+    return () => window.removeEventListener('suggestionsGenerated', handleSuggestionsGenerated as EventListener);
+  }, []);
+
   // NEW: Accept a text suggestion
   const acceptTextSuggestion = async (
     suggestion: SuggestionOption, 
-    onContentUpdate: (newContent: string, replacementInfo: any) => void
+    onContentUpdate?: (newContent: string, replacementInfo: any) => void
   ) => {
     setIsAcceptingSuggestion(true);
     setAcceptedSuggestionId(suggestion.id);
@@ -459,13 +474,30 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
       if (response.success) {
         logger.info('✅ Suggestion accepted successfully');
         
-        // Update the editor content through the callback
-        onContentUpdate(response.updated_content, response.replacement_info);
+        // Update the editor content through the callback if provided
+        if (onContentUpdate) {
+          onContentUpdate(response.updated_content, response.replacement_info);
+        } else {
+          // Fallback: Dispatch event to update editor content
+          window.dispatchEvent(new CustomEvent('updateEditorContent', {
+            detail: {
+              newContent: response.updated_content,
+              replacementInfo: response.replacement_info,
+              highlightNewText: true
+            }
+          }));
+        }
         
         // Clear suggestions and highlighting
         setCurrentSuggestions([]);
         setHighlightedText('');
         setHighlightedTextId(null);
+        
+        // Clear highlight from editor
+        const clearEvent = new CustomEvent('applyActiveDiscussionHighlight', {
+          detail: { action: 'clear-all' }
+        });
+        window.dispatchEvent(clearEvent);
         
       } else {
         logger.error('Failed to accept suggestion:', response.error);
