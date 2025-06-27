@@ -46,7 +46,7 @@ class GrammarService {
   constructor() {
     // Use environment variable or fallback to production URL
     this.baseURL = import.meta.env.VITE_API_URL || 
-      'https://backend-production-1d73.up.railway.app';
+      'https://backend-copy-production-95b5.up.railway.app';
   }
 
   /**

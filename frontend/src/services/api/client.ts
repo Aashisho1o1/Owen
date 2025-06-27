@@ -7,7 +7,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 // Get API URL from environment variable or fallback to production
-const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-production-1d73.up.railway.app';
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-copy-production-95b5.up.railway.app';
 const API_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
 
 // Debug logging for API configuration

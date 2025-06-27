@@ -2,7 +2,7 @@
 
 Frontend deployment trigger - 2025-06-19T01:00:00Z - Fix Mixed Content: Force redeploy with HTTPS VITE_API_URL env var
 Force redeploy: Wed Jun 18 17:37:22 PDT 2025
-CRITICAL FIX: Mixed Content error resolved - VITE_API_URL must be https://backend-production-1d73.up.railway.app
+CRITICAL FIX: Mixed Content error resolved - VITE_API_URL must be https://backend-copy-production-95b5.up.railway.app
 Force redeploy: Wed Jun 18 18:25:00 PDT 2025 - Backend API endpoints added (folders, series, templates, goals)
 
 Deployment trigger update: Fixed authentication timing race condition
@@ -254,3 +254,16 @@ DOG Writer Frontend - Critical Accessibility & UI Fixes Deployment
 
 Deployment Timestamp: 2024-01-20T19:45:00Z
 Version: 3.2.0-ACCESSIBILITY-ENHANCED
+
+Deployment Trigger File - Update #47
+Trigger: URL Updates for Testing Services
+Date: January 2025
+CRITICAL FIX: Mixed Content error resolved - VITE_API_URL must be https://backend-copy-production-95b5.up.railway.app
+
+This file helps force Railway to rebuild the frontend when environment variables change.
+Any change to this file will trigger a new deployment.
+Key: Ensure VITE_API_URL is set correctly in Railway environment variables.
+
+LATEST UPDATE: Updated all URLs to point to new testing services:
+- Backend: https://backend-copy-production-95b5.up.railway.app
+- Frontend: https://frontend-copy-production-0866.up.railway.app

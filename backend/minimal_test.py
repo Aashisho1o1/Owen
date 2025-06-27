@@ -13,13 +13,20 @@ app = FastAPI(title="Minimal CORS Test")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://frontend-copy-production-0866.up.railway.app",
         "https://frontend-production-e178.up.railway.app",
-        "https://frontend-production-88b0.up.railway.app", 
+        "https://frontend-production-88b0.up.railway.app",
         "http://localhost:3000",
-        "*"  # Allow all for testing
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://localhost:5178",
+        "http://localhost:5179",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
 )

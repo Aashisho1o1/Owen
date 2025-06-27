@@ -134,14 +134,15 @@ app = FastAPI(
 
 # Define allowed origins with validation
 ALLOWED_ORIGINS = [
-    "https://frontend-production-e178.up.railway.app",  # Primary production frontend
-    "https://frontend-production-88b0.up.railway.app",  # Backup frontend
+    "https://frontend-copy-production-0866.up.railway.app",  # NEW: Testing frontend
+    "https://frontend-production-e178.up.railway.app",  # OLD: Keep as backup
+    "https://frontend-production-88b0.up.railway.app",  # OLD: Keep as backup
     "https://owen-ai-writer.vercel.app",               # Vercel deployment
     # Local development origins
     "http://localhost:3000", "http://localhost:3001", 
     "http://localhost:4173", "http://localhost:5173", "http://localhost:5174",
     "http://localhost:5175", "http://localhost:5176", "http://localhost:5177",
-    "http://localhost:8080"
+    "http://localhost:5178", "http://localhost:5179", "http://localhost:8080"
 ]
 
 # Validate origins format for security
@@ -256,8 +257,9 @@ async def health_check(request: Request = None):
         # CORS debugging information
         cors_info = {
             "allowed_origins": [
-                "https://frontend-production-e178.up.railway.app",  # NEW frontend URL
-                "https://frontend-production-88b0.up.railway.app",  # Keep old as backup
+                "https://frontend-copy-production-0866.up.railway.app",  # NEW: Testing frontend
+                "https://frontend-production-e178.up.railway.app",  # OLD: Keep as backup
+                "https://frontend-production-88b0.up.railway.app",  # OLD: Keep as backup
                 "https://owen-ai-writer.vercel.app",
                 "http://localhost:3000",
                 "http://localhost:3001", 
@@ -267,6 +269,8 @@ async def health_check(request: Request = None):
                 "http://localhost:5175", 
                 "http://localhost:5176",
                 "http://localhost:5177",
+                "http://localhost:5178",
+                "http://localhost:5179",
                 "http://localhost:8080"
             ],
             "request_origin": request.headers.get("origin") if request else None,
