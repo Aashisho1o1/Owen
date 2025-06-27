@@ -430,24 +430,33 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     const handleSuggestionsGenerated = (event: CustomEvent) => {
       const { suggestions, originalText, dialogueResponse } = event.detail;
       
-      logger.info('🎯 Received suggestions from automatic generation:', {
+      console.log('🎯 ChatContext received suggestionsGenerated event:', {
         suggestionsCount: suggestions?.length || 0,
-        originalText: originalText?.substring(0, 50) + '...',
-        hasDialogueResponse: !!dialogueResponse
+        originalTextPreview: originalText?.substring(0, 50) + '...',
+        hasDialogueResponse: !!dialogueResponse,
+        suggestions: suggestions
       });
       
       if (suggestions && suggestions.length > 0) {
+        console.log('✨ Setting suggestions in ChatContext:', suggestions);
         setCurrentSuggestions(suggestions);
-        setIsGeneratingSuggestions(false); // Ensure loading state is cleared
-        logger.info(`✨ Set ${suggestions.length} suggestions in context`);
+        setIsGeneratingSuggestions(false);
+        
+        // Force a re-render by updating a timestamp
+        console.log('📝 Current suggestions state updated with', suggestions.length, 'suggestions');
       } else {
-        logger.warn('No suggestions received in event');
+        console.warn('⚠️ No valid suggestions received in event');
         setCurrentSuggestions([]);
       }
     };
 
+    console.log('🔧 ChatContext: Setting up suggestionsGenerated event listener');
     window.addEventListener('suggestionsGenerated', handleSuggestionsGenerated as EventListener);
-    return () => window.removeEventListener('suggestionsGenerated', handleSuggestionsGenerated as EventListener);
+    
+    return () => {
+      console.log('🧹 ChatContext: Cleaning up suggestionsGenerated event listener');
+      window.removeEventListener('suggestionsGenerated', handleSuggestionsGenerated as EventListener);
+    };
   }, []);
 
   // NEW: Accept a text suggestion

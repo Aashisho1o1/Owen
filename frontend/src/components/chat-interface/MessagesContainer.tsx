@@ -71,6 +71,18 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           index === messages.length - 1 && 
           currentSuggestions.length > 0;
         
+        // Debug logging
+        if (index === messages.length - 1 && msg.role === 'assistant') {
+          console.log('🔍 MessagesContainer: Last AI message check:', {
+            messageIndex: index,
+            totalMessages: messages.length,
+            messageRole: msg.role,
+            currentSuggestionsCount: currentSuggestions.length,
+            isLastAIMessage,
+            suggestions: currentSuggestions
+          });
+        }
+        
         return (
           <EnhancedChatMessage 
             key={index} 
