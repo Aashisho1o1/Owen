@@ -15,16 +15,17 @@ import {
   OnboardingRequest,
   OnboardingResponse,
   CheckpointRequest,
-  CheckpointResponse
+  CheckpointResponse,
+  EnhancedChatResponse,
+  AcceptSuggestionRequest,
+  AcceptSuggestionResponse
 } from './types';
 
 // === CHAT ENDPOINTS ===
 
-export const sendChatMessage = async (chatData: ChatRequest): Promise<ChatResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/chat/', chatData);
-    return response.data;
-  });
+export const sendChatMessage = async (requestData: ChatRequest): Promise<ChatResponse> => {
+  const response = await apiClient.post('/api/chat/', requestData);
+  return response.data;
 };
 
 export const submitUserFeedback = async (feedbackData: UserFeedbackRequest): Promise<{ status: string; message: string }> => {
@@ -94,5 +95,17 @@ export const buildChatRequest = (
     user_preferences: options?.userPreferences,
     feedback_on_previous: options?.feedbackOnPrevious
   };
+};
+
+// NEW: Generate multiple suggestions for Co-Edit mode
+export const generateSuggestions = async (requestData: ChatRequest): Promise<EnhancedChatResponse> => {
+  const response = await apiClient.post('/api/chat/suggestions', requestData);
+  return response.data;
+};
+
+// NEW: Accept and apply a suggestion
+export const acceptSuggestion = async (requestData: AcceptSuggestionRequest): Promise<AcceptSuggestionResponse> => {
+  const response = await apiClient.post('/api/chat/accept-suggestion', requestData);
+  return response.data;
 }; 
  

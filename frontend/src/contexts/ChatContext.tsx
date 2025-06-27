@@ -5,7 +5,13 @@ import { useChat } from '../hooks/useChat';
 import { useAuth } from './AuthContext';
 import { logger } from '../utils/logger';
 import { apiClient } from '../services/api/client';
-import { getUserPreferences, submitUserFeedback } from '../services/api/chat';
+import { 
+  getUserPreferences, 
+  submitUserFeedback,
+  generateSuggestions,
+  acceptSuggestion
+} from '../services/api/chat';
+import { SuggestionOption, EnhancedChatResponse, AcceptSuggestionResponse } from '../services/api/types';
 
 interface WritingStyleProfile {
   formality?: string;
@@ -69,6 +75,15 @@ export interface ChatContextType {
   isThinking: boolean;
   chatApiError: string | null;
   
+  // NEW: Suggestions functionality
+  currentSuggestions: SuggestionOption[];
+  isGeneratingSuggestions: boolean;
+  isAcceptingSuggestion: boolean;
+  acceptedSuggestionId: string | null;
+  generateTextSuggestions: (message: string) => Promise<void>;
+  acceptTextSuggestion: (suggestion: SuggestionOption, onContentUpdate: (newContent: string, replacementInfo: any) => void) => Promise<void>;
+  clearSuggestions: () => void;
+  
   // API health
   apiGlobalError: string | null;
   checkApiConnection: () => Promise<boolean>;
@@ -111,6 +126,12 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   // Text highlighting state
   const [highlightedText, setHighlightedText] = useState<string>('');
   const [highlightedTextId, setHighlightedTextId] = useState<string | null>(null);
+
+  // NEW: Suggestions state
+  const [currentSuggestions, setCurrentSuggestions] = useState<SuggestionOption[]>([]);
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const [isAcceptingSuggestion, setIsAcceptingSuggestion] = useState(false);
+  const [acceptedSuggestionId, setAcceptedSuggestionId] = useState<string | null>(null);
 
   // Chat control methods
   const toggleChat = useCallback(() => {
@@ -355,6 +376,117 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     logger.log('🧹 All text highlights cleared');
   }, []);
 
+  // NEW: Generate text suggestions
+  const generateTextSuggestions = async (message: string) => {
+    if (!highlightedText.trim()) {
+      logger.warn('No text highlighted for suggestions');
+      return;
+    }
+
+    if (aiMode !== 'co-edit') {
+      logger.warn('Suggestions only available in Co-Edit mode');
+      return;
+    }
+
+    setIsGeneratingSuggestions(true);
+    setCurrentSuggestions([]);
+    
+    try {
+      logger.info('🎯 Generating suggestions for highlighted text...');
+      
+      const requestData = {
+        message,
+        editor_text: editorContent,
+        highlighted_text: highlightedText,
+        highlight_id: highlightedTextId,
+        author_persona: authorPersona,
+        help_focus: helpFocus,
+        chat_history: messages,
+        llm_provider: selectedLLM,
+        ai_mode: aiMode,
+        user_preferences: userPreferences,
+        feedback_on_previous: feedbackOnPrevious
+      };
+
+      const response: EnhancedChatResponse = await generateSuggestions(requestData);
+      
+      if (response.has_suggestions && response.suggestions.length > 0) {
+        setCurrentSuggestions(response.suggestions);
+        logger.info(`✨ Generated ${response.suggestions.length} suggestions`);
+        
+        // Add the dialogue response as a regular chat message
+        const newMessage: ChatMessage = {
+          role: 'assistant',
+          content: response.dialogue_response
+        };
+        
+        // This would need to be integrated with the existing chat system
+        // For now, we'll just log it
+        logger.info('AI Response:', response.dialogue_response);
+      } else {
+        logger.warn('No suggestions generated');
+      }
+      
+    } catch (error) {
+      logger.error('Error generating suggestions:', error);
+      setApiGlobalError('Failed to generate suggestions. Please try again.');
+    } finally {
+      setIsGeneratingSuggestions(false);
+    }
+  };
+
+  // NEW: Accept a text suggestion
+  const acceptTextSuggestion = async (
+    suggestion: SuggestionOption, 
+    onContentUpdate: (newContent: string, replacementInfo: any) => void
+  ) => {
+    setIsAcceptingSuggestion(true);
+    setAcceptedSuggestionId(suggestion.id);
+    
+    try {
+      logger.info(`✅ Accepting suggestion: ${suggestion.id}`);
+      
+      const requestData = {
+        suggestion_id: suggestion.id,
+        original_text: highlightedText,
+        suggested_text: suggestion.text,
+        editor_content: editorContent,
+        position_info: { highlight_id: highlightedTextId }
+      };
+
+      const response: AcceptSuggestionResponse = await acceptSuggestion(requestData);
+      
+      if (response.success) {
+        logger.info('✅ Suggestion accepted successfully');
+        
+        // Update the editor content through the callback
+        onContentUpdate(response.updated_content, response.replacement_info);
+        
+        // Clear suggestions and highlighting
+        setCurrentSuggestions([]);
+        setHighlightedText('');
+        setHighlightedTextId(null);
+        
+      } else {
+        logger.error('Failed to accept suggestion:', response.error);
+        setApiGlobalError(response.error || 'Failed to accept suggestion');
+      }
+      
+    } catch (error) {
+      logger.error('Error accepting suggestion:', error);
+      setApiGlobalError('Failed to accept suggestion. Please try again.');
+    } finally {
+      setIsAcceptingSuggestion(false);
+      setAcceptedSuggestionId(null);
+    }
+  };
+
+  // NEW: Clear suggestions
+  const clearSuggestions = () => {
+    setCurrentSuggestions([]);
+    setAcceptedSuggestionId(null);
+  };
+
   // Build context value
   const value: ChatContextType = {
     isChatVisible,
@@ -394,6 +526,13 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     submitFeedback,
     analyzeWritingSample,
     completeOnboarding,
+    currentSuggestions,
+    isGeneratingSuggestions,
+    isAcceptingSuggestion,
+    acceptedSuggestionId,
+    generateTextSuggestions,
+    acceptTextSuggestion,
+    clearSuggestions,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

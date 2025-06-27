@@ -10,7 +10,8 @@ from services.validation_service import input_validator
 
 # Change relative imports to absolute imports
 from models.schemas import (
-    ChatRequest, ChatResponse, UserFeedbackRequest
+    ChatRequest, ChatResponse, UserFeedbackRequest, 
+    EnhancedChatResponse, SuggestionOption, AcceptSuggestionRequest
 )
 from services.llm_service import LLMService
 from services.database import db_service
@@ -286,6 +287,117 @@ async def get_user_preferences(user_id: int = Depends(get_current_user_id)):
             "status": "error",
             "message": "An internal error occurred while retrieving user preferences.",
             "preferences": None
+        }
+
+@router.post("/suggestions", response_model=EnhancedChatResponse)
+async def generate_suggestions(
+    request: ChatRequest,
+    user_id: int = Depends(get_current_user_id)
+):
+    """Generate multiple actionable suggestions for selected text in Co-Edit mode"""
+    try:
+        # Validate inputs
+        validated_message = input_validator.validate_chat_message(request.message)
+        highlighted_text = input_validator.validate_text_input(request.highlighted_text or "")
+        
+        # Check if we have highlighted text
+        if not highlighted_text or not highlighted_text.strip():
+            return EnhancedChatResponse(
+                dialogue_response="Please select some text first, and I'll provide multiple improvement options.",
+                suggestions=[],
+                has_suggestions=False
+            )
+        
+        # Check if we're in Co-Edit mode (suggestions only make sense in Co-Edit)
+        if request.ai_mode != "co-edit":
+            return EnhancedChatResponse(
+                dialogue_response="Multiple suggestions are available in Co-Edit mode. Switch to Co-Edit mode to get actionable text improvements.",
+                suggestions=[],
+                has_suggestions=False
+            )
+        
+        logger.info(f"🎯 Generating suggestions for user {user_id}")
+        logger.info(f"📝 Highlighted text: {highlighted_text[:100]}...")
+        logger.info(f"💬 User message: {validated_message}")
+        
+        # Generate multiple suggestions using the enhanced LLM service
+        suggestions_response = await llm_service.generate_multiple_suggestions(
+            highlighted_text=highlighted_text,
+            user_message=validated_message,
+            author_persona=request.author_persona,
+            help_focus=request.help_focus,
+            llm_provider=request.llm_provider
+        )
+        
+        # Convert to our schema format
+        suggestion_objects = []
+        for suggestion_data in suggestions_response.get("suggestions", []):
+            suggestion_objects.append(SuggestionOption(
+                id=suggestion_data.get("id", f"suggestion_{len(suggestion_objects)+1}"),
+                text=suggestion_data.get("text", ""),
+                type=suggestion_data.get("type", "improvement"),
+                confidence=suggestion_data.get("confidence", 0.8),
+                explanation=suggestion_data.get("explanation", "")
+            ))
+        
+        return EnhancedChatResponse(
+            dialogue_response=suggestions_response.get("dialogue_response", "Here are multiple options for improving your text:"),
+            suggestions=suggestion_objects,
+            original_text=highlighted_text,
+            has_suggestions=len(suggestion_objects) > 0
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating suggestions: {e}")
+        return EnhancedChatResponse(
+            dialogue_response=f"I encountered an error generating suggestions: {str(e)}",
+            suggestions=[],
+            has_suggestions=False
+        )
+
+@router.post("/accept-suggestion")
+async def accept_suggestion(
+    request: AcceptSuggestionRequest,
+    user_id: int = Depends(get_current_user_id)
+):
+    """Accept and apply a suggestion to the editor content"""
+    try:
+        # Validate inputs
+        original_text = input_validator.validate_text_input(request.original_text)
+        suggested_text = input_validator.validate_text_input(request.suggested_text)
+        editor_content = input_validator.validate_text_input(request.editor_content)
+        
+        logger.info(f"📝 User {user_id} accepting suggestion {request.suggestion_id}")
+        logger.info(f"🔄 Replacing: {original_text[:50]}...")
+        logger.info(f"✨ With: {suggested_text[:50]}...")
+        
+        # Perform text replacement
+        if original_text in editor_content:
+            # Simple replacement for now - more sophisticated logic can be added later
+            updated_content = editor_content.replace(original_text, suggested_text, 1)
+            
+            return {
+                "success": True,
+                "updated_content": updated_content,
+                "replacement_info": {
+                    "original_text": original_text,
+                    "suggested_text": suggested_text,
+                    "suggestion_id": request.suggestion_id
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Original text not found in editor content",
+                "updated_content": editor_content
+            }
+            
+    except Exception as e:
+        logger.error(f"Error accepting suggestion: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "updated_content": request.editor_content
         }
 
  

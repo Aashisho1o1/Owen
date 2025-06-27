@@ -251,5 +251,133 @@ Editor Context: {len(editor_text)} characters total"""
         additional_context = '\n\n'.join(context_parts)
         return base_prompt + additional_context
 
+    def assemble_suggestions_prompt(self, 
+                                  highlighted_text: str,
+                                  user_message: str,
+                                  author_persona: str,
+                                  help_focus: str) -> str:
+        """Assemble a prompt specifically for generating multiple actionable suggestions"""
+        
+        return f"""You are "Owen," an AI writing co-editor. The user has selected text and wants multiple improvement options they can accept directly.
+
+**CRITICAL: You must respond with a JSON object containing multiple suggestions.**
+
+**Selected Text:** "{highlighted_text}"
+**User Request:** {user_message}
+**Author Style:** {author_persona}
+**Focus Area:** {help_focus}
+
+**Your Task:** Provide 3-4 different ways to improve this text. Each suggestion should:
+1. **Preserve the author's voice and style**
+2. **Be roughly the same length** (±20% of original)
+3. **Be immediately usable** - no placeholder text
+4. **Address the user's specific request**
+5. **Maintain the original meaning** while enhancing clarity/style
+
+**Response Format (JSON only):**
+{{
+  "suggestions": [
+    {{
+      "id": "option_1",
+      "text": "Your first rewrite option here",
+      "type": "clarity_improvement",
+      "confidence": 0.9,
+      "explanation": "Brief explanation of what this version improves"
+    }},
+    {{
+      "id": "option_2", 
+      "text": "Your second rewrite option here",
+      "type": "style_enhancement",
+      "confidence": 0.85,
+      "explanation": "Brief explanation of this approach"
+    }},
+    {{
+      "id": "option_3",
+      "text": "Your third rewrite option here", 
+      "type": "conciseness",
+      "confidence": 0.8,
+      "explanation": "Brief explanation of this variation"
+    }}
+  ],
+  "original_text": "{highlighted_text}",
+  "dialogue_response": "I've prepared several ways to improve your selected text. Each option maintains your {author_persona.lower()} style while addressing {help_focus.lower()}. Choose the one that feels most natural to you, or use them as inspiration for your own revision."
+}}
+
+**Important:** Respond ONLY with valid JSON. No additional text before or after."""
+
+    async def generate_multiple_suggestions(self,
+                                          highlighted_text: str,
+                                          user_message: str,
+                                          author_persona: str,
+                                          help_focus: str,
+                                          llm_provider: str) -> Dict[str, Any]:
+        """Generate multiple suggestion options for Co-Edit mode"""
+        
+        if not highlighted_text or not highlighted_text.strip():
+            return {
+                "suggestions": [],
+                "original_text": "",
+                "dialogue_response": "Please select some text first, and I'll provide multiple improvement options."
+            }
+        
+        # Generate the specialized prompt for suggestions
+        suggestions_prompt = self.assemble_suggestions_prompt(
+            highlighted_text, user_message, author_persona, help_focus
+        )
+        
+        try:
+            # Get response from LLM
+            response = await self.generate_with_selected_llm(suggestions_prompt, llm_provider)
+            
+            # Parse JSON response
+            if isinstance(response, str):
+                import json
+                import re
+                
+                # Clean the response to extract JSON
+                cleaned_response = response.strip()
+                
+                # Remove markdown code blocks if present
+                if cleaned_response.startswith("```"):
+                    lines = cleaned_response.split('\n')
+                    cleaned_response = '\n'.join(lines[1:-1])
+                
+                # Try to find JSON object
+                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    parsed_response = json.loads(json_str)
+                    
+                    # Validate the response structure
+                    if "suggestions" in parsed_response:
+                        # Add unique IDs if missing
+                        for i, suggestion in enumerate(parsed_response["suggestions"]):
+                            if "id" not in suggestion:
+                                suggestion["id"] = f"suggestion_{i+1}"
+                        
+                        return parsed_response
+            
+            # Fallback if JSON parsing fails
+            logger.warning("Failed to parse suggestions JSON, using fallback")
+            return {
+                "suggestions": [{
+                    "id": "fallback_1",
+                    "text": highlighted_text,  # Return original as fallback
+                    "type": "original",
+                    "confidence": 1.0,
+                    "explanation": "Original text (AI response parsing failed)"
+                }],
+                "original_text": highlighted_text,
+                "dialogue_response": "I encountered an issue generating multiple options. Please try rephrasing your request."
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating suggestions: {e}")
+            return {
+                "suggestions": [],
+                "original_text": highlighted_text,
+                "dialogue_response": f"I encountered an error generating suggestions: {str(e)}"
+            }
+
 # Global instance for backward compatibility
 llm_service = LLMService()

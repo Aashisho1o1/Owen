@@ -144,6 +144,32 @@ class ChatResponse(BaseModel):
     dialogue_response: str
     thinking_trail: Optional[str] = None
 
+# NEW: Enhanced response with multiple suggestions
+class SuggestionOption(BaseModel):
+    """Individual suggestion option that can be accepted"""
+    id: str = Field(..., description="Unique identifier for this suggestion")
+    text: str = Field(..., description="The suggested text replacement")
+    type: str = Field(..., description="Type of suggestion: rewrite, improve, expand, etc.")
+    confidence: float = Field(default=0.8, description="AI confidence in this suggestion")
+    explanation: Optional[str] = Field(None, description="Brief explanation of the change")
+
+class EnhancedChatResponse(BaseModel):
+    """Enhanced chat response with multiple actionable suggestions"""
+    dialogue_response: str
+    thinking_trail: Optional[str] = None
+    suggestions: List[SuggestionOption] = Field(default_factory=list, description="Multiple suggestion options")
+    original_text: Optional[str] = Field(None, description="Original text being improved")
+    has_suggestions: bool = Field(default=False, description="Whether this response contains actionable suggestions")
+
+# NEW: Request to accept a suggestion
+class AcceptSuggestionRequest(BaseModel):
+    """Request to accept and apply a suggestion to the editor"""
+    suggestion_id: str = Field(..., description="ID of the suggestion to accept")
+    original_text: str = Field(..., description="Original text being replaced")
+    suggested_text: str = Field(..., description="New text to insert")
+    editor_content: str = Field(..., description="Current editor content")
+    position_info: Optional[dict] = Field(None, description="Position information for precise replacement")
+
 class UserFeedbackRequest(BaseModel):
     """Request to store user feedback on AI responses."""
     original_message: str

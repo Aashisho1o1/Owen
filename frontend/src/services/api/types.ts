@@ -37,7 +37,43 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   dialogue_response: string;
-  thinking_trail?: string | null;
+  thinking_trail?: string;
+}
+
+// NEW: Enhanced types for AI suggestions feature
+export interface SuggestionOption {
+  id: string;
+  text: string;
+  type: string;
+  confidence: number;
+  explanation?: string;
+}
+
+export interface EnhancedChatResponse {
+  dialogue_response: string;
+  thinking_trail?: string;
+  suggestions: SuggestionOption[];
+  original_text?: string;
+  has_suggestions: boolean;
+}
+
+export interface AcceptSuggestionRequest {
+  suggestion_id: string;
+  original_text: string;
+  suggested_text: string;
+  editor_content: string;
+  position_info?: any;
+}
+
+export interface AcceptSuggestionResponse {
+  success: boolean;
+  updated_content: string;
+  replacement_info?: {
+    original_text: string;
+    suggested_text: string;
+    suggestion_id: string;
+  };
+  error?: string;
 }
 
 export interface WritingSampleRequest {
