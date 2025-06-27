@@ -9,12 +9,11 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ChatInput } from './chat/ChatInput';
+import { EnhancedChatInput } from './chat-interface/EnhancedChatInput';
 import { ThinkingTrail } from './chat/ThinkingTrail';
 import { 
   ChatHeader,
   MessagesContainer,
-  generateSuggestedQuestions,
   generateContextualPrompts
 } from './chat-interface';
 import { logger } from '../utils/logger';
@@ -53,19 +52,17 @@ const ChatPane: React.FC = () => {
     setHelpFocus,
     selectedLLM,
     setSelectedLLM,
-    // NEW: AI interaction mode
+    // AI interaction mode
     aiMode,
     setAiMode,
     // Text highlighting
     highlightedText,
+    // CRITICAL FIX: Add suggestions state from context
+    currentSuggestions,
+    clearSuggestions,
   } = useChatContext();
 
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
-
-  // Business Logic: Generate suggested questions based on current settings
-  const suggestedQuestions = useCallback(() => {
-    return generateSuggestedQuestions(helpFocus, authorPersona);
-  }, [helpFocus, authorPersona]);
 
   // Business Logic: Generate contextual prompts for highlighted text
   const contextualPrompts = useCallback(() => {
@@ -84,6 +81,8 @@ const ChatPane: React.FC = () => {
     
     handleSendMessage(finalMessage);
   }, [highlightedText, handleSendMessage]);
+
+  // Note: handleGetOptions removed - EnhancedChatInput handles suggestions internally
 
   // Event Handler: Handle quick question prompts
   const handlePromptClick = useCallback((prompt: string) => {
@@ -155,6 +154,9 @@ const ChatPane: React.FC = () => {
         isStreaming={isStreaming}
         onPromptClick={handlePromptClick}
         onTestConnection={handleTestConnection}
+        // CRITICAL FIX: Pass suggestions state to MessagesContainer
+        currentSuggestions={currentSuggestions}
+        clearSuggestions={clearSuggestions}
       />
 
       {/* Thinking Trail - Existing Component */}
@@ -165,11 +167,11 @@ const ChatPane: React.FC = () => {
         onToggleVisibility={toggleThinkingTrail}
       />
 
-      {/* Chat Input - Existing Component */}
-      <ChatInput 
+      {/* CRITICAL FIX: Replace ChatInput with EnhancedChatInput */}
+      <EnhancedChatInput 
         onSendMessage={handleSendMessageWrapper}
-        isDisabled={isStreaming || isThinking}
-        highlightedText={highlightedText || undefined}
+        isLoading={isStreaming || isThinking}
+        placeholder="Ask Owen anything about your writing..."
       />
     </div>
   );

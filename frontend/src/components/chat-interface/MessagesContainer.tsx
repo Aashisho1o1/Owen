@@ -1,10 +1,11 @@
 import React, { useRef, useEffect } from 'react';
-import { ChatMessage } from '../chat/ChatMessage';
+import { EnhancedChatMessage } from './EnhancedChatMessage';
 import { HighlightedTextDisplay } from './HighlightedTextDisplay';
 import { ErrorDisplay } from './ErrorDisplay';
 import { StreamingMessage } from './StreamingMessage';
 import { UnhighlightButton } from './UnhighlightButton';
 import { ChatMessage as ChatMessageType } from '../../services/api';
+import { SuggestionOption } from '../../services/api/types';
 
 interface MessagesContainerProps {
   messages: ChatMessageType[];
@@ -16,6 +17,8 @@ interface MessagesContainerProps {
   isStreaming: boolean;
   onPromptClick: (prompt: string) => void;
   onTestConnection: () => Promise<void>;
+  currentSuggestions?: SuggestionOption[];
+  clearSuggestions?: () => void;
 }
 
 /**
@@ -31,7 +34,9 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   streamText,
   isStreaming,
   onPromptClick,
-  onTestConnection
+  onTestConnection,
+  currentSuggestions = [],
+  clearSuggestions
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -60,12 +65,22 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
       />
       
       {/* Chat Messages */}
-      {messages.map((msg, index) => (
-        <ChatMessage 
-          key={index} 
-          message={msg}
-        />
-      ))}
+      {messages.map((msg, index) => {
+        // Show suggestions on the last AI message if we have suggestions
+        const isLastAIMessage = msg.role === 'assistant' && 
+          index === messages.length - 1 && 
+          currentSuggestions.length > 0;
+        
+        return (
+          <EnhancedChatMessage 
+            key={index} 
+            message={msg}
+            suggestions={isLastAIMessage ? currentSuggestions : []}
+            originalText={highlightedText || ''}
+            showSuggestions={isLastAIMessage}
+          />
+        );
+      })}
       
       {/* Streaming Message */}
       <StreamingMessage
