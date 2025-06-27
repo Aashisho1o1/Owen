@@ -112,13 +112,33 @@ export const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
                 onClick={() => onAcceptSuggestion(suggestion)}
                 disabled={isAccepting}
                 title="Accept this suggestion"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  background: '#14b8a6',
+                  color: 'white',
+                  border: '2px solid #14b8a6',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  minWidth: '80px',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  position: 'relative',
+                  zIndex: 10,
+                  opacity: 1,
+                  visibility: 'visible'
+                }}
               >
                 {isAccepting && acceptedSuggestionId === suggestion.id ? (
-                  <span className="accepting-spinner">⏳</span>
+                  <span className="accepting-spinner" style={{ color: 'white' }}>⏳</span>
                 ) : (
-                  <span className="accept-icon">✓</span>
+                  <span className="accept-icon" style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>✓</span>
                 )}
-                Accept
+                <span style={{ color: 'white', fontWeight: '600' }}>Accept</span>
               </button>
             </div>
 

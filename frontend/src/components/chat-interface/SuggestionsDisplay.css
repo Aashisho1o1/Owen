@@ -151,50 +151,63 @@
   min-width: 35px;
 }
 
-/* Accept Button */
+/* Accept Button - Enhanced visibility */
 .accept-button {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: var(--accent-color);
-  color: white;
-  border: none;
+  background: #14b8a6 !important;
+  color: white !important;
+  border: 2px solid #14b8a6 !important; /* Add visible border */
   border-radius: 6px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600 !important; /* Make text bolder */
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 80px;
   justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+  opacity: 1 !important; /* Ensure visibility */
+  visibility: visible !important; /* Ensure visibility */
 }
 
 .accept-button:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: #0d9488 !important;
+  border-color: #0d9488 !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .accept-button:active {
   transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .accept-button:disabled {
-  opacity: 0.6;
+  opacity: 0.6 !important;
   cursor: not-allowed;
+  transform: none;
 }
 
 .accept-button.accepting {
-  background: #f59e0b;
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+  cursor: wait;
 }
 
 .accept-icon {
   font-size: 16px;
   font-weight: bold;
+  color: white !important;
+  display: inline-block;
 }
 
 .accepting-spinner {
   animation: spin 1s linear infinite;
+  font-size: 16px;
 }
 
 @keyframes spin {
@@ -211,7 +224,7 @@
   background: var(--bg-tertiary);
   padding: 12px;
   border-radius: 6px;
-  border-left: 3px solid var(--accent-color);
+  border-left: 3px solid #14b8a6; /* Use defined color instead of undefined --accent-color */
   font-size: 14px;
   line-height: 1.5;
   color: var(--text-primary);
