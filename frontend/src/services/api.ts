@@ -48,6 +48,8 @@ const api = {
   submitUserFeedback: apiServices.submitUserFeedback,
   getUserPreferences: apiServices.getUserPreferences,
   saveCheckpoint: apiServices.saveCheckpoint,
+  generateSuggestions: apiServices.generateSuggestions,
+  acceptSuggestion: apiServices.acceptSuggestion,
   
   // Search
   searchDocuments: apiServices.searchDocuments,
