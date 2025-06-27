@@ -7,6 +7,7 @@ import { AppProvider } from './contexts/AppContext'
 import { AuthProvider } from './contexts/AuthContext'
 import './styles/global.css'
 import './styles/editor.css'
+import './styles/suggestions-compact-fix.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
