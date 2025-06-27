@@ -47,6 +47,10 @@ export interface ChatContextType {
   selectedLLM: string;
   setSelectedLLM: React.Dispatch<React.SetStateAction<string>>;
   
+  // NEW: AI Interaction Mode (Talk vs Co-Edit)
+  aiMode: string;
+  setAiMode: React.Dispatch<React.SetStateAction<string>>;
+  
   // Text highlighting for AI feedback
   highlightedText: string;
   setHighlightedText: React.Dispatch<React.SetStateAction<string>>;
@@ -100,6 +104,9 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   const [authorPersona, setAuthorPersona] = useState('Ernest Hemingway');
   const [helpFocus, setHelpFocus] = useState('Dialogue Writing');
   const [selectedLLM, setSelectedLLM] = useState('Google Gemini');
+  
+  // NEW: AI Interaction Mode state
+  const [aiMode, setAiMode] = useState('talk'); // Default to conversational mode
 
   // Text highlighting state
   const [highlightedText, setHighlightedText] = useState<string>('');
@@ -157,6 +164,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     helpFocus,
     editorContent,
     selectedLLM,
+    aiMode,  // NEW: Pass AI mode to useChat hook
     setApiGlobalError,
     userPreferences,
     feedbackOnPrevious,
@@ -358,6 +366,8 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     setHelpFocus,
     selectedLLM,
     setSelectedLLM,
+    aiMode,
+    setAiMode,
     highlightedText,
     setHighlightedText,
     highlightedTextId,

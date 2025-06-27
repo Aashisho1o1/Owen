@@ -29,6 +29,7 @@ export interface ChatRequest {
   help_focus: string;
   chat_history: ChatMessage[];
   llm_provider: string;
+  ai_mode: string;
   user_preferences?: UserPreferences;
   feedback_on_previous?: string;
   english_variant?: string;

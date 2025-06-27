@@ -85,6 +85,7 @@ async def chat(
             logger.info(f"📄 Editor content preview: {editor_preview}")
         logger.info(f"🎭 Author persona: {request.author_persona}")
         logger.info(f"🎯 Help focus: {request.help_focus}")
+        logger.info(f"🤖 AI Mode: {request.ai_mode}")
 
         
         # Simplified user preferences - handle both Pydantic model and dict cases
@@ -114,14 +115,15 @@ async def chat(
                 highlighted_text = input_validator.validate_text_input(parts[1])
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
-        # Use the simplified prompt assembly system
+        # Use the simplified prompt assembly system with AI mode
         final_prompt = llm_service.assemble_chat_prompt(
             user_message=validated_message,
             editor_text=validated_editor_text,
             author_persona=request.author_persona,
             help_focus=request.help_focus,
             user_corrections=user_corrections,
-            highlighted_text=highlighted_text
+            highlighted_text=highlighted_text,
+            ai_mode=request.ai_mode
         )
         
         # Generate response using selected LLM

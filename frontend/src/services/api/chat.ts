@@ -72,6 +72,7 @@ export const buildChatRequest = (
   authorPersona: string,
   helpFocus: string,
   llmProvider: string,
+  aiMode: string = "talk",
   options?: {
     highlightedText?: string;
     highlightId?: string;
@@ -89,6 +90,7 @@ export const buildChatRequest = (
     help_focus: helpFocus,
     chat_history: options?.chatHistory || [],
     llm_provider: llmProvider,
+    ai_mode: aiMode,
     user_preferences: options?.userPreferences,
     feedback_on_previous: options?.feedbackOnPrevious
   };

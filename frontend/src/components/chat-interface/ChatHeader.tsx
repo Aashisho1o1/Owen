@@ -26,26 +26,48 @@ const LLM_OPTIONS = [
   'Google Gemini',
 ];
 
+// NEW: AI Interaction Modes - Similar to Cursor's Ask vs Agent
+const AI_MODES = [
+  {
+    value: 'talk',
+    label: 'Talk',
+    icon: '💬',
+    description: 'Conversational brainstorming and discussion'
+  },
+  {
+    value: 'co-edit',
+    label: 'Co-Edit',
+    icon: '✏️',
+    description: 'Direct text editing and improvement suggestions'
+  }
+];
+
 interface ChatHeaderProps {
   authorPersona: string;
   helpFocus: string;
   selectedLLM: string;
+  aiMode: string; // NEW: Add AI mode prop
   onAuthorPersonaChange: (persona: string) => void;
   onHelpFocusChange: (focus: string) => void;
   onLLMChange: (llm: string) => void;
+  onAiModeChange: (mode: string) => void; // NEW: Add AI mode change handler
 }
 
 /**
  * Molecular Component: Chat Header
  * Single Responsibility: Display chat title and control selectors
+ * 
+ * ENHANCED: Now includes AI interaction mode selector (Talk vs Co-Edit)
  */
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   authorPersona,
   helpFocus,
   selectedLLM,
+  aiMode, // NEW
   onAuthorPersonaChange,
   onHelpFocusChange,
-  onLLMChange
+  onLLMChange,
+  onAiModeChange // NEW
 }) => {
   return (
     <div className="chat-header">
@@ -56,6 +78,27 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       </div>
       
       <div className="chat-controls-simple">
+        {/* NEW: AI Mode Selector - Primary control, placed first */}
+        <div className="control-select-group">
+          <label title="AI Interaction Mode">🎯</label>
+          <select 
+            value={aiMode} 
+            onChange={(e) => onAiModeChange(e.target.value)}
+            className="control-select ai-mode-select"
+            aria-label="Select AI interaction mode"
+          >
+            {AI_MODES.map((mode) => (
+              <option 
+                key={mode.value} 
+                value={mode.value}
+                title={mode.description}
+              >
+                {mode.icon} {mode.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="control-select-group">
           <label>👤</label>
           <select 
@@ -73,7 +116,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
         
         <div className="control-select-group">
-          <label>🎯</label>
+          <label>📝</label>
           <select 
             value={helpFocus} 
             onChange={(e) => onHelpFocusChange(e.target.value)}

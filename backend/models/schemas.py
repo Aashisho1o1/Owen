@@ -134,6 +134,7 @@ class ChatRequest(BaseModel):
     help_focus: str
     chat_history: List[ChatMessage]
     llm_provider: str = "Google Gemini"
+    ai_mode: str = "talk"  # NEW: AI interaction mode - "talk" or "co-edit"
     user_preferences: Optional[UserPreferences] = None
     feedback_on_previous: Optional[str] = None
     highlighted_text: Optional[str] = None

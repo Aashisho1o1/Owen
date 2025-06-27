@@ -27,6 +27,7 @@ export interface UseChatOptions {
   helpFocus: string;
   editorContent: string;
   selectedLLM: string;
+  aiMode: string;
   setApiGlobalError?: React.Dispatch<React.SetStateAction<string | null>>;
   userPreferences?: UserPreferences;
   feedbackOnPrevious?: string;
@@ -55,6 +56,7 @@ export const useChat = ({
   helpFocus,
   editorContent,
   selectedLLM,
+  aiMode,
   setApiGlobalError,
   userPreferences,
   feedbackOnPrevious,
@@ -171,7 +173,8 @@ export const useChat = ({
         feedback_on_previous: feedbackOnPrevious || "",
         highlighted_text: highlightedText || "",
         highlight_id: highlightedTextId || "",
-        english_variant: "US"
+        english_variant: "US",
+        ai_mode: aiMode
       };
       
       // Log only essential request details to avoid circular references

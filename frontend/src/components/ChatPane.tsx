@@ -53,6 +53,9 @@ const ChatPane: React.FC = () => {
     setHelpFocus,
     selectedLLM,
     setSelectedLLM,
+    // NEW: AI interaction mode
+    aiMode,
+    setAiMode,
     // Text highlighting
     highlightedText,
   } = useChatContext();
@@ -134,9 +137,11 @@ const ChatPane: React.FC = () => {
         authorPersona={authorPersona}
         helpFocus={helpFocus}
         selectedLLM={selectedLLM}
+        aiMode={aiMode}
         onAuthorPersonaChange={setAuthorPersona}
         onHelpFocusChange={setHelpFocus}
         onLLMChange={setSelectedLLM}
+        onAiModeChange={setAiMode}
       />
       
       {/* Messages Container - Organism Component */}
