@@ -19,6 +19,10 @@ interface EnhancedChatMessageProps {
   showSuggestions?: boolean;
 }
 
+interface ReplacementInfo {
+  [key: string]: unknown;
+}
+
 export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
   message,
   suggestions = [],
@@ -33,11 +37,24 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
   
   const { setEditorContent } = useEditorContext();
 
-  // HTML entity decoder function
+  // SECURE HTML entity decoder function - prevents XSS attacks
   const decodeHtmlEntities = (text: string): string => {
-    const textArea = document.createElement('textarea');
-    textArea.innerHTML = text;
-    return textArea.value;
+    // Safe HTML entity decoding using replace with predefined entities
+    const entityMap: { [key: string]: string } = {
+      '&amp;': '&',
+      '&lt;': '<',
+      '&gt;': '>',
+      '&quot;': '"',
+      '&#39;': "'",
+      '&#x27;': "'",
+      '&#x2F;': '/',
+      '&#x60;': '`',
+      '&#x3D;': '='
+    };
+    
+    return text.replace(/&(?:amp|lt|gt|quot|#39|#x27|#x2F|#x60|#x3D);/g, (entity) => {
+      return entityMap[entity] || entity;
+    });
   };
 
   const renderTextWithLineBreaks = (text: string) => {
@@ -144,7 +161,7 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
   };
 
   const handleAcceptSuggestion = async (suggestion: SuggestionOption) => {
-    await acceptTextSuggestion(suggestion, (newContent: string, replacementInfo: any) => {
+    await acceptTextSuggestion(suggestion, (newContent: string, replacementInfo: ReplacementInfo) => {
       // Update the editor content using EditorContext
       setEditorContent(newContent);
       
@@ -191,7 +208,7 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
             originalText={originalText}
             onAcceptSuggestion={handleAcceptSuggestion}
             isAccepting={isAcceptingSuggestion}
-            acceptedSuggestionId={acceptedSuggestionId}
+            acceptedSuggestionId={acceptedSuggestionId ?? undefined}
           />
         )}
       </div>

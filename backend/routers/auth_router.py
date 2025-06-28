@@ -5,7 +5,7 @@ Extracted from main.py as part of God File refactoring.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Optional, Dict, Any
 
 # Import models from centralized schemas
@@ -16,6 +16,9 @@ from models.schemas import (
 # Import services
 from services.auth_service import auth_service, AuthenticationError
 from services.database import db_service, DatabaseError
+
+# Import production rate limiter
+from services.redis_rate_limiter import check_rate_limit
 
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
@@ -42,9 +45,17 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
         return None
 
 @router.post("/register", response_model=TokenResponse)
-async def register(user_data: UserCreate) -> TokenResponse:
+async def register(user_data: UserCreate, request: Request) -> TokenResponse:
     """Register a new user account"""
     try:
+        # Apply strict rate limiting for registration to prevent abuse
+        await check_rate_limit(
+            request=request,
+            endpoint_type="auth",
+            user_id=None,  # No user ID for registration
+            raise_on_limit=True
+        )
+        
         logger.info(f"Registration attempt for email: {user_data.email}")
         
         # Use auth service for registration
@@ -79,9 +90,17 @@ async def register(user_data: UserCreate) -> TokenResponse:
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: UserLogin) -> TokenResponse:
+async def login(login_data: UserLogin, request: Request) -> TokenResponse:
     """Authenticate user and return tokens"""
     try:
+        # Apply strict rate limiting for login to prevent brute force attacks
+        await check_rate_limit(
+            request=request,
+            endpoint_type="auth",
+            user_id=None,  # No user ID for login
+            raise_on_limit=True
+        )
+        
         result = auth_service.login_user(login_data.email, login_data.password)
         
         logger.info(f"User logged in: {login_data.email}")
@@ -103,9 +122,17 @@ async def login(login_data: UserLogin) -> TokenResponse:
         raise HTTPException(status_code=500, detail="Login failed")
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: RefreshTokenRequest) -> TokenResponse:
+async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> TokenResponse:
     """Refresh access token using refresh token"""
     try:
+        # Apply rate limiting for token refresh
+        await check_rate_limit(
+            request=request,
+            endpoint_type="auth",
+            user_id=None,
+            raise_on_limit=True
+        )
+        
         result = auth_service.refresh_access_token(refresh_data.refresh_token)
         
         return TokenResponse(
@@ -122,9 +149,17 @@ async def refresh_token(refresh_data: RefreshTokenRequest) -> TokenResponse:
         raise HTTPException(status_code=500, detail="Token refresh failed")
 
 @router.post("/logout")
-async def logout(user_id: int = Depends(get_current_user_id)):
+async def logout(request: Request, user_id: int = Depends(get_current_user_id)):
     """Logout user"""
     try:
+        # Apply rate limiting for logout
+        await check_rate_limit(
+            request=request,
+            endpoint_type="general",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         logger.info(f"User {user_id} logged out")
         return {
             "success": True,
@@ -135,23 +170,36 @@ async def logout(user_id: int = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail="Logout failed")
 
 @router.get("/profile")
-async def get_profile(user_id: int = Depends(get_current_user_id)):
+async def get_profile(request: Request, user_id: int = Depends(get_current_user_id)):
     """Get user profile information"""
-    user = get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Get basic document count only
     try:
-        doc_stats = db_service.execute_query(
-            "SELECT COUNT(*) as total_documents FROM documents WHERE user_id = %s",
-            (user_id,),
-            fetch='one'
+        # Apply rate limiting for profile access
+        await check_rate_limit(
+            request=request,
+            endpoint_type="general",
+            user_id=user_id,
+            raise_on_limit=True
         )
-        user['total_documents'] = doc_stats['total_documents'] if doc_stats else 0
+        
+        user = get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get basic document count only
+        try:
+            doc_stats = db_service.execute_query(
+                "SELECT COUNT(*) as total_documents FROM documents WHERE user_id = %s",
+                (user_id,),
+                fetch='one'
+            )
+            user['total_documents'] = doc_stats['total_documents'] if doc_stats else 0
+        except Exception as e:
+            logger.error(f"Error getting document count: {e}")
+            user['total_documents'] = 0
+        
+        return user
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error getting document count: {e}")
-        user['total_documents'] = 0
-    
-    return user 
- 
+        logger.error(f"Profile error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get profile") 

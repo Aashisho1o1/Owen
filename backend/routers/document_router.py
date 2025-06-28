@@ -8,7 +8,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 
 # Import models from centralized schemas
 from models.schemas import (
@@ -17,6 +17,9 @@ from models.schemas import (
 
 # Import services
 from services.database import db_service, DatabaseError
+
+# Import production rate limiter
+from services.redis_rate_limiter import check_rate_limit
 
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
@@ -36,6 +39,7 @@ def calculate_word_count(content: str) -> int:
 
 @router.get("")
 async def get_documents(
+    request: Request,
     user_id: int = Depends(get_current_user_id),
     folder_id: Optional[str] = Query(None),
     status: Optional[DocumentStatus] = Query(None),
@@ -45,6 +49,14 @@ async def get_documents(
 ):
     """Get user documents with optional filtering"""
     try:
+        # Apply rate limiting for document listing
+        await check_rate_limit(
+            request=request,
+            endpoint_type="documents",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         # Build query conditions
         conditions = ["user_id = %s"]
         params = [user_id]
@@ -101,10 +113,19 @@ async def get_documents(
 @router.post("/from-template")
 async def create_document_from_template(
     doc_data: DocumentFromTemplateCreate, 
+    request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Create a new document from a template"""
     try:
+        # Apply rate limiting for document creation
+        await check_rate_limit(
+            request=request,
+            endpoint_type="documents",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         logger.info(f"Creating document from template: {doc_data.template_id}")
         
         # Import templates store from main.py (this should be moved to a service)
@@ -143,9 +164,17 @@ async def create_document_from_template(
         raise HTTPException(status_code=500, detail="Failed to create document from template")
 
 @router.post("")
-async def create_document(doc_data: DocumentCreate, user_id: int = Depends(get_current_user_id)):
+async def create_document(doc_data: DocumentCreate, request: Request, user_id: int = Depends(get_current_user_id)):
     """Create a new document"""
     try:
+        # Apply rate limiting for document creation
+        await check_rate_limit(
+            request=request,
+            endpoint_type="documents",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         logger.info(f"Creating document: {doc_data.title}")
         
         doc_id = str(uuid.uuid4())
@@ -184,9 +213,17 @@ async def create_document(doc_data: DocumentCreate, user_id: int = Depends(get_c
         raise HTTPException(status_code=500, detail="Failed to create document")
 
 @router.get("/{document_id}")
-async def get_document(document_id: str, user_id: int = Depends(get_current_user_id)):
+async def get_document(document_id: str, request: Request, user_id: int = Depends(get_current_user_id)):
     """Get a specific document by ID"""
     try:
+        # Apply rate limiting for document access
+        await check_rate_limit(
+            request=request,
+            endpoint_type="documents",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         document = db_service.execute_query(
             """SELECT id, title, content, status, word_count, 
                       created_at, updated_at, folder_id
@@ -214,10 +251,19 @@ async def get_document(document_id: str, user_id: int = Depends(get_current_user
 async def update_document(
     document_id: str, 
     doc_data: DocumentUpdate, 
+    request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Update a document"""
     try:
+        # Apply rate limiting for document updates
+        await check_rate_limit(
+            request=request,
+            endpoint_type="documents",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         # Check if document exists
         existing = db_service.execute_query(
             "SELECT id FROM documents WHERE id = %s AND user_id = %s",
@@ -251,7 +297,7 @@ async def update_document(
             params.append(doc_data.folder_id)
         
         if not updates:
-            return await get_document(document_id, user_id)
+            return await get_document(document_id, request, user_id)
         
         updates.append("updated_at = %s")
         params.extend([datetime.utcnow(), document_id, user_id])
@@ -279,9 +325,17 @@ async def update_document(
         raise HTTPException(status_code=500, detail="Failed to update document")
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: str, user_id: int = Depends(get_current_user_id)):
+async def delete_document(document_id: str, request: Request, user_id: int = Depends(get_current_user_id)):
     """Delete a document"""
     try:
+        # Apply rate limiting for document deletion
+        await check_rate_limit(
+            request=request,
+            endpoint_type="documents",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         # Check if document exists
         document = db_service.execute_query(
             "SELECT id, title FROM documents WHERE id = %s AND user_id = %s",
@@ -309,10 +363,19 @@ async def delete_document(document_id: str, user_id: int = Depends(get_current_u
 async def auto_save_document(
     document_id: str, 
     content: str = Query(...), 
+    request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Auto-save document content"""
     try:
+        # Apply rate limiting for auto-save (more lenient for frequent saves)
+        await check_rate_limit(
+            request=request,
+            endpoint_type="general",  # Use general limits for auto-save
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         # Check if document exists and belongs to user
         existing = db_service.execute_query(
             "SELECT id, content FROM documents WHERE id = %s AND user_id = %s",

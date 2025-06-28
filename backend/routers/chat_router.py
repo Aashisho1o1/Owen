@@ -8,6 +8,9 @@ import logging
 from services.auth_service import auth_service, AuthenticationError
 from services.validation_service import input_validator
 
+# Import the new production rate limiter
+from services.redis_rate_limiter import check_rate_limit
+
 # Change relative imports to absolute imports
 from models.schemas import (
     ChatRequest, ChatResponse, UserFeedbackRequest, 
@@ -35,34 +38,16 @@ async def chat(
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
-        # CRITICAL SECURITY: Rate limiting for chat requests
-        # This prevents abuse and protects against DoS attacks on expensive LLM calls
-        from datetime import datetime, timedelta
-        import time
+        # PRODUCTION RATE LIMITING: Use Redis-based distributed rate limiter
+        # This prevents abuse across multiple Railway instances
+        rate_limit_result = await check_rate_limit(
+            request=request, 
+            endpoint_type="chat",
+            user_id=user_id,
+            raise_on_limit=True  # Will raise HTTPException if limit exceeded
+        )
         
-        # Simple in-memory rate limiting (should be moved to Redis in production)
-        if not hasattr(chat, '_user_requests'):
-            chat._user_requests = {}
-        
-        now = time.time()
-        minute_ago = now - 60  # 1 minute window
-        
-        # Clean old requests
-        if user_id in chat._user_requests:
-            chat._user_requests[user_id] = [req_time for req_time in chat._user_requests[user_id] if req_time > minute_ago]
-        else:
-            chat._user_requests[user_id] = []
-        
-        # Check rate limit (max 10 requests per minute)
-        if len(chat._user_requests[user_id]) >= 10:
-            logger.warning(f"🚨 SECURITY: Rate limit exceeded for user {user_id}")
-            raise HTTPException(
-                status_code=429, 
-                detail="Rate limit exceeded. Please wait before sending another message."
-            )
-        
-        # Record this request
-        chat._user_requests[user_id].append(now)
+        logger.info(f"🛡️ Rate limit check: {rate_limit_result['remaining']}/{rate_limit_result['limit']} remaining for user {user_id}")
         
         # Validate and sanitize all input data
         validated_message = input_validator.validate_chat_message(request.message)
@@ -211,7 +196,7 @@ async def chat(
             )
             
     except HTTPException:
-        # Re-raise HTTP exceptions (like authentication errors)
+        # Re-raise HTTP exceptions (like authentication errors and rate limits)
         raise
     except Exception as e:
         print(f"General error in /api/chat: {e}")
@@ -233,6 +218,14 @@ async def submit_user_feedback(
 ):
     """Submit user feedback on AI responses for continuous improvement."""
     try:
+        # Apply rate limiting for feedback submission
+        await check_rate_limit(
+            request=request, 
+            endpoint_type="general",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         # Validate all feedback data
         validated_original = input_validator.validate_text_input(request.original_message)
         validated_ai_response = input_validator.validate_text_input(request.ai_response)
@@ -266,6 +259,14 @@ async def submit_user_feedback(
 async def get_user_preferences(user_id: int = Depends(get_current_user_id)):
     """Get user preferences for the authenticated user."""
     try:
+        # Apply rate limiting
+        await check_rate_limit(
+            request=request, 
+            endpoint_type="general",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         preferences = db_service.get_user_preferences(user_id)
         
         if preferences:
@@ -296,6 +297,16 @@ async def generate_suggestions(
 ):
     """Generate multiple actionable suggestions for selected text in Co-Edit mode"""
     try:
+        # PRODUCTION RATE LIMITING: Stricter limits for expensive AI suggestions
+        rate_limit_result = await check_rate_limit(
+            request=request, 
+            endpoint_type="suggestions",  # More restrictive limits
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
+        logger.info(f"🛡️ Suggestions rate limit: {rate_limit_result['remaining']}/{rate_limit_result['limit']} remaining for user {user_id}")
+        
         # Validate inputs
         validated_message = input_validator.validate_chat_message(request.message)
         highlighted_text = input_validator.validate_suggestion_text(request.highlighted_text or "")
@@ -362,6 +373,14 @@ async def accept_suggestion(
 ):
     """Accept and apply a suggestion to the editor content"""
     try:
+        # Apply rate limiting for suggestion acceptance
+        await check_rate_limit(
+            request=request, 
+            endpoint_type="general",
+            user_id=user_id,
+            raise_on_limit=True
+        )
+        
         # Validate inputs - use suggestion-specific validation for text content
         original_text = input_validator.validate_suggestion_text(request.original_text)
         suggested_text = input_validator.validate_suggestion_text(request.suggested_text)

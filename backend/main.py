@@ -32,6 +32,9 @@ from routers.grammar_router import router as grammar_router
 # Import security middleware
 from middleware.security_middleware import SecurityMiddleware
 
+# Import rate limiter for health checks
+from services.redis_rate_limiter import get_rate_limiter_health, get_rate_limiter_stats
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -183,8 +186,7 @@ app.add_middleware(
 )
 
 # Add security middleware AFTER CORS middleware
-# TEMPORARILY DISABLED FOR DEBUGGING
-# app.add_middleware(SecurityMiddleware)
+app.add_middleware(SecurityMiddleware)
 
 # Include all modular routers
 app.include_router(auth_router)
@@ -324,6 +326,34 @@ async def health_check(request: Request = None):
             "status": "unhealthy",
             "timestamp": datetime.utcnow().isoformat(),
             "error_type": "HealthCheckFailed"
+        }
+
+@app.get("/api/rate-limiter/health")
+async def rate_limiter_health():
+    """Get rate limiter health and statistics"""
+    try:
+        from services.redis_rate_limiter import get_rate_limiter_health, get_rate_limiter_stats
+        
+        health_info = get_rate_limiter_health()
+        stats_info = get_rate_limiter_stats()
+        
+        return {
+            "status": "healthy" if health_info.get('redis_connected', False) else "degraded",
+            "backend": health_info.get('backend', 'memory'),
+            "redis_connected": health_info.get('redis_connected', False),
+            "redis_info": health_info.get('redis_info'),
+            "statistics": stats_info,
+            "message": "Redis connected - distributed rate limiting active" if health_info.get('redis_connected') else "Using in-memory fallback - single instance only",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Rate limiter health check error: {e}")
+        return {
+            "status": "error",
+            "backend": "unknown",
+            "redis_connected": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
         }
 
 # Railway uses start.sh script to start the hypercorn server
