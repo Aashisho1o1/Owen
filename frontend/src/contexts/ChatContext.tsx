@@ -469,6 +469,8 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     
     try {
       logger.info(`✅ Accepting suggestion: ${suggestion.id}`);
+      logger.info(`🔍 Current highlighted text: "${highlightedText}"`);
+      logger.info(`📄 Current editor content length: ${editorContent.length}`);
       
       const requestData = {
         suggestion_id: suggestion.id,
@@ -497,7 +499,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
           }));
         }
         
-        // Clear suggestions and highlighting
+        // ✅ FIXED: Only clear state AFTER successful backend processing
         setCurrentSuggestions([]);
         setHighlightedText('');
         setHighlightedTextId(null);
@@ -510,12 +512,30 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
         
       } else {
         logger.error('Failed to accept suggestion:', response.error);
+        
+        // Enhanced error logging for debugging
+        if (response.debug_info) {
+          logger.error('🔍 Debug info:', response.debug_info);
+          console.error('🔍 Suggestion acceptance failed with debug info:', {
+            originalTextLength: response.debug_info.original_text_length,
+            editorContentLength: response.debug_info.editor_content_length,
+            originalTextPreview: response.debug_info.original_text_preview,
+            editorContentPreview: response.debug_info.editor_content_preview,
+            currentHighlightedText: highlightedText,
+            suggestionText: suggestion.text
+          });
+        }
+        
         setApiGlobalError(response.error || 'Failed to accept suggestion');
+        
+        // Don't clear highlighted text on failure so user can try again
       }
       
     } catch (error) {
       logger.error('Error accepting suggestion:', error);
       setApiGlobalError('Failed to accept suggestion. Please try again.');
+      
+      // Don't clear highlighted text on error so user can try again
     } finally {
       setIsAcceptingSuggestion(false);
       setAcceptedSuggestionId(null);

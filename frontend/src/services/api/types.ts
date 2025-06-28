@@ -72,8 +72,15 @@ export interface AcceptSuggestionResponse {
     original_text: string;
     suggested_text: string;
     suggestion_id: string;
+    replacement_method?: string;
   };
   error?: string;
+  debug_info?: {
+    original_text_length: number;
+    editor_content_length: number;
+    original_text_preview: string;
+    editor_content_preview: string;
+  };
 }
 
 export interface WritingSampleRequest {

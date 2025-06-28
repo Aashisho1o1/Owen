@@ -370,26 +370,118 @@ async def accept_suggestion(
         logger.info(f"📝 User {user_id} accepting suggestion {request.suggestion_id}")
         logger.info(f"🔄 Replacing: {original_text[:50]}...")
         logger.info(f"✨ With: {suggested_text[:50]}...")
+        logger.info(f"📄 Editor content length: {len(editor_content)} chars")
         
-        # Perform text replacement
-        if original_text in editor_content:
-            # Simple replacement for now - more sophisticated logic can be added later
-            updated_content = editor_content.replace(original_text, suggested_text, 1)
+        # Enhanced text matching with multiple strategies
+        def normalize_text(text: str) -> str:
+            """Normalize text for better matching"""
+            import html
+            import re
             
+            # Decode HTML entities
+            text = html.unescape(text)
+            # Normalize whitespace
+            text = re.sub(r'\s+', ' ', text.strip())
+            return text
+        
+        def find_text_with_fuzzy_matching(original: str, content: str) -> tuple[bool, str]:
+            """Find text using multiple matching strategies"""
+            
+            # Strategy 1: Exact match
+            if original in content:
+                logger.info("✅ Found exact match")
+                return True, content.replace(original, suggested_text, 1)
+            
+            # Strategy 2: Normalized text matching
+            normalized_original = normalize_text(original)
+            normalized_content = normalize_text(content)
+            
+            if normalized_original in normalized_content:
+                logger.info("✅ Found normalized match")
+                # Find the actual position in the original content
+                import re
+                # Create a pattern that matches the original text with flexible whitespace
+                pattern = re.escape(normalized_original).replace(r'\ ', r'\s+')
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    # Replace the matched text with the suggestion
+                    return True, content[:match.start()] + suggested_text + content[match.end():]
+            
+            # Strategy 3: Case-insensitive matching
+            original_lower = original.lower()
+            content_lower = content.lower()
+            
+            if original_lower in content_lower:
+                logger.info("✅ Found case-insensitive match")
+                # Find the actual case-sensitive position
+                start_idx = content_lower.find(original_lower)
+                if start_idx != -1:
+                    end_idx = start_idx + len(original)
+                    return True, content[:start_idx] + suggested_text + content[end_idx:]
+            
+            # Strategy 4: Partial matching with similarity threshold
+            from difflib import SequenceMatcher
+            
+            # Split content into sentences/chunks and find best match
+            import re
+            sentences = re.split(r'[.!?]+', content)
+            best_match_ratio = 0
+            best_match_sentence = None
+            best_match_idx = -1
+            
+            for i, sentence in enumerate(sentences):
+                sentence = sentence.strip()
+                if len(sentence) > 10:  # Only consider substantial sentences
+                    ratio = SequenceMatcher(None, original.lower(), sentence.lower()).ratio()
+                    if ratio > best_match_ratio and ratio > 0.7:  # 70% similarity threshold
+                        best_match_ratio = ratio
+                        best_match_sentence = sentence
+                        best_match_idx = i
+            
+            if best_match_sentence and best_match_ratio > 0.7:
+                logger.info(f"✅ Found partial match with {best_match_ratio:.2%} similarity")
+                # Replace the best matching sentence
+                sentences[best_match_idx] = suggested_text
+                return True, '.'.join(sentences)
+            
+            return False, content
+        
+        # Log the exact texts for debugging
+        logger.info(f"🔍 Original text (len={len(original_text)}): '{original_text}'")
+        logger.info(f"🔍 Editor content preview: '{editor_content[:200]}...'")
+        logger.info(f"🔍 Looking for exact match...")
+        
+        # Try enhanced text matching
+        found, updated_content = find_text_with_fuzzy_matching(original_text, editor_content)
+        
+        if found:
+            logger.info("✅ Text replacement successful")
             return {
                 "success": True,
                 "updated_content": updated_content,
                 "replacement_info": {
                     "original_text": original_text,
                     "suggested_text": suggested_text,
-                    "suggestion_id": request.suggestion_id
+                    "suggestion_id": request.suggestion_id,
+                    "replacement_method": "enhanced_matching"
                 }
             }
         else:
+            # Enhanced error reporting
+            logger.error(f"❌ Text not found using any matching strategy")
+            logger.error(f"🔍 Original text chars: {[ord(c) for c in original_text[:20]]}")
+            logger.error(f"🔍 Editor content sample chars: {[ord(c) for c in editor_content[:50]]}")
+            
             return {
                 "success": False,
-                "error": "Original text not found in editor content",
-                "updated_content": editor_content
+                "error": f"Original text not found in editor content. Text: '{original_text[:100]}...' not found in content of length {len(editor_content)}",
+                "updated_content": editor_content,
+                "debug_info": {
+                    "original_text_length": len(original_text),
+                    "editor_content_length": len(editor_content),
+                    "original_text_preview": original_text[:100],
+                    "editor_content_preview": editor_content[:200]
+                }
             }
             
     except Exception as e:
