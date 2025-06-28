@@ -4,6 +4,7 @@ import ChatPane from './ChatPane';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatContext } from '../contexts/ChatContext';
+import { useEditorContext } from '../contexts/EditorContext';
 import './WritingWorkspace.css';
 
 /**
@@ -22,6 +23,7 @@ import './WritingWorkspace.css';
 export const WritingWorkspace: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { isChatVisible, toggleChat } = useChatContext();
+  const { editorContent, setEditorContent } = useEditorContext();
   const {
     createDocument,
     updateContent,
@@ -34,7 +36,6 @@ export const WritingWorkspace: React.FC = () => {
     setCurrentDocument
   } = useDocuments();
 
-  const [editorContent, setEditorContent] = useState('');
   const [documentTitle, setDocumentTitle] = useState('Untitled Document');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -75,7 +76,7 @@ export const WritingWorkspace: React.FC = () => {
     if (!isInitialized) {
       initializeDocument();
     }
-  }, [isAuthenticated, isInitialized, createDocument, setCurrentDocument]);
+  }, [isAuthenticated, isInitialized, createDocument, setCurrentDocument, setEditorContent]);
 
   // Handle content changes
   const handleContentChange = (content: string) => {
@@ -254,10 +255,8 @@ export const WritingWorkspace: React.FC = () => {
       <div className={`workspace-content ${isChatVisible ? 'with-chat' : 'editor-only'}`}>
         {/* Writing Area */}
         <div className="editor-section">
-          <HighlightableEditor
-            content={editorContent}
-            onChange={handleContentChange}
-          />
+          {/* 🔧 CRITICAL FIX: Remove props to prevent state conflicts - let HighlightableEditor use EditorContext directly */}
+          <HighlightableEditor />
         </div>
 
         {/* AI Chat Panel */}

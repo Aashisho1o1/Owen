@@ -472,6 +472,29 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
       logger.info(`🔍 Current highlighted text: "${highlightedText}"`);
       logger.info(`📄 Current editor content length: ${editorContent.length}`);
       
+      // 🔧 ENHANCED DEBUGGING: Add detailed content inspection
+      console.log('🔍 DETAILED DEBUG INFO:');
+      console.log('  - Highlighted text:', highlightedText);
+      console.log('  - Highlighted text length:', highlightedText?.length || 0);
+      console.log('  - Editor content length:', editorContent?.length || 0);
+      console.log('  - Editor content preview:', editorContent?.substring(0, 100) + '...');
+      console.log('  - Editor content type:', typeof editorContent);
+      console.log('  - Editor content is empty?', !editorContent || editorContent.trim() === '');
+      
+      // 🔧 CRITICAL CHECK: Ensure we have both highlighted text and editor content
+      if (!highlightedText || highlightedText.trim() === '') {
+        logger.error('❌ No highlighted text available for suggestion acceptance');
+        setApiGlobalError('Please select text first before accepting suggestions');
+        return;
+      }
+      
+      if (!editorContent || editorContent.trim() === '') {
+        logger.error('❌ No editor content available for suggestion acceptance');
+        logger.error('🔍 This suggests a state synchronization issue between editor and context');
+        setApiGlobalError('Editor content is empty. Please refresh the page and try again.');
+        return;
+      }
+      
       const requestData = {
         suggestion_id: suggestion.id,
         original_text: highlightedText,
@@ -479,6 +502,15 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
         editor_content: editorContent,
         position_info: { highlight_id: highlightedTextId }
       };
+
+      // 🔧 LOG REQUEST DATA for debugging
+      console.log('📤 Sending suggestion acceptance request:', {
+        suggestion_id: requestData.suggestion_id,
+        original_text_length: requestData.original_text.length,
+        suggested_text_length: requestData.suggested_text.length,
+        editor_content_length: requestData.editor_content.length,
+        editor_content_preview: requestData.editor_content.substring(0, 200) + '...'
+      });
 
       const response: AcceptSuggestionResponse = await acceptSuggestion(requestData);
       

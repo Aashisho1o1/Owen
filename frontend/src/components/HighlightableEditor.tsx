@@ -83,6 +83,12 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     content: contentProp || '',
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
+      console.log('🔧 HighlightableEditor onUpdate:', {
+        newContentLength: newContent.length,
+        newContentPreview: newContent.substring(0, 100) + '...',
+        onChangePropType: typeof onChangeProp,
+        hasOnChangeProp: !!onChangeProp
+      });
       onChangeProp(newContent);
     },
     // Add editor event handlers for better cursor management
