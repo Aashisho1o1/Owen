@@ -120,6 +120,32 @@ class SimpleInputValidator:
         
         return sanitized_text.strip()
     
+    def validate_suggestion_text(self, text: str, max_length: Optional[int] = None) -> str:
+        """Validate suggestion text without HTML escaping (for plain text editor content)"""
+        if not isinstance(text, str):
+            raise ValidationError("Input must be a string")
+        
+        # Check for null bytes and control characters
+        if '\x00' in text:
+            raise ValidationError("Input contains null bytes which are not allowed")
+        
+        # Remove or replace dangerous Unicode characters
+        text = self._sanitize_unicode(text)
+        
+        # Check length after sanitization
+        max_len = max_length or self.max_text_length
+        if len(text) > max_len:
+            raise ValidationError(f"Text too long. Maximum {max_len} characters allowed")
+        
+        # Check for dangerous patterns (but allow some HTML-like content for rich text)
+        self._check_dangerous_patterns(text)
+        
+        # NO HTML ESCAPING - keep original text for editor content
+        # Just normalize whitespace
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text.strip()
+    
     def _sanitize_unicode(self, text: str) -> str:
         """Sanitize dangerous Unicode characters"""
         # Remove or replace problematic Unicode characters

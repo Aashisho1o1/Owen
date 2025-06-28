@@ -298,7 +298,7 @@ async def generate_suggestions(
     try:
         # Validate inputs
         validated_message = input_validator.validate_chat_message(request.message)
-        highlighted_text = input_validator.validate_text_input(request.highlighted_text or "")
+        highlighted_text = input_validator.validate_suggestion_text(request.highlighted_text or "")
         
         # Check if we have highlighted text
         if not highlighted_text or not highlighted_text.strip():
@@ -362,10 +362,10 @@ async def accept_suggestion(
 ):
     """Accept and apply a suggestion to the editor content"""
     try:
-        # Validate inputs
-        original_text = input_validator.validate_text_input(request.original_text)
-        suggested_text = input_validator.validate_text_input(request.suggested_text)
-        editor_content = input_validator.validate_text_input(request.editor_content)
+        # Validate inputs - use suggestion-specific validation for text content
+        original_text = input_validator.validate_suggestion_text(request.original_text)
+        suggested_text = input_validator.validate_suggestion_text(request.suggested_text)
+        editor_content = input_validator.validate_suggestion_text(request.editor_content)
         
         logger.info(f"📝 User {user_id} accepting suggestion {request.suggestion_id}")
         logger.info(f"🔄 Replacing: {original_text[:50]}...")
@@ -378,53 +378,70 @@ async def accept_suggestion(
             import html
             import re
             
-            # Decode HTML entities
+            # Decode HTML entities first (in case they're already present)
             text = html.unescape(text)
             # Normalize whitespace
             text = re.sub(r'\s+', ' ', text.strip())
             return text
         
+        def clean_text_for_replacement(text: str) -> str:
+            """Clean text specifically for replacement operations"""
+            import html
+            import re
+            
+            # Decode any HTML entities that might be present
+            text = html.unescape(text)
+            # Normalize whitespace but preserve line breaks
+            text = re.sub(r'[ \t]+', ' ', text)  # Only collapse spaces and tabs
+            text = re.sub(r'\n+', '\n', text)   # Collapse multiple newlines
+            return text.strip()
+
         def find_text_with_fuzzy_matching(original: str, content: str) -> tuple[bool, str]:
             """Find text using multiple matching strategies"""
             
-            # Strategy 1: Exact match
-            if original in content:
-                logger.info("✅ Found exact match")
-                return True, content.replace(original, suggested_text, 1)
+            # Clean both texts for better matching
+            cleaned_original = clean_text_for_replacement(original)
+            cleaned_content = clean_text_for_replacement(content)
+            cleaned_suggested = clean_text_for_replacement(suggested_text)
+            
+            # Strategy 1: Exact match with cleaned text
+            if cleaned_original in cleaned_content:
+                logger.info("✅ Found exact match with cleaned text")
+                return True, cleaned_content.replace(cleaned_original, cleaned_suggested, 1)
             
             # Strategy 2: Normalized text matching
-            normalized_original = normalize_text(original)
-            normalized_content = normalize_text(content)
+            normalized_original = normalize_text(cleaned_original)
+            normalized_content = normalize_text(cleaned_content)
             
             if normalized_original in normalized_content:
                 logger.info("✅ Found normalized match")
-                # Find the actual position in the original content
+                # Find the actual position in the cleaned content
                 import re
                 # Create a pattern that matches the original text with flexible whitespace
                 pattern = re.escape(normalized_original).replace(r'\ ', r'\s+')
-                match = re.search(pattern, content, re.IGNORECASE)
+                match = re.search(pattern, cleaned_content, re.IGNORECASE)
                 if match:
                     # Replace the matched text with the suggestion
-                    return True, content[:match.start()] + suggested_text + content[match.end():]
+                    return True, cleaned_content[:match.start()] + cleaned_suggested + cleaned_content[match.end():]
             
             # Strategy 3: Case-insensitive matching
-            original_lower = original.lower()
-            content_lower = content.lower()
+            original_lower = cleaned_original.lower()
+            content_lower = cleaned_content.lower()
             
             if original_lower in content_lower:
                 logger.info("✅ Found case-insensitive match")
                 # Find the actual case-sensitive position
                 start_idx = content_lower.find(original_lower)
                 if start_idx != -1:
-                    end_idx = start_idx + len(original)
-                    return True, content[:start_idx] + suggested_text + content[end_idx:]
+                    end_idx = start_idx + len(cleaned_original)
+                    return True, cleaned_content[:start_idx] + cleaned_suggested + cleaned_content[end_idx:]
             
             # Strategy 4: Partial matching with similarity threshold
             from difflib import SequenceMatcher
             
             # Split content into sentences/chunks and find best match
             import re
-            sentences = re.split(r'[.!?]+', content)
+            sentences = re.split(r'[.!?]+', cleaned_content)
             best_match_ratio = 0
             best_match_sentence = None
             best_match_idx = -1
@@ -432,7 +449,7 @@ async def accept_suggestion(
             for i, sentence in enumerate(sentences):
                 sentence = sentence.strip()
                 if len(sentence) > 10:  # Only consider substantial sentences
-                    ratio = SequenceMatcher(None, original.lower(), sentence.lower()).ratio()
+                    ratio = SequenceMatcher(None, cleaned_original.lower(), sentence.lower()).ratio()
                     if ratio > best_match_ratio and ratio > 0.7:  # 70% similarity threshold
                         best_match_ratio = ratio
                         best_match_sentence = sentence
@@ -441,7 +458,7 @@ async def accept_suggestion(
             if best_match_sentence and best_match_ratio > 0.7:
                 logger.info(f"✅ Found partial match with {best_match_ratio:.2%} similarity")
                 # Replace the best matching sentence
-                sentences[best_match_idx] = suggested_text
+                sentences[best_match_idx] = cleaned_suggested
                 return True, '.'.join(sentences)
             
             return False, content

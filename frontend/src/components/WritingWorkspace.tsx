@@ -78,14 +78,6 @@ export const WritingWorkspace: React.FC = () => {
     }
   }, [isAuthenticated, isInitialized, createDocument, setCurrentDocument, setEditorContent]);
 
-  // Handle content changes
-  const handleContentChange = (content: string) => {
-    setEditorContent(content);
-    if (isAuthenticated && currentDocument) {
-      updateContent(content);
-    }
-  };
-
   // Handle title changes  
   const handleTitleChange = (title: string) => {
     setDocumentTitle(title);
