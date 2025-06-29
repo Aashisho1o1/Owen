@@ -9,7 +9,7 @@ from services.auth_service import auth_service, AuthenticationError
 from services.validation_service import input_validator
 
 # Import the new production rate limiter
-from services.redis_rate_limiter import check_rate_limit
+from services.rate_limiter import check_rate_limit
 
 # Change relative imports to absolute imports
 from models.schemas import (
@@ -38,16 +38,11 @@ async def chat(
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
-        # PRODUCTION RATE LIMITING: Use Redis-based distributed rate limiter
+        # PRODUCTION RATE LIMITING: Use distributed rate limiter
         # This prevents abuse across multiple Railway instances
-        rate_limit_result = await check_rate_limit(
-            request=request, 
-            endpoint_type="chat",
-            user_id=user_id,
-            raise_on_limit=True  # Will raise HTTPException if limit exceeded
-        )
+        await check_rate_limit(request, "chat")
         
-        logger.info(f"🛡️ Rate limit check: {rate_limit_result['remaining']}/{rate_limit_result['limit']} remaining for user {user_id}")
+        logger.info(f"🛡️ Rate limit check passed for user {user_id}")
         
         # Validate and sanitize all input data
         validated_message = input_validator.validate_chat_message(request.message)
@@ -219,12 +214,7 @@ async def submit_user_feedback(
     """Submit user feedback on AI responses for continuous improvement."""
     try:
         # Apply rate limiting for feedback submission
-        await check_rate_limit(
-            request=request, 
-            endpoint_type="general",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         # Validate all feedback data
         validated_original = input_validator.validate_text_input(request.original_message)
@@ -256,16 +246,11 @@ async def submit_user_feedback(
         return {"status": "error", "message": str(e)}
 
 @router.get("/preferences")
-async def get_user_preferences(user_id: int = Depends(get_current_user_id)):
+async def get_user_preferences(request: Request, user_id: int = Depends(get_current_user_id)):
     """Get user preferences for the authenticated user."""
     try:
-        # Apply rate limiting
-        await check_rate_limit(
-            request=request, 
-            endpoint_type="general",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        # Apply rate limiting  
+        await check_rate_limit(request, "general")
         
         preferences = db_service.get_user_preferences(user_id)
         
@@ -298,14 +283,9 @@ async def generate_suggestions(
     """Generate multiple actionable suggestions for selected text in Co-Edit mode"""
     try:
         # PRODUCTION RATE LIMITING: Stricter limits for expensive AI suggestions
-        rate_limit_result = await check_rate_limit(
-            request=request, 
-            endpoint_type="suggestions",  # More restrictive limits
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "chat")  # Use chat limits for suggestions
         
-        logger.info(f"🛡️ Suggestions rate limit: {rate_limit_result['remaining']}/{rate_limit_result['limit']} remaining for user {user_id}")
+        logger.info(f"🛡️ Suggestions rate limit check passed for user {user_id}")
         
         # Validate inputs
         validated_message = input_validator.validate_chat_message(request.message)
@@ -374,12 +354,7 @@ async def accept_suggestion(
     """Accept and apply a suggestion to the editor content"""
     try:
         # Apply rate limiting for suggestion acceptance
-        await check_rate_limit(
-            request=request, 
-            endpoint_type="general",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         # Validate inputs - use suggestion-specific validation for text content
         original_text = input_validator.validate_suggestion_text(request.original_text)

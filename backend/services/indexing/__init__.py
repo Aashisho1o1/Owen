@@ -5,13 +5,13 @@ Implements PathRAG-inspired retrieval and knowledge graph construction
 """
 
 from .vector_store import VectorStore
-from .graph_builder import GraphBuilder
+from .graph_builder import GeminiGraphBuilder
 from .path_retriever import PathRetriever
 from .hybrid_indexer import HybridIndexer
 
 __all__ = [
     'VectorStore',
-    'GraphBuilder', 
+    'GeminiGraphBuilder', 
     'PathRetriever',
     'HybridIndexer'
 ] 

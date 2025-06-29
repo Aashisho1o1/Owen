@@ -46,58 +46,37 @@ class GeminiGraphBuilder:
         self.graph = nx.DiGraph()
         
         # Entity extraction prompt template
-        self.entity_extraction_prompt = """
-You are an expert literary analyst specializing in narrative entity extraction. 
-Analyze the following text and extract entities with their relationships.
+        self.entity_extraction_prompt = """You must return ONLY valid JSON, no other text or explanation.
 
-Extract the following entity types:
-- CHARACTER: People, animals, or personified entities
-- LOCATION: Places, settings, geographical locations
-- EVENT: Significant plot events, actions, or occurrences
-- THEME: Abstract concepts, emotions, or thematic elements
-- ORGANIZATION: Groups, institutions, or collective entities
+Extract entities and relationships from the text below.
 
-For each entity, provide:
-1. text: The exact text span
-2. type: One of the types above
-3. start_pos: Character position where entity starts
-4. end_pos: Character position where entity ends
-5. confidence: Confidence score (0.0-1.0)
+Entity types: CHARACTER, LOCATION, EVENT, THEME, ORGANIZATION
+Relationship types: INTERACTS_WITH, LOCATED_IN, PARTICIPATES_IN, REPRESENTS, BELONGS_TO, CAUSES, PRECEDES
 
-Also extract relationships between entities:
-- INTERACTS_WITH: Characters interacting
-- LOCATED_IN: Entity located in a place
-- PARTICIPATES_IN: Entity participating in an event
-- REPRESENTS: Entity representing a theme
-- BELONGS_TO: Entity belonging to organization
-- CAUSES: One event causing another
-- PRECEDES: One event happening before another
-
-Return the result as JSON with this structure:
-{
+Return exactly this JSON format:
+{{
     "entities": [
-        {
+        {{
             "text": "entity text",
             "type": "CHARACTER",
             "start_pos": 0,
             "end_pos": 10,
             "confidence": 0.95
-        }
+        }}
     ],
     "relationships": [
-        {
+        {{
             "source": "entity1",
             "target": "entity2",
             "relation_type": "INTERACTS_WITH",
             "confidence": 0.9,
             "context": "brief context"
-        }
+        }}
     ]
-}
+}}
 
 Text to analyze:
-{text}
-"""
+{text}"""
 
     async def extract_entities_and_relationships(self, text: str) -> Tuple[List[Entity], List[Relationship]]:
         """
@@ -116,33 +95,27 @@ Text to analyze:
             # Get response from Gemini
             response = await self.gemini_service.generate_response(prompt)
             
-            # Parse JSON response - handle markdown code blocks
+            # Parse JSON response - handle markdown code blocks and clean formatting
             try:
-                data = json.loads(response)
+                # Clean the response first
+                response_text = response.strip()
+                
+                # Remove common markdown formatting
+                if response_text.startswith('```json'):
+                    response_text = response_text.replace('```json', '').replace('```', '').strip()
+                elif response_text.startswith('```'):
+                    response_text = response_text.replace('```', '').strip()
+                
+                # Remove any leading/trailing text that's not JSON
+                start_brace = response_text.find('{')
+                end_brace = response_text.rfind('}')
+                if start_brace != -1 and end_brace != -1:
+                    response_text = response_text[start_brace:end_brace+1]
+                
+                data = json.loads(response_text)
             except json.JSONDecodeError:
-                # Try to extract JSON from markdown code blocks first
-                import re
-                json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(1)
-                    try:
-                        data = json.loads(json_str)
-                    except json.JSONDecodeError:
-                        logger.error(f"Failed to parse JSON from code block: {json_str[:200]}...")
-                        return [], []
-                else:
-                    # Fallback: try to extract any JSON-like structure
-                    json_match = re.search(r'\{.*\}', response, re.DOTALL)
-                    if json_match:
-                        json_str = json_match.group()
-                        try:
-                            data = json.loads(json_str)
-                        except json.JSONDecodeError:
-                            logger.error(f"Failed to parse extracted JSON: {json_str[:200]}...")
-                            return [], []
-                    else:
-                        logger.error(f"No JSON structure found in Gemini response: {response}")
-                        return [], []
+                logger.error(f"Failed to parse JSON response: {response[:200]}...")
+                return [], []
             
             # Convert to Entity and Relationship objects
             entities = []

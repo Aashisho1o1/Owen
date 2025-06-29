@@ -39,34 +39,58 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.block_threshold = 300      # requests before IP block
         self.max_request_size = 10 * 1024 * 1024  # 10MB
         
-        # Security headers configuration
+        # Enhanced security headers configuration (2025 OWASP standards)
         self.security_headers = {
+            # Core Content Security
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "X-XSS-Protection": "1; mode=block",
+            
+            # Referrer and Cross-Origin Policies
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "X-Permitted-Cross-Domain-Policies": "none",
             "Cross-Origin-Embedder-Policy": "require-corp",
             "Cross-Origin-Opener-Policy": "same-origin",
             "Cross-Origin-Resource-Policy": "cross-origin",
+            
+            # Enhanced Permissions Policy (2025 update)
             "Permissions-Policy": (
                 "geolocation=(), microphone=(), camera=(), "
                 "payment=(), usb=(), magnetometer=(), gyroscope=(), "
                 "accelerometer=(), ambient-light-sensor=(), autoplay=(), "
-                "encrypted-media=(), fullscreen=(), picture-in-picture=()"
+                "encrypted-media=(), fullscreen=(), picture-in-picture=(), "
+                "web-share=(), clipboard-read=(), clipboard-write=(), "
+                "notifications=(), push=(), speaker-selection=(), "
+                "screen-wake-lock=(), idle-detection=(), "
+                "storage-access=(), display-capture=()"
             ),
+            
+            # Comprehensive Content Security Policy
             "Content-Security-Policy": (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-                "style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data: https:; "
-                "font-src 'self' https:; "
-                "connect-src 'self' https:; "
-                "frame-ancestors 'none'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data: https: blob:; "
+                "connect-src 'self' https://api.languagetool.org https://api.openai.com https://generativelanguage.googleapis.com; "
+                "media-src 'self'; "
+                "object-src 'none'; "
                 "base-uri 'self'; "
-                "form-action 'self'"
+                "form-action 'self'; "
+                "frame-ancestors 'none'; "
+                "upgrade-insecure-requests"
             ),
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload"
+            
+            # Transport Security
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            
+            # Cache Control for sensitive data
+            "Cache-Control": "no-cache, no-store, must-revalidate, private",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            
+            # Rate limiting information
+            "X-Rate-Limit-Policy": "100-per-minute-per-ip"
         }
     
     async def dispatch(self, request: Request, call_next):

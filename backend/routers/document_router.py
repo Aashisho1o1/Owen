@@ -19,7 +19,7 @@ from models.schemas import (
 from services.database import db_service, DatabaseError
 
 # Import production rate limiter
-from services.redis_rate_limiter import check_rate_limit
+from services.rate_limiter import check_rate_limit
 
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
@@ -50,12 +50,7 @@ async def get_documents(
     """Get user documents with optional filtering"""
     try:
         # Apply rate limiting for document listing
-        await check_rate_limit(
-            request=request,
-            endpoint_type="documents",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         # Build query conditions
         conditions = ["user_id = %s"]
@@ -119,12 +114,7 @@ async def create_document_from_template(
     """Create a new document from a template"""
     try:
         # Apply rate limiting for document creation
-        await check_rate_limit(
-            request=request,
-            endpoint_type="documents",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         logger.info(f"Creating document from template: {doc_data.template_id}")
         
@@ -168,12 +158,7 @@ async def create_document(doc_data: DocumentCreate, request: Request, user_id: i
     """Create a new document"""
     try:
         # Apply rate limiting for document creation
-        await check_rate_limit(
-            request=request,
-            endpoint_type="documents",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         logger.info(f"Creating document: {doc_data.title}")
         
@@ -217,12 +202,7 @@ async def get_document(document_id: str, request: Request, user_id: int = Depend
     """Get a specific document by ID"""
     try:
         # Apply rate limiting for document access
-        await check_rate_limit(
-            request=request,
-            endpoint_type="documents",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         document = db_service.execute_query(
             """SELECT id, title, content, status, word_count, 
@@ -257,12 +237,7 @@ async def update_document(
     """Update a document"""
     try:
         # Apply rate limiting for document updates
-        await check_rate_limit(
-            request=request,
-            endpoint_type="documents",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         # Check if document exists
         existing = db_service.execute_query(
@@ -329,12 +304,7 @@ async def delete_document(document_id: str, request: Request, user_id: int = Dep
     """Delete a document"""
     try:
         # Apply rate limiting for document deletion
-        await check_rate_limit(
-            request=request,
-            endpoint_type="documents",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         # Check if document exists
         document = db_service.execute_query(
@@ -362,19 +332,14 @@ async def delete_document(document_id: str, request: Request, user_id: int = Dep
 @router.put("/{document_id}/auto-save")
 async def auto_save_document(
     document_id: str, 
-    content: str = Query(...), 
     request: Request,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id),
+    content: str = Query(...)
 ):
     """Auto-save document content"""
     try:
         # Apply rate limiting for auto-save (more lenient for frequent saves)
-        await check_rate_limit(
-            request=request,
-            endpoint_type="general",  # Use general limits for auto-save
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         # Check if document exists and belongs to user
         existing = db_service.execute_query(

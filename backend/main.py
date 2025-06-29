@@ -34,7 +34,7 @@ from routers.indexing_router import router as indexing_router
 from middleware.security_middleware import SecurityMiddleware
 
 # Import rate limiter for health checks
-from services.redis_rate_limiter import get_rate_limiter_health, get_rate_limiter_stats
+from services.rate_limiter import rate_limiter
 
 # Configure logging
 logging.basicConfig(
@@ -334,18 +334,15 @@ async def health_check(request: Request = None):
 async def rate_limiter_health():
     """Get rate limiter health and statistics"""
     try:
-        from services.redis_rate_limiter import get_rate_limiter_health, get_rate_limiter_stats
-        
-        health_info = get_rate_limiter_health()
-        stats_info = get_rate_limiter_stats()
-        
+        # Get basic rate limiter info
         return {
-            "status": "healthy" if health_info.get('redis_connected', False) else "degraded",
-            "backend": health_info.get('backend', 'memory'),
-            "redis_connected": health_info.get('redis_connected', False),
-            "redis_info": health_info.get('redis_info'),
-            "statistics": stats_info,
-            "message": "Redis connected - distributed rate limiting active" if health_info.get('redis_connected') else "Using in-memory fallback - single instance only",
+            "status": "healthy",
+            "backend": "memory",
+            "redis_connected": False,
+            "message": "Using in-memory rate limiting - suitable for single instance deployment",
+            "limits": rate_limiter.limits,
+            "blocked_ips": len(rate_limiter.blocked_ips),
+            "active_requests": len(rate_limiter.request_counts),
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
@@ -353,7 +350,6 @@ async def rate_limiter_health():
         return {
             "status": "error",
             "backend": "unknown",
-            "redis_connected": False,
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }

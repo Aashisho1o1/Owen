@@ -18,7 +18,7 @@ from services.auth_service import auth_service, AuthenticationError
 from services.database import db_service, DatabaseError
 
 # Import production rate limiter
-from services.redis_rate_limiter import check_rate_limit
+from services.rate_limiter import check_rate_limit
 
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
@@ -49,12 +49,7 @@ async def register(user_data: UserCreate, request: Request) -> TokenResponse:
     """Register a new user account"""
     try:
         # Apply strict rate limiting for registration to prevent abuse
-        await check_rate_limit(
-            request=request,
-            endpoint_type="auth",
-            user_id=None,  # No user ID for registration
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "auth")
         
         logger.info(f"Registration attempt for email: {user_data.email}")
         
@@ -94,12 +89,7 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
     """Authenticate user and return tokens"""
     try:
         # Apply strict rate limiting for login to prevent brute force attacks
-        await check_rate_limit(
-            request=request,
-            endpoint_type="auth",
-            user_id=None,  # No user ID for login
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "auth")
         
         result = auth_service.login_user(login_data.email, login_data.password)
         
@@ -126,12 +116,7 @@ async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> 
     """Refresh access token using refresh token"""
     try:
         # Apply rate limiting for token refresh
-        await check_rate_limit(
-            request=request,
-            endpoint_type="auth",
-            user_id=None,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "auth")
         
         result = auth_service.refresh_access_token(refresh_data.refresh_token)
         
@@ -153,12 +138,7 @@ async def logout(request: Request, user_id: int = Depends(get_current_user_id)):
     """Logout user"""
     try:
         # Apply rate limiting for logout
-        await check_rate_limit(
-            request=request,
-            endpoint_type="general",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         logger.info(f"User {user_id} logged out")
         return {
@@ -174,12 +154,7 @@ async def get_profile(request: Request, user_id: int = Depends(get_current_user_
     """Get user profile information"""
     try:
         # Apply rate limiting for profile access
-        await check_rate_limit(
-            request=request,
-            endpoint_type="general",
-            user_id=user_id,
-            raise_on_limit=True
-        )
+        await check_rate_limit(request, "general")
         
         user = get_user_by_id(user_id)
         if not user:
