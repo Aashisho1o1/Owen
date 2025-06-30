@@ -1,28 +1,77 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting DOG Writer Backend (Simple Mode)"
+echo "🚀 Starting DOG Writer Backend (Railway Deployment)"
+echo "📅 Timestamp: $(date)"
+echo "🐍 Python version: $(python --version)"
 
 # Get port from environment (Railway sets this automatically)
 PORT=${PORT:-8080}
 echo "📡 Port: $PORT"
 
-# Environment check
+# Environment validation with graceful handling
 echo "🔧 Environment Check:"
-echo "   DATABASE_URL: ${DATABASE_URL:+✅ SET}"
-echo "   JWT_SECRET_KEY: ${JWT_SECRET_KEY:+✅ SET}"
-echo "   GEMINI_API_KEY: ${GEMINI_API_KEY:+✅ SET}"
-echo "   OPENAI_API_KEY: ${OPENAI_API_KEY:+✅ SET}"
 
-# Run the diagnostic script first
-echo "🔍 Running diagnostic checks..."
-python railway_deployment_debug.py
+# Critical: DATABASE_URL
+if [ -z "$DATABASE_URL" ]; then
+    echo "❌ CRITICAL: DATABASE_URL not set!"
+    echo "💡 Check Railway PostgreSQL service and environment variables"
+    exit 1
+else
+    echo "✅ DATABASE_URL: SET (${#DATABASE_URL} chars)"
+fi
 
-echo "🚀 Starting application with hypercorn..."
+# Generate JWT secret if missing
+if [ -z "$JWT_SECRET_KEY" ]; then
+    echo "⚠️ JWT_SECRET_KEY not set, generating temporary one..."
+    export JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
+    echo "✅ JWT_SECRET_KEY: GENERATED (${#JWT_SECRET_KEY} chars)"
+else
+    echo "✅ JWT_SECRET_KEY: SET (${#JWT_SECRET_KEY} chars)"
+fi
 
-# Simple hypercorn start - let Railway handle the port binding
+# Optional: AI API keys
+echo "🤖 AI API Keys:"
+if [ -z "$GEMINI_API_KEY" ]; then
+    echo "⚠️ GEMINI_API_KEY: NOT SET (AI features limited)"
+else
+    echo "✅ GEMINI_API_KEY: SET"
+fi
+
+if [ -z "$OPENAI_API_KEY" ]; then
+    echo "⚠️ OPENAI_API_KEY: NOT SET (AI features limited)"
+else
+    echo "✅ OPENAI_API_KEY: SET"
+fi
+
+# Railway environment info
+echo "🚂 Railway Info:"
+echo "   Environment: ${RAILWAY_ENVIRONMENT:-unknown}"
+echo "   Service: ${RAILWAY_SERVICE:-unknown}"
+
+# Quick database connectivity test (optional)
+echo "🔍 Testing database connectivity..."
+python -c "
+import os
+try:
+    import psycopg2
+    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+    conn.close()
+    print('✅ Database connection successful')
+except Exception as e:
+    print(f'⚠️ Database test failed: {e}')
+    print('💡 App will start anyway - database issues will be logged')
+" || echo "⚠️ Database test skipped (continuing startup)"
+
+echo "🚀 Starting FastAPI application with hypercorn..."
+
+# Start the application with Railway-optimized settings
 exec python -m hypercorn main:app \
     --bind "0.0.0.0:$PORT" \
+    --workers 1 \
+    --worker-class asyncio \
     --access-logfile - \
     --error-logfile - \
-    --workers 1 
+    --log-level info \
+    --graceful-timeout 30 \
+    --keep-alive 65 

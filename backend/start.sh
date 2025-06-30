@@ -1,105 +1,174 @@
 #!/bin/bash
-set -e
 
-# Load environment from .env if exists (for local development)
-if [ -f .env ]; then
-    echo "🔧 Loading local .env file..."
-    export $(cat .env | grep -v '^#' | xargs)
-fi
+# DOG Writer Backend - Railway Startup Script
+# Enhanced with debugging and error handling
 
-echo "🚨 NUCLEAR RESET: Starting DOG Writer with aggressive process cleanup"
+set -e  # Exit on any error
 
-# Get the port from environment
-PORT=${PORT:-8080}
-echo "📡 Target port: $PORT"
+echo "🚀 Starting DOG Writer Backend on Railway..."
+echo "📅 Timestamp: $(date)"
+echo "🐍 Python version: $(python --version)"
+echo "📦 Current directory: $(pwd)"
 
-# AGGRESSIVE PROCESS CLEANUP - Kill anything using our port
-echo "🔍 Checking for processes using port $PORT..."
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
 
-# Method 1: Use netstat to find processes
-if command -v netstat &> /dev/null; then
-    PIDS=$(netstat -tlnp 2>/dev/null | grep ":$PORT " | awk '{print $7}' | cut -d'/' -f1 | grep -v '-' || true)
-    if [ ! -z "$PIDS" ]; then
-        echo "🚫 Found processes using port $PORT: $PIDS"
-        for PID in $PIDS; do
-            echo "💀 Killing process $PID"
-            kill -9 $PID 2>/dev/null || true
-        done
-    fi
-fi
-
-# Method 2: Use lsof to find processes
-if command -v lsof &> /dev/null; then
-    LSOF_PIDS=$(lsof -ti:$PORT 2>/dev/null || true)
-    if [ ! -z "$LSOF_PIDS" ]; then
-        echo "🚫 lsof found processes using port $PORT: $LSOF_PIDS"
-        for PID in $LSOF_PIDS; do
-            echo "💀 Killing process $PID (via lsof)"
-            kill -9 $PID 2>/dev/null || true
-        done
-    fi
-fi
-
-# Method 3: Kill any Python processes (in case they're stuck)
-echo "🐍 Cleaning up any stuck Python processes..."
-pkill -f "python.*main.py" 2>/dev/null || true
-pkill -f "hypercorn.*main:app" 2>/dev/null || true
-pkill -f "uvicorn.*main:app" 2>/dev/null || true
-
-# Wait a moment for cleanup
-echo "⏳ Waiting for process cleanup..."
-sleep 2
-
-# Verify port is free
-echo "🔍 Final port check..."
-if command -v lsof &> /dev/null; then
-    if lsof -ti:$PORT &> /dev/null; then
-        echo "❌ Port $PORT still occupied after cleanup!"
-        lsof -i:$PORT || true
-    else
-        echo "✅ Port $PORT is now free"
-    fi
-fi
-
-# FIXED: Use correct hypercorn arguments
-echo "🚀 Starting hypercorn with corrected arguments..."
-
-# Strategy 1: IPv4 only first with CORRECT arguments
-echo "🔄 Attempt 1: IPv4 only binding"
-python -m hypercorn main:app \
-    --bind "0.0.0.0:$PORT" \
-    --access-logfile - \
-    --error-logfile - \
-    --worker-class asyncio \
-    --workers 1 \
-    --keep-alive 5 \
-    --graceful-timeout 10 &
-
-HYPERCORN_PID=$!
-sleep 3
-
-# Check if it started successfully
-if kill -0 $HYPERCORN_PID 2>/dev/null; then
-    echo "✅ Hypercorn started successfully with IPv4 binding (PID: $HYPERCORN_PID)"
-    wait $HYPERCORN_PID
-else
-    echo "❌ IPv4 binding failed, trying dual-stack..."
+# Function to validate environment variables
+validate_env() {
+    echo "🔍 Validating environment variables..."
     
-    # Strategy 2: Dual-stack binding with CORRECT arguments
-    echo "🔄 Attempt 2: Dual-stack binding"
-    exec python -m hypercorn main:app \
-        --bind "[::]:$PORT" \
-        --bind "0.0.0.0:$PORT" \
-        --access-logfile - \
-        --error-logfile - \
-        --worker-class asyncio \
-        --workers 1 \
-        --keep-alive 5 \
-        --graceful-timeout 10
+    # Critical variables
+    if [ -z "$DATABASE_URL" ]; then
+        echo "❌ CRITICAL: DATABASE_URL is not set!"
+        echo "💡 This should be automatically set by Railway PostgreSQL service"
+        echo "💡 Check Railway dashboard -> Variables tab"
+        exit 1
+    else
+        echo "✅ DATABASE_URL is set (${#DATABASE_URL} characters)"
+        # Show masked version for debugging
+        echo "🔍 DATABASE_URL format: ${DATABASE_URL:0:20}...${DATABASE_URL: -10}"
+    fi
+    
+    # Generate JWT secret if not set
+    if [ -z "$JWT_SECRET_KEY" ]; then
+        echo "⚠️ JWT_SECRET_KEY not set, generating one..."
+        export JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
+        echo "✅ Generated JWT_SECRET_KEY (${#JWT_SECRET_KEY} characters)"
+    else
+        echo "✅ JWT_SECRET_KEY is set (${#JWT_SECRET_KEY} characters)"
+    fi
+    
+    # Optional variables
+    if [ -z "$GEMINI_API_KEY" ]; then
+        echo "⚠️ GEMINI_API_KEY not set (AI features may be limited)"
+    else
+        echo "✅ GEMINI_API_KEY is set"
+    fi
+    
+    if [ -z "$OPENAI_API_KEY" ]; then
+        echo "⚠️ OPENAI_API_KEY not set (AI features may be limited)"
+    else
+        echo "✅ OPENAI_API_KEY is set"
+    fi
+    
+    # Railway specific variables
+    echo "🚂 Railway Environment: ${RAILWAY_ENVIRONMENT:-unknown}"
+    echo "🚂 Railway Service: ${RAILWAY_SERVICE:-unknown}"
+    echo "🚂 Railway Project: ${RAILWAY_PROJECT_NAME:-unknown}"
+}
+
+# Function to test database connectivity
+test_database() {
+    echo "🔍 Testing database connectivity..."
+    
+    python -c "
+import os
+import psycopg2
+from urllib.parse import urlparse
+
+try:
+    db_url = os.getenv('DATABASE_URL')
+    if not db_url:
+        print('❌ DATABASE_URL not set')
+        exit(1)
+    
+    # Parse the DATABASE_URL
+    parsed = urlparse(db_url)
+    print(f'🔍 Database host: {parsed.hostname}')
+    print(f'🔍 Database port: {parsed.port}')
+    print(f'🔍 Database name: {parsed.path[1:] if parsed.path else \"unknown\"}')
+    
+    # Test connection
+    conn = psycopg2.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute('SELECT version();')
+    version = cursor.fetchone()[0]
+    print(f'✅ Database connection successful')
+    print(f'🗄️ PostgreSQL version: {version[:50]}...')
+    cursor.close()
+    conn.close()
+    
+except Exception as e:
+    print(f'❌ Database connection failed: {e}')
+    print('💡 Common fixes:')
+    print('   - Ensure PostgreSQL service is running in Railway')
+    print('   - Check if DATABASE_URL uses postgres.railway.internal')
+    print('   - Verify database credentials are correct')
+    exit(1)
+"
+}
+
+# Function to install dependencies if needed
+install_dependencies() {
+    echo "📦 Checking Python dependencies..."
+    
+    if [ -f "requirements.txt" ]; then
+        echo "📋 Found requirements.txt"
+        pip install --no-cache-dir -r requirements.txt
+        echo "✅ Dependencies installed"
+    else
+        echo "⚠️ No requirements.txt found"
+    fi
+}
+
+# Function to start the server
+start_server() {
+    echo "🌐 Starting FastAPI server..."
+    
+    # Use Railway's PORT or default to 8000
+    PORT=${PORT:-8000}
+    HOST=${HOST:-0.0.0.0}
+    
+    echo "🔧 Server configuration:"
+    echo "   Host: $HOST"
+    echo "   Port: $PORT"
+    echo "   Workers: 1 (Railway optimized)"
+    
+    # Start with hypercorn for better Railway compatibility
+    if command_exists hypercorn; then
+        echo "🚀 Starting with Hypercorn (production server)..."
+        exec hypercorn main:app \
+            --bind $HOST:$PORT \
+            --workers 1 \
+            --worker-class asyncio \
+            --access-logfile - \
+            --error-logfile - \
+            --log-level info \
+            --graceful-timeout 30 \
+            --keep-alive 65
+    elif command_exists uvicorn; then
+        echo "🚀 Starting with Uvicorn (fallback server)..."
+        exec uvicorn main:app \
+            --host $HOST \
+            --port $PORT \
+            --workers 1 \
+            --access-log \
+            --log-level info
+    else
+        echo "❌ No ASGI server found (hypercorn or uvicorn required)"
+        exit 1
+    fi
+}
+
+# Main execution
+echo "🔧 Starting Railway deployment process..."
+
+# Validate environment
+validate_env
+
+# Test database (optional - don't fail if this doesn't work)
+echo "🔍 Testing database connectivity (optional)..."
+if test_database; then
+    echo "✅ Database test passed"
+else
+    echo "⚠️ Database test failed, but continuing startup..."
 fi
 
-echo "📊 Environment Check:"
-echo "   DATABASE_URL: ${DATABASE_URL:+SET}" # Only show if set
-echo "   JWT_SECRET_KEY: ${JWT_SECRET_KEY:+SET}"
-echo "   GEMINI_API_KEY: ${GEMINI_API_KEY:+SET}"
-echo "   OPENAI_API_KEY: ${OPENAI_API_KEY:+SET}" 
+# Install dependencies (Railway usually handles this, but just in case)
+# install_dependencies
+
+# Start the server
+echo "🎯 All checks passed, starting server..."
+start_server 
