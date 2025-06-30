@@ -119,8 +119,10 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
 
   // Handle active discussion highlighting from ChatContext using DOM manipulation
   useEffect(() => {
+    let isMounted = true; // MEMORY LEAK FIX: Track component mount state
+    
     const handleActiveDiscussionHighlight = (event: CustomEvent) => {
-      if (!editor) return;
+      if (!editor || !isMounted) return; // MEMORY LEAK FIX: Check if component is still mounted
 
       const { text, action } = event.detail;
       const editorElement = editor.view.dom;
@@ -285,6 +287,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     window.addEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
     
     return () => {
+      isMounted = false; // MEMORY LEAK FIX: Mark component as unmounted
       window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
     };
   }, [editor]);

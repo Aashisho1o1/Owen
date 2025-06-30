@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import HighlightableEditor from './HighlightableEditor';
 import ChatPane from './ChatPane';
+import { FictionDocumentManager } from './FictionDocumentManager';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatContext } from '../contexts/ChatContext';
 import { useEditorContext } from '../contexts/EditorContext';
 import './WritingWorkspace.css';
+import '../styles/FictionDocumentManager.css';
 
 /**
  * WritingWorkspace - Clean layout component with single responsibility
@@ -26,7 +28,6 @@ export const WritingWorkspace: React.FC = () => {
   const { editorContent, setEditorContent } = useEditorContext();
   const {
     createDocument,
-    updateContent,
     updateTitle,
     saveNow,
     isSaving,
@@ -42,6 +43,9 @@ export const WritingWorkspace: React.FC = () => {
   
   // Copy functionality state
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
+  
+  // Fiction Document Manager state
+  const [showDocumentManager, setShowDocumentManager] = useState(false);
 
   // Initialize document on component mount
   useEffect(() => {
@@ -115,6 +119,14 @@ export const WritingWorkspace: React.FC = () => {
     return lastSaved.toLocaleDateString();
   };
 
+  // Handle document selection from Fiction Document Manager
+  const handleDocumentSelect = (document: { id: string; title: string; content: string }) => {
+    setCurrentDocument(document);
+    setDocumentTitle(document.title);
+    setEditorContent(document.content || '');
+    setShowDocumentManager(false);
+  };
+
   // Copy document content to clipboard
   const handleCopyContent = async () => {
     try {
@@ -184,6 +196,16 @@ export const WritingWorkspace: React.FC = () => {
         
         {/* MVP Controls - Just essentials */}
         <div className="workspace-controls-mvp">
+          {/* Document Manager Button */}
+          <button
+            onClick={() => setShowDocumentManager(true)}
+            className="document-manager-btn"
+            title="Open Fiction Document Manager"
+          >
+            <span className="manager-icon">📚</span>
+            <span className="manager-text">Documents</span>
+          </button>
+
           {/* Copy Button */}
           <button
             onClick={handleCopyContent}
@@ -258,6 +280,14 @@ export const WritingWorkspace: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Fiction Document Manager Modal */}
+      {showDocumentManager && (
+        <FictionDocumentManager
+          onDocumentSelect={handleDocumentSelect}
+          onClose={() => setShowDocumentManager(false)}
+        />
+      )}
     </div>
   );
 };

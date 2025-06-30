@@ -2930,3 +2930,119 @@
   z-index: -1;
   opacity: 0.1;
 }
+
+/* Error Boundary Styles */
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 2rem;
+  background: var(--bg-color);
+  border: 2px solid var(--error-color, #dc3545);
+  border-radius: 8px;
+  margin: 1rem;
+}
+
+.error-boundary-content {
+  max-width: 600px;
+  text-align: center;
+  color: var(--text-color);
+}
+
+.error-boundary-content h2 {
+  color: var(--error-color, #dc3545);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-boundary-content p {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.error-details {
+  margin: 1.5rem 0;
+  text-align: left;
+  background: var(--bg-secondary, #f8f9fa);
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.error-details summary {
+  padding: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  background: var(--bg-tertiary, #f1f3f4);
+  border-radius: 4px 4px 0 0;
+}
+
+.error-details summary:hover {
+  background: var(--bg-hover, #e8eaed);
+}
+
+.error-details pre {
+  margin: 0;
+  padding: 1rem;
+  background: var(--code-bg, #f8f8f8);
+  color: var(--code-color, #333);
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-retry-button,
+.error-reload-button {
+  margin: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-retry-button {
+  background: var(--primary-color, #007bff);
+  color: white;
+}
+
+.error-retry-button:hover {
+  background: var(--primary-hover, #0056b3);
+  transform: translateY(-1px);
+}
+
+.error-reload-button {
+  background: var(--secondary-color, #6c757d);
+  color: white;
+}
+
+.error-reload-button:hover {
+  background: var(--secondary-hover, #545b62);
+  transform: translateY(-1px);
+}
+
+/* Dark theme support for error boundary */
+[data-theme="dark"] .error-boundary {
+  background: var(--bg-color);
+  border-color: var(--error-color, #dc3545);
+}
+
+[data-theme="dark"] .error-details {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .error-details summary {
+  background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .error-details pre {
+  background: var(--code-bg);
+  color: var(--code-color);
+}

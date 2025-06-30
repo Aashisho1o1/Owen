@@ -5,8 +5,23 @@ from pydantic import field_validator
 from enum import Enum
 
 # === ENUMS ===
+class DocumentType(str, Enum):
+    """Fiction-focused document types"""
+    NOVEL = "novel"
+    CHAPTER = "chapter"
+    CHARACTER_PROFILE = "character_profile"
+    WORLD_BUILDING = "world_building"
+    PLOT_OUTLINE = "plot_outline"
+    SCENE = "scene"
+    RESEARCH_NOTES = "research_notes"
+    DRAFT = "draft"
+
 class DocumentStatus(str, Enum):
     DRAFT = "draft"
+    IN_PROGRESS = "in_progress"
+    FIRST_DRAFT = "first_draft"
+    REVISION = "revision"
+    FINAL_DRAFT = "final_draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
 
@@ -86,37 +101,94 @@ class RefreshTokenRequest(BaseModel):
 
 # === DOCUMENT SCHEMAS ===
 class DocumentCreate(BaseModel):
-    """Document creation model"""
+    """Document creation model with fiction-specific fields"""
     title: str = Field(..., min_length=1, max_length=200)
     content: str = ""
+    document_type: DocumentType = DocumentType.NOVEL
     template_id: Optional[str] = None
     folder_id: Optional[str] = None
     status: DocumentStatus = DocumentStatus.DRAFT
+    # Fiction-specific metadata
+    word_count_target: Optional[int] = Field(None, description="Target word count for this document")
+    tags: List[str] = Field(default_factory=list, description="Tags for organization")
+    series_name: Optional[str] = Field(None, max_length=100, description="Series this document belongs to")
+    chapter_number: Optional[int] = Field(None, description="Chapter number if applicable")
 
 class DocumentUpdate(BaseModel):
     """Document update model"""
     title: Optional[str] = None
     content: Optional[str] = None
+    document_type: Optional[DocumentType] = None
     status: Optional[DocumentStatus] = None
     folder_id: Optional[str] = None
+    word_count_target: Optional[int] = None
+    tags: Optional[List[str]] = None
+    series_name: Optional[str] = None
+    chapter_number: Optional[int] = None
 
 class DocumentFromTemplateCreate(BaseModel):
     """Create document from template model"""
     template_id: str = Field(..., description="Template ID to use")
     title: str = Field(..., min_length=1, max_length=200, description="Document title")
     folder_id: Optional[str] = None
+    document_type: DocumentType = DocumentType.NOVEL
+    series_name: Optional[str] = None
+    chapter_number: Optional[int] = None
 
 # === FOLDER SCHEMAS ===
+class FolderType(str, Enum):
+    """Folder types for better organization"""
+    PROJECT = "project"           # Main project folder
+    SERIES = "series"            # Series folder
+    CHARACTERS = "characters"     # Character profiles
+    WORLD_BUILDING = "world_building"  # World building notes
+    RESEARCH = "research"        # Research materials
+    DRAFTS = "drafts"           # Draft versions
+    GENERAL = "general"         # General folder
+
 class FolderCreate(BaseModel):
     """Folder creation model"""
     name: str = Field(..., min_length=1, max_length=100)
+    folder_type: FolderType = FolderType.GENERAL
     parent_id: Optional[str] = None
     color: Optional[str] = "#3B82F6"
+    description: Optional[str] = Field(None, max_length=500, description="Folder description")
 
 class FolderUpdate(BaseModel):
     """Folder update model"""
     name: Optional[str] = None
+    folder_type: Optional[FolderType] = None
     color: Optional[str] = None
+    description: Optional[str] = None
+
+# === FICTION TEMPLATE SCHEMAS ===
+class FictionTemplate(BaseModel):
+    """Fiction writing templates"""
+    id: str
+    name: str
+    category: str  # "character", "plot", "world", "scene", etc.
+    description: str
+    content: str
+    document_type: DocumentType
+    tags: List[str] = Field(default_factory=list)
+    is_system_template: bool = True
+    created_by: Optional[str] = None
+
+# === SERIES MANAGEMENT ===
+class SeriesCreate(BaseModel):
+    """Create a new series"""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    genre: Optional[str] = Field(None, max_length=50)
+    target_books: Optional[int] = Field(None, description="Planned number of books")
+    folder_id: Optional[str] = None
+
+class SeriesUpdate(BaseModel):
+    """Update series information"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    genre: Optional[str] = None
+    target_books: Optional[int] = None
 
 # === CHAT SCHEMAS (Core MVP Feature) ===
 class ChatMessage(BaseModel):

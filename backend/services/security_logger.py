@@ -1,171 +1,256 @@
 """
-Simple Security Logging Service for MVP
-
-Basic security event logging with essential monitoring.
+Security Logger Service
+Tracks security events and document access for audit purposes.
+Addresses Claude Opus security recommendation.
 """
 
 import logging
-import uuid
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, asdict
+import json
+from datetime import datetime
+from typing import Dict, Any, Optional
 from enum import Enum
-from fastapi import Request
 
 logger = logging.getLogger(__name__)
 
 class SecurityEventType(Enum):
-    """Basic security event types for MVP"""
-    AUTH_FAILURE = "auth_failure"
-    AUTH_SUCCESS = "auth_success"
+    """Types of security events to log"""
+    DOCUMENT_ACCESS = "document_access"
+    DOCUMENT_CREATE = "document_create"
+    DOCUMENT_UPDATE = "document_update"
+    DOCUMENT_DELETE = "document_delete"
+    LOGIN_SUCCESS = "login_success"
+    LOGIN_FAILURE = "login_failure"
+    DANGEROUS_PATTERN = "dangerous_pattern"
+    PROMPT_INJECTION = "prompt_injection"
     RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
-    SUSPICIOUS_REQUEST = "suspicious_request"
     UNAUTHORIZED_ACCESS = "unauthorized_access"
+    SUSPICIOUS_ACTIVITY = "suspicious_activity"
 
 class SecuritySeverity(Enum):
     """Security event severity levels"""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
-@dataclass
-class SecurityEvent:
-    """Simple security event data structure"""
-    event_id: str
-    timestamp: datetime
-    event_type: SecurityEventType
-    severity: SecuritySeverity
-    ip_address: str
-    user_agent: str
-    user_id: Optional[str]
-    endpoint: str
-    method: str
-    details: Dict[str, Any]
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization"""
-        data = asdict(self)
-        data['timestamp'] = self.timestamp.isoformat()
-        data['event_type'] = self.event_type.value
-        data['severity'] = self.severity.value
-        return data
-
-class SimpleSecurityMonitor:
-    """Simple security monitoring for MVP"""
+class SecurityLogger:
+    """Security event logging service"""
     
     def __init__(self):
-        self.events: List[SecurityEvent] = []
-        self.max_events = 1000  # Keep last 1000 events
-        self.blocked_ips: Dict[str, datetime] = {}
+        self.logger = logging.getLogger("security")
+        # Configure security logger with separate handler if needed
+        if not self.logger.handlers:
+            self._setup_security_logger()
     
-    def get_client_info(self, request: Request) -> Dict[str, str]:
-        """Extract basic client information from request"""
-        # Get IP address
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            ip_address = forwarded_for.split(",")[0].strip()
-        else:
-            ip_address = request.headers.get("X-Real-IP", 
-                request.client.host if request.client else "unknown")
-        
-        # Get user agent
-        user_agent = request.headers.get("User-Agent", "unknown")
-        
-        return {
-            "ip_address": ip_address,
-            "user_agent": user_agent
-        }
+    def _setup_security_logger(self):
+        """Set up dedicated security logger"""
+        # For MVP, use same handler as main logger
+        # In production, this should write to a separate security log file
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            '%(asctime)s - SECURITY - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
     
-    def log_security_event(self, request: Request, event_type: SecurityEventType,
-                          severity: SecuritySeverity, details: Dict[str, Any],
-                          user_id: Optional[str] = None) -> SecurityEvent:
+    def log_security_event(
+        self,
+        event_type: SecurityEventType,
+        severity: SecuritySeverity,
+        user_id: Optional[int] = None,
+        ip_address: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        additional_context: Optional[str] = None
+    ):
         """Log a security event"""
-        client_info = self.get_client_info(request)
+        try:
+            security_event = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "event_type": event_type.value,
+                "severity": severity.value,
+                "user_id": user_id,
+                "ip_address": ip_address,
+                "details": details or {},
+                "context": additional_context
+            }
+            
+            # Log with appropriate level based on severity
+            log_message = f"SECURITY_EVENT: {json.dumps(security_event)}"
+            
+            if severity == SecuritySeverity.CRITICAL:
+                self.logger.critical(log_message)
+            elif severity == SecuritySeverity.HIGH:
+                self.logger.error(log_message)
+            elif severity == SecuritySeverity.MEDIUM:
+                self.logger.warning(log_message)
+            else:
+                self.logger.info(log_message)
+                
+        except Exception as e:
+            logger.error(f"Failed to log security event: {e}")
+    
+    def log_document_access(
+        self,
+        document_id: str,
+        user_id: int,
+        action: str,
+        ip_address: Optional[str] = None,
+        success: bool = True,
+        error_details: Optional[str] = None
+    ):
+        """Log document access events"""
+        event_type_map = {
+            "read": SecurityEventType.DOCUMENT_ACCESS,
+            "create": SecurityEventType.DOCUMENT_CREATE,
+            "update": SecurityEventType.DOCUMENT_UPDATE,
+            "delete": SecurityEventType.DOCUMENT_DELETE
+        }
         
-        event = SecurityEvent(
-            event_id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow(),
+        event_type = event_type_map.get(action, SecurityEventType.DOCUMENT_ACCESS)
+        severity = SecuritySeverity.LOW if success else SecuritySeverity.MEDIUM
+        
+        details = {
+            "document_id": document_id,
+            "action": action,
+            "success": success
+        }
+        
+        if error_details:
+            details["error"] = error_details
+            severity = SecuritySeverity.HIGH
+        
+        self.log_security_event(
             event_type=event_type,
             severity=severity,
-            ip_address=client_info["ip_address"],
-            user_agent=client_info["user_agent"],
             user_id=user_id,
-            endpoint=str(request.url.path),
-            method=request.method,
-            details=details
+            ip_address=ip_address,
+            details=details,
+            additional_context=f"Document {action} operation"
         )
-        
-        self.events.append(event)
-        
-        # Limit memory usage
-        if len(self.events) > self.max_events:
-            self.events = self.events[-self.max_events//2:]
-        
-        # Log to standard logger
-        log_level = logging.WARNING if severity in [SecuritySeverity.HIGH, SecuritySeverity.CRITICAL] else logging.INFO
-        logger.log(log_level, 
-                  f"Security Event: {event_type.value} from {client_info['ip_address']} - {details}")
-        
-        return event
     
-    def is_ip_blocked(self, ip_address: str) -> bool:
-        """Check if an IP address is currently blocked"""
-        if ip_address in self.blocked_ips:
-            block_time = self.blocked_ips[ip_address]
-            if datetime.utcnow() - block_time < timedelta(hours=1):
-                return True
-            else:
-                del self.blocked_ips[ip_address]
-        return False
-    
-    def get_recent_events(self, hours: int = 24) -> List[SecurityEvent]:
-        """Get recent security events"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
-        return [event for event in self.events if event.timestamp > cutoff]
-    
-    def get_security_summary(self) -> Dict[str, Any]:
-        """Get basic security metrics"""
-        recent_events = self.get_recent_events(24)
+    def log_authentication_event(
+        self,
+        email: str,
+        success: bool,
+        ip_address: Optional[str] = None,
+        failure_reason: Optional[str] = None,
+        user_id: Optional[int] = None
+    ):
+        """Log authentication events"""
+        event_type = SecurityEventType.LOGIN_SUCCESS if success else SecurityEventType.LOGIN_FAILURE
+        severity = SecuritySeverity.LOW if success else SecuritySeverity.MEDIUM
         
-        event_counts = {}
-        for event_type in SecurityEventType:
-            event_counts[event_type.value] = len([
-                e for e in recent_events if e.event_type == event_type
-            ])
-        
-        severity_counts = {}
-        for severity in SecuritySeverity:
-            severity_counts[severity.value] = len([
-                e for e in recent_events if e.severity == severity
-            ])
-        
-        return {
-            "total_events_24h": len(recent_events),
-            "blocked_ips": len(self.blocked_ips),
-            "events_by_type": event_counts,
-            "events_by_severity": severity_counts,
-            "last_updated": datetime.utcnow().isoformat()
+        details = {
+            "email": email,
+            "success": success
         }
+        
+        if failure_reason:
+            details["failure_reason"] = failure_reason
+            # Escalate severity for multiple failures or suspicious patterns
+            if "multiple attempts" in failure_reason.lower() or "locked" in failure_reason.lower():
+                severity = SecuritySeverity.HIGH
+        
+        self.log_security_event(
+            event_type=event_type,
+            severity=severity,
+            user_id=user_id,
+            ip_address=ip_address,
+            details=details,
+            additional_context="User authentication attempt"
+        )
+    
+    def log_dangerous_pattern(
+        self,
+        pattern: str,
+        input_sample: str,
+        user_id: Optional[int] = None,
+        ip_address: Optional[str] = None
+    ):
+        """Log dangerous pattern detection"""
+        self.log_security_event(
+            event_type=SecurityEventType.DANGEROUS_PATTERN,
+            severity=SecuritySeverity.HIGH,
+            user_id=user_id,
+            ip_address=ip_address,
+            details={
+                "pattern": pattern,
+                "input_sample": input_sample[:100]  # Limit sample size
+            },
+            additional_context="Dangerous pattern detected in user input"
+        )
+    
+    def log_prompt_injection(
+        self,
+        pattern: str,
+        input_sample: str,
+        user_id: Optional[int] = None,
+        ip_address: Optional[str] = None
+    ):
+        """Log prompt injection attempts"""
+        self.log_security_event(
+            event_type=SecurityEventType.PROMPT_INJECTION,
+            severity=SecuritySeverity.CRITICAL,
+            user_id=user_id,
+            ip_address=ip_address,
+            details={
+                "pattern": pattern,
+                "input_sample": input_sample[:100]  # Limit sample size
+            },
+            additional_context="Prompt injection attempt detected"
+        )
+    
+    def log_rate_limit_exceeded(
+        self,
+        endpoint: str,
+        user_id: Optional[int] = None,
+        ip_address: Optional[str] = None
+    ):
+        """Log rate limit violations"""
+        self.log_security_event(
+            event_type=SecurityEventType.RATE_LIMIT_EXCEEDED,
+            severity=SecuritySeverity.MEDIUM,
+            user_id=user_id,
+            ip_address=ip_address,
+            details={"endpoint": endpoint},
+            additional_context="Rate limit exceeded"
+        )
+    
+    def log_unauthorized_access(
+        self,
+        resource: str,
+        attempted_action: str,
+        user_id: Optional[int] = None,
+        ip_address: Optional[str] = None
+    ):
+        """Log unauthorized access attempts"""
+        self.log_security_event(
+            event_type=SecurityEventType.UNAUTHORIZED_ACCESS,
+            severity=SecuritySeverity.HIGH,
+            user_id=user_id,
+            ip_address=ip_address,
+            details={
+                "resource": resource,
+                "attempted_action": attempted_action
+            },
+            additional_context="Unauthorized access attempt"
+        )
 
-# Global instance
-security_monitor = SimpleSecurityMonitor()
+# Global security logger instance
+security_logger = SecurityLogger()
 
 # Helper functions
-def log_auth_failure(request: Request, details: Dict[str, Any], user_id: Optional[str] = None):
-    """Log authentication failure"""
-    return security_monitor.log_security_event(
-        request, SecurityEventType.AUTH_FAILURE, SecuritySeverity.MEDIUM, details, user_id
-    )
-
-def log_suspicious_request(request: Request, details: Dict[str, Any], user_id: Optional[str] = None):
-    """Log suspicious request"""
-    return security_monitor.log_security_event(
-        request, SecurityEventType.SUSPICIOUS_REQUEST, SecuritySeverity.HIGH, details, user_id
-    )
-
-def log_unauthorized_access(request: Request, details: Dict[str, Any], user_id: Optional[str] = None):
-    """Log unauthorized access attempt"""
-    return security_monitor.log_security_event(
-        request, SecurityEventType.UNAUTHORIZED_ACCESS, SecuritySeverity.HIGH, details, user_id
-    ) 
+def get_client_ip(request) -> str:
+    """Extract client IP from request"""
+    # Check for forwarded headers (common in production behind proxy)
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    
+    # Fallback to direct client IP
+    return getattr(request.client, "host", "unknown") 

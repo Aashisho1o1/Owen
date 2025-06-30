@@ -9,14 +9,17 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
+import json
 
 # Import models from centralized schemas
 from models.schemas import (
-    DocumentCreate, DocumentUpdate, DocumentFromTemplateCreate, DocumentStatus
+    DocumentCreate, DocumentUpdate, DocumentFromTemplateCreate, DocumentStatus, DocumentType
 )
 
 # Import services
 from services.database import db_service, DatabaseError
+from services.fiction_templates import fiction_template_service
+from services.security_logger import security_logger, get_client_ip
 
 # Import production rate limiter
 from services.rate_limiter import check_rate_limit
@@ -43,11 +46,13 @@ async def get_documents(
     user_id: int = Depends(get_current_user_id),
     folder_id: Optional[str] = Query(None),
     status: Optional[DocumentStatus] = Query(None),
+    document_type: Optional[DocumentType] = Query(None),
+    series_name: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     limit: Optional[int] = Query(50),
     offset: Optional[int] = Query(0)
 ):
-    """Get user documents with optional filtering"""
+    """Get user documents with fiction-specific filtering"""
     try:
         # Apply rate limiting for document listing
         await check_rate_limit(request, "general")
@@ -63,33 +68,67 @@ async def get_documents(
         if status:
             conditions.append("status = %s")
             params.append(status.value)
+            
+        if document_type:
+            conditions.append("document_type = %s")
+            params.append(document_type.value)
+            
+        if series_name:
+            conditions.append("series_name = %s")
+            params.append(series_name)
         
         if search:
-            conditions.append("(title ILIKE %s OR content ILIKE %s)")
+            # SECURITY: Use parameterized queries to prevent SQL injection
+            conditions.append("(title ILIKE %s OR content ILIKE %s OR tags @> %s)")
             search_term = f"%{search}%"
-            params.extend([search_term, search_term])
+            tag_search = json.dumps([search])
+            params.extend([search_term, search_term, tag_search])
         
         # Get total count
         count_query = f"SELECT COUNT(*) as count FROM documents WHERE {' AND '.join(conditions)}"
         total_count = db_service.execute_query(count_query, params, fetch='one')['count']
         
-        # Get documents
+        # Get documents with fiction-specific fields
         query = f"""
-            SELECT id, title, content, status, word_count, 
-                   created_at, updated_at, folder_id
+            SELECT id, title, content, document_type, status, word_count, word_count_target,
+                   tags, series_name, chapter_number, created_at, updated_at, folder_id
             FROM documents 
             WHERE {' AND '.join(conditions)}
-            ORDER BY updated_at DESC
+            ORDER BY 
+                CASE 
+                    WHEN document_type = 'novel' THEN 1
+                    WHEN document_type = 'chapter' THEN 2
+                    ELSE 3
+                END,
+                series_name NULLS LAST,
+                chapter_number NULLS LAST,
+                updated_at DESC
             LIMIT %s OFFSET %s
         """
         params.extend([limit, offset])
         
         documents = db_service.execute_query(query, params, fetch='all')
         
+        # SECURITY: Log document access
+        client_ip = get_client_ip(request)
+        security_logger.log_document_access(
+            document_id="bulk_list",
+            user_id=user_id,
+            action="read",
+            ip_address=client_ip,
+            success=True
+        )
+        
         # Format response
         for doc in documents:
             doc['created_at'] = doc['created_at'].isoformat() if doc['created_at'] else None
             doc['updated_at'] = doc['updated_at'].isoformat() if doc['updated_at'] else None
+            # Ensure tags is a list
+            if isinstance(doc.get('tags'), str):
+                try:
+                    doc['tags'] = json.loads(doc['tags'])
+                except:
+                    doc['tags'] = []
         
         return {
             "documents": documents,
@@ -111,30 +150,40 @@ async def create_document_from_template(
     request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
-    """Create a new document from a template"""
+    """Create a new document from a fiction template"""
     try:
         # Apply rate limiting for document creation
         await check_rate_limit(request, "general")
         
-        logger.info(f"Creating document from template: {doc_data.template_id}")
+        logger.info(f"Creating document from fiction template: {doc_data.template_id}")
         
-        # Import templates store from main.py (this should be moved to a service)
-        from main import templates_store
-        
-        # Find the template
-        template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
+        # Get template from fiction template service
+        template = fiction_template_service.get_template_by_id(doc_data.template_id)
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
         
         doc_id = str(uuid.uuid4())
-        content = template['content']
+        content = template.content
         word_count = calculate_word_count(content)
         
+        # Convert tags list to JSON for storage
+        tags_json = json.dumps([])
+        
         result = db_service.execute_query(
-            """INSERT INTO documents (id, user_id, title, content, folder_id, status, word_count, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-               RETURNING id, title, content, folder_id, status, word_count, created_at, updated_at""",
-            (doc_id, user_id, doc_data.title, content, doc_data.folder_id, 'draft', word_count, datetime.utcnow(), datetime.utcnow()),
+            """INSERT INTO documents (
+                id, user_id, title, content, document_type, folder_id, status, 
+                word_count, word_count_target, tags, series_name, chapter_number,
+                created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, title, content, document_type, folder_id, status, 
+                     word_count, word_count_target, tags, series_name, chapter_number,
+                     created_at, updated_at""",
+            (
+                doc_id, user_id, doc_data.title, content, 
+                doc_data.document_type.value, doc_data.folder_id, 'draft',
+                word_count, None, tags_json, doc_data.series_name, doc_data.chapter_number,
+                datetime.utcnow(), datetime.utcnow()
+            ),
             fetch='one'
         )
         
@@ -145,6 +194,17 @@ async def create_document_from_template(
         document = dict(result)
         document['created_at'] = document['created_at'].isoformat() if document['created_at'] else None
         document['updated_at'] = document['updated_at'].isoformat() if document['updated_at'] else None
+        document['tags'] = json.loads(document['tags']) if document['tags'] else []
+        
+        # SECURITY: Log document creation
+        client_ip = get_client_ip(request)
+        security_logger.log_document_access(
+            document_id=doc_id,
+            user_id=user_id,
+            action="create",
+            ip_address=client_ip,
+            success=True
+        )
         
         logger.info(f"Document created from template: {document['title']}")
         return document
@@ -155,7 +215,7 @@ async def create_document_from_template(
 
 @router.post("")
 async def create_document(doc_data: DocumentCreate, request: Request, user_id: int = Depends(get_current_user_id)):
-    """Create a new document"""
+    """Create a new fiction document"""
     try:
         # Apply rate limiting for document creation
         await check_rate_limit(request, "general")
@@ -167,18 +227,31 @@ async def create_document(doc_data: DocumentCreate, request: Request, user_id: i
         
         # Use template content if provided
         if doc_data.template_id:
-            from main import templates_store
-            template = next((t for t in templates_store if t['id'] == doc_data.template_id), None)
+            template = fiction_template_service.get_template_by_id(doc_data.template_id)
             if template:
-                content = template['content']
+                content = template.content
         
         word_count = calculate_word_count(content)
         
+        # Convert tags list to JSON for storage
+        tags_json = json.dumps(doc_data.tags)
+        
         result = db_service.execute_query(
-            """INSERT INTO documents (id, user_id, title, content, folder_id, status, word_count, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-               RETURNING id, title, content, folder_id, status, word_count, created_at, updated_at""",
-            (doc_id, user_id, doc_data.title, content, doc_data.folder_id, doc_data.status.value, word_count, datetime.utcnow(), datetime.utcnow()),
+            """INSERT INTO documents (
+                id, user_id, title, content, document_type, folder_id, status,
+                word_count, word_count_target, tags, series_name, chapter_number,
+                created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, title, content, document_type, folder_id, status,
+                     word_count, word_count_target, tags, series_name, chapter_number,
+                     created_at, updated_at""",
+            (
+                doc_id, user_id, doc_data.title, content,
+                doc_data.document_type.value, doc_data.folder_id, doc_data.status.value,
+                word_count, doc_data.word_count_target, tags_json, 
+                doc_data.series_name, doc_data.chapter_number,
+                datetime.utcnow(), datetime.utcnow()
+            ),
             fetch='one'
         )
         
@@ -189,6 +262,7 @@ async def create_document(doc_data: DocumentCreate, request: Request, user_id: i
         document = dict(result)
         document['created_at'] = document['created_at'].isoformat() if document['created_at'] else None
         document['updated_at'] = document['updated_at'].isoformat() if document['updated_at'] else None
+        document['tags'] = json.loads(document['tags']) if document['tags'] else []
         
         logger.info(f"Document created: {document['title']}")
         return document

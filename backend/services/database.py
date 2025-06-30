@@ -119,9 +119,9 @@ class PostgreSQLService:
                 return cursor.rowcount
     
     def init_database(self):
-        """Initialize clean MVP database schema - optimized for core features only"""
+        """Initialize clean MVP database schema with fiction-specific enhancements"""
         
-        # CLEAN SLATE MVP SCHEMA - Remove all unnecessary complexity
+        # CLEAN SLATE MVP SCHEMA - Enhanced for fiction writers
         schema_queries = [
             # 1. USERS TABLE - Essential authentication only
             '''
@@ -140,29 +140,36 @@ class PostgreSQLService:
             )
             ''',
             
-            # 2. DOCUMENTS TABLE - Core document management (simplified)
+            # 2. DOCUMENTS TABLE - Enhanced for fiction writing
             '''
             CREATE TABLE IF NOT EXISTS documents (
                 id VARCHAR(36) PRIMARY KEY,  -- UUID as string for simplicity
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 title VARCHAR(500) NOT NULL,
                 content TEXT DEFAULT '',
+                document_type VARCHAR(50) DEFAULT 'novel',  -- Fiction-specific types
                 folder_id VARCHAR(36) REFERENCES folders(id) ON DELETE SET NULL,
                 status VARCHAR(20) DEFAULT 'draft',
                 word_count INTEGER DEFAULT 0,
+                word_count_target INTEGER,  -- Target word count for goals
+                tags JSONB DEFAULT '[]'::jsonb,  -- Tags for organization
+                series_name VARCHAR(100),  -- Series this document belongs to
+                chapter_number INTEGER,  -- Chapter number if applicable
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             ''',
             
-            # 3. FOLDERS TABLE - Simple organization
+            # 3. FOLDERS TABLE - Enhanced with types and descriptions
             '''
             CREATE TABLE IF NOT EXISTS folders (
                 id VARCHAR(36) PRIMARY KEY,  -- UUID as string
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 name VARCHAR(100) NOT NULL,
+                folder_type VARCHAR(50) DEFAULT 'general',  -- project, series, characters, etc.
                 parent_id VARCHAR(36) REFERENCES folders(id) ON DELETE CASCADE,
                 color VARCHAR(7) DEFAULT '#3B82F6',
+                description TEXT,  -- Folder description
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
@@ -227,14 +234,19 @@ class PostgreSQLService:
             'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
             'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
             
-            # Document indexes
+            # Document indexes - Enhanced for fiction
             'CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_documents_folder_id ON documents(folder_id)',
             'CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON documents(updated_at)',
+            'CREATE INDEX IF NOT EXISTS idx_documents_document_type ON documents(document_type)',
+            'CREATE INDEX IF NOT EXISTS idx_documents_series_name ON documents(series_name)',
+            'CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status)',
+            'CREATE INDEX IF NOT EXISTS idx_documents_tags ON documents USING GIN(tags)',  -- JSONB index for tags
             
             # Folder indexes
             'CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id)',
             'CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_id)',
+            'CREATE INDEX IF NOT EXISTS idx_folders_folder_type ON folders(folder_type)',
             
             # Auth indexes
             'CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)',
@@ -246,6 +258,17 @@ class PostgreSQLService:
             'CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id)'
         ]
         
+        # Migration queries to add new columns to existing documents table
+        migration_queries = [
+            'ALTER TABLE documents ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) DEFAULT \'novel\'',
+            'ALTER TABLE documents ADD COLUMN IF NOT EXISTS word_count_target INTEGER',
+            'ALTER TABLE documents ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT \'[]\'::jsonb',
+            'ALTER TABLE documents ADD COLUMN IF NOT EXISTS series_name VARCHAR(100)',
+            'ALTER TABLE documents ADD COLUMN IF NOT EXISTS chapter_number INTEGER',
+            'ALTER TABLE folders ADD COLUMN IF NOT EXISTS folder_type VARCHAR(50) DEFAULT \'general\'',
+            'ALTER TABLE folders ADD COLUMN IF NOT EXISTS description TEXT'
+        ]
+        
         # DROP old tables that are no longer needed for MVP
         cleanup_queries = [
             'DROP TABLE IF EXISTS document_versions CASCADE',
@@ -253,7 +276,7 @@ class PostgreSQLService:
             'DROP TABLE IF EXISTS user_sessions CASCADE'
         ]
         
-        logger.info("🗄️ Creating clean MVP database schema...")
+        logger.info("🗄️ Creating enhanced fiction-focused database schema...")
         
         # Execute cleanup first
         for query in cleanup_queries:
@@ -268,10 +291,19 @@ class PostgreSQLService:
             try:
                 self.execute_query(query)
                 table_name = query.split()[5]  # Extract table name
-                logger.info(f"✅ {i}/7 Created MVP table: {table_name}")
+                logger.info(f"✅ {i}/7 Created table: {table_name}")
             except Exception as e:
                 logger.error(f"❌ Failed to create table {i}/7: {e}")
                 raise DatabaseError(f"Schema creation failed: {e}")
+        
+        # Execute migrations for existing tables
+        logger.info("🔄 Running fiction-specific migrations...")
+        for i, query in enumerate(migration_queries, 1):
+            try:
+                self.execute_query(query)
+                logger.info(f"✅ {i}/{len(migration_queries)} Migration completed")
+            except Exception as e:
+                logger.warning(f"Migration {i} failed (might already exist): {e}")
         
         # Execute indexes
         for i, query in enumerate(index_queries, 1):
@@ -282,8 +314,9 @@ class PostgreSQLService:
             except Exception as e:
                 logger.warning(f"Index creation failed: {e}")
         
-        logger.info("🚀 Clean MVP database schema initialized successfully!")
-        logger.info("📋 MVP Tables: users, documents, folders, refresh_tokens, login_logs, user_preferences, user_feedback")
+        logger.info("🚀 Fiction-focused database schema initialized successfully!")
+        logger.info("📋 Enhanced Tables: users, documents (fiction-enhanced), folders (typed), refresh_tokens, login_logs, user_preferences, user_feedback")
+        logger.info("📚 Fiction Features: document_type, word_count_target, tags, series_name, chapter_number, folder_type")
         logger.info("🗑️ Removed: document_versions, series, user_sessions (not needed for MVP)")
     
     def health_check(self) -> Dict[str, Any]:

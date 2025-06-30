@@ -7,6 +7,7 @@ import { WritingWorkspace } from './components/WritingWorkspace';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import { useAuth } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 import './styles/chat-input-width-fix.css';
 
@@ -244,9 +245,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-          <AppProvider>
-            <AppContent />
-          </AppProvider>
+      <ErrorBoundary>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </ErrorBoundary>
     </Router>
   );
 };
