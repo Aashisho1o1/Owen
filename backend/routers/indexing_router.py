@@ -7,9 +7,8 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import asyncio
 
-from backend.dependencies import get_current_user
-from backend.services.indexing import HybridIndexer
-from backend.models.schemas import User
+from dependencies import get_current_user_id
+from services.indexing import HybridIndexer
 
 # Initialize router
 router = APIRouter(prefix="/api/indexing", tags=["indexing"])
@@ -51,16 +50,16 @@ class SearchRequest(BaseModel):
 async def index_document(
     request: IndexDocumentRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
-    Index a single document for contextual understanding
+    Index a single document for enhanced contextual understanding
     """
     try:
-        # Add user ID to metadata
+        # Add user metadata
         if request.metadata is None:
             request.metadata = {}
-        request.metadata['user_id'] = current_user.id
+        request.metadata['user_id'] = current_user_id
         
         # Index document
         result = await indexer.index_document(
@@ -81,7 +80,7 @@ async def index_document(
 async def index_folder(
     request: IndexFolderRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Index multiple related documents (e.g., chapters in a book)
@@ -91,7 +90,7 @@ async def index_folder(
         documents = []
         for doc in request.documents:
             metadata = doc.get('metadata', {})
-            metadata['user_id'] = current_user.id
+            metadata['user_id'] = current_user_id
             documents.append((
                 doc['doc_id'],
                 doc['text'],
@@ -109,7 +108,7 @@ async def index_folder(
 @router.post("/contextual-feedback")
 async def get_contextual_feedback(
     request: ContextualFeedbackRequest,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Get contextual feedback for highlighted text
@@ -129,7 +128,7 @@ async def get_contextual_feedback(
 @router.post("/check-consistency")
 async def check_consistency(
     request: ConsistencyCheckRequest,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Check consistency of a statement against the knowledge base
@@ -149,7 +148,7 @@ async def check_consistency(
 @router.post("/writing-suggestions")
 async def get_writing_suggestions(
     request: WritingSuggestionsRequest,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Get AI-powered writing suggestions based on context
@@ -168,7 +167,7 @@ async def get_writing_suggestions(
 @router.post("/search")
 async def search(
     request: SearchRequest,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Unified search across vector store and knowledge graph
@@ -177,7 +176,7 @@ async def search(
         # Add user filter
         if request.filters is None:
             request.filters = {}
-        request.filters['user_id'] = current_user.id
+        request.filters['user_id'] = current_user_id
         
         results = indexer.search(
             query=request.query,
@@ -197,7 +196,7 @@ async def search(
 @router.get("/document-stats/{doc_id}")
 async def get_document_stats(
     doc_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Get indexing statistics for a document
@@ -206,7 +205,7 @@ async def get_document_stats(
         stats = indexer.get_document_stats(doc_id)
         
         # Verify user owns this document
-        if 'metadata' in stats and stats['metadata'].get('user_id') != current_user.id:
+        if 'metadata' in stats and stats['metadata'].get('user_id') != current_user_id:
             raise HTTPException(status_code=403, detail="Access denied")
         
         return stats
@@ -217,7 +216,7 @@ async def get_document_stats(
 @router.get("/export-graph")
 async def export_knowledge_graph(
     format: str = 'json',
-    current_user: User = Depends(get_current_user)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Export the knowledge graph for visualization
