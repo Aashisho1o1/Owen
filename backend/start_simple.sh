@@ -65,7 +65,23 @@ except Exception as e:
 
 echo "🚀 Starting FastAPI application with hypercorn..."
 
+# Debug: Show current directory and contents
+echo "📁 Current directory: $(pwd)"
+echo "📂 Directory contents:"
+ls -la
+
+# Check if main.py exists
+if [ -f "main.py" ]; then
+    echo "✅ main.py found in current directory"
+else
+    echo "❌ main.py NOT found in current directory"
+    echo "🔍 Looking for main.py in parent directories..."
+    find .. -name "main.py" -type f 2>/dev/null || echo "main.py not found"
+fi
+
 # Start the application with Railway-optimized settings
+# Use the current directory's main module
+echo "🚀 Starting server from $(pwd)/main.py..."
 exec python -m hypercorn main:app \
     --bind "0.0.0.0:$PORT" \
     --workers 1 \
