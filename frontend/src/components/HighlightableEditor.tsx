@@ -179,9 +179,24 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           }
         }
         
-        // Bounds checking
+        // Bounds checking - FIXED: Use viewport-relative positioning for long documents
         const editorWidth = editorRef.current.clientWidth;
         const editorHeight = editorRef.current.clientHeight;
+        const currentEditorRect = editorRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Convert to viewport-relative coordinates for proper positioning
+        const viewportTop = top + currentEditorRect.top;
+        const viewportLeft = left + currentEditorRect.left;
+        
+        console.log('🔍 Positioning analysis:', {
+          editor: { width: editorWidth, height: editorHeight },
+          viewport: { width: viewportWidth, height: viewportHeight },
+          editorRect: currentEditorRect,
+          original: { top, left },
+          viewportPosition: { top: viewportTop, left: viewportLeft }
+        });
         
         // Adjust for chat panel if visible
         if (isChatVisible) {
@@ -189,11 +204,28 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           left = Math.min(left, maxLeft);
         }
         
-        // Keep within bounds with more conservative margins
-        left = Math.max(100, Math.min(left, editorWidth - 120));
-        top = Math.max(20, Math.min(top, editorHeight - 60));
+        // FIXED: Smart bounds checking that considers viewport visibility
+        // For horizontal positioning: keep within editor bounds
+        left = Math.max(20, Math.min(left, editorWidth - 140));
         
-        console.log('📍 Final button position:', { top, left, editorBounds: { width: editorWidth, height: editorHeight } });
+        // For vertical positioning: ensure button stays in visible viewport
+        if (viewportTop < 80) {
+          // If selection is above viewport, position at top of visible area
+          top = Math.max(80 - currentEditorRect.top, 20);
+        } else if (viewportTop > viewportHeight - 80) {
+          // If selection is below viewport, position at bottom of visible area
+          top = Math.min(viewportHeight - 80 - currentEditorRect.top, editorHeight - 60);
+        } else {
+          // Selection is in viewport, use calculated position with small offset
+          top = Math.max(20, Math.min(top, editorHeight - 60));
+        }
+        
+        console.log('📍 Final button position (FIXED):', { 
+          top, 
+          left, 
+          editorBounds: { width: editorWidth, height: editorHeight },
+          willBeVisible: viewportTop >= 0 && viewportTop <= viewportHeight
+        });
         
         setSelection({
           top,
