@@ -79,10 +79,14 @@ else
     find .. -name "main.py" -type f 2>/dev/null || echo "main.py not found"
 fi
 
+# IMPORTANT: Set PYTHONPATH to include the current directory
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+echo "🐍 PYTHONPATH set to: $PYTHONPATH"
+
 # Start the application with Railway-optimized settings
-# Use the current directory's main module
-echo "🚀 Starting server from $(pwd)/main.py..."
-exec python -m hypercorn main:app \
+# Use hypercorn with the correct module path
+echo "🚀 Starting server with hypercorn..."
+exec hypercorn main:app \
     --bind "0.0.0.0:$PORT" \
     --workers 1 \
     --worker-class asyncio \

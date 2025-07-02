@@ -1,10 +1,10 @@
-# FORCE COMPLETE REBUILD - Backend Import Fix
-REBUILD_ID=1750226396
-BACKEND_IMPORT_FIX=2025-07-01-v1
+# FORCE COMPLETE REBUILD - Backend Hypercorn Fix
+REBUILD_ID=1750226397
+BACKEND_HYPERCORN_FIX=2025-07-01-v2
 
-DEPLOYMENT_TRIGGER=backend-import-fix-2025-07-01
+DEPLOYMENT_TRIGGER=backend-hypercorn-fix-2025-07-01-v2
 # This file triggers Railway deployments
-# Updated: Fix hypercorn import error - module path issue
-Force deploy backend Tue Jul 01 05:30:00 UTC 2025
+# Updated: Fix hypercorn startup - set PYTHONPATH and use correct command
+Force deploy backend Tue Jul 01 05:50:00 UTC 2025
 
-railway-backend-import-fix-2025-07-01-hypercorn-module-path
+railway-backend-hypercorn-pythonpath-fix-2025-07-01
