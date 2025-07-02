@@ -91,6 +91,19 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       });
       onChangeProp(newContent);
     },
+    // ADDED: Handle text selection updates for floating AI button
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+      
+      if (selectedText && selectedText.length >= 3) {
+        // Call our text selection handler with the selected text and editor view
+        handleTextSelection(selectedText, editor.view);
+      } else {
+        // Clear selection if no meaningful text is selected
+        setSelection(null);
+      }
+    },
     // Add editor event handlers for better cursor management
     onCreate: ({ editor }) => {
       // Auto-focus the editor when it's created to show cursor
@@ -315,19 +328,10 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     openChatWithText 
   } = useChatContext();
 
-  // Handle text selection in editor
-  const handleTextSelection = useCallback(() => {
+  // Fallback text selection detection using DOM selection
+  const fallbackTextSelection = useCallback((selectedText: string) => {
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) {
-      setSelection(null);
-      return;
-    }
-
-    const selectedText = sel.toString().trim();
-    if (!selectedText || selectedText.length < 3) {
-      setSelection(null);
-      return;
-    }
+    if (!sel || sel.rangeCount === 0) return;
 
     const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
@@ -335,21 +339,17 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     if (editorRef.current) {
       const editorRect = editorRef.current.getBoundingClientRect();
       
-      // Calculate position relative to editor
-      let top = rect.top - editorRect.top + rect.height + 8;
-      let left = rect.left - editorRect.left + rect.width / 2;
+      let top = rect.bottom - editorRect.top + 8;
+      let left = rect.left + rect.width / 2 - editorRect.left;
       
-      // Bounds checking
       const editorWidth = editorRect.width;
       const editorHeight = editorRect.height;
       
-      // Adjust for chat panel if visible
       if (isChatVisible) {
-        const maxLeft = editorWidth * 0.6 - 80; // Account for chat panel
+        const maxLeft = editorWidth * 0.6 - 80;
         left = Math.min(left, maxLeft);
       }
       
-      // Keep within bounds
       left = Math.max(80, Math.min(left, editorWidth - 80));
       top = Math.max(10, Math.min(top, editorHeight - 50));
       
@@ -358,8 +358,69 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         left,
         text: selectedText,
       });
+      
+      console.log('✅ Text selection detected via fallback DOM method:', {
+        text: selectedText.substring(0, 50) + '...',
+        position: { top, left }
+      });
     }
   }, [isChatVisible]);
+
+  // Handle text selection in editor - FIXED: Now uses TipTap's selection system
+  const handleTextSelection = useCallback((selectedText: string, editorView?: { state: { selection: { from: number; to: number } }; coordsAtPos: (pos: number) => { top: number; left: number } }) => {
+    if (!selectedText || selectedText.length < 3) {
+      setSelection(null);
+      return;
+    }
+
+    // Use TipTap's editor view to get selection coordinates if available
+    if (editorView && editorRef.current) {
+      try {
+        const { from, to } = editorView.state.selection;
+        const start = editorView.coordsAtPos(from);
+        const end = editorView.coordsAtPos(to);
+        
+        const editorRect = editorRef.current.getBoundingClientRect();
+        
+        // Calculate position relative to editor wrapper
+        let top = Math.max(start.top, end.top) - editorRect.top + 8;
+        let left = (start.left + end.left) / 2 - editorRect.left;
+        
+        // Bounds checking
+        const editorWidth = editorRect.width;
+        const editorHeight = editorRect.height;
+        
+        // Adjust for chat panel if visible
+        if (isChatVisible) {
+          const maxLeft = editorWidth * 0.6 - 80;
+          left = Math.min(left, maxLeft);
+        }
+        
+        // Keep within bounds
+        left = Math.max(80, Math.min(left, editorWidth - 80));
+        top = Math.max(10, Math.min(top, editorHeight - 50));
+        
+        setSelection({
+          top,
+          left,
+          text: selectedText,
+        });
+        
+        console.log('✅ Text selection detected via TipTap:', {
+          text: selectedText.substring(0, 50) + '...',
+          position: { top, left }
+        });
+        
+      } catch {
+        console.warn('⚠️ Failed to get TipTap selection coordinates, falling back to manual detection');
+        // Fallback to manual detection
+        fallbackTextSelection(selectedText);
+      }
+    } else {
+      // Fallback to manual detection
+      fallbackTextSelection(selectedText);
+    }
+  }, [isChatVisible, fallbackTextSelection]);
 
   // Handle AI interaction with selected text
   const handleAskAI = useCallback(() => {
@@ -379,33 +440,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     // Clear selection
     setSelection(null);
   }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
-
-  // Set up event listeners for text selection
-  useEffect(() => {
-    const editorElement = editorRef.current;
-    if (!editorElement) return;
-
-    // Listen for mouse up events on the editor
-    const handleMouseUp = () => {
-      // Small delay to ensure selection is complete
-      setTimeout(handleTextSelection, 10);
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      // Handle keyboard selection (Shift + Arrow keys)
-      if (e.shiftKey) {
-        setTimeout(handleTextSelection, 10);
-      }
-    };
-
-    editorElement.addEventListener('mouseup', handleMouseUp);
-    editorElement.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      editorElement.removeEventListener('mouseup', handleMouseUp);
-      editorElement.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [handleTextSelection]);
 
   // Enhanced focus management for cursor visibility
   const editorContainerRef = useRef<HTMLDivElement>(null);
