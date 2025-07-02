@@ -4,7 +4,8 @@
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
+import { getStoredTokens, clearAuthTokens } from './auth';
 
 // Get API URL from environment variable or fallback to production
 const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-copy-production-95b5.up.railway.app';
@@ -17,6 +18,160 @@ console.log('🌐 API Configuration:', {
   API_URL,
   mode: import.meta.env.MODE
 });
+
+// Enhanced retry configuration
+interface RetryConfig {
+  retries: number;
+  retryDelay: (retryCount: number) => number;
+  retryCondition: (error: AxiosError) => boolean;
+  onRetry?: (error: AxiosError, retryCount: number) => void;
+}
+
+const defaultRetryConfig: RetryConfig = {
+  retries: 3,
+  retryDelay: (retryCount) => Math.min(1000 * Math.pow(2, retryCount), 10000),
+  retryCondition: (error) => {
+    // Retry on network errors or 5xx status codes
+    return !error.response || (error.response.status >= 500 && error.response.status < 600);
+  },
+  onRetry: (error, retryCount) => {
+    console.log(`Retry attempt ${retryCount} after error:`, error.message);
+  }
+};
+
+// Create axios instance with enhanced configuration
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+});
+
+// Request interceptor with retry logic
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Implement retry logic
+async function retryRequest(
+  error: AxiosError,
+  retryConfig: RetryConfig = defaultRetryConfig
+): Promise<any> {
+  const config = error.config as AxiosRequestConfig & { _retry?: number };
+  
+  if (!config || !retryConfig.retryCondition(error)) {
+    return Promise.reject(error);
+  }
+
+  config._retry = config._retry || 0;
+
+  if (config._retry >= retryConfig.retries) {
+    return Promise.reject(error);
+  }
+
+  config._retry += 1;
+
+  if (retryConfig.onRetry) {
+    retryConfig.onRetry(error, config._retry);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, retryConfig.retryDelay(config._retry)));
+
+  return apiClient(config);
+}
+
+apiClient.interceptors.request.use(
+  (config) => {
+    // Add auth token
+    const { accessToken } = getStoredTokens();
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    // Add request ID for tracking
+    config.headers['X-Request-ID'] = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Log request for debugging
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor with retry logic
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log(`✅ API Response: ${response.config.url} - Status: ${response.status}`);
+    return response;
+  },
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+    console.error(`❌ API Error: ${error.config?.url} - Status: ${error.response?.status}`);
+
+    // Handle 401 errors (token refresh)
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => apiClient(originalRequest));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const { refreshToken } = getStoredTokens();
+        if (refreshToken) {
+          // Try to refresh token
+          const response = await apiClient.post('/api/auth/refresh', {
+            refresh_token: refreshToken
+          });
+          
+          const { access_token } = response.data;
+          localStorage.setItem('owen_access_token', access_token);
+          
+          processQueue(null, access_token);
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        // Clear tokens and redirect to login
+        clearAuthTokens();
+        window.location.href = '/';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // Retry logic for other errors
+    if (!originalRequest._retry) {
+      return retryRequest(error);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Enhanced error handler for better debugging
 const handleApiError = (error: AxiosError): never => {
@@ -55,67 +210,36 @@ const handleApiError = (error: AxiosError): never => {
   throw error;
 };
 
-// Create axios instance with authentication support
-const apiClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  timeout: 25000, // Increased timeout to 25s for Gemini models
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
-  },
-});
+// Safe API call wrapper with timeout and cancellation
+export async function safeApiCall<T>(
+  apiCall: () => Promise<T>,
+  options?: {
+    timeout?: number;
+    signal?: AbortSignal;
+  }
+): Promise<T> {
+  const { timeout = 30000, signal } = options || {};
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Request timeout')), timeout);
+  });
 
-// Add authentication token to requests
-apiClient.interceptors.request.use(
-  (config) => {
-    // Add authentication token if available
-    const token = localStorage.getItem('owen_access_token');
-    const tokenType = localStorage.getItem('owen_token_type') || 'bearer';
-    
-    if (token && !config.headers['Authorization']) {
-      config.headers['Authorization'] = `${tokenType} ${token}`;
+  try {
+    const result = await Promise.race([apiCall(), timeoutPromise]);
+    return result;
+  } catch (error) {
+    if (signal?.aborted) {
+      throw new Error('Request cancelled');
     }
     
-    console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-    console.log('Request data:', config.data);
-    return config;
-  },
-  (error) => {
-    console.error('❌ Request Error:', error);
-    return Promise.reject(error);
-  }
-);
-
-apiClient.interceptors.response.use(
-  (response) => {
-    console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
-    return response;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(handleApiError(error));
-  }
-);
-
-// Type-safe wrapper for API calls
-export const safeApiCall = async <T>(apiCall: () => Promise<T>): Promise<T> => {
-  try {
-    return await apiCall();
-  } catch (error) {
-    console.error('🔍 Detailed error analysis:', {
-      errorName: error?.constructor?.name,
-      errorMessage: (error as Error)?.message,
-      errorStack: (error as Error)?.stack,
-      apiUrl: API_URL,
-      hasRequest: !!(error as any)?.config,
-      hasResponse: !!(error as any)?.response,
-      responseStatus: (error as any)?.response?.status,
-      responseData: (error as any)?.response?.data,
-      timestamp: new Date().toISOString()
-    });
+    if (axios.isAxiosError(error)) {
+      handleApiError(error);
+    }
+    
     throw error;
   }
-};
+}
 
-// Export the configured client and API URL
-export { apiClient, API_URL }; 
+// Export the API URL (apiClient is already exported above)
+export { API_URL }; 
  

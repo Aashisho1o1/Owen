@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import { logger } from '../utils/logger';
+import { useSafeState } from '../hooks/useSafeState';
 import { 
   loginUser, 
   registerUser, 
@@ -100,10 +101,10 @@ const apiInstance = axios.create({
 
 // Auth provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useSafeState<UserProfile | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useSafeState(false);
+  const [isLoading, setIsLoading] = useSafeState(true);
+  const [error, setError] = useSafeState<string | null>(null);
 
   // Token management
   // 🔒 SECURITY NOTE: localStorage is vulnerable to XSS attacks

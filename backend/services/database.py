@@ -7,12 +7,14 @@ Simple but flexible schema for prototype development.
 
 import os
 import logging
+import time
 from typing import Dict, Any, List, Optional, Union
 from contextlib import contextmanager
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
+from psycopg2 import OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,9 @@ class PostgreSQLService:
     def __init__(self):
         self.database_url = os.getenv("DATABASE_URL")
         self.pool = None
+        self._retry_count = 3
+        self._retry_delay = 1  # seconds
+        self._connection_timeout = 10  # seconds
         
         if not self.database_url:
             logger.error("DATABASE_URL environment variable is not set")
@@ -37,8 +42,8 @@ class PostgreSQLService:
             return
         
         try:
-            # Initialize connection pool
-            self._init_connection_pool()
+            # Initialize connection pool with retry
+            self._init_connection_pool_with_retry()
             
             # Initialize database schema
             self.init_database()
@@ -48,45 +53,137 @@ class PostgreSQLService:
             logger.error(f"Failed to initialize database service: {e}")
             self.pool = None
     
+    def _init_connection_pool_with_retry(self):
+        """Initialize connection pool with retry logic"""
+        for attempt in range(self._retry_count):
+            try:
+                self._init_connection_pool()
+                return  # Success
+            except Exception as e:
+                if attempt < self._retry_count - 1:
+                    logger.warning(f"Connection pool init attempt {attempt + 1} failed: {e}")
+                    time.sleep(self._retry_delay * (attempt + 1))
+                else:
+                    raise
+    
     def _init_connection_pool(self):
-        """Initialize PostgreSQL connection pool for better performance"""
+        """Initialize PostgreSQL connection pool with enhanced settings"""
         try:
+            # Close existing pool if any
+            if self.pool:
+                try:
+                    self.pool.closeall()
+                except:
+                    pass
+            
             self.pool = ThreadedConnectionPool(
-                minconn=1,
-                maxconn=20,
+                minconn=2,  # Increased minimum connections
+                maxconn=30,  # Increased maximum connections
                 dsn=self.database_url,
-                cursor_factory=RealDictCursor
+                cursor_factory=RealDictCursor,
+                connect_timeout=self._connection_timeout,
+                # Additional connection parameters for reliability
+                options='-c statement_timeout=30000',  # 30 second statement timeout
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=5
             )
-            logger.info("Connection pool initialized")
+            
+            # Test the pool
+            conn = self.pool.getconn()
+            conn.close()
+            self.pool.putconn(conn)
+            
+            logger.info("Connection pool initialized with enhanced settings")
         except Exception as e:
             logger.error(f"Failed to initialize connection pool: {e}")
             raise DatabaseError(f"Connection pool initialization failed: {e}")
     
+    def _ensure_pool_health(self):
+        """Ensure connection pool is healthy, recreate if needed"""
+        if not self.pool:
+            logger.warning("Connection pool not initialized, attempting to create...")
+            self._init_connection_pool_with_retry()
+            return
+        
+        try:
+            # Test pool health
+            conn = self.pool.getconn()
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
+            self.pool.putconn(conn)
+        except Exception as e:
+            logger.error(f"Connection pool health check failed: {e}")
+            logger.info("Recreating connection pool...")
+            self._init_connection_pool_with_retry()
+    
     @contextmanager
     def get_connection(self):
-        """Get database connection from pool with automatic cleanup"""
+        """Get database connection with health checks and retry logic"""
         conn = None
-        try:
-            conn = self.pool.getconn()
-            if conn.closed:
-                # Connection is closed, get a new one
-                self.pool.putconn(conn, close=True)
+        attempt = 0
+        
+        while attempt < self._retry_count:
+            try:
+                # Ensure pool is healthy
+                self._ensure_pool_health()
+                
+                # Get connection from pool
                 conn = self.pool.getconn()
-            
-            yield conn
-            conn.commit()
-            
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            logger.error(f"Database error: {e}")
-            raise DatabaseError(f"Database operation failed: {e}")
-        finally:
-            if conn:
-                self.pool.putconn(conn)
+                
+                # Test connection health
+                if conn.closed:
+                    logger.warning("Got closed connection from pool, getting new one...")
+                    self.pool.putconn(conn, close=True)
+                    conn = self.pool.getconn()
+                
+                # Set connection properties for reliability
+                conn.set_session(autocommit=False, readonly=False)
+                conn.set_client_encoding('UTF8')
+                
+                yield conn
+                conn.commit()
+                break  # Success, exit retry loop
+                
+            except OperationalError as e:
+                attempt += 1
+                if conn:
+                    try:
+                        conn.rollback()
+                    except:
+                        pass
+                
+                logger.error(f"Database operational error (attempt {attempt}/{self._retry_count}): {e}")
+                
+                if attempt < self._retry_count:
+                    time.sleep(self._retry_delay * attempt)
+                    # Try to refresh the connection
+                    if conn:
+                        self.pool.putconn(conn, close=True)
+                        conn = None
+                else:
+                    raise DatabaseError(f"Database operation failed after {self._retry_count} attempts: {e}")
+                    
+            except Exception as e:
+                if conn:
+                    try:
+                        conn.rollback()
+                    except:
+                        pass
+                logger.error(f"Database error: {e}")
+                raise DatabaseError(f"Database operation failed: {e}")
+                
+            finally:
+                if conn and attempt == self._retry_count - 1:  # Last attempt
+                    try:
+                        self.pool.putconn(conn)
+                    except:
+                        pass
     
     def execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
-        """Execute database query with proper error handling and SQL injection protection"""
+        """Execute database query with enhanced error handling and retry logic"""
         # SECURITY: Validate that query uses parameterized queries only
         if '%s' not in query and params:
             raise DatabaseError("Query parameters provided but query doesn't use parameterized placeholders")
@@ -105,18 +202,26 @@ class PostgreSQLService:
                 logger.error(f"SECURITY: Potentially dangerous SQL pattern detected: {pattern}")
                 raise DatabaseError("Query contains potentially dangerous SQL patterns")
         
+        # Add query timeout for long-running queries
+        if "SELECT" in query.upper() and "COUNT" not in query.upper():
+            query = f"SET LOCAL statement_timeout = '10s'; {query}"
+        
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(query, params)
             
-            if fetch == 'one':
-                result = cursor.fetchone()
-                return dict(result) if result else None
-            elif fetch == 'all':
-                results = cursor.fetchall()
-                return [dict(row) for row in results]
-            else:
-                return cursor.rowcount
+            try:
+                cursor.execute(query, params)
+                
+                if fetch == 'one':
+                    result = cursor.fetchone()
+                    return dict(result) if result else None
+                elif fetch == 'all':
+                    results = cursor.fetchall()
+                    return [dict(row) for row in results]
+                else:
+                    return cursor.rowcount
+            finally:
+                cursor.close()
     
     def init_database(self):
         """Initialize clean MVP database schema with fiction-specific enhancements"""
