@@ -143,28 +143,57 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     if (editorView && editorRef.current) {
       try {
         const { from, to } = editorView.state.selection;
-        const start = editorView.coordsAtPos(from);
-        const end = editorView.coordsAtPos(to);
         
-        const editorRect = editorRef.current.getBoundingClientRect();
+        // FIXED: More robust coordinate calculation to handle TipTap issues
+        let top: number;
+        let left: number;
         
-        // Calculate position relative to editor wrapper
-        let top = Math.max(start.top, end.top) - editorRect.top + 8;
-        let left = (start.left + end.left) / 2 - editorRect.left;
+        try {
+          // Try TipTap's coordsAtPos first
+          const start = editorView.coordsAtPos(from);
+          const end = editorView.coordsAtPos(to);
+          
+          const editorRect = editorRef.current.getBoundingClientRect();
+          
+          // Calculate position relative to editor wrapper
+          top = Math.max(start.top, end.top) - editorRect.top + 30; // More spacing
+          left = (start.left + end.left) / 2 - editorRect.left;
+          
+          console.log('🎯 TipTap coordinates:', { start, end, editorRect, calculated: { top, left } });
+          
+        } catch {
+          console.warn('⚠️ TipTap coordsAtPos failed, using DOM selection fallback');
+          // Fallback to DOM selection coordinates
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const editorRect = editorRef.current.getBoundingClientRect();
+            
+            top = rect.bottom - editorRect.top + 10;
+            left = rect.left + rect.width / 2 - editorRect.left;
+            
+            console.log('🔄 DOM fallback coordinates:', { rect, editorRect, calculated: { top, left } });
+          } else {
+            throw new Error('No DOM selection available');
+          }
+        }
         
         // Bounds checking
-        const editorWidth = editorRect.width;
-        const editorHeight = editorRect.height;
+        const editorWidth = editorRef.current.clientWidth;
+        const editorHeight = editorRef.current.clientHeight;
         
         // Adjust for chat panel if visible
         if (isChatVisible) {
-          const maxLeft = editorWidth * 0.6 - 80;
+          const maxLeft = editorWidth * 0.6 - 100;
           left = Math.min(left, maxLeft);
         }
         
-        // Keep within bounds
-        left = Math.max(80, Math.min(left, editorWidth - 80));
-        top = Math.max(10, Math.min(top, editorHeight - 50));
+        // Keep within bounds with more conservative margins
+        left = Math.max(100, Math.min(left, editorWidth - 120));
+        top = Math.max(20, Math.min(top, editorHeight - 60));
+        
+        console.log('📍 Final button position:', { top, left, editorBounds: { width: editorWidth, height: editorHeight } });
         
         setSelection({
           top,
@@ -177,8 +206,8 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           position: { top, left }
         });
         
-      } catch {
-        console.warn('⚠️ Failed to get TipTap selection coordinates, falling back to manual detection');
+      } catch (error) {
+        console.warn('⚠️ Failed to get TipTap selection coordinates, falling back to manual detection:', error);
         // Fallback to manual detection
         fallbackTextSelection(selectedText);
       }
@@ -644,11 +673,28 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             style={{ 
               top: 10, 
               left: 10,
-              background: 'red !important'
+              background: 'red !important',
+              zIndex: 9999
             }}
             onClick={() => console.log('🧪 Test button clicked - CSS is working!')}
           >
             🧪 TEST
+          </button>
+        )}
+        
+        {/* FORCED TEST: Always show a button at fixed position to test selection state */}
+        {process.env.NODE_ENV === 'development' && selection && (
+          <button
+            className="floating-ai-button"
+            style={{ 
+              top: 50, 
+              left: 50,
+              background: 'green !important',
+              zIndex: 9998
+            }}
+            onClick={handleAskAI}
+          >
+            🟢 FORCE TEST
           </button>
         )}
         
