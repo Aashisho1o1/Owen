@@ -39,7 +39,7 @@ class HybridIndexer:
         self.vector_store = VectorStore(collection_name)
         self.gemini_service = gemini_service or GeminiService()
         self.graph_builder = GeminiGraphBuilder(self.gemini_service)
-        self.path_retriever = PathRetriever()
+        self.path_retriever = None  # Will be initialized after we have a graph
         
         # Track indexed documents
         self.indexed_documents = {}
@@ -85,8 +85,12 @@ class HybridIndexer:
             # 3. Store graph data
             graph_data = self.graph_builder.export_graph_data()
             
-            # 4. Initialize path retriever with the graph
-            self.path_retriever.add_graph(document_id, graph)
+            # 4. Initialize path retriever with the graph (if not already initialized)
+            if self.path_retriever is None:
+                self.path_retriever = PathRetriever(graph, self.vector_store)
+            else:
+                # Update the path retriever with the new graph
+                self.path_retriever.graph = graph
             
             # 5. Calculate document statistics
             stats = {

@@ -14,7 +14,7 @@ from services.indexing import HybridIndexer
 router = APIRouter(prefix="/api/indexing", tags=["indexing"])
 
 # Initialize indexer (in production, this would be a singleton)
-indexer = HybridIndexer(persist_dir="./indexing_data")
+indexer = HybridIndexer(collection_name="documents")
 
 # Request/Response models
 class IndexDocumentRequest(BaseModel):
