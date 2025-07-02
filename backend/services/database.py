@@ -241,7 +241,7 @@ class PostgreSQLService:
             'CREATE INDEX IF NOT EXISTS idx_documents_document_type ON documents(document_type)',
             'CREATE INDEX IF NOT EXISTS idx_documents_series_name ON documents(series_name)',
             'CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status)',
-            'CREATE INDEX IF NOT EXISTS idx_documents_tags ON documents USING GIN(tags)',  -- JSONB index for tags
+            'CREATE INDEX IF NOT EXISTS idx_documents_tags ON documents USING GIN(tags)',  # JSONB index for tags
             
             # Folder indexes
             'CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id)',
