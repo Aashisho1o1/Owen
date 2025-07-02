@@ -254,10 +254,11 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Add server header obfuscation
         response.headers["Server"] = "DOG-Writer/1.0"
         
-        # Remove potentially sensitive headers
-        sensitive_headers = ["X-Powered-By", "Server"]
+        # Remove potentially sensitive headers (use del instead of pop for MutableHeaders)
+        sensitive_headers = ["X-Powered-By"]
         for header in sensitive_headers:
-            response.headers.pop(header, None)
+            if header in response.headers:
+                del response.headers[header]
     
     def _log_security_metrics(self, request: Request, response: Response, processing_time: float):
         """Log security-related metrics"""
