@@ -222,41 +222,73 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       });
       onChangeProp(newContent);
     },
-    // ADDED: Handle text selection updates for floating AI button
-    onSelectionUpdate: ({ editor }) => {
-      console.log('🎯 onSelectionUpdate triggered');
-      const { from, to } = editor.state.selection;
-      const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+    // ADDED: Handle text selection updates for floating AI button with debouncing
+    onSelectionUpdate: (() => {
+      let debounceTimeout: NodeJS.Timeout;
+      let lastSelection = { from: -1, to: -1 };
       
-      console.log('📝 Selection details:', { from, to, selectedText, length: selectedText.length });
-      
-      if (selectedText && selectedText.length >= 3) {
-        // Call our text selection handler with the selected text and editor view
-        handleTextSelection(selectedText, editor.view);
-      } else {
-        // Clear selection if no meaningful text is selected
-        setSelection(null);
-      }
-    },
-    // ALTERNATIVE: Use transaction event as more reliable selection detection
-    onTransaction: ({ editor, transaction }) => {
-      // Only process if selection actually changed
-      if (transaction.selectionSet) {
-        console.log('🔄 Transaction with selection change detected');
-        const { from, to } = editor.state.selection;
-        const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
-        
-        console.log('📝 Transaction selection details:', { from, to, selectedText, length: selectedText.length });
-        
-        if (selectedText && selectedText.length >= 3) {
-          // Call our text selection handler with the selected text and editor view
-          handleTextSelection(selectedText, editor.view);
-        } else {
-          // Clear selection if no meaningful text is selected
-          setSelection(null);
+      return ({ editor }) => {
+        if (debounceTimeout) {
+          clearTimeout(debounceTimeout);
         }
-      }
-    },
+        
+        debounceTimeout = setTimeout(() => {
+          console.log('🎯 onSelectionUpdate triggered');
+          const { from, to } = editor.state.selection;
+          
+          // Skip if same selection as before
+          if (from === lastSelection.from && to === lastSelection.to) return;
+          lastSelection = { from, to };
+          
+          const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+          
+          console.log('📝 Selection details:', { from, to, selectedText, length: selectedText.length });
+          
+          if (selectedText && selectedText.length >= 3) {
+            // Call our text selection handler with the selected text and editor view
+            handleTextSelection(selectedText, editor.view);
+          } else {
+            // Clear selection if no meaningful text is selected
+            setSelection(null);
+          }
+        }, 100); // 100ms debounce
+      };
+    })(),
+    // ALTERNATIVE: Use transaction event as more reliable selection detection with debouncing
+    onTransaction: (() => {
+      let debounceTimeout: NodeJS.Timeout;
+      let lastSelection = { from: -1, to: -1 };
+      
+      return ({ editor, transaction }) => {
+        // Only process if selection actually changed
+        if (transaction.selectionSet) {
+          if (debounceTimeout) {
+            clearTimeout(debounceTimeout);
+          }
+          
+          debounceTimeout = setTimeout(() => {
+            console.log('🔄 Transaction with selection change detected');
+            const { from, to } = editor.state.selection;
+            
+            // Skip if same selection as before
+            if (from === lastSelection.from && to === lastSelection.to) return;
+            lastSelection = { from, to };
+            
+            const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+            
+            console.log('📝 Transaction selection details:', { from, to, selectedText, length: selectedText.length });
+            
+            if (selectedText && selectedText.length >= 3) {
+              // Call our text selection handler with the selected text and editor view
+              handleTextSelection(selectedText, editor.view);
+            } else {
+              // Clear selection if no meaningful text is selected
+              setSelection(null);
+            }
+          }, 100); // 100ms debounce
+        }
+      };
+    })(),
     // Add editor event handlers for better cursor management
     onCreate: ({ editor }) => {
       // Auto-focus the editor when it's created to show cursor
@@ -467,27 +499,43 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
 
   // BACKUP: Add DOM-based text selection detection as fallback
   useEffect(() => {
+    let debounceTimeout: NodeJS.Timeout;
+    let lastSelectedText = '';
+    
     const handleDocumentSelectionChange = () => {
-      const selection = window.getSelection();
-      if (!selection || !editorRef.current) return;
-      
-      const selectedText = selection.toString().trim();
-      console.log('🔄 DOM selection change detected:', { selectedText, length: selectedText.length });
-      
-      // Check if selection is within our editor
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const isWithinEditor = editorRef.current.contains(range.commonAncestorContainer);
-        
-        console.log('📍 Selection location check:', { isWithinEditor, selectedText });
-        
-        if (isWithinEditor && selectedText && selectedText.length >= 3) {
-          console.log('✅ Valid selection within editor, calling fallback handler');
-          fallbackTextSelection(selectedText);
-        } else if (!selectedText || selectedText.length < 3) {
-          setSelection(null);
-        }
+      // Clear previous timeout
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
       }
+      
+      // Debounce the selection handling to prevent excessive firing
+      debounceTimeout = setTimeout(() => {
+        const selection = window.getSelection();
+        if (!selection || !editorRef.current) return;
+        
+        const selectedText = selection.toString().trim();
+        
+        // Skip if same text as before to prevent duplicate processing
+        if (selectedText === lastSelectedText) return;
+        lastSelectedText = selectedText;
+        
+        console.log('🔄 DOM selection change detected:', { selectedText, length: selectedText.length });
+        
+        // Check if selection is within our editor
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const isWithinEditor = editorRef.current.contains(range.commonAncestorContainer);
+          
+          console.log('📍 Selection location check:', { isWithinEditor, selectedText });
+          
+          if (isWithinEditor && selectedText && selectedText.length >= 3) {
+            console.log('✅ Valid selection within editor, calling fallback handler');
+            fallbackTextSelection(selectedText);
+          } else if (!selectedText || selectedText.length < 3) {
+            setSelection(null);
+          }
+        }
+      }, 150); // 150ms debounce delay
     };
 
     // ENHANCED: Multiple event listeners for maximum compatibility
@@ -496,32 +544,35 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     // Add global document listener
     document.addEventListener('selectionchange', handleDocumentSelectionChange);
     
-    // Add editor-specific listeners
+    // Add editor-specific listeners with throttling
     const editorElement = editorRef.current;
     if (editorElement) {
+      let throttleTimeout: NodeJS.Timeout | null = null;
+      
+      const throttledHandler = () => {
+        if (throttleTimeout) return; // Skip if already throttled
+        
+        throttleTimeout = setTimeout(() => {
+          handleDocumentSelectionChange();
+          throttleTimeout = null;
+        }, 100); // 100ms throttle
+      };
+      
       events.forEach(event => {
-        editorElement.addEventListener(event, () => {
-          // Small delay to ensure selection is complete
-          setTimeout(handleDocumentSelectionChange, 10);
-        });
+        editorElement.addEventListener(event, throttledHandler);
       });
     }
     
-    // POLLING FALLBACK: Check selection every 500ms as last resort
-    const pollInterval = setInterval(() => {
-      if (document.activeElement && editorRef.current?.contains(document.activeElement)) {
-        handleDocumentSelectionChange();
-      }
-    }, 500);
-    
     return () => {
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
       document.removeEventListener('selectionchange', handleDocumentSelectionChange);
       if (editorElement) {
         events.forEach(event => {
           editorElement.removeEventListener(event, handleDocumentSelectionChange);
         });
       }
-      clearInterval(pollInterval);
     };
   }, [fallbackTextSelection]);
   
