@@ -76,6 +76,137 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   const contentProp = content !== undefined ? content : contextContent;
   const onChangeProp = onChange || contextOnChange;
 
+  // Text selection state
+  const [selection, setSelection] = useState<{top: number; left: number; text: string} | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  
+  // Custom cursor state for enhanced visibility
+  const [showCustomCursor, setShowCustomCursor] = useState(false);
+  const [editorHasFocus, setEditorHasFocus] = useState(false);
+  
+  // Chat context for highlighting
+  const { 
+    setHighlightedText, 
+    handleTextHighlighted,
+    isChatVisible, 
+    openChatWithText 
+  } = useChatContext();
+
+  // Fallback text selection detection using DOM selection
+  const fallbackTextSelection = useCallback((selectedText: string) => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    if (editorRef.current) {
+      const editorRect = editorRef.current.getBoundingClientRect();
+      
+      let top = rect.bottom - editorRect.top + 8;
+      let left = rect.left + rect.width / 2 - editorRect.left;
+      
+      const editorWidth = editorRect.width;
+      const editorHeight = editorRect.height;
+      
+      if (isChatVisible) {
+        const maxLeft = editorWidth * 0.6 - 80;
+        left = Math.min(left, maxLeft);
+      }
+      
+      left = Math.max(80, Math.min(left, editorWidth - 80));
+      top = Math.max(10, Math.min(top, editorHeight - 50));
+      
+      setSelection({
+        top,
+        left,
+        text: selectedText,
+      });
+      
+      console.log('✅ Text selection detected via fallback DOM method:', {
+        text: selectedText.substring(0, 50) + '...',
+        position: { top, left }
+      });
+    }
+  }, [isChatVisible]);
+
+  // Handle text selection in editor - FIXED: Now uses TipTap's selection system
+  const handleTextSelection = useCallback((selectedText: string, editorView?: { state: { selection: { from: number; to: number } }; coordsAtPos: (pos: number) => { top: number; left: number } }) => {
+    console.log('🔍 handleTextSelection called with:', { selectedText, hasEditorView: !!editorView });
+    
+    if (!selectedText || selectedText.length < 3) {
+      setSelection(null);
+      return;
+    }
+
+    // Use TipTap's editor view to get selection coordinates if available
+    if (editorView && editorRef.current) {
+      try {
+        const { from, to } = editorView.state.selection;
+        const start = editorView.coordsAtPos(from);
+        const end = editorView.coordsAtPos(to);
+        
+        const editorRect = editorRef.current.getBoundingClientRect();
+        
+        // Calculate position relative to editor wrapper
+        let top = Math.max(start.top, end.top) - editorRect.top + 8;
+        let left = (start.left + end.left) / 2 - editorRect.left;
+        
+        // Bounds checking
+        const editorWidth = editorRect.width;
+        const editorHeight = editorRect.height;
+        
+        // Adjust for chat panel if visible
+        if (isChatVisible) {
+          const maxLeft = editorWidth * 0.6 - 80;
+          left = Math.min(left, maxLeft);
+        }
+        
+        // Keep within bounds
+        left = Math.max(80, Math.min(left, editorWidth - 80));
+        top = Math.max(10, Math.min(top, editorHeight - 50));
+        
+        setSelection({
+          top,
+          left,
+          text: selectedText,
+        });
+        
+        console.log('✅ Text selection detected via TipTap:', {
+          text: selectedText.substring(0, 50) + '...',
+          position: { top, left }
+        });
+        
+      } catch {
+        console.warn('⚠️ Failed to get TipTap selection coordinates, falling back to manual detection');
+        // Fallback to manual detection
+        fallbackTextSelection(selectedText);
+      }
+    } else {
+      // Fallback to manual detection
+      fallbackTextSelection(selectedText);
+    }
+  }, [isChatVisible, fallbackTextSelection]);
+
+  // Handle AI interaction with selected text
+  const handleAskAI = useCallback(() => {
+    if (!selection) return;
+
+    console.log('🤖 Asking AI about selected text:', selection.text);
+
+    // Apply visual highlighting through ChatContext
+    handleTextHighlighted(selection.text);
+    
+    // Update highlighted text in context (for chat display)
+    setHighlightedText(selection.text);
+    
+    // Open chat with the selected text
+    openChatWithText(selection.text);
+    
+    // Clear selection
+    setSelection(null);
+  }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -93,8 +224,11 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     },
     // ADDED: Handle text selection updates for floating AI button
     onSelectionUpdate: ({ editor }) => {
+      console.log('🎯 onSelectionUpdate triggered');
       const { from, to } = editor.state.selection;
       const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+      
+      console.log('📝 Selection details:', { from, to, selectedText, length: selectedText.length });
       
       if (selectedText && selectedText.length >= 3) {
         // Call our text selection handler with the selected text and editor view
@@ -102,6 +236,25 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       } else {
         // Clear selection if no meaningful text is selected
         setSelection(null);
+      }
+    },
+    // ALTERNATIVE: Use transaction event as more reliable selection detection
+    onTransaction: ({ editor, transaction }) => {
+      // Only process if selection actually changed
+      if (transaction.selectionSet) {
+        console.log('🔄 Transaction with selection change detected');
+        const { from, to } = editor.state.selection;
+        const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+        
+        console.log('📝 Transaction selection details:', { from, to, selectedText, length: selectedText.length });
+        
+        if (selectedText && selectedText.length >= 3) {
+          // Call our text selection handler with the selected text and editor view
+          handleTextSelection(selectedText, editor.view);
+        } else {
+          // Clear selection if no meaningful text is selected
+          setSelection(null);
+        }
       }
     },
     // Add editor event handlers for better cursor management
@@ -312,149 +465,77 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     }
   }, [contentProp, editor]);
 
-  // Text selection state
-  const [selection, setSelection] = useState<{top: number; left: number; text: string} | null>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
-  
-  // Custom cursor state for enhanced visibility
-  const [showCustomCursor, setShowCustomCursor] = useState(false);
-  const [editorHasFocus, setEditorHasFocus] = useState(false);
-  
-  // Chat context for highlighting
-  const { 
-    setHighlightedText, 
-    handleTextHighlighted,
-    isChatVisible, 
-    openChatWithText 
-  } = useChatContext();
-
-  // Fallback text selection detection using DOM selection
-  const fallbackTextSelection = useCallback((selectedText: string) => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    
-    if (editorRef.current) {
-      const editorRect = editorRef.current.getBoundingClientRect();
+  // BACKUP: Add DOM-based text selection detection as fallback
+  useEffect(() => {
+    const handleDocumentSelectionChange = () => {
+      const selection = window.getSelection();
+      if (!selection || !editorRef.current) return;
       
-      let top = rect.bottom - editorRect.top + 8;
-      let left = rect.left + rect.width / 2 - editorRect.left;
+      const selectedText = selection.toString().trim();
+      console.log('🔄 DOM selection change detected:', { selectedText, length: selectedText.length });
       
-      const editorWidth = editorRect.width;
-      const editorHeight = editorRect.height;
-      
-      if (isChatVisible) {
-        const maxLeft = editorWidth * 0.6 - 80;
-        left = Math.min(left, maxLeft);
-      }
-      
-      left = Math.max(80, Math.min(left, editorWidth - 80));
-      top = Math.max(10, Math.min(top, editorHeight - 50));
-      
-      setSelection({
-        top,
-        left,
-        text: selectedText,
-      });
-      
-      console.log('✅ Text selection detected via fallback DOM method:', {
-        text: selectedText.substring(0, 50) + '...',
-        position: { top, left }
-      });
-    }
-  }, [isChatVisible]);
-
-  // Handle text selection in editor - FIXED: Now uses TipTap's selection system
-  const handleTextSelection = useCallback((selectedText: string, editorView?: { state: { selection: { from: number; to: number } }; coordsAtPos: (pos: number) => { top: number; left: number } }) => {
-    if (!selectedText || selectedText.length < 3) {
-      setSelection(null);
-      return;
-    }
-
-    // Use TipTap's editor view to get selection coordinates if available
-    if (editorView && editorRef.current) {
-      try {
-        const { from, to } = editorView.state.selection;
-        const start = editorView.coordsAtPos(from);
-        const end = editorView.coordsAtPos(to);
+      // Check if selection is within our editor
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const isWithinEditor = editorRef.current.contains(range.commonAncestorContainer);
         
-        const editorRect = editorRef.current.getBoundingClientRect();
+        console.log('📍 Selection location check:', { isWithinEditor, selectedText });
         
-        // Calculate position relative to editor wrapper
-        let top = Math.max(start.top, end.top) - editorRect.top + 8;
-        let left = (start.left + end.left) / 2 - editorRect.left;
-        
-        // Bounds checking
-        const editorWidth = editorRect.width;
-        const editorHeight = editorRect.height;
-        
-        // Adjust for chat panel if visible
-        if (isChatVisible) {
-          const maxLeft = editorWidth * 0.6 - 80;
-          left = Math.min(left, maxLeft);
+        if (isWithinEditor && selectedText && selectedText.length >= 3) {
+          console.log('✅ Valid selection within editor, calling fallback handler');
+          fallbackTextSelection(selectedText);
+        } else if (!selectedText || selectedText.length < 3) {
+          setSelection(null);
         }
-        
-        // Keep within bounds
-        left = Math.max(80, Math.min(left, editorWidth - 80));
-        top = Math.max(10, Math.min(top, editorHeight - 50));
-        
-        setSelection({
-          top,
-          left,
-          text: selectedText,
-        });
-        
-        console.log('✅ Text selection detected via TipTap:', {
-          text: selectedText.substring(0, 50) + '...',
-          position: { top, left }
-        });
-        
-      } catch {
-        console.warn('⚠️ Failed to get TipTap selection coordinates, falling back to manual detection');
-        // Fallback to manual detection
-        fallbackTextSelection(selectedText);
       }
-    } else {
-      // Fallback to manual detection
-      fallbackTextSelection(selectedText);
+    };
+
+    // ENHANCED: Multiple event listeners for maximum compatibility
+    const events = ['selectionchange', 'mouseup', 'keyup', 'touchend'];
+    
+    // Add global document listener
+    document.addEventListener('selectionchange', handleDocumentSelectionChange);
+    
+    // Add editor-specific listeners
+    const editorElement = editorRef.current;
+    if (editorElement) {
+      events.forEach(event => {
+        editorElement.addEventListener(event, () => {
+          // Small delay to ensure selection is complete
+          setTimeout(handleDocumentSelectionChange, 10);
+        });
+      });
     }
-  }, [isChatVisible, fallbackTextSelection]);
-
-  // Handle AI interaction with selected text
-  const handleAskAI = useCallback(() => {
-    if (!selection) return;
-
-    console.log('🤖 Asking AI about selected text:', selection.text);
-
-    // Apply visual highlighting through ChatContext
-    handleTextHighlighted(selection.text);
     
-    // Update highlighted text in context (for chat display)
-    setHighlightedText(selection.text);
+    // POLLING FALLBACK: Check selection every 500ms as last resort
+    const pollInterval = setInterval(() => {
+      if (document.activeElement && editorRef.current?.contains(document.activeElement)) {
+        handleDocumentSelectionChange();
+      }
+    }, 500);
     
-    // Open chat with the selected text
-    openChatWithText(selection.text);
-    
-    // Clear selection
-    setSelection(null);
-  }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
-
-  // Enhanced focus management for cursor visibility
-  const editorContainerRef = useRef<HTMLDivElement>(null);
+    return () => {
+      document.removeEventListener('selectionchange', handleDocumentSelectionChange);
+      if (editorElement) {
+        events.forEach(event => {
+          editorElement.removeEventListener(event, handleDocumentSelectionChange);
+        });
+      }
+      clearInterval(pollInterval);
+    };
+  }, [fallbackTextSelection]);
   
   // Auto-focus editor when component mounts or when user clicks
   useEffect(() => {
-    if (editor && editorContainerRef.current) {
+    if (editor && editorRef.current) {
       // Set up click handler to focus editor
       const handleContainerClick = (e: MouseEvent) => {
-        if (e.target === editorContainerRef.current || editorContainerRef.current?.contains(e.target as Node)) {
+        if (e.target === editorRef.current || editorRef.current?.contains(e.target as Node)) {
           editor.commands.focus();
         }
       };
       
-      editorContainerRef.current.addEventListener('click', handleContainerClick);
+      editorRef.current.addEventListener('click', handleContainerClick);
       
       // Auto-focus on mount to show cursor immediately
       setTimeout(() => {
@@ -462,13 +543,13 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       }, 200);
       
       return () => {
-        editorContainerRef.current?.removeEventListener('click', handleContainerClick);
+        editorRef.current?.removeEventListener('click', handleContainerClick);
       };
     }
   }, [editor]);
 
           return (
-    <div className="highlightable-editor-container" ref={editorContainerRef}>
+    <div className="highlightable-editor-container">
       <div ref={editorRef} className="editor-wrapper">
         <EditorContent 
           editor={editor} 
@@ -503,6 +584,39 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           >
             ✨ Ask AI
           </button>
+        )}
+        
+        {/* TEST: Always visible button to verify CSS works */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            className="floating-ai-button"
+            style={{ 
+              top: 10, 
+              left: 10,
+              background: 'red !important'
+            }}
+            onClick={() => console.log('🧪 Test button clicked - CSS is working!')}
+          >
+            🧪 TEST
+          </button>
+        )}
+        
+        {/* DEBUG: Visual indicator for selection state */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            zIndex: 2000,
+            pointerEvents: 'none'
+          }}>
+            Selection: {selection ? `"${selection.text.substring(0, 20)}..." (${selection.top}, ${selection.left})` : 'None'}
+          </div>
         )}
       </div>
     </div>
