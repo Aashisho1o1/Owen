@@ -2412,8 +2412,8 @@
   transition: all var(--transition-fast) !important;
   box-shadow: var(--shadow-lg) !important;
   
-  /* Default transform for text selection */
-  transform: translateX(-50%) !important;
+  /* No transform for text selection - position is calculated precisely */
+  transform: none !important;
   
   /* Subtle entrance animation */
   animation: fadeInUp 0.2s ease-out !important;
@@ -2421,12 +2421,12 @@
 
 .floating-ai-button:hover {
   background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-800) 100%) !important;
-  transform: translateX(-50%) translateY(-2px) !important;
+  transform: translateY(-2px) !important;
   box-shadow: var(--shadow-xl) !important;
 }
 
 .floating-ai-button:active {
-  transform: translateX(-50%) translateY(0px) !important;
+  transform: translateY(0px) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
@@ -2434,11 +2434,11 @@
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(4px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
