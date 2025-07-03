@@ -14,6 +14,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { useEditorContext } from '../contexts/EditorContext';
 import { useChatContext } from '../contexts/ChatContext';
 import '../styles/highlightable-editor.css';
+import { createPortal } from 'react-dom';
 
 interface HighlightableEditorProps {
   content?: string;
@@ -130,124 +131,64 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     }
   }, [isChatVisible]);
 
-  // Handle text selection in editor - FIXED: Now uses TipTap's selection system
-  const handleTextSelection = useCallback((selectedText: string, editorView?: { state: { selection: { from: number; to: number } }; coordsAtPos: (pos: number) => { top: number; left: number } }) => {
-    console.log('🔍 handleTextSelection called with:', { selectedText, hasEditorView: !!editorView });
+  // Handle text selection for floating AI button
+  const handleTextSelection = useCallback((selectedText: string, editorView: { state: { selection: { from: number; to: number } }; coordsAtPos: (pos: number) => { top: number; bottom: number; left: number; right: number } }) => {
+    console.log('🎯 handleTextSelection called with:', selectedText);
     
     if (!selectedText || selectedText.length < 3) {
       setSelection(null);
       return;
     }
-
-    // Use TipTap's editor view to get selection coordinates if available
-    if (editorView && editorRef.current) {
-      try {
-        const { from, to } = editorView.state.selection;
-        
-        // FIXED: More robust coordinate calculation to handle TipTap issues
-        let top: number;
-        let left: number;
-        
-        try {
-          // Try TipTap's coordsAtPos first
-          const start = editorView.coordsAtPos(from);
-          const end = editorView.coordsAtPos(to);
-          
-          const editorRect = editorRef.current.getBoundingClientRect();
-          
-          // Calculate position relative to editor wrapper
-          top = Math.max(start.top, end.top) - editorRect.top + 30; // More spacing
-          left = (start.left + end.left) / 2 - editorRect.left;
-          
-          console.log('🎯 TipTap coordinates:', { start, end, editorRect, calculated: { top, left } });
-          
-        } catch {
-          console.warn('⚠️ TipTap coordsAtPos failed, using DOM selection fallback');
-          // Fallback to DOM selection coordinates
-          const selection = window.getSelection();
-          if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const editorRect = editorRef.current.getBoundingClientRect();
-            
-            top = rect.bottom - editorRect.top + 10;
-            left = rect.left + rect.width / 2 - editorRect.left;
-            
-            console.log('🔄 DOM fallback coordinates:', { rect, editorRect, calculated: { top, left } });
-          } else {
-            throw new Error('No DOM selection available');
-          }
-        }
-        
-        // Bounds checking - FIXED: Use viewport-relative positioning for long documents
-        const editorWidth = editorRef.current.clientWidth;
-        const editorHeight = editorRef.current.clientHeight;
-        const currentEditorRect = editorRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        // Convert to viewport-relative coordinates for proper positioning
-        const viewportTop = top + currentEditorRect.top;
-        const viewportLeft = left + currentEditorRect.left;
-        
-        console.log('🔍 Positioning analysis:', {
-          editor: { width: editorWidth, height: editorHeight },
-          viewport: { width: viewportWidth, height: viewportHeight },
-          editorRect: currentEditorRect,
-          original: { top, left },
-          viewportPosition: { top: viewportTop, left: viewportLeft }
-        });
-        
-        // Adjust for chat panel if visible
-        if (isChatVisible) {
-          const maxLeft = editorWidth * 0.6 - 100;
-          left = Math.min(left, maxLeft);
-        }
-        
-        // FIXED: Smart bounds checking that considers viewport visibility
-        // For horizontal positioning: keep within editor bounds
-        left = Math.max(20, Math.min(left, editorWidth - 140));
-        
-        // For vertical positioning: ensure button stays in visible viewport
-        if (viewportTop < 80) {
-          // If selection is above viewport, position at top of visible area
-          top = Math.max(80 - currentEditorRect.top, 20);
-        } else if (viewportTop > viewportHeight - 80) {
-          // If selection is below viewport, position at bottom of visible area
-          top = Math.min(viewportHeight - 80 - currentEditorRect.top, editorHeight - 60);
-        } else {
-          // Selection is in viewport, use calculated position with small offset
-          top = Math.max(20, Math.min(top, editorHeight - 60));
-        }
-        
-        console.log('📍 Final button position (FIXED):', { 
-          top, 
-          left, 
-          editorBounds: { width: editorWidth, height: editorHeight },
-          willBeVisible: viewportTop >= 0 && viewportTop <= viewportHeight
-        });
-        
-        setSelection({
-          top,
-          left,
-          text: selectedText,
-        });
-        
-        console.log('✅ Text selection detected via TipTap:', {
-          text: selectedText.substring(0, 50) + '...',
-          position: { top, left }
-        });
-        
-      } catch (error) {
-        console.warn('⚠️ Failed to get TipTap selection coordinates, falling back to manual detection:', error);
-        // Fallback to manual detection
-        fallbackTextSelection(selectedText);
-      }
-    } else {
-      // Fallback to manual detection
-      fallbackTextSelection(selectedText);
+    
+    // Get selection coordinates from the editor view
+    const { from, to } = editorView.state.selection;
+    const startCoords = editorView.coordsAtPos(from);
+    const endCoords = editorView.coordsAtPos(to);
+    
+    console.log('📐 Selection coordinates:', { startCoords, endCoords });
+    
+    // Since we're using position: fixed, we need viewport coordinates
+    // The coordsAtPos already returns viewport coordinates
+    const viewportTop = endCoords.bottom + 10; // Position below selection
+    const viewportLeft = (startCoords.left + endCoords.right) / 2; // Center horizontally
+    
+    // Get viewport dimensions
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    
+    // Ensure button stays within viewport bounds
+    const buttonWidth = 100; // Approximate button width
+    const buttonHeight = 40; // Approximate button height
+    
+    let finalTop = viewportTop;
+    let finalLeft = viewportLeft;
+    
+    // Vertical bounds check
+    if (finalTop + buttonHeight > viewportHeight) {
+      // Position above selection if too close to bottom
+      finalTop = startCoords.top - buttonHeight - 10;
     }
-  }, [isChatVisible, fallbackTextSelection]);
+    
+    // Horizontal bounds check
+    if (finalLeft - buttonWidth/2 < 0) {
+      finalLeft = buttonWidth/2 + 10;
+    } else if (finalLeft + buttonWidth/2 > viewportWidth) {
+      finalLeft = viewportWidth - buttonWidth/2 - 10;
+    }
+    
+    console.log('🎯 Final button position:', { 
+      finalTop, 
+      finalLeft,
+      viewportHeight,
+      viewportWidth
+    });
+    
+    setSelection({
+      text: selectedText,
+      top: finalTop,
+      left: finalLeft
+    });
+  }, []);
 
   // Handle AI interaction with selected text
   const handleAskAI = useCallback(() => {
@@ -683,53 +624,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           </div>
         )}
         
-        {/* Floating AI Button for text selection */}
-        {selection && (
-          <button
-            className="floating-ai-button"
-            style={{ 
-              top: selection.top, 
-              left: selection.left
-            }}
-            onClick={handleAskAI}
-            aria-label={`Ask AI about selected text: ${selection.text.substring(0, 50)}...`}
-          >
-            ✨ Ask AI
-          </button>
-        )}
-        
-        {/* TEST: Always visible button to verify CSS works */}
-        {process.env.NODE_ENV === 'development' && (
-          <button
-            className="floating-ai-button"
-            style={{ 
-              top: 10, 
-              left: 10,
-              background: 'red !important',
-              zIndex: 9999
-            }}
-            onClick={() => console.log('🧪 Test button clicked - CSS is working!')}
-          >
-            🧪 TEST
-          </button>
-        )}
-        
-        {/* FORCED TEST: Always show a button at fixed position to test selection state */}
-        {process.env.NODE_ENV === 'development' && selection && (
-          <button
-            className="floating-ai-button"
-            style={{ 
-              top: 50, 
-              left: 50,
-              background: 'green !important',
-              zIndex: 9998
-            }}
-            onClick={handleAskAI}
-          >
-            🟢 FORCE TEST
-          </button>
-        )}
-        
         {/* DEBUG: Visual indicator for selection state */}
         {process.env.NODE_ENV === 'development' && (
           <div style={{
@@ -748,6 +642,24 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           </div>
         )}
       </div>
+      
+      {/* Floating AI Button for text selection - rendered outside editor wrapper using portal */}
+      {selection && createPortal(
+        <button
+          className="floating-ai-button"
+          style={{ 
+            position: 'fixed',
+            top: selection.top, 
+            left: selection.left,
+            zIndex: 10000
+          }}
+          onClick={handleAskAI}
+          aria-label={`Ask AI about selected text: ${selection.text.substring(0, 50)}...`}
+        >
+          ✨ Ask AI
+        </button>,
+        document.body
+      )}
     </div>
   );
 };
