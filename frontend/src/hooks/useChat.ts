@@ -232,7 +232,7 @@ export const useChat = ({
       setIsThinking(false);
       setIsStreaming(false);
       
-      const typedError = error as ApiError & { userMessage?: string };
+      const typedError = error as ApiError & { userMessage?: string; isAuthError?: boolean; isNetworkError?: boolean; debugInfo?: string };
       
       // Enhanced error logging for debugging
       console.error('🔍 Detailed error analysis:', {
@@ -244,9 +244,43 @@ export const useChat = ({
         responseData: typedError.response?.data,
         hasRequest: !!typedError.request,
         userMessage: typedError.userMessage,
-                    apiUrl: 'https://backend-copy-production-95b5.up.railway.app',
+        isAuthError: typedError.isAuthError,
+        isNetworkError: typedError.isNetworkError,
+        debugInfo: typedError.debugInfo,
+        apiUrl: 'https://backend-copy-production-95b5.up.railway.app',
         timestamp: new Date().toISOString()
       });
+      
+      // CRITICAL FIX: Check if this is an enhanced error from API client first
+      if (typedError.message && (
+        typedError.message.includes('🔐 Authentication required') ||
+        typedError.message.includes('🌐 Network error') ||
+        typedError.message.includes('⏱️ Request timeout') ||
+        typedError.message.includes('🔧 Server error')
+      )) {
+        // This is an enhanced error from the API client - use it directly
+        console.log('✅ Using enhanced error message from API client:', typedError.message);
+        
+        // Add the enhanced error message as an assistant response
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: typedError.message }
+        ]);
+        
+        // Set the error for the error display component
+        setApiError(typedError.message);
+        setThinkingTrail(`Enhanced error: ${typedError.debugInfo || typedError.message}`);
+        
+        // Set global error only for network issues (not auth issues)
+        if (setApiGlobalError && typedError.isNetworkError) {
+          setApiGlobalError(typedError.message);
+        }
+        
+        return; // Exit early - we've handled the enhanced error
+      }
+      
+      // Fallback to legacy error handling for non-enhanced errors
+      console.log('⚠️ Using legacy error handling for non-enhanced error');
       
       // Create a user-friendly fallback response based on the error type
       let fallbackResponse = '';

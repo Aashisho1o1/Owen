@@ -126,11 +126,24 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-    console.error(`❌ API Error: ${error.config?.url} - Status: ${error.response?.status}`);
+    // CRITICAL FIX: Log the actual error details before any processing
+    console.error(`❌ API Error: ${error.config?.url} - Status: ${error.response?.status || 'undefined'}`);
+    console.error('❌ Full Error Details:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      hasResponse: !!error.response,
+      hasRequest: !!error.request
+    });
 
-    // Handle 401 errors (token refresh)
+    // Handle 401 errors (token refresh) - but preserve original error if refresh fails
     if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log('🔐 401 Error detected, checking if we should try token refresh...');
+      
       if (isRefreshing) {
+        console.log('🔄 Already refreshing, queuing request...');
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then(() => apiClient(originalRequest));
@@ -142,6 +155,7 @@ apiClient.interceptors.response.use(
       try {
         const { refreshToken } = getStoredTokens();
         if (refreshToken) {
+          console.log('🔄 Attempting token refresh...');
           // Try to refresh token
           const response = await apiClient.post('/api/auth/refresh', {
             refresh_token: refreshToken
@@ -150,25 +164,51 @@ apiClient.interceptors.response.use(
           const { access_token } = response.data;
           localStorage.setItem('owen_access_token', access_token);
           
+          console.log('✅ Token refresh successful, retrying original request');
           processQueue(null, access_token);
           return apiClient(originalRequest);
+        } else {
+          console.log('❌ No refresh token available, cannot refresh');
+          throw new Error('No refresh token available');
         }
       } catch (refreshError) {
+        console.error('❌ Token refresh failed:', refreshError);
         processQueue(refreshError, null);
-        // Clear tokens and redirect to login
+        
+        // CRITICAL FIX: Clear tokens and dispatch auth event but preserve original 401 error
         clearAuthTokens();
-        window.location.href = '/';
-        return Promise.reject(refreshError);
+        
+        console.log('📢 Dispatching auth:token-expired event due to refresh failure...');
+        window.dispatchEvent(new CustomEvent('auth:token-expired', {
+          detail: { 
+            reason: 'Token refresh failed', 
+            status: 401,
+            originalError: error,
+            refreshError 
+          }
+        }));
+        
+        // IMPORTANT: Return the original 401 error, not the refresh error
+        // This ensures the UI gets the proper "Authentication required" message
+        return Promise.reject(error);
       } finally {
         isRefreshing = false;
       }
     }
 
-    // Retry logic for other errors
-    if (!originalRequest._retry) {
+    // Retry logic for other errors (NOT for 401s)
+    if (!originalRequest._retry && error.response?.status !== 401) {
+      console.log(`🔄 Attempting retry for ${error.response?.status || 'network'} error...`);
       return retryRequest(error);
     }
 
+    // CRITICAL: For 401 errors that we couldn't refresh, or any other errors, return as-is
+    console.error('❌ Returning error without retry:', {
+      status: error.response?.status,
+      message: error.message,
+      isRetry: !!originalRequest._retry
+    });
+    
     return Promise.reject(error);
   }
 );
