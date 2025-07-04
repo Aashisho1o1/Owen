@@ -182,31 +182,63 @@ const handleApiError = (error: AxiosError): never => {
     statusText: error.response?.statusText,
     data: error.response?.data,
     message: error.message,
-    code: error.code
+    code: error.code,
+    // Enhanced debugging information
+    headers: error.response?.headers,
+    requestHeaders: error.config?.headers,
+    timeout: error.config?.timeout,
+    baseURL: error.config?.baseURL
   };
 
   console.error('❌ API Error Details:', errorContext);
 
-  // Enhanced error message for user
+  // Enhanced error message for user with debugging info
   let userMessage = 'An unexpected error occurred. Please try again.';
+  let debugInfo = '';
   
   if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
     userMessage = 'Unable to connect to the server. Please check if the backend is running.';
+    debugInfo = `Network connection failed to ${errorContext.baseURL}${errorContext.url}`;
+  } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+    userMessage = 'Request timed out. The server may be busy - please try again.';
+    debugInfo = `Request timeout after ${errorContext.timeout}ms`;
   } else if (error.response?.status === 500) {
     userMessage = 'Server error occurred. Please try again later.';
+    debugInfo = `Server error: ${error.response?.data?.detail || 'Internal server error'}`;
   } else if (error.response?.status === 404) {
     userMessage = 'API endpoint not found. Please check your configuration.';
+    debugInfo = `404 Not Found: ${errorContext.method?.toUpperCase()} ${errorContext.url}`;
   } else if (error.response?.status === 401) {
     userMessage = 'Authentication failed. Please log in again.';
+    debugInfo = `Authentication error: ${error.response?.data?.detail || 'Invalid token'}`;
   } else if (error.response?.status === 403) {
     userMessage = 'Access denied. You do not have permission for this action.';
+    debugInfo = `Permission denied: ${error.response?.data?.detail || 'Forbidden'}`;
+  } else if (error.response?.status === 400) {
+    const responseData = error.response.data as any;
+    userMessage = responseData?.detail || responseData?.error || responseData?.message || 'Bad request - please check your input.';
+    debugInfo = `Bad request: ${userMessage}`;
   } else if (error.response?.data) {
     const responseData = error.response.data as any;
     userMessage = responseData?.detail || responseData?.error || responseData?.message || userMessage;
+    debugInfo = `API error: ${userMessage}`;
   }
 
-  // Add user-friendly message to error object
+  // Enhanced console logging for debugging
+  console.group('🔍 API Error Debug Information');
+  console.log('User Message:', userMessage);
+  console.log('Debug Info:', debugInfo);
+  console.log('Full Error Context:', errorContext);
+  console.log('Request URL:', `${errorContext.baseURL}${errorContext.url}`);
+  console.log('Request Method:', errorContext.method?.toUpperCase());
+  console.log('Response Status:', errorContext.status);
+  console.log('Response Data:', errorContext.data);
+  console.groupEnd();
+
+  // Add user-friendly message and debug info to error object
   (error as any).userMessage = userMessage;
+  (error as any).debugInfo = debugInfo;
+  (error as any).fullContext = errorContext;
   throw error;
 };
 

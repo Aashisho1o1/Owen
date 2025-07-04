@@ -38,16 +38,31 @@ async def chat(
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
+        # ENHANCED DEBUGGING: Log authentication success
+        logger.info(f"🔐 Authentication successful for user {user_id}")
+        
         # PRODUCTION RATE LIMITING: Use distributed rate limiter
         # This prevents abuse across multiple Railway instances
         await check_rate_limit(request, "chat")
         
         logger.info(f"🛡️ Rate limit check passed for user {user_id}")
         
+        # ENHANCED DEBUGGING: Log LLM service availability
+        available_providers = llm_service.get_available_providers()
+        logger.info(f"🤖 Available LLM providers: {available_providers}")
+        
         # Validate and sanitize all input data
         validated_message = input_validator.validate_chat_message(request.message)
         validated_editor_text = input_validator.validate_text_input(request.editor_text or "")
         validated_llm_provider = input_validator.validate_llm_provider(request.llm_provider)
+        
+        # ENHANCED DEBUGGING: Verify the requested provider is available
+        if validated_llm_provider not in available_providers:
+            logger.error(f"❌ Requested LLM provider '{validated_llm_provider}' not available. Available: {available_providers}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"LLM provider '{validated_llm_provider}' is not available. Available providers: {available_providers}"
+            )
         
         # SECURITY: Additional length checks for expensive operations
         total_input_length = len(validated_message) + len(validated_editor_text)
@@ -67,6 +82,7 @@ async def chat(
         logger.info(f"🎭 Author persona: {request.author_persona}")
         logger.info(f"🎯 Help focus: {request.help_focus}")
         logger.info(f"🤖 AI Mode: {request.ai_mode}")
+        logger.info(f"🔧 LLM Provider: {validated_llm_provider}")
 
         
         # Simplified user preferences - handle both Pydantic model and dict cases
@@ -97,6 +113,7 @@ async def chat(
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
         # Use the simplified prompt assembly system with AI mode
+        logger.info(f"🔧 Assembling prompt for {validated_llm_provider}...")
         final_prompt = llm_service.assemble_chat_prompt(
             user_message=validated_message,
             editor_text=validated_editor_text,
@@ -107,30 +124,60 @@ async def chat(
             ai_mode=request.ai_mode
         )
         
+        logger.info(f"✅ Prompt assembled successfully (length: {len(final_prompt)} chars)")
+        
         # Generate response using selected LLM
         response_text = None
         thinking_trail = None
 
-        if validated_llm_provider == "Google Gemini":
-            # Format prompt for Gemini (expects list of dicts)
-            prompts = [
-                {"role": "user", "parts": [final_prompt]}
-            ]
-            response_text = await llm_service.generate_with_selected_llm(prompts, validated_llm_provider)
-        elif validated_llm_provider == "OpenAI GPT":
-            # Format prompt for OpenAI (simple string)
-            response_text = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
-        else: # Anthropic Claude or other
-            response_result = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
+        logger.info(f"🚀 Generating response with {validated_llm_provider}...")
+        
+        try:
+            if validated_llm_provider == "Google Gemini":
+                # Format prompt for Gemini (expects list of dicts)
+                prompts = [
+                    {"role": "user", "parts": [final_prompt]}
+                ]
+                logger.info("🔧 Formatted prompt for Gemini")
+                response_text = await llm_service.generate_with_selected_llm(prompts, validated_llm_provider)
+                logger.info(f"✅ Gemini response received (length: {len(response_text) if response_text else 0} chars)")
+            elif validated_llm_provider == "OpenAI GPT":
+                # Format prompt for OpenAI (simple string)
+                logger.info("🔧 Formatted prompt for OpenAI")
+                response_text = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
+                logger.info(f"✅ OpenAI response received (length: {len(response_text) if response_text else 0} chars)")
+            else: # Anthropic Claude or other
+                logger.info(f"🔧 Formatted prompt for {validated_llm_provider}")
+                response_result = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
+                
+                if isinstance(response_result, dict) and "text" in response_result:
+                    response_text = response_result["text"]
+                    thinking_trail = response_result.get("thinking_trail")
+                    logger.info(f"✅ {validated_llm_provider} response received (length: {len(response_text) if response_text else 0} chars)")
+                else:
+                    logger.error(f"❌ Unexpected response_result structure from {validated_llm_provider}: {type(response_result)}")
+                    # Avoid circular reference by converting to string safely
+                    response_text = json.dumps({"dialogue_response": f"Error: Received unexpected response structure from LLM service for {validated_llm_provider}."})
+                    thinking_trail = "Error retrieving thinking trail."
+        
+        except Exception as llm_error:
+            logger.error(f"❌ LLM Generation Error with {validated_llm_provider}: {llm_error}")
+            logger.error(f"❌ LLM Error Type: {type(llm_error).__name__}")
+            logger.error(f"❌ LLM Error Details: {str(llm_error)}")
             
-            if isinstance(response_result, dict) and "text" in response_result:
-                response_text = response_result["text"]
-                thinking_trail = response_result.get("thinking_trail")
-            else:
-                print(f"Unexpected response_result structure from {validated_llm_provider}: {type(response_result)}")
-                # Avoid circular reference by converting to string safely
-                response_text = json.dumps({"dialogue_response": f"Error: Received unexpected response structure from LLM service for {validated_llm_provider}."})
-                thinking_trail = "Error retrieving thinking trail."
+            # Return user-friendly error message
+            error_message = f"I'm having trouble connecting to the AI service ({validated_llm_provider}). Please try again in a moment."
+            if "timeout" in str(llm_error).lower():
+                error_message = f"The AI service ({validated_llm_provider}) is taking too long to respond. Please try a shorter message or try again later."
+            elif "rate limit" in str(llm_error).lower():
+                error_message = f"The AI service ({validated_llm_provider}) is currently busy. Please wait a moment and try again."
+            elif "authentication" in str(llm_error).lower() or "api key" in str(llm_error).lower():
+                error_message = f"There's a configuration issue with the AI service ({validated_llm_provider}). Please contact support."
+            
+            return ChatResponse(
+                dialogue_response=error_message,
+                thinking_trail=f"Error: {str(llm_error)}"
+            )
 
         # Parse and validate the JSON response
         try:
@@ -150,10 +197,10 @@ async def chat(
                         try:
                             ai_response_dict = json.loads(json_match.group(0))
                         except json.JSONDecodeError:
-                            print(f"Regex found potential JSON, but failed to parse: {json_match.group(0)}")
+                            logger.warning(f"⚠️ Regex found potential JSON, but failed to parse: {json_match.group(0)}")
                             ai_response_dict = {"dialogue_response": cleaned_text}
                     else:
-                        print(f"Response is not JSON and regex failed. Using raw text: {cleaned_text[:200]}...")
+                        logger.info(f"ℹ️ Response is not JSON, using raw text: {cleaned_text[:200]}...")
                         ai_response_dict = {"dialogue_response": cleaned_text}
             else:
                 ai_response_dict = {"dialogue_response": "Error: AI response was empty."}
@@ -179,22 +226,27 @@ async def chat(
                     correction_type="general"  # Could be enhanced to detect type
                 )
             
+            logger.info(f"🎉 Chat response generated successfully for user {user_id}")
             return ChatResponse(
                 dialogue_response=sanitized_response,
                 thinking_trail=thinking_trail
             )
         except Exception as json_error:
-            print(f"JSON parsing error in main chat: {json_error}. Raw response: {str(response_text)[:200]}...")
+            logger.error(f"❌ JSON parsing error in main chat: {json_error}. Raw response: {str(response_text)[:200]}...")
             return ChatResponse(
                 dialogue_response=str(response_text) if response_text else "Error: Could not parse the AI's response.",
                 thinking_trail=thinking_trail
             )
             
-    except HTTPException:
+    except HTTPException as http_error:
         # Re-raise HTTP exceptions (like authentication errors and rate limits)
+        logger.error(f"❌ HTTP Exception in chat endpoint: {http_error.status_code} - {http_error.detail}")
         raise
     except Exception as e:
-        print(f"General error in /api/chat: {e}")
+        logger.error(f"❌ General error in /api/chat: {e}")
+        logger.error(f"❌ Error Type: {type(e).__name__}")
+        logger.error(f"❌ Error Details: {str(e)}")
+        
         error_dialogue = "Error: Failed to generate response. An unexpected error occurred."
         if hasattr(e, 'detail') and e.detail:
             error_dialogue = f"Error: {e.detail}"
@@ -501,6 +553,47 @@ async def accept_suggestion(
             "success": False,
             "error": str(e),
             "updated_content": request.editor_content
+        }
+
+@router.get("/debug")
+async def debug_chat_service(user_id: int = Depends(get_current_user_id)):
+    """Debug endpoint to test authentication and LLM service availability"""
+    try:
+        logger.info(f"🔍 Debug endpoint called by user {user_id}")
+        
+        # Test LLM service availability
+        available_providers = llm_service.get_available_providers()
+        
+        # Test each provider's detailed status
+        provider_details = {}
+        for provider in ["Google Gemini", "OpenAI GPT"]:
+            try:
+                if provider == "Google Gemini":
+                    from services.llm.gemini_service import gemini_service
+                    provider_details[provider] = gemini_service.get_model_info()
+                elif provider == "OpenAI GPT":
+                    from services.llm.openai_service import openai_service
+                    provider_details[provider] = openai_service.get_model_info()
+            except Exception as e:
+                provider_details[provider] = {"error": str(e), "available": False}
+        
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "authentication": "working",
+            "available_providers": available_providers,
+            "provider_details": provider_details,
+            "llm_service_status": "initialized",
+            "timestamp": "2025-01-04T04:00:00Z"
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Debug endpoint error: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "authentication": "failed" if "authentication" in str(e).lower() else "unknown"
         }
 
  
