@@ -72,27 +72,74 @@ async function retryRequest(
   error: AxiosError,
   retryConfig: RetryConfig = defaultRetryConfig
 ): Promise<any> {
+  console.error('🔄 === RETRY REQUEST FUNCTION CALLED ===');
+  console.error('🔄 Original error details:', {
+    url: error.config?.url,
+    status: error.response?.status,
+    message: error.message,
+    hasResponse: !!error.response,
+    hasRequest: !!error.request
+  });
+
   const config = error.config as AxiosRequestConfig & { _retry?: number };
   
+  console.error('🔄 Retry config check:', {
+    hasConfig: !!config,
+    retryConditionResult: config ? retryConfig.retryCondition(error) : false,
+    currentRetryCount: config?._retry || 0,
+    maxRetries: retryConfig.retries
+  });
+  
   if (!config || !retryConfig.retryCondition(error)) {
+    console.error('🔄 ❌ Retry condition failed - rejecting error');
     return Promise.reject(error);
   }
 
   config._retry = config._retry || 0;
 
   if (config._retry >= retryConfig.retries) {
+    console.error('🔄 ❌ Max retries reached - rejecting error');
     return Promise.reject(error);
   }
 
   config._retry += 1;
+  
+  console.error(`🔄 ✅ Proceeding with retry attempt ${config._retry}/${retryConfig.retries}`);
 
   if (retryConfig.onRetry) {
+    console.error('🔄 Calling onRetry callback...');
     retryConfig.onRetry(error, config._retry);
   }
 
-  await new Promise(resolve => setTimeout(resolve, retryConfig.retryDelay(config._retry)));
+  const delay = retryConfig.retryDelay(config._retry);
+  console.error(`🔄 Waiting ${delay}ms before retry...`);
+  await new Promise(resolve => setTimeout(resolve, delay));
 
-  return apiClient(config);
+  console.error('🔄 🚀 Making retry request with config:', {
+    url: config.url,
+    method: config.method,
+    hasAuthHeader: !!config.headers?.Authorization,
+    authHeaderPreview: config.headers?.Authorization?.substring(0, 20) + '...',
+    retryCount: config._retry
+  });
+
+  // CRITICAL: This is where the retry request is made
+  try {
+    const retryResponse = await apiClient(config);
+    console.error('🔄 ✅ Retry request succeeded:', {
+      status: retryResponse.status,
+      url: retryResponse.config.url
+    });
+    return retryResponse;
+  } catch (retryError) {
+    console.error('🔄 ❌ Retry request failed:', {
+      message: (retryError as any).message,
+      status: (retryError as any).response?.status,
+      hasResponse: !!(retryError as any).response,
+      hasRequest: !!(retryError as any).request
+    });
+    throw retryError;
+  }
 }
 
 apiClient.interceptors.request.use(
@@ -126,7 +173,8 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-    // CRITICAL FIX: Log the actual error details before any processing
+    // ENHANCED DEBUGGING: Log every detail about the error
+    console.error('🚨 === RESPONSE INTERCEPTOR ERROR ANALYSIS ===');
     console.error(`❌ API Error: ${error.config?.url} - Status: ${error.response?.status || 'undefined'}`);
     console.error('❌ Full Error Details:', {
       message: error.message,
@@ -135,13 +183,33 @@ apiClient.interceptors.response.use(
       statusText: error.response?.statusText,
       data: error.response?.data,
       hasResponse: !!error.response,
-      hasRequest: !!error.request
+      hasRequest: !!error.request,
+      isAxiosError: error.isAxiosError,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        timeout: error.config?.timeout
+      }
     });
 
-    // CRITICAL FIX: Handle 401 errors IMMEDIATELY with enhanced error handler
-    // Do NOT attempt retry or token refresh - just process the error directly
+    // ENHANCED DEBUGGING: Check if this is a retry
+    if (originalRequest._retry) {
+      console.error('🔄 THIS IS A RETRY ATTEMPT - Original request already failed');
+      console.error('🔍 Retry context:', {
+        retryCount: originalRequest._retry,
+        originalUrl: originalRequest.url,
+        originalMethod: originalRequest.method
+      });
+    } else {
+      console.error('🆕 THIS IS THE FIRST ATTEMPT');
+    }
+
+    // CRITICAL FIX: Handle 401 errors IMMEDIATELY - do NOT proceed to retry logic
     if (error.response?.status === 401) {
-      console.log('🔐 401 Error detected - processing immediately with enhanced error handler');
+      console.error('🔐 === 401 ERROR DETECTED ===');
+      console.error('🔐 Processing 401 immediately, NO RETRY');
+      console.error('🔐 Error response data:', error.response.data);
       
       // Clear tokens immediately
       clearAuthTokens();
@@ -156,34 +224,54 @@ apiClient.interceptors.response.use(
         }
       }));
       
-      // Process the error through handleApiError to get enhanced error message
+      // Process the error through handleApiError and throw immediately
+      console.error('🔐 Calling handleApiError for 401...');
       handleApiError(error);
-      return; // This will never be reached due to handleApiError throwing
+      // handleApiError throws, so this line will never be reached
     }
 
-    // Handle other 4xx errors immediately (no retry for client errors)
+    // CRITICAL FIX: Handle other 4xx client errors immediately - do NOT retry
     if (error.response?.status && error.response.status >= 400 && error.response.status < 500) {
-      console.log(`🚫 Client error ${error.response.status} detected - processing immediately`);
+      console.error(`🚫 === ${error.response.status} CLIENT ERROR DETECTED ===`);
+      console.error(`🚫 Processing ${error.response.status} immediately, NO RETRY`);
+      console.error('🚫 Error response data:', error.response.data);
       handleApiError(error);
-      return; // This will never be reached due to handleApiError throwing
+      // handleApiError throws, so this line will never be reached
     }
 
-    // Retry logic ONLY for 5xx server errors and network errors
+    // ENHANCED DEBUGGING: Log retry decision logic
+    console.error('🤔 === RETRY DECISION ANALYSIS ===');
+    console.error('🤔 Checking if retry should happen...');
+    console.error('🤔 originalRequest._retry:', originalRequest._retry);
+    console.error('🤔 error.response exists:', !!error.response);
+    console.error('🤔 error.response.status:', error.response?.status);
+    
+    // RETRY LOGIC: Only for 5xx server errors and actual network errors (no response)
     if (!originalRequest._retry) {
       // Only retry for server errors (5xx) or actual network errors (no response)
       const shouldRetry = !error.response || (error.response.status >= 500);
       
+      console.error('🤔 shouldRetry calculation:', {
+        noResponse: !error.response,
+        isServerError: error.response?.status >= 500,
+        finalDecision: shouldRetry
+      });
+      
       if (shouldRetry) {
-        console.log(`🔄 Attempting retry for ${error.response?.status || 'network'} error...`);
+        console.error(`🔄 === RETRY LOGIC ACTIVATED ===`);
+        console.error(`🔄 Attempting retry for ${error.response?.status || 'network'} error...`);
+        console.error('🔄 About to call retryRequest...');
         return retryRequest(error);
       } else {
-        console.log(`❌ No retry for ${error.response?.status} error - processing immediately`);
+        console.error(`❌ === NO RETRY DECISION ===`);
+        console.error(`❌ No retry for ${error.response?.status} error - handling immediately`);
         handleApiError(error);
-        return; // This will never be reached due to handleApiError throwing
+        // handleApiError throws, so this line will never be reached
       }
     }
 
     // If we've already retried, process the error
+    console.error('❌ === MAX RETRIES REACHED ===');
     console.error('❌ Max retries reached, processing error:', {
       status: error.response?.status,
       message: error.message,
@@ -191,6 +279,7 @@ apiClient.interceptors.response.use(
     });
     
     handleApiError(error);
+    // handleApiError throws, so this line will never be reached
   }
 );
 
