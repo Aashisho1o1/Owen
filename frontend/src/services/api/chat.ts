@@ -1,111 +1,65 @@
 /**
  * Chat API Service
- * Handles all AI chat and writing assistance API calls.
+ * Handles all chat-related API calls.
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import { apiClient, safeApiCall } from './client';
-import { 
-  ChatRequest, 
-  ChatResponse, 
-  UserFeedbackRequest,
-  UserPreferences,
-  WritingSampleRequest,
-  WritingSampleResponse,
-  OnboardingRequest,
-  OnboardingResponse,
-  CheckpointRequest,
-  CheckpointResponse,
-  EnhancedChatResponse,
-  AcceptSuggestionRequest,
-  AcceptSuggestionResponse
-} from './types';
+import apiClient from './client';
+import { ChatRequest, ChatResponse, EnhancedChatResponse, UserFeedbackRequest } from './types';
 
 // === CHAT ENDPOINTS ===
 
-export const sendChatMessage = async (requestData: ChatRequest): Promise<ChatResponse> => {
-  const response = await apiClient.post('/api/chat/', requestData);
+export const sendChatMessage = async (request: ChatRequest): Promise<ChatResponse> => {
+  const response = await apiClient.post('/api/chat/', request);
   return response.data;
 };
 
-export const submitUserFeedback = async (feedbackData: UserFeedbackRequest): Promise<{ status: string; message: string }> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/chat/feedback', feedbackData);
-    return response.data;
-  });
+export const generateSuggestions = async (request: ChatRequest): Promise<EnhancedChatResponse> => {
+  const response = await apiClient.post('/api/chat/suggestions', request);
+  return response.data;
 };
 
-export const getUserPreferences = async (): Promise<{ status: string; preferences: UserPreferences }> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.get('/api/chat/preferences');
-    return response.data;
-  });
+export const submitUserFeedback = async (feedback: UserFeedbackRequest): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post('/api/chat/feedback', feedback);
+  return response.data;
 };
 
-// === WRITING ASSISTANCE ENDPOINTS ===
-
-export const analyzeWritingSample = async (sampleData: WritingSampleRequest): Promise<WritingSampleResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/writing/analyze-sample', sampleData);
-    return response.data;
-  });
+export const getUserPreferences = async (): Promise<any> => {
+  const response = await apiClient.get('/api/chat/preferences');
+  return response.data;
 };
 
-export const completeOnboarding = async (onboardingData: OnboardingRequest): Promise<OnboardingResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/writing/onboarding', onboardingData);
-    return response.data;
-  });
+export const acceptSuggestion = async (suggestionData: any): Promise<{ success: boolean; message: string }> => {
+  const response = await apiClient.post('/api/chat/accept-suggestion', suggestionData);
+  return response.data;
 };
 
-export const saveCheckpoint = async (checkpointData: CheckpointRequest): Promise<CheckpointResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/writing/checkpoint', checkpointData);
-    return response.data;
-  });
-};
-
-// === CHAT UTILITY FUNCTIONS ===
+// === UTILITY FUNCTIONS ===
 
 export const buildChatRequest = (
   message: string,
   editorText: string,
   authorPersona: string,
   helpFocus: string,
+  chatHistory: any[],
   llmProvider: string,
-  aiMode: string = "talk",
-  options?: {
-    highlightedText?: string;
-    highlightId?: string;
-    chatHistory?: any[];
-    userPreferences?: UserPreferences;
-    feedbackOnPrevious?: string;
-  }
+  userPreferences?: any,
+  feedbackOnPrevious?: string,
+  highlightedText?: string,
+  highlightId?: string,
+  aiMode: string = 'talk'
 ): ChatRequest => {
   return {
     message,
     editor_text: editorText,
-    highlighted_text: options?.highlightedText,
-    highlight_id: options?.highlightId,
     author_persona: authorPersona,
     help_focus: helpFocus,
-    chat_history: options?.chatHistory || [],
+    chat_history: chatHistory,
     llm_provider: llmProvider,
-    ai_mode: aiMode,
-    user_preferences: options?.userPreferences,
-    feedback_on_previous: options?.feedbackOnPrevious
+    user_preferences: userPreferences || { user_corrections: [] },
+    feedback_on_previous: feedbackOnPrevious || '',
+    highlighted_text: highlightedText || '',
+    highlight_id: highlightId || '',
+    ai_mode: aiMode
   };
-};
-
-// NEW: Generate multiple suggestions for Co-Edit mode
-export const generateSuggestions = async (requestData: ChatRequest): Promise<EnhancedChatResponse> => {
-  const response = await apiClient.post('/api/chat/suggestions', requestData);
-  return response.data;
-};
-
-// NEW: Accept and apply a suggestion
-export const acceptSuggestion = async (requestData: AcceptSuggestionRequest): Promise<AcceptSuggestionResponse> => {
-  const response = await apiClient.post('/api/chat/accept-suggestion', requestData);
-  return response.data;
 }; 
- 

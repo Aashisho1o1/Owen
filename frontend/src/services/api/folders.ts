@@ -1,42 +1,34 @@
 /**
- * Folders API Service
+ * Folder API Service
  * Handles all folder-related API calls.
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import { apiClient, safeApiCall } from './client';
+import apiClient from './client';
 import { DocumentFolder, CreateFolderRequest } from './types';
 
 // === FOLDER CRUD OPERATIONS ===
 
 export const getFolders = async (): Promise<DocumentFolder[]> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.get('/api/folders');
-    return response.data;
-  });
+  const response = await apiClient.get('/api/folders');
+  return response.data;
 };
 
 export const createFolder = async (folderData: CreateFolderRequest): Promise<DocumentFolder> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/folders', folderData);
-    return response.data;
-  });
+  const response = await apiClient.post('/api/folders', folderData);
+  return response.data;
 };
 
 export const updateFolder = async (
   id: string, 
   updates: { name?: string; color?: string }
 ): Promise<DocumentFolder> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.put(`/api/folders/${id}`, updates);
-    return response.data;
-  });
+  const response = await apiClient.put(`/api/folders/${id}`, updates);
+  return response.data;
 };
 
 export const deleteFolder = async (id: string): Promise<void> => {
-  return safeApiCall(async () => {
-    await apiClient.delete(`/api/folders/${id}`);
-  });
+  await apiClient.delete(`/api/folders/${id}`);
 };
 
 // === FOLDER UTILITY FUNCTIONS ===

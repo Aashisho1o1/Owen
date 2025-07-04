@@ -4,16 +4,14 @@
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import { apiClient, safeApiCall } from './client';
+import apiClient from './client';
 import { SearchRequest, SearchResult, Document } from './types';
 
 // === SEARCH ENDPOINTS ===
 
 export const searchDocuments = async (searchData: SearchRequest): Promise<SearchResult[]> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/documents/search', searchData);
-    return response.data.results || [];
-  });
+  const response = await apiClient.post('/api/search', searchData);
+  return response.data;
 };
 
 // === LOCAL SEARCH UTILITIES ===
@@ -27,41 +25,33 @@ export const searchDocumentsLocally = (
     caseSensitive?: boolean;
   }
 ): Document[] => {
-  if (!query.trim()) return documents;
+  const { 
+    searchInContent = true, 
+    searchInTags = true, 
+    caseSensitive = false 
+  } = options || {};
   
-  const searchTerm = options?.caseSensitive ? query : query.toLowerCase();
+  const searchTerm = caseSensitive ? query : query.toLowerCase();
   
   return documents.filter(doc => {
-    // Search in title (always)
-    const titleMatch = options?.caseSensitive 
-      ? doc.title.includes(searchTerm)
-      : doc.title.toLowerCase().includes(searchTerm);
+    const title = caseSensitive ? doc.title : doc.title.toLowerCase();
+    const content = caseSensitive ? (doc.content || '') : (doc.content || '').toLowerCase();
+    const tags = doc.tags?.map(tag => caseSensitive ? tag : tag.toLowerCase()) || [];
     
-    if (titleMatch) return true;
+    // Search in title
+    if (title.includes(searchTerm)) return true;
     
     // Search in content if enabled
-    if (options?.searchInContent && doc.content) {
-      const contentMatch = options?.caseSensitive
-        ? doc.content.includes(searchTerm)
-        : doc.content.toLowerCase().includes(searchTerm);
-      
-      if (contentMatch) return true;
-    }
+    if (searchInContent && content.includes(searchTerm)) return true;
     
     // Search in tags if enabled
-    if (options?.searchInTags && doc.tags && doc.tags.length > 0) {
-      const tagsMatch = doc.tags.some(tag => 
-        options?.caseSensitive 
-          ? tag.includes(searchTerm)
-          : tag.toLowerCase().includes(searchTerm)
-      );
-      
-      if (tagsMatch) return true;
-    }
+    if (searchInTags && tags.some(tag => tag.includes(searchTerm))) return true;
     
     return false;
   });
 };
+
+// === SEARCH REQUEST BUILDERS ===
 
 export const buildSearchRequest = (
   query: string,
@@ -75,13 +65,17 @@ export const buildSearchRequest = (
 ): SearchRequest => {
   return {
     query,
-    document_ids: options?.documentIds,
-    folder_ids: options?.folderIds,
-    tags: options?.tags,
-    document_types: options?.documentTypes,
-    content_only: options?.contentOnly || false
+    filters: {
+      document_ids: options?.documentIds,
+      folder_ids: options?.folderIds,
+      tags: options?.tags,
+      document_types: options?.documentTypes,
+      content_only: options?.contentOnly || false
+    }
   };
 };
+
+// === SEARCH RESULT UTILITIES ===
 
 export const highlightSearchMatches = (text: string, query: string): string => {
   if (!query.trim()) return text;
