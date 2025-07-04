@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Simple Login Test</h1>
+        <p>Test login functionality at commit <strong>8332757</strong></p>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="test@example.com" placeholder="Enter your email">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="testpassword123" placeholder="Enter your password">
+        </div>
+        
+        <button onclick="testLogin()">🚀 Test Login</button>
+        <button onclick="testBackend()">🏥 Test Backend Health</button>
+        <button onclick="clearTokens()">🧹 Clear Tokens</button>
+        <button onclick="checkTokens()">🔍 Check Stored Tokens</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_URL = 'https://backend-copy-production-95b5.up.railway.app';
+        
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+        
+        async function testBackend() {
+            try {
+                showResult('Testing backend health...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Backend is healthy!\n\nStatus: ${data.status}\nDatabase: ${data.database?.status}\nUsers: ${data.database?.total_users}`, 'success');
+                } else {
+                    showResult(`❌ Backend health check failed:\n${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Backend connection failed:\n${error.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showResult('❌ Please enter both email and password', 'error');
+                return;
+            }
+            
+            try {
+                showResult('🔄 Attempting login...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store tokens
+                    localStorage.setItem('owen_access_token', data.access_token);
+                    localStorage.setItem('owen_refresh_token', data.refresh_token);
+                    localStorage.setItem('owen_token_type', data.token_type);
+                    localStorage.setItem('owen_token_expires', (Date.now() + data.expires_in * 1000).toString());
+                    
+                    showResult(`✅ Login successful!\n\nUser: ${data.user?.email}\nToken Type: ${data.token_type}\nExpires In: ${data.expires_in} seconds`, 'success');
+                } else {
+                    showResult(`❌ Login failed:\n\nStatus: ${response.status}\nMessage: ${data.detail || data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Login request failed:\n${error.message}`, 'error');
+            }
+        }
+        
+        function clearTokens() {
+            localStorage.removeItem('owen_access_token');
+            localStorage.removeItem('owen_refresh_token');
+            localStorage.removeItem('owen_token_type');
+            localStorage.removeItem('owen_token_expires');
+            
+            // Also clear any legacy tokens
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('token_type');
+            localStorage.removeItem('token_expires');
+            
+            showResult('🧹 All tokens cleared from localStorage', 'success');
+        }
+        
+        function checkTokens() {
+            const tokens = {
+                owen_access_token: localStorage.getItem('owen_access_token'),
+                owen_refresh_token: localStorage.getItem('owen_refresh_token'),
+                owen_token_type: localStorage.getItem('owen_token_type'),
+                owen_token_expires: localStorage.getItem('owen_token_expires')
+            };
+            
+            const hasTokens = Object.values(tokens).some(token => token !== null);
+            
+            if (hasTokens) {
+                const expiresAt = tokens.owen_token_expires ? new Date(parseInt(tokens.owen_token_expires)) : null;
+                const isExpired = expiresAt ? Date.now() >= parseInt(tokens.owen_token_expires) : true;
+                
+                showResult(`🔍 Stored tokens found:\n\nAccess Token: ${tokens.owen_access_token ? tokens.owen_access_token.substring(0, 50) + '...' : 'None'}\nRefresh Token: ${tokens.owen_refresh_token ? tokens.owen_refresh_token.substring(0, 50) + '...' : 'None'}\nToken Type: ${tokens.owen_token_type || 'None'}\nExpires: ${expiresAt ? expiresAt.toLocaleString() : 'Unknown'}\nIs Expired: ${isExpired ? '❌ Yes' : '✅ No'}`, 'info');
+            } else {
+                showResult('🔍 No tokens found in localStorage', 'info');
+            }
+        }
+        
+        // Auto-check backend health on page load
+        window.addEventListener('load', () => {
+            testBackend();
+        });
+    </script>
+</body>
+</html>

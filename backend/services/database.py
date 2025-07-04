@@ -506,7 +506,7 @@ class PostgreSQLService:
                    (user_id, user_corrections, created_at, updated_at)
                    VALUES (%s, %s, %s, %s)
                    ON CONFLICT (user_id) DO NOTHING""",
-                (user_id, "[]", datetime.utcnow(), datetime.utcnow())
+                (user_id, [], datetime.utcnow(), datetime.utcnow())
             )
             
             return default_prefs

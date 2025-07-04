@@ -33,7 +33,8 @@ router = APIRouter(
 
 @router.post("/", response_model=ChatResponse)
 async def chat(
-    request: ChatRequest, 
+    chat_request: ChatRequest,
+    http_request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
@@ -43,7 +44,7 @@ async def chat(
         
         # PRODUCTION RATE LIMITING: Use distributed rate limiter
         # This prevents abuse across multiple Railway instances
-        await check_rate_limit(request, "chat")
+        await check_rate_limit(http_request, "chat")
         
         logger.info(f"🛡️ Rate limit check passed for user {user_id}")
         
@@ -52,9 +53,9 @@ async def chat(
         logger.info(f"🤖 Available LLM providers: {available_providers}")
         
         # Validate and sanitize all input data
-        validated_message = input_validator.validate_chat_message(request.message)
-        validated_editor_text = input_validator.validate_text_input(request.editor_text or "")
-        validated_llm_provider = input_validator.validate_llm_provider(request.llm_provider)
+        validated_message = input_validator.validate_chat_message(chat_request.message)
+        validated_editor_text = input_validator.validate_text_input(chat_request.editor_text or "")
+        validated_llm_provider = input_validator.validate_llm_provider(chat_request.llm_provider)
         
         # ENHANCED DEBUGGING: Verify the requested provider is available
         if validated_llm_provider not in available_providers:
@@ -79,14 +80,14 @@ async def chat(
         if validated_editor_text and len(validated_editor_text) > 0:
             editor_preview = validated_editor_text[:300] + "..." if len(validated_editor_text) > 300 else validated_editor_text
             logger.info(f"📄 Editor content preview: {editor_preview}")
-        logger.info(f"🎭 Author persona: {request.author_persona}")
-        logger.info(f"🎯 Help focus: {request.help_focus}")
-        logger.info(f"🤖 AI Mode: {request.ai_mode}")
+        logger.info(f"🎭 Author persona: {chat_request.author_persona}")
+        logger.info(f"🎯 Help focus: {chat_request.help_focus}")
+        logger.info(f"🤖 AI Mode: {chat_request.ai_mode}")
         logger.info(f"🔧 LLM Provider: {validated_llm_provider}")
 
         
         # Simplified user preferences - handle both Pydantic model and dict cases
-        user_preferences = request.user_preferences
+        user_preferences = chat_request.user_preferences
         if user_preferences is None:
             user_corrections = []
         elif hasattr(user_preferences, 'user_corrections'):
@@ -101,8 +102,8 @@ async def chat(
         
         # Get highlighted text directly from request - this is the user's selection
         highlighted_text = None
-        if request.highlighted_text:
-            highlighted_text = input_validator.validate_text_input(request.highlighted_text)
+        if chat_request.highlighted_text:
+            highlighted_text = input_validator.validate_text_input(chat_request.highlighted_text)
             logger.info(f"📝 User highlighted text received: {highlighted_text[:100]}..." if len(highlighted_text) > 100 else f"📝 User highlighted text: {highlighted_text}")
         
         # DEPRECATED: Old method of extracting from message - keeping as fallback
@@ -117,11 +118,11 @@ async def chat(
         final_prompt = llm_service.assemble_chat_prompt(
             user_message=validated_message,
             editor_text=validated_editor_text,
-            author_persona=request.author_persona,
-            help_focus=request.help_focus,
+            author_persona=chat_request.author_persona,
+            help_focus=chat_request.help_focus,
             user_corrections=user_corrections,
             highlighted_text=highlighted_text,
-            ai_mode=request.ai_mode
+            ai_mode=chat_request.ai_mode
         )
         
         logger.info(f"✅ Prompt assembled successfully (length: {len(final_prompt)} chars)")
@@ -216,8 +217,8 @@ async def chat(
             sanitized_response = response_text
             
             # Store user feedback if provided
-            if request.feedback_on_previous:
-                validated_feedback = input_validator.validate_text_input(request.feedback_on_previous)
+            if chat_request.feedback_on_previous:
+                validated_feedback = input_validator.validate_text_input(chat_request.feedback_on_previous)
                 db_service.add_user_feedback(
                     user_id=user_id,
                     original_message=validated_message,
@@ -260,22 +261,23 @@ async def chat(
 
 @router.post("/feedback")
 async def submit_user_feedback(
-    request: UserFeedbackRequest,
+    feedback_request: UserFeedbackRequest,
+    http_request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Submit user feedback on AI responses for continuous improvement."""
     try:
         # Apply rate limiting for feedback submission
-        await check_rate_limit(request, "general")
+        await check_rate_limit(http_request, "general")
         
         # Validate all feedback data
-        validated_original = input_validator.validate_text_input(request.original_message)
-        validated_ai_response = input_validator.validate_text_input(request.ai_response)
-        validated_feedback = input_validator.validate_text_input(request.user_feedback)
+        validated_original = input_validator.validate_text_input(feedback_request.original_message)
+        validated_ai_response = input_validator.validate_text_input(feedback_request.ai_response)
+        validated_feedback = input_validator.validate_text_input(feedback_request.user_feedback)
         
         # Validate correction type
         allowed_types = ['grammar', 'style', 'tone', 'general']
-        if request.correction_type not in allowed_types:
+        if feedback_request.correction_type not in allowed_types:
             raise HTTPException(status_code=400, detail=f"Invalid correction type. Must be one of: {allowed_types}")
         
         success = db_service.add_user_feedback(
@@ -283,7 +285,7 @@ async def submit_user_feedback(
             original_message=validated_original,
             ai_response=validated_ai_response,
             user_feedback=validated_feedback,
-            correction_type=request.correction_type
+            correction_type=feedback_request.correction_type
         )
         
         if success:
@@ -298,11 +300,11 @@ async def submit_user_feedback(
         return {"status": "error", "message": str(e)}
 
 @router.get("/preferences")
-async def get_user_preferences(request: Request, user_id: int = Depends(get_current_user_id)):
+async def get_user_preferences(http_request: Request, user_id: int = Depends(get_current_user_id)):
     """Get user preferences for the authenticated user."""
     try:
         # Apply rate limiting  
-        await check_rate_limit(request, "general")
+        await check_rate_limit(http_request, "general")
         
         preferences = db_service.get_user_preferences(user_id)
         
@@ -329,19 +331,20 @@ async def get_user_preferences(request: Request, user_id: int = Depends(get_curr
 
 @router.post("/suggestions", response_model=EnhancedChatResponse)
 async def generate_suggestions(
-    request: ChatRequest,
+    suggestion_request: ChatRequest,
+    http_request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Generate multiple actionable suggestions for selected text in Co-Edit mode"""
     try:
         # PRODUCTION RATE LIMITING: Stricter limits for expensive AI suggestions
-        await check_rate_limit(request, "chat")  # Use chat limits for suggestions
+        await check_rate_limit(http_request, "chat")  # Use chat limits for suggestions
         
         logger.info(f"🛡️ Suggestions rate limit check passed for user {user_id}")
         
         # Validate inputs
-        validated_message = input_validator.validate_chat_message(request.message)
-        highlighted_text = input_validator.validate_suggestion_text(request.highlighted_text or "")
+        validated_message = input_validator.validate_chat_message(suggestion_request.message)
+        highlighted_text = input_validator.validate_suggestion_text(suggestion_request.highlighted_text or "")
         
         # Check if we have highlighted text
         if not highlighted_text or not highlighted_text.strip():
@@ -352,7 +355,7 @@ async def generate_suggestions(
             )
         
         # Check if we're in Co-Edit mode (suggestions only make sense in Co-Edit)
-        if request.ai_mode != "co-edit":
+        if suggestion_request.ai_mode != "co-edit":
             return EnhancedChatResponse(
                 dialogue_response="Multiple suggestions are available in Co-Edit mode. Switch to Co-Edit mode to get actionable text improvements.",
                 suggestions=[],
@@ -367,9 +370,9 @@ async def generate_suggestions(
         suggestions_response = await llm_service.generate_multiple_suggestions(
             highlighted_text=highlighted_text,
             user_message=validated_message,
-            author_persona=request.author_persona,
-            help_focus=request.help_focus,
-            llm_provider=request.llm_provider
+            author_persona=suggestion_request.author_persona,
+            help_focus=suggestion_request.help_focus,
+            llm_provider=suggestion_request.llm_provider
         )
         
         # Convert to our schema format
@@ -400,20 +403,21 @@ async def generate_suggestions(
 
 @router.post("/accept-suggestion")
 async def accept_suggestion(
-    request: AcceptSuggestionRequest,
+    suggestion_request: AcceptSuggestionRequest,
+    http_request: Request,
     user_id: int = Depends(get_current_user_id)
 ):
     """Accept and apply a suggestion to the editor content"""
     try:
         # Apply rate limiting for suggestion acceptance
-        await check_rate_limit(request, "general")
+        await check_rate_limit(http_request, "general")
         
         # Validate inputs - use suggestion-specific validation for text content
-        original_text = input_validator.validate_suggestion_text(request.original_text)
-        suggested_text = input_validator.validate_suggestion_text(request.suggested_text)
-        editor_content = input_validator.validate_suggestion_text(request.editor_content)
+        original_text = input_validator.validate_suggestion_text(suggestion_request.original_text)
+        suggested_text = input_validator.validate_suggestion_text(suggestion_request.suggested_text)
+        editor_content = input_validator.validate_suggestion_text(suggestion_request.editor_content)
         
-        logger.info(f"📝 User {user_id} accepting suggestion {request.suggestion_id}")
+        logger.info(f"📝 User {user_id} accepting suggestion {suggestion_request.suggestion_id}")
         logger.info(f"🔄 Replacing: {original_text[:50]}...")
         logger.info(f"✨ With: {suggested_text[:50]}...")
         logger.info(f"📄 Editor content length: {len(editor_content)} chars")
@@ -525,7 +529,7 @@ async def accept_suggestion(
                 "replacement_info": {
                     "original_text": original_text,
                     "suggested_text": suggested_text,
-                    "suggestion_id": request.suggestion_id,
+                    "suggestion_id": suggestion_request.suggestion_id,
                     "replacement_method": "enhanced_matching"
                 }
             }
@@ -552,7 +556,7 @@ async def accept_suggestion(
         return {
             "success": False,
             "error": str(e),
-            "updated_content": request.editor_content
+            "updated_content": suggestion_request.editor_content
         }
 
 @router.get("/debug")
