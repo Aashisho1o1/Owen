@@ -196,50 +196,89 @@ const handleApiError = (error: AxiosError): never => {
   let userMessage = 'An unexpected error occurred. Please try again.';
   let debugInfo = '';
   
-  if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-    userMessage = 'Unable to connect to the server. Please check if the backend is running.';
-    debugInfo = `Network connection failed to ${errorContext.baseURL}${errorContext.url}`;
-  } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-    userMessage = 'Request timed out. The server may be busy - please try again.';
-    debugInfo = `Request timeout after ${errorContext.timeout}ms`;
-  } else if (error.response?.status === 500) {
-    userMessage = 'Server error occurred. Please try again later.';
-    debugInfo = `Server error: ${error.response?.data?.detail || 'Internal server error'}`;
-  } else if (error.response?.status === 404) {
-    userMessage = 'API endpoint not found. Please check your configuration.';
-    debugInfo = `404 Not Found: ${errorContext.method?.toUpperCase()} ${errorContext.url}`;
-  } else if (error.response?.status === 401) {
-    userMessage = 'Authentication failed. Please log in again.';
-    debugInfo = `Authentication error: ${error.response?.data?.detail || 'Invalid token'}`;
-  } else if (error.response?.status === 403) {
-    userMessage = 'Access denied. You do not have permission for this action.';
-    debugInfo = `Permission denied: ${error.response?.data?.detail || 'Forbidden'}`;
-  } else if (error.response?.status === 400) {
-    const responseData = error.response.data as any;
-    userMessage = responseData?.detail || responseData?.error || responseData?.message || 'Bad request - please check your input.';
-    debugInfo = `Bad request: ${userMessage}`;
-  } else if (error.response?.data) {
-    const responseData = error.response.data as any;
-    userMessage = responseData?.detail || responseData?.error || responseData?.message || userMessage;
-    debugInfo = `API error: ${userMessage}`;
+  if (error.response) {
+    // Server responded with error status
+    const status = error.response.status;
+    const data = error.response.data as any;
+    
+    switch (status) {
+      case 401:
+        userMessage = 'Authentication required. Please sign in again.';
+        debugInfo = 'Invalid or expired authentication token';
+        
+        // Clear stored tokens on 401
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        
+        // Dispatch event to notify auth context
+        window.dispatchEvent(new CustomEvent('auth:token-expired'));
+        break;
+        
+      case 403:
+        userMessage = 'Access denied. You don\'t have permission for this action.';
+        debugInfo = 'Forbidden - insufficient permissions';
+        break;
+        
+      case 404:
+        userMessage = 'The requested resource was not found.';
+        debugInfo = `Resource not found: ${error.config?.url}`;
+        break;
+        
+      case 422:
+        userMessage = 'Invalid data provided. Please check your input.';
+        debugInfo = data?.detail || 'Validation error';
+        break;
+        
+      case 429:
+        userMessage = 'Too many requests. Please wait a moment and try again.';
+        debugInfo = 'Rate limit exceeded';
+        break;
+        
+      case 500:
+        userMessage = 'Server error. Please try again later.';
+        debugInfo = 'Internal server error';
+        break;
+        
+      default:
+        userMessage = `Server error (${status}). Please try again.`;
+        debugInfo = data?.detail || error.response.statusText || 'Unknown server error';
+    }
+  } else if (error.request) {
+    // Network error - request was made but no response received
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      userMessage = 'Request timeout. Please check your connection and try again.';
+      debugInfo = 'Request timeout - server took too long to respond';
+    } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+      userMessage = 'Network error. Please check your internet connection.';
+      debugInfo = 'Network connectivity issue - unable to reach server';
+    } else {
+      userMessage = 'Unable to connect to the server. Please try again.';
+      debugInfo = `Network error: ${error.message}`;
+    }
+  } else {
+    // Something else happened
+    userMessage = 'An unexpected error occurred. Please try again.';
+    debugInfo = error.message || 'Unknown error during request setup';
   }
 
-  // Enhanced console logging for debugging
-  console.group('🔍 API Error Debug Information');
-  console.log('User Message:', userMessage);
-  console.log('Debug Info:', debugInfo);
-  console.log('Full Error Context:', errorContext);
-  console.log('Request URL:', `${errorContext.baseURL}${errorContext.url}`);
-  console.log('Request Method:', errorContext.method?.toUpperCase());
-  console.log('Response Status:', errorContext.status);
-  console.log('Response Data:', errorContext.data);
-  console.groupEnd();
+  // Create enhanced error object
+  const enhancedError = new Error(userMessage);
+  (enhancedError as any).originalError = error;
+  (enhancedError as any).debugInfo = debugInfo;
+  (enhancedError as any).status = error.response?.status;
+  (enhancedError as any).isAuthError = error.response?.status === 401;
+  (enhancedError as any).isNetworkError = !error.response;
+  
+  console.error('🔍 Enhanced Error Info:', {
+    userMessage,
+    debugInfo,
+    status: error.response?.status,
+    isAuthError: error.response?.status === 401,
+    isNetworkError: !error.response,
+    originalError: error
+  });
 
-  // Add user-friendly message and debug info to error object
-  (error as any).userMessage = userMessage;
-  (error as any).debugInfo = debugInfo;
-  (error as any).fullContext = errorContext;
-  throw error;
+  throw enhancedError;
 };
 
 // Safe API call wrapper with timeout and cancellation

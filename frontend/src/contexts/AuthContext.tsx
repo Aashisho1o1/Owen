@@ -297,13 +297,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('✅ Token validation successful');
         }
       } else {
-        console.log('📭 No stored tokens found');
+        console.log('ℹ️ No stored tokens found');
       }
+      
       setIsLoading(false);
+      console.log('✅ Authentication initialization complete');
     };
 
     initializeAuth();
   }, [getStoredTokens, loadUserProfile, clearTokens]);
+
+  // Add token expiration listener
+  useEffect(() => {
+    const handleTokenExpiration = () => {
+      console.log('🔐 AuthContext: Token expired event received, logging out user');
+      logout();
+    };
+
+    window.addEventListener('auth:token-expired', handleTokenExpiration);
+    return () => window.removeEventListener('auth:token-expired', handleTokenExpiration);
+  }, [logout]);
 
   const login = async (data: LoginData): Promise<boolean> => {
     setIsLoading(true);

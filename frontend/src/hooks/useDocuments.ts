@@ -146,17 +146,28 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   // Load initial data - MVP VERSION (only endpoints that exist)
   const refreshAll = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('🔐 useDocuments: No user, skipping data load');
+      return;
+    }
     
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      console.log('📊 useDocuments: Loading documents, folders, and templates...');
+      
       // Only call endpoints that exist in MVP backend
       const [documents, folders, templates] = await Promise.all([
         api.getDocuments(),
         api.getFolders(),
         api.getTemplates()
       ]);
+      
+      console.log('✅ useDocuments: Data loaded successfully', {
+        documentsCount: documents.documents?.length || 0,
+        foldersCount: folders.length,
+        templatesCount: templates.length
+      });
       
       setState(prev => ({
         ...prev,
@@ -166,11 +177,29 @@ export const useDocuments = (): UseDocumentsReturn => {
         isLoading: false
       }));
     } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to load data',
-        isLoading: false
-      }));
+      console.error('❌ useDocuments: Failed to load data:', error);
+      
+      // Enhanced error handling for authentication issues
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load data';
+      const isAuthError = errorMessage.includes('Invalid token') || 
+                         errorMessage.includes('Authentication') ||
+                         errorMessage.includes('Unauthorized') ||
+                         errorMessage.includes('401');
+      
+      if (isAuthError) {
+        console.error('🔐 useDocuments: Authentication error detected, user may need to re-login');
+        setState(prev => ({
+          ...prev,
+          error: 'Authentication expired. Please sign in again.',
+          isLoading: false
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          error: errorMessage,
+          isLoading: false
+        }));
+      }
     }
   }, [user]);
 
