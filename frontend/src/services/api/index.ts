@@ -8,7 +8,7 @@
 export * from './types';
 
 // === RE-EXPORT CLIENT UTILITIES ===
-export { apiClient, API_URL, safeApiCall } from './client';
+export { default as apiClient } from './client';
 
 // === RE-EXPORT AUTHENTICATION SERVICES ===
 export {
@@ -61,14 +61,11 @@ export {
 // === RE-EXPORT CHAT SERVICES ===
 export {
   sendChatMessage,
+  generateSuggestions,
   submitUserFeedback,
   getUserPreferences,
-  analyzeWritingSample,
-  completeOnboarding,
-  saveCheckpoint,
-  buildChatRequest,
-  generateSuggestions,
-  acceptSuggestion
+  acceptSuggestion,
+  buildChatRequest
 } from './chat';
 
 // === RE-EXPORT SEARCH SERVICES ===
@@ -79,18 +76,14 @@ export {
   highlightSearchMatches
 } from './search';
 
-// === LEGACY COMPATIBILITY ===
-// For components that still import from the old api.ts path
-// TODO: Update all imports to use specific services and remove this section
+// === HEALTH CHECK ===
+import apiClient from './client';
 
-// Health check endpoint (keeping in main client for simplicity)
 export const checkApiHealth = async (): Promise<any> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.get('/api/health');
-    return response.data;
-  });
+  const response = await apiClient.get('/api/health');
+  return response.data;
 };
 
-// Ensure proper module termination for CodeQL parsing
-export {};
+// Default export for convenience
+export default apiClient;
  

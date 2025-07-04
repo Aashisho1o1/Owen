@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local API Testing - DOG Writer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover { background: #2563EB; }
+        .test-button.danger { background: #EF4444; }
+        .test-button.success { background: #10B981; }
+        .test-button.warning { background: #F59E0B; }
+        .results {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .error { color: #ff4444; }
+        .warning { color: #ffaa00; }
+        .success { color: #44ff44; }
+        .info { color: #4488ff; }
+        h1 { color: #1f2937; }
+        h2 { color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+        h3 { color: #4b5563; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Local API Testing - DOG Writer</h1>
+    <p><strong>Current Frontend:</strong> <span id="current-url"></span></p>
+    <p><strong>Backend URL:</strong> <span id="backend-url"></span></p>
+    
+    <div class="test-card">
+        <h2>🔧 Quick Fixes</h2>
+        <button class="test-button danger" onclick="clearAllTokens()">Clear All Tokens</button>
+        <button class="test-button warning" onclick="setTestToken()">Set Test Invalid Token</button>
+        <button class="test-button success" onclick="checkCurrentAuth()">Check Current Auth</button>
+        <div id="quick-results" class="results">Ready for testing...</div>
+    </div>
+
+    <div class="test-card">
+        <h2>🎯 Reproduce the Exact Error</h2>
+        <button class="test-button" onclick="reproduceNetworkError()">Reproduce Network Error</button>
+        <button class="test-button" onclick="testChatWithInvalidToken()">Test Chat with Invalid Token</button>
+        <button class="test-button" onclick="testDirectBackendCall()">Test Direct Backend Call</button>
+        <div id="reproduce-results" class="results">Click a button to reproduce the issue...</div>
+    </div>
+
+    <div class="test-card">
+        <h2>🔍 Response Interceptor Analysis</h2>
+        <button class="test-button" onclick="testResponseInterceptor()">Test Response Interceptor</button>
+        <button class="test-button" onclick="analyzeErrorFlow()">Analyze Error Flow</button>
+        <button class="test-button" onclick="testRetryLogic()">Test Retry Logic</button>
+        <div id="interceptor-results" class="results">Click a button to analyze the response interceptor...</div>
+    </div>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = 'https://backend-copy-production-95b5.up.railway.app';
+        const FRONTEND_URL = window.location.origin;
+        
+        // Update page info
+        document.getElementById('current-url').textContent = FRONTEND_URL;
+        document.getElementById('backend-url').textContent = BACKEND_URL;
+
+        // Utility functions
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearResults(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        // Quick Fixes
+        function clearAllTokens() {
+            clearResults('quick-results');
+            log('quick-results', '🧹 Clearing all authentication tokens...', 'warning');
+            
+            const tokenKeys = [
+                'access_token', 'refresh_token', 'token_type', 'expires_in',
+                'owen_access_token', 'owen_refresh_token', 'owen_token_type', 'owen_token_expires',
+                'token', 'authToken'
+            ];
+            
+            let cleared = 0;
+            tokenKeys.forEach(key => {
+                if (localStorage.getItem(key)) {
+                    localStorage.removeItem(key);
+                    cleared++;
+                    log('quick-results', `   ✅ Removed: ${key}`, 'success');
+                }
+            });
+            
+            if (cleared === 0) {
+                log('quick-results', '   ℹ️ No tokens found to clear', 'info');
+            } else {
+                log('quick-results', `✅ Cleared ${cleared} tokens`, 'success');
+            }
+        }
+
+        function setTestToken() {
+            clearResults('quick-results');
+            log('quick-results', '🧪 Setting test invalid token...', 'warning');
+            
+            const invalidToken = 'test_invalid_token_' + Date.now();
+            localStorage.setItem('owen_access_token', invalidToken);
+            
+            log('quick-results', `✅ Set invalid token: ${invalidToken.substring(0, 30)}...`, 'success');
+            log('quick-results', '💡 This token will cause 401 errors for testing', 'info');
+        }
+
+        function checkCurrentAuth() {
+            clearResults('quick-results');
+            log('quick-results', '🔍 Checking current authentication state...', 'info');
+            
+            const tokens = {
+                'owen_access_token': localStorage.getItem('owen_access_token'),
+                'owen_refresh_token': localStorage.getItem('owen_refresh_token'),
+                'access_token': localStorage.getItem('access_token'),
+                'refresh_token': localStorage.getItem('refresh_token')
+            };
+            
+            let hasTokens = false;
+            Object.entries(tokens).forEach(([key, value]) => {
+                if (value) {
+                    hasTokens = true;
+                    log('quick-results', `   ✅ ${key}: ${value.substring(0, 20)}...`, 'success');
+                } else {
+                    log('quick-results', `   ❌ ${key}: not set`, 'warning');
+                }
+            });
+            
+            if (!hasTokens) {
+                log('quick-results', '⚠️ No authentication tokens found', 'warning');
+                log('quick-results', '💡 You need to sign in first', 'info');
+            }
+        }
+
+        // Reproduce the exact error
+        async function reproduceNetworkError() {
+            clearResults('reproduce-results');
+            log('reproduce-results', '🎯 Attempting to reproduce the exact network error...', 'info');
+            
+            // Set an invalid token to trigger the issue
+            localStorage.setItem('owen_access_token', 'invalid_token_that_causes_network_error');
+            
+            try {
+                log('reproduce-results', '📡 Making chat request with invalid token...', 'info');
+                
+                const response = await fetch(`${BACKEND_URL}/api/chat/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer invalid_token_that_causes_network_error`
+                    },
+                    body: JSON.stringify({
+                        message: 'Test message to reproduce error',
+                        editor_text: 'Test editor content',
+                        author_persona: 'Ernest Hemingway',
+                        help_focus: 'Dialogue Writing',
+                        chat_history: [],
+                        llm_provider: 'Google Gemini',
+                        ai_mode: 'talk'
+                    })
+                });
+
+                log('reproduce-results', `📊 Response Status: ${response.status}`, 'warning');
+                log('reproduce-results', `📊 Response OK: ${response.ok}`, 'warning');
+                log('reproduce-results', `📊 Response Type: ${response.type}`, 'warning');
+                
+                if (response.status === 401) {
+                    const errorData = await response.json();
+                    log('reproduce-results', '✅ Got 401 as expected from backend', 'success');
+                    log('reproduce-results', `📄 Error: ${JSON.stringify(errorData, null, 2)}`, 'info');
+                    log('reproduce-results', '🔍 This proves backend is working correctly', 'success');
+                    log('reproduce-results', '❌ Issue must be in frontend error handling', 'error');
+                } else {
+                    log('reproduce-results', `❌ Unexpected status: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log('reproduce-results', `❌ Caught error: ${error.message}`, 'error');
+                log('reproduce-results', `🔍 Error type: ${error.constructor.name}`, 'warning');
+                log('reproduce-results', `🔍 Error details: ${JSON.stringify({
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack?.substring(0, 200)
+                }, null, 2)}`, 'info');
+                
+                if (error.message.includes('Network')) {
+                    log('reproduce-results', '🎯 REPRODUCED: Network error detected!', 'error');
+                    log('reproduce-results', '💡 This is the exact issue we need to fix', 'warning');
+                }
+            }
+        }
+
+        async function testChatWithInvalidToken() {
+            clearResults('reproduce-results');
+            log('reproduce-results', '💬 Testing chat endpoint with invalid token...', 'info');
+            
+            const invalidToken = 'definitely_invalid_token_' + Math.random();
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/chat/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${invalidToken}`
+                    },
+                    body: JSON.stringify({
+                        message: 'This should fail with 401',
+                        editor_text: 'Test content',
+                        author_persona: 'Ernest Hemingway',
+                        help_focus: 'Dialogue Writing',
+                        chat_history: [],
+                        llm_provider: 'Google Gemini',
+                        ai_mode: 'talk'
+                    })
+                });
+
+                log('reproduce-results', `📊 Status: ${response.status} ${response.statusText}`, 'warning');
+                
+                if (response.status === 401) {
+                    const errorData = await response.json();
+                    log('reproduce-results', '✅ Backend correctly returns 401', 'success');
+                    log('reproduce-results', `📄 Backend error: ${JSON.stringify(errorData)}`, 'info');
+                    log('reproduce-results', '🔍 Backend is working correctly!', 'success');
+                } else {
+                    log('reproduce-results', `❌ Unexpected response: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log('reproduce-results', `❌ Request failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDirectBackendCall() {
+            clearResults('reproduce-results');
+            log('reproduce-results', '🔗 Testing direct backend health check...', 'info');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('reproduce-results', '✅ Backend is healthy', 'success');
+                    log('reproduce-results', `📊 Status: ${data.status}`, 'success');
+                    log('reproduce-results', `🗄️ Database: ${data.database?.status}`, 'success');
+                    log('reproduce-results', `🔧 Version: ${data.version}`, 'info');
+                } else {
+                    log('reproduce-results', `❌ Backend health check failed: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log('reproduce-results', `❌ Backend connection failed: ${error.message}`, 'error');
+                log('reproduce-results', '🔍 This indicates a real network issue', 'warning');
+            }
+        }
+
+        // Response Interceptor Analysis
+        async function testResponseInterceptor() {
+            clearResults('interceptor-results');
+            log('interceptor-results', '🔍 Testing response interceptor behavior...', 'info');
+            log('interceptor-results', '⚠️ This simulates what your frontend API client does', 'warning');
+            
+            // Simulate the frontend API client behavior
+            localStorage.setItem('owen_access_token', 'test_interceptor_token');
+            
+            log('interceptor-results', '📡 Making request that will trigger 401...', 'info');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/chat/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer test_interceptor_token`
+                    },
+                    body: JSON.stringify({
+                        message: 'test interceptor',
+                        editor_text: 'test',
+                        author_persona: 'Ernest Hemingway',
+                        help_focus: 'Dialogue Writing',
+                        chat_history: [],
+                        llm_provider: 'Google Gemini',
+                        ai_mode: 'talk'
+                    })
+                });
+
+                log('interceptor-results', `📊 Raw fetch response: ${response.status}`, 'info');
+                
+                if (response.status === 401) {
+                    log('interceptor-results', '✅ Raw fetch correctly gets 401', 'success');
+                    log('interceptor-results', '🔍 Issue must be in axios interceptor logic', 'warning');
+                    
+                    const errorData = await response.json();
+                    log('interceptor-results', `📄 Raw error data: ${JSON.stringify(errorData)}`, 'info');
+                    
+                    log('interceptor-results', '🧪 Simulating what axios interceptor should do:', 'info');
+                    log('interceptor-results', '   1. Detect 401 status', 'info');
+                    log('interceptor-results', '   2. Clear all tokens', 'info');
+                    log('interceptor-results', '   3. Dispatch auth:token-expired event', 'info');
+                    log('interceptor-results', '   4. Throw enhanced error message', 'info');
+                    log('interceptor-results', '   5. NOT retry the request', 'warning');
+                }
+                
+            } catch (error) {
+                log('interceptor-results', `❌ Raw fetch error: ${error.message}`, 'error');
+            }
+        }
+
+        function analyzeErrorFlow() {
+            clearResults('interceptor-results');
+            log('interceptor-results', '🔍 Analyzing the error flow in detail...', 'info');
+            
+            log('interceptor-results', '📋 Expected Flow (what should happen):', 'info');
+            log('interceptor-results', '   1. User makes request with invalid/expired token', 'info');
+            log('interceptor-results', '   2. Backend returns 401 {"detail": "Invalid token"}', 'info');
+            log('interceptor-results', '   3. Axios response interceptor catches 401', 'info');
+            log('interceptor-results', '   4. Interceptor clears tokens immediately', 'info');
+            log('interceptor-results', '   5. Interceptor throws enhanced auth error', 'info');
+            log('interceptor-results', '   6. useChat hook displays auth error', 'info');
+            
+            log('interceptor-results', '❌ Actual Flow (what\'s happening):', 'error');
+            log('interceptor-results', '   1. User makes request with invalid token', 'error');
+            log('interceptor-results', '   2. Backend returns 401 correctly', 'error');
+            log('interceptor-results', '   3. Something goes wrong in interceptor', 'error');
+            log('interceptor-results', '   4. Error becomes "hasResponse: false"', 'error');
+            log('interceptor-results', '   5. Gets classified as network error', 'error');
+            log('interceptor-results', '   6. User sees "Network Error"', 'error');
+            
+            log('interceptor-results', '🎯 Key Investigation Points:', 'warning');
+            log('interceptor-results', '   • Is the retry logic interfering?', 'warning');
+            log('interceptor-results', '   • Is token refresh logic causing issues?', 'warning');
+            log('interceptor-results', '   • Are multiple interceptors conflicting?', 'warning');
+            log('interceptor-results', '   • Is error object getting corrupted?', 'warning');
+        }
+
+        async function testRetryLogic() {
+            clearResults('interceptor-results');
+            log('interceptor-results', '🔄 Testing retry logic behavior...', 'info');
+            log('interceptor-results', '⚠️ This is likely where the bug is!', 'warning');
+            
+            log('interceptor-results', '🧪 The issue might be:', 'warning');
+            log('interceptor-results', '   1. 401 error occurs', 'warning');
+            log('interceptor-results', '   2. Retry logic kicks in', 'warning');
+            log('interceptor-results', '   3. Retry makes new request with same invalid token', 'warning');
+            log('interceptor-results', '   4. New request creates new error object', 'warning');
+            log('interceptor-results', '   5. New error object has no response data', 'warning');
+            log('interceptor-results', '   6. Gets classified as network error', 'warning');
+            
+            log('interceptor-results', '💡 Solution should be:', 'success');
+            log('interceptor-results', '   • Don\'t retry 401 errors', 'success');
+            log('interceptor-results', '   • Only retry 5xx server errors', 'success');
+            log('interceptor-results', '   • Handle 401s immediately without retry', 'success');
+        }
+
+        // Initialize
+        console.log('🚀 Local API Testing Page Loaded');
+        console.log('💡 Use the buttons above to test and debug API issues');
+        console.log('🔍 Check the console for additional debugging info');
+    </script>
+</body>
+</html> 

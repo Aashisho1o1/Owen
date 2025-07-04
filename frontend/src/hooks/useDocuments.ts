@@ -148,6 +148,16 @@ export const useDocuments = (): UseDocumentsReturn => {
   const refreshAll = useCallback(async () => {
     if (!user) {
       console.log('🔐 useDocuments: No user, skipping data load');
+      // Clear any existing data when user logs out
+      setState(prev => ({
+        ...prev,
+        documents: [],
+        folders: [],
+        templates: [],
+        currentDocument: null,
+        isLoading: false,
+        error: null
+      }));
       return;
     }
     
@@ -190,8 +200,11 @@ export const useDocuments = (): UseDocumentsReturn => {
         console.error('🔐 useDocuments: Authentication error detected, user may need to re-login');
         setState(prev => ({
           ...prev,
-          error: 'Authentication expired. Please sign in again.',
-          isLoading: false
+          error: null, // Don't show error for auth issues
+          isLoading: false,
+          documents: [],
+          folders: [],
+          templates: []
         }));
       } else {
         setState(prev => ({

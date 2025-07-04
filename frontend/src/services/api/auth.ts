@@ -4,7 +4,7 @@
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import { apiClient, safeApiCall } from './client';
+import apiClient from './client';
 import { 
   LoginRequest, 
   RegisterRequest, 
@@ -15,43 +15,33 @@ import {
 // === AUTHENTICATION ENDPOINTS ===
 
 export const loginUser = async (credentials: LoginRequest): Promise<TokenResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/auth/login', {
-      email: credentials.username, // Backend expects email field
-      password: credentials.password
-    });
-    return response.data;
+  const response = await apiClient.post('/api/auth/login', {
+    email: credentials.username, // Backend expects email field
+    password: credentials.password
   });
+  return response.data;
 };
 
 export const registerUser = async (userData: RegisterRequest): Promise<TokenResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/auth/register', userData);
-    return response.data;
-  });
+  const response = await apiClient.post('/api/auth/register', userData);
+  return response.data;
 };
 
 export const refreshToken = async (refreshToken: string): Promise<TokenResponse> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/auth/refresh', {
-      refresh_token: refreshToken
-    });
-    return response.data;
+  const response = await apiClient.post('/api/auth/refresh', {
+    refresh_token: refreshToken
   });
+  return response.data;
 };
 
 export const getUserProfile = async (): Promise<UserProfile> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.get('/api/auth/profile');
-    return response.data;
-  });
+  const response = await apiClient.get('/api/auth/profile');
+  return response.data;
 };
 
 export const logoutUser = async (): Promise<{ success: boolean; message: string }> => {
-  return safeApiCall(async () => {
-    const response = await apiClient.post('/api/auth/logout');
-    return response.data;
-  });
+  const response = await apiClient.post('/api/auth/logout');
+  return response.data;
 };
 
 // === TOKEN MANAGEMENT ===

@@ -4,7 +4,7 @@ import { useApiHealth } from '../hooks/useApiHealth';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from './AuthContext';
 import { logger } from '../utils/logger';
-import { apiClient } from '../services/api/client';
+import apiClient from '../services/api/client';
 import { 
   getUserPreferences, 
   submitUserFeedback,
