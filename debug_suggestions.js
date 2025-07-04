@@ -290,52 +290,142 @@ async function testEnhancedErrorHandling() {
     console.log('❌ Network error during test:', error);
     console.log('🧪 This should trigger network error handling');
   }
+  
+  // Test 2: Test the axios client directly with invalid token
+  console.log('\n🔍 Testing Axios client 401 error handling...');
+  
+  try {
+    // Clear any existing tokens first
+    localStorage.removeItem('owen_access_token');
+    localStorage.removeItem('owen_refresh_token');
+    
+    // Set an invalid token
+    localStorage.setItem('owen_access_token', 'invalid_test_token_12345');
+    
+    // Try to make a request - this should trigger our enhanced 401 handling
+    const axiosResponse = await fetch('https://backend-copy-production-95b5.up.railway.app/api/chat/', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer invalid_test_token_12345',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: "test axios error handling",
+        editor_text: "test content",
+        author_persona: "Ernest Hemingway",
+        help_focus: "Dialogue Writing",
+        chat_history: [],
+        llm_provider: "Google Gemini",
+        ai_mode: "talk"
+      })
+    });
+    
+    console.log('❌ Unexpected success - should have failed with 401');
+    
+  } catch (error) {
+    console.log('✅ Axios request failed as expected');
+    console.log('🔍 Error details:', {
+      message: error.message,
+      name: error.name,
+      isAuthError: error.message?.includes('🔐'),
+      isNetworkError: error.message?.includes('Network')
+    });
+    
+    if (error.message?.includes('🔐')) {
+      console.log('🎉 SUCCESS: Enhanced authentication error detected!');
+      console.log('✅ Error contains 🔐 icon and proper auth message');
+    } else if (error.message?.includes('Network')) {
+      console.log('❌ FAILURE: Still getting network error instead of auth error');
+      console.log('💡 The fix may need additional work');
+    } else {
+      console.log('⚠️ UNKNOWN: Error format is different than expected');
+    }
+  }
+  
+  // Test 3: Check if auth:token-expired event is dispatched
+  console.log('\n🔍 Testing auth:token-expired event dispatch...');
+  
+  let eventReceived = false;
+  const eventListener = (event) => {
+    console.log('📢 auth:token-expired event received!', event.detail);
+    eventReceived = true;
+  };
+  
+  window.addEventListener('auth:token-expired', eventListener);
+  
+  // Trigger another 401 error
+  try {
+    await fetch('https://backend-copy-production-95b5.up.railway.app/api/chat/', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer another_invalid_token',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: "test event dispatch",
+        editor_text: "test",
+        author_persona: "Ernest Hemingway",
+        help_focus: "Dialogue Writing",
+        chat_history: [],
+        llm_provider: "Google Gemini",
+        ai_mode: "talk"
+      })
+    });
+  } catch (error) {
+    // Expected to fail
+  }
+  
+  // Wait a moment for event to be dispatched
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  window.removeEventListener('auth:token-expired', eventListener);
+  
+  if (eventReceived) {
+    console.log('✅ auth:token-expired event successfully dispatched');
+  } else {
+    console.log('❌ auth:token-expired event was NOT dispatched');
+    console.log('💡 Event dispatch mechanism may need debugging');
+  }
 }
 
 // === 6. COMPREHENSIVE DIAGNOSIS ===
 async function runFullDiagnosis() {
-  console.log('\n🔬 === FULL SYSTEM DIAGNOSIS ===');
-  console.log('Running comprehensive authentication and error handling tests...\n');
+  console.log('🔍 === RUNNING FULL DOG WRITER DIAGNOSTIC ===');
+  console.log('📋 This will test all critical systems...\n');
   
-  const results = {
-    authentication: false,
-    apiConnectivity: false,
-    chatApi: false
-  };
-  
-  // Step 1: Check authentication
-  results.authentication = debugAuthentication();
-  
-  // Step 2: Test API connectivity
-  results.apiConnectivity = await testApiConnectivity();
-  
-  // Step 3: Test chat API (only if auth looks good)
-  if (results.authentication && results.apiConnectivity) {
-    results.chatApi = await testChatApi();
+  try {
+    // Run all diagnostic functions
+    debugAuthentication();
+    await testApiConnectivity();
+    await testChatApi();
+    await testEnhancedErrorHandling();
+    
+    console.log('\n🎯 === DIAGNOSIS COMPLETE ===');
+    console.log('📊 Check the results above for any issues.');
+    console.log('💡 If you see any ❌ errors, those need to be addressed.');
+    
+    // Provide recommendations
+    console.log('\n💡 === RECOMMENDATIONS ===');
+    
+    const tokens = {
+      owen_access_token: localStorage.getItem('owen_access_token'),
+      owen_refresh_token: localStorage.getItem('owen_refresh_token')
+    };
+    
+    if (!tokens.owen_access_token && !tokens.owen_refresh_token) {
+      console.log('🔐 AUTHENTICATION: Please sign in to test chat functionality');
+    } else if (tokens.owen_access_token) {
+      console.log('✅ AUTHENTICATION: Tokens present - if chat still fails, they may be expired');
+      console.log('💡 Try: clearAllTokens() then sign in again');
+    }
+    
+    console.log('🌐 NETWORK: If you see network errors, check your internet connection');
+    console.log('🔧 BACKEND: If backend is unhealthy, wait a moment and try again');
+    console.log('🧪 ERROR HANDLING: New enhanced error handling should show 🔐 icons for auth errors');
+    
+  } catch (error) {
+    console.error('❌ Diagnosis failed:', error);
   }
-  
-  // Step 4: Test enhanced error handling
-  await testEnhancedErrorHandling();
-  
-  // Summary and recommendations
-  console.log('\n📊 === DIAGNOSIS SUMMARY ===');
-  console.log('Results:', results);
-  
-  if (results.authentication && results.apiConnectivity && results.chatApi) {
-    console.log('🎉 ALL SYSTEMS WORKING: Authentication and chat should work normally');
-  } else if (!results.authentication) {
-    console.log('🔐 AUTHENTICATION ISSUE: Run clearAllTokens() and sign in again');
-  } else if (!results.apiConnectivity) {
-    console.log('🌐 CONNECTIVITY ISSUE: Check internet connection and backend status');
-  } else if (!results.chatApi) {
-    console.log('💬 CHAT API ISSUE: Authentication works but chat endpoint fails');
-  }
-  
-  console.log('\n💡 AVAILABLE COMMANDS:');
-  console.log('  clearAllTokens() - Clear all stored tokens');
-  console.log('  testChatApi() - Test chat endpoint specifically');
-  console.log('  testEnhancedErrorHandling() - Test new error system');
-  console.log('  debugAuthentication() - Check token status');
 }
 
 // === 7. ERROR EVENT LISTENERS ===

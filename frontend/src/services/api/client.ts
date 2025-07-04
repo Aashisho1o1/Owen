@@ -138,78 +138,59 @@ apiClient.interceptors.response.use(
       hasRequest: !!error.request
     });
 
-    // Handle 401 errors (token refresh) - but preserve original error if refresh fails
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log('🔐 401 Error detected, checking if we should try token refresh...');
+    // CRITICAL FIX: Handle 401 errors IMMEDIATELY with enhanced error handler
+    // Do NOT attempt retry or token refresh - just process the error directly
+    if (error.response?.status === 401) {
+      console.log('🔐 401 Error detected - processing immediately with enhanced error handler');
       
-      if (isRefreshing) {
-        console.log('🔄 Already refreshing, queuing request...');
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(() => apiClient(originalRequest));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const { refreshToken } = getStoredTokens();
-        if (refreshToken) {
-          console.log('🔄 Attempting token refresh...');
-          // Try to refresh token
-          const response = await apiClient.post('/api/auth/refresh', {
-            refresh_token: refreshToken
-          });
-          
-          const { access_token } = response.data;
-          localStorage.setItem('owen_access_token', access_token);
-          
-          console.log('✅ Token refresh successful, retrying original request');
-          processQueue(null, access_token);
-          return apiClient(originalRequest);
-        } else {
-          console.log('❌ No refresh token available, cannot refresh');
-          throw new Error('No refresh token available');
+      // Clear tokens immediately
+      clearAuthTokens();
+      
+      // Dispatch auth event
+      console.log('📢 Dispatching auth:token-expired event...');
+      window.dispatchEvent(new CustomEvent('auth:token-expired', {
+        detail: { 
+          reason: 'Authentication failed', 
+          status: 401,
+          originalError: error
         }
-      } catch (refreshError) {
-        console.error('❌ Token refresh failed:', refreshError);
-        processQueue(refreshError, null);
-        
-        // CRITICAL FIX: Clear tokens and dispatch auth event but preserve original 401 error
-        clearAuthTokens();
-        
-        console.log('📢 Dispatching auth:token-expired event due to refresh failure...');
-        window.dispatchEvent(new CustomEvent('auth:token-expired', {
-          detail: { 
-            reason: 'Token refresh failed', 
-            status: 401,
-            originalError: error,
-            refreshError 
-          }
-        }));
-        
-        // IMPORTANT: Return the original 401 error, not the refresh error
-        // This ensures the UI gets the proper "Authentication required" message
-        return Promise.reject(error);
-      } finally {
-        isRefreshing = false;
+      }));
+      
+      // Process the error through handleApiError to get enhanced error message
+      handleApiError(error);
+      return; // This will never be reached due to handleApiError throwing
+    }
+
+    // Handle other 4xx errors immediately (no retry for client errors)
+    if (error.response?.status && error.response.status >= 400 && error.response.status < 500) {
+      console.log(`🚫 Client error ${error.response.status} detected - processing immediately`);
+      handleApiError(error);
+      return; // This will never be reached due to handleApiError throwing
+    }
+
+    // Retry logic ONLY for 5xx server errors and network errors
+    if (!originalRequest._retry) {
+      // Only retry for server errors (5xx) or actual network errors (no response)
+      const shouldRetry = !error.response || (error.response.status >= 500);
+      
+      if (shouldRetry) {
+        console.log(`🔄 Attempting retry for ${error.response?.status || 'network'} error...`);
+        return retryRequest(error);
+      } else {
+        console.log(`❌ No retry for ${error.response?.status} error - processing immediately`);
+        handleApiError(error);
+        return; // This will never be reached due to handleApiError throwing
       }
     }
 
-    // Retry logic for other errors (NOT for 401s)
-    if (!originalRequest._retry && error.response?.status !== 401) {
-      console.log(`🔄 Attempting retry for ${error.response?.status || 'network'} error...`);
-      return retryRequest(error);
-    }
-
-    // CRITICAL: For 401 errors that we couldn't refresh, or any other errors, return as-is
-    console.error('❌ Returning error without retry:', {
+    // If we've already retried, process the error
+    console.error('❌ Max retries reached, processing error:', {
       status: error.response?.status,
       message: error.message,
       isRetry: !!originalRequest._retry
     });
     
-    return Promise.reject(error);
+    handleApiError(error);
   }
 );
 
