@@ -203,61 +203,73 @@ const handleApiError = (error: AxiosError): never => {
     
     switch (status) {
       case 401:
-        userMessage = 'Authentication required. Please sign in again.';
+        userMessage = '🔐 Authentication required. Please sign in again to continue using the AI Writing Assistant.';
         debugInfo = 'Invalid or expired authentication token';
         
-        // Clear stored tokens on 401
+        // ENHANCED: Clear ALL stored tokens on 401
+        console.log('🧹 Clearing expired authentication tokens...');
+        localStorage.removeItem('owen_access_token');
+        localStorage.removeItem('owen_refresh_token');
+        localStorage.removeItem('owen_token_type');
+        localStorage.removeItem('owen_token_expires');
+        
+        // Also clear any legacy tokens that might exist
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('token_type');
+        localStorage.removeItem('token_expires');
         
         // Dispatch event to notify auth context
-        window.dispatchEvent(new CustomEvent('auth:token-expired'));
+        console.log('📢 Dispatching auth:token-expired event...');
+        window.dispatchEvent(new CustomEvent('auth:token-expired', {
+          detail: { reason: 'Invalid or expired token', status: 401 }
+        }));
         break;
         
       case 403:
-        userMessage = 'Access denied. You don\'t have permission for this action.';
+        userMessage = '🚫 Access denied. You don\'t have permission for this action.';
         debugInfo = 'Forbidden - insufficient permissions';
         break;
         
       case 404:
-        userMessage = 'The requested resource was not found.';
+        userMessage = '🔍 The requested resource was not found.';
         debugInfo = `Resource not found: ${error.config?.url}`;
         break;
         
       case 422:
-        userMessage = 'Invalid data provided. Please check your input.';
+        userMessage = '📝 Invalid data provided. Please check your input and try again.';
         debugInfo = data?.detail || 'Validation error';
         break;
         
       case 429:
-        userMessage = 'Too many requests. Please wait a moment and try again.';
+        userMessage = '⏳ Too many requests. Please wait a moment and try again.';
         debugInfo = 'Rate limit exceeded';
         break;
         
       case 500:
-        userMessage = 'Server error. Please try again later.';
+        userMessage = '🔧 Server error. Please try again in a moment.';
         debugInfo = 'Internal server error';
         break;
         
       default:
-        userMessage = `Server error (${status}). Please try again.`;
+        userMessage = `⚠️ Server error (${status}). Please try again.`;
         debugInfo = data?.detail || error.response.statusText || 'Unknown server error';
     }
   } else if (error.request) {
     // Network error - request was made but no response received
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      userMessage = 'Request timeout. Please check your connection and try again.';
+      userMessage = '⏱️ Request timeout. The server is taking too long to respond. Please try again.';
       debugInfo = 'Request timeout - server took too long to respond';
     } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
-      userMessage = 'Network error. Please check your internet connection.';
+      userMessage = '🌐 Network error. Please check your internet connection and try again.';
       debugInfo = 'Network connectivity issue - unable to reach server';
     } else {
-      userMessage = 'Unable to connect to the server. Please try again.';
+      userMessage = '🔌 Unable to connect to the server. Please check your connection and try again.';
       debugInfo = `Network error: ${error.message}`;
     }
   } else {
     // Something else happened
-    userMessage = 'An unexpected error occurred. Please try again.';
+    userMessage = '❓ An unexpected error occurred. Please refresh the page and try again.';
     debugInfo = error.message || 'Unknown error during request setup';
   }
 

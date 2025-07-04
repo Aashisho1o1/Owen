@@ -17,7 +17,7 @@ class PathRetriever:
     - Textual path generation
     """
     
-    def __init__(self, graph: nx.DiGraph, vector_store):
+    def __init__(self, graph: nx.DiGraph, ector_store):
         self.graph = graph
         self.vector_store = vector_store
         
