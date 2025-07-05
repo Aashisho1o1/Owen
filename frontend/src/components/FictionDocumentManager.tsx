@@ -205,7 +205,8 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
   });
 
   const documentsByType = filteredDocuments.reduce((acc, doc) => {
-    const type = doc.document_type;
+    // Handle undefined/null document types
+    const type = doc.document_type || 'draft';
     if (!acc[type]) acc[type] = [];
     acc[type].push(doc);
     return acc;
@@ -342,7 +343,10 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
               <div key={type} className="document-section">
                 <h3>
                   {getDocumentIcon(type)} 
-                  {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} 
+                  {type && typeof type === 'string' 
+                    ? type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) 
+                    : 'Draft'
+                  } 
                   ({docs.length})
                 </h3>
                 <div className="documents-grid">
@@ -369,7 +373,7 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
                           <span>Ch. {doc.chapter_number}</span>
                         )}
                       </div>
-                      {doc.tags.length > 0 && (
+                      {doc.tags && doc.tags.length > 0 && (
                         <div className="doc-tags">
                           {doc.tags.slice(0, 3).map(tag => (
                             <span key={tag} className="tag">{tag}</span>
@@ -400,7 +404,10 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
                     {getFolderIcon(folder.folder_type)}
                   </div>
                   <h4>{folder.name}</h4>
-                  <p>{folder.folder_type.replace('_', ' ')}</p>
+                  <p>{folder.folder_type && typeof folder.folder_type === 'string' 
+                    ? folder.folder_type.replace('_', ' ') 
+                    : 'general'
+                  }</p>
                   {folder.description && (
                     <p className="folder-desc">{folder.description}</p>
                   )}
@@ -413,18 +420,25 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
 
         {activeView === 'templates' && (
           <div className="templates-view">
-            {templates.reduce((acc, template) => {
-              if (!acc[template.category]) acc[template.category] = [];
-              acc[template.category].push(template);
-              return acc;
-            }, {} as Record<string, FictionTemplate[]>).map ? 
-              Object.entries(templates.reduce((acc, template) => {
-                if (!acc[template.category]) acc[template.category] = [];
-                acc[template.category].push(template);
+            {(() => {
+              // Group templates by category with proper null/undefined handling
+              const templatesByCategory = templates.reduce((acc, template) => {
+                // Handle undefined/null categories
+                const category = template.category || 'general';
+                if (!acc[category]) acc[category] = [];
+                acc[category].push(template);
                 return acc;
-              }, {} as Record<string, FictionTemplate[]>)).map(([category, categoryTemplates]) => (
+              }, {} as Record<string, FictionTemplate[]>);
+
+              // Render template sections
+              return Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
                 <div key={category} className="template-section">
-                  <h3>{category.charAt(0).toUpperCase() + category.slice(1)} Templates</h3>
+                  <h3>
+                    {category && typeof category === 'string' 
+                      ? category.charAt(0).toUpperCase() + category.slice(1) 
+                      : 'General'
+                    } Templates
+                  </h3>
                   <div className="templates-grid">
                     {categoryTemplates.map(template => (
                       <div 
@@ -443,16 +457,18 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
                         <h4>{template.name}</h4>
                         <p>{template.description}</p>
                         <div className="template-tags">
-                          {template.tags.slice(0, 2).map(tag => (
-                            <span key={tag} className="tag">{tag}</span>
-                          ))}
+                          {template.tags && template.tags.length > 0 && 
+                            template.tags.slice(0, 2).map(tag => (
+                              <span key={tag} className="tag">{tag}</span>
+                            ))
+                          }
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              )) : null
-            }
+              ));
+            })()}
           </div>
         )}
       </div>
