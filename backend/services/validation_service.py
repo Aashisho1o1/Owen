@@ -133,7 +133,7 @@ class SimpleInputValidator:
         text = self._sanitize_unicode(text)
         
         # Check length after sanitization
-        max_len = max_length or self.max_text_length
+        max_len = max_length or 100000
         if len(text) > max_len:
             raise ValidationError(f"Text too long. Maximum {max_len} characters allowed")
         
@@ -260,6 +260,31 @@ class SimpleInputValidator:
             
         except Exception as e:
             logger.error(f"Failed to log security event: {e}")
+
+    def validate_llm_response(self, text: str, max_length: Optional[int] = None) -> str:
+        """Validate LLM response text with relaxed length limits"""
+        if not isinstance(text, str):
+            raise ValidationError("Input must be a string")
+        
+        # Check for null bytes and control characters
+        if '\x00' in text:
+            raise ValidationError("Input contains null bytes which are not allowed")
+        
+        # Remove or replace dangerous Unicode characters
+        text = self._sanitize_unicode(text)
+        
+        # Much higher limit for LLM responses (50KB instead of 10KB)
+        max_len = max_length or 50000  # 50,000 characters for LLM responses
+        if len(text) > max_len:
+            raise ValidationError(f"LLM response too long. Maximum {max_len} characters allowed")
+        
+        # Skip dangerous pattern checks for trusted LLM responses
+        # (LLM responses are from our trusted AI providers, not user input)
+        
+        # Just normalize whitespace
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text.strip()
 
 # Global instance
 input_validator = SimpleInputValidator()
