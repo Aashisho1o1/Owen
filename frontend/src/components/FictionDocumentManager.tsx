@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import '../styles/FictionDocumentManager.css';
+import apiClient from '../services/api/client';
 
 // Types for fiction-specific documents
 interface FictionDocument {
@@ -86,33 +88,21 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
 
   const loadDocuments = async () => {
     try {
-      const response = await fetch('/api/documents', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setDocuments(data.documents || []);
-      }
+      const response = await apiClient.get('/api/documents');
+      setDocuments(response.data.documents || []);
     } catch (err) {
       console.error('Error loading documents:', err);
+      // Better error handling
+      if (err instanceof Error) {
+        setError(err.message);
+      }
     }
   };
 
   const loadFolders = async () => {
     try {
-      const response = await fetch('/api/folders', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setFolders(data || []);
-      }
+      const response = await apiClient.get('/api/folders');
+      setFolders(response.data || []);
     } catch (err) {
       console.error('Error loading folders:', err);
     }
@@ -120,12 +110,8 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
 
   const loadTemplates = async () => {
     try {
-      const response = await fetch('/api/fiction-templates');
-      
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data || []);
-      }
+      const response = await apiClient.get('/api/fiction-templates');
+      setTemplates(response.data || []);
     } catch (err) {
       console.error('Error loading templates:', err);
     }
@@ -143,24 +129,21 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
         status: 'draft'
       };
 
-      const response = await fetch('/api/documents', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      console.log('Creating document with payload:', payload);
 
-      if (response.ok) {
-        const newDoc = await response.json();
-        setDocuments(prev => [newDoc, ...prev]);
-        onDocumentSelect(newDoc);
-        setShowCreateModal(false);
-      }
+      const response = await apiClient.post('/api/documents', payload);
+      
+      const newDoc = response.data;
+      setDocuments(prev => [newDoc, ...prev]);
+      onDocumentSelect(newDoc);
+      setShowCreateModal(false);
     } catch (err) {
       console.error('Error creating document:', err);
-      setError('Failed to create document');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to create document');
+      }
     }
   };
 
@@ -173,23 +156,20 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
         document_type: 'novel'
       };
 
-      const response = await fetch('/api/documents/from-template', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      console.log('Creating from template with payload:', payload);
 
-      if (response.ok) {
-        const newDoc = await response.json();
-        setDocuments(prev => [newDoc, ...prev]);
-        onDocumentSelect(newDoc);
-      }
+      const response = await apiClient.post('/api/documents/from-template', payload);
+      
+      const newDoc = response.data;
+      setDocuments(prev => [newDoc, ...prev]);
+      onDocumentSelect(newDoc);
     } catch (err) {
       console.error('Error creating from template:', err);
-      setError('Failed to create document from template');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to create document from template');
+      }
     }
   };
 
