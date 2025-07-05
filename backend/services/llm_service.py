@@ -174,11 +174,20 @@ class LLMService:
                            help_focus: str,
                            user_corrections: Optional[List] = None,
                            highlighted_text: Optional[str] = None,
-                           ai_mode: str = "talk") -> str:
+                           ai_mode: str = "talk",
+                           conversation_context: Optional[str] = None) -> str:
         """Assemble a chat prompt with mode-specific templates for Talk vs Co-Edit"""
         
         # Build context parts
         context_parts = []
+        
+        # FEATURE: Add conversation history context if available
+        if conversation_context and conversation_context.strip():
+            history_context = f"""**💬 CONVERSATION HISTORY:**
+{conversation_context}
+
+**Current Request:**"""
+            context_parts.append(history_context)
         
         # Add author persona
         if author_persona:
@@ -228,6 +237,7 @@ Editor Context: {len(editor_text)} characters total"""
 3. **Similar Length:** Keep suggestions roughly the same length as the original
 4. **Actionable:** Focus on concrete changes rather than abstract advice
 5. **Preserve Voice:** Enhance clarity while maintaining the author's unique voice
+6. **Contextual Awareness:** Reference previous conversation when relevant to provide consistent help
 
 **Response Format:** Provide specific text improvements, rewrites, or direct edits that can be immediately implemented.
 
@@ -242,6 +252,7 @@ Editor Context: {len(editor_text)} characters total"""
 3. **Questions:** Ask thoughtful questions to help the writer think deeper
 4. **Supportive:** Encourage exploration and creative risk-taking
 5. **Preserve Authenticity:** Respect the author's unique style and vocabulary
+6. **Contextual Awareness:** Reference our previous discussion when helpful to build on ideas
 
 **Response Format:** Engage in friendly discussion, ask questions, suggest possibilities, and provide encouragement.
 
@@ -255,10 +266,21 @@ Editor Context: {len(editor_text)} characters total"""
                                   highlighted_text: str,
                                   user_message: str,
                                   author_persona: str,
-                                  help_focus: str) -> str:
+                                  help_focus: str,
+                                  conversation_context: Optional[str] = None) -> str:
         """Assemble a prompt specifically for generating multiple actionable suggestions"""
         
-        return f"""You are "Owen," an AI writing co-editor. The user has selected text and wants multiple improvement options they can accept directly.
+        # Build conversation context if available
+        context_prefix = ""
+        if conversation_context and conversation_context.strip():
+            context_prefix = f"""**💬 CONVERSATION HISTORY:**
+{conversation_context}
+
+**Current Suggestion Request:**
+
+"""
+        
+        return f"""{context_prefix}You are "Owen," an AI writing co-editor. The user has selected text and wants multiple improvement options they can accept directly.
 
 **CRITICAL: You must respond with a JSON object containing multiple suggestions.**
 
@@ -273,6 +295,7 @@ Editor Context: {len(editor_text)} characters total"""
 3. **Be immediately usable** - no placeholder text
 4. **Address the user's specific request**
 5. **Maintain the original meaning** while enhancing clarity/style
+6. **Consider previous conversation context** when relevant
 
 **Response Format (JSON only):**
 {{
@@ -310,7 +333,8 @@ Editor Context: {len(editor_text)} characters total"""
                                           user_message: str,
                                           author_persona: str,
                                           help_focus: str,
-                                          llm_provider: str) -> Dict[str, Any]:
+                                          llm_provider: str,
+                                          conversation_context: Optional[str] = None) -> Dict[str, Any]:
         """Generate multiple suggestion options for Co-Edit mode"""
         
         if not highlighted_text or not highlighted_text.strip():
@@ -322,7 +346,7 @@ Editor Context: {len(editor_text)} characters total"""
         
         # Generate the specialized prompt for suggestions
         suggestions_prompt = self.assemble_suggestions_prompt(
-            highlighted_text, user_message, author_persona, help_focus
+            highlighted_text, user_message, author_persona, help_focus, conversation_context
         )
         
         try:

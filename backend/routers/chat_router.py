@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import json
 import re
 import logging
+from typing import List
 
 # Import security services
 from services.auth_service import auth_service, AuthenticationError
@@ -14,7 +15,8 @@ from services.rate_limiter import check_rate_limit
 # Change relative imports to absolute imports
 from models.schemas import (
     ChatRequest, ChatResponse, UserFeedbackRequest, 
-    EnhancedChatResponse, SuggestionOption, AcceptSuggestionRequest
+    EnhancedChatResponse, SuggestionOption, AcceptSuggestionRequest,
+    ChatMessage
 )
 from services.llm_service import LLMService
 from services.database import db_service
@@ -30,6 +32,26 @@ router = APIRouter(
     prefix="/api/chat",
     tags=["chat"],
 )
+
+def build_conversation_context(chat_history: List[ChatMessage], max_history: int = 10) -> str:
+    """Build conversation context from chat history using sliding window approach"""
+    if not chat_history:
+        return ""
+    
+    # Keep last N exchanges (sliding window)
+    recent_history = chat_history[-max_history:]
+    
+    if not recent_history:
+        return ""
+    
+    context_parts = []
+    for msg in recent_history:
+        role = "Human" if msg.role == "user" else "Assistant"
+        # Truncate very long messages to keep context manageable
+        content = msg.content[:500] + "..." if len(msg.content) > 500 else msg.content
+        context_parts.append(f"{role}: {content}")
+    
+    return "\n".join(context_parts)
 
 @router.post("/", response_model=ChatResponse)
 async def chat(
@@ -113,6 +135,11 @@ async def chat(
                 highlighted_text = input_validator.validate_text_input(parts[1])
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
+        # FEATURE: Build conversation context from chat history
+        conversation_context = build_conversation_context(chat_request.chat_history)
+        if conversation_context:
+            logger.info(f"💬 Using conversation context with {len(chat_request.chat_history)} messages")
+        
         # Use the simplified prompt assembly system with AI mode
         logger.info(f"🔧 Assembling prompt for {validated_llm_provider}...")
         final_prompt = llm_service.assemble_chat_prompt(
@@ -122,7 +149,8 @@ async def chat(
             help_focus=chat_request.help_focus,
             user_corrections=user_corrections,
             highlighted_text=highlighted_text,
-            ai_mode=chat_request.ai_mode
+            ai_mode=chat_request.ai_mode,
+            conversation_context=conversation_context
         )
         
         logger.info(f"✅ Prompt assembled successfully (length: {len(final_prompt)} chars)")
@@ -366,13 +394,19 @@ async def generate_suggestions(
         logger.info(f"📝 Highlighted text: {highlighted_text[:100]}...")
         logger.info(f"💬 User message: {validated_message}")
         
+        # FEATURE: Build conversation context for suggestions too
+        conversation_context = build_conversation_context(suggestion_request.chat_history)
+        if conversation_context:
+            logger.info(f"💬 Using conversation context for suggestions with {len(suggestion_request.chat_history)} messages")
+        
         # Generate multiple suggestions using the enhanced LLM service
         suggestions_response = await llm_service.generate_multiple_suggestions(
             highlighted_text=highlighted_text,
             user_message=validated_message,
             author_persona=suggestion_request.author_persona,
             help_focus=suggestion_request.help_focus,
-            llm_provider=suggestion_request.llm_provider
+            llm_provider=suggestion_request.llm_provider,
+            conversation_context=conversation_context
         )
         
         # Convert to our schema format
