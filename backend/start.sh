@@ -31,11 +31,14 @@ validate_env() {
         echo "🔍 DATABASE_URL format: ${DATABASE_URL:0:20}...${DATABASE_URL: -10}"
     fi
     
-    # Generate JWT secret if not set
+    # CRITICAL: JWT_SECRET_KEY must be set in Railway environment variables
     if [ -z "$JWT_SECRET_KEY" ]; then
-        echo "⚠️ JWT_SECRET_KEY not set, generating one..."
-        export JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
-        echo "✅ Generated JWT_SECRET_KEY (${#JWT_SECRET_KEY} characters)"
+        echo "❌ CRITICAL: JWT_SECRET_KEY environment variable is not set!"
+        echo "💡 This MUST be set in Railway dashboard -> Variables tab"
+        echo "💡 Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+        echo "🚨 SECURITY: Auto-generating JWT keys invalidates all user sessions on restart!"
+        echo "🚨 DEPLOYMENT BLOCKED: Set JWT_SECRET_KEY in Railway environment variables"
+        exit 1
     else
         echo "✅ JWT_SECRET_KEY is set (${#JWT_SECRET_KEY} characters)"
     fi

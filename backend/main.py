@@ -46,18 +46,17 @@ logger = logging.getLogger(__name__)
 # CRITICAL: JWT Secret validation - fail startup if not configured
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not JWT_SECRET_KEY:
-    logger.error("🚨 SECURITY CRITICAL: JWT_SECRET_KEY not properly configured!")
-    logger.error("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
-    logger.error("⚠️ Using temporary key for debugging - DO NOT USE IN PRODUCTION!")
-    # Use a temporary key for debugging purposes
-    JWT_SECRET_KEY = "temporary_debug_key_" + "x" * 50
-    os.environ["JWT_SECRET_KEY"] = JWT_SECRET_KEY
+    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY environment variable is not set!")
+    logger.critical("This is a critical security vulnerability that MUST be fixed before deployment")
+    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+    logger.critical("Set JWT_SECRET_KEY in Railway dashboard -> Variables tab")
+    raise ValueError("JWT_SECRET_KEY must be configured for secure authentication")
 
 if len(JWT_SECRET_KEY) < 32:
-    logger.error("🚨 SECURITY CRITICAL: JWT_SECRET_KEY too short! Must be at least 32 characters")
-    logger.error("⚠️ Extending key for debugging - DO NOT USE IN PRODUCTION!")
-    JWT_SECRET_KEY = JWT_SECRET_KEY + "x" * (64 - len(JWT_SECRET_KEY))
-    os.environ["JWT_SECRET_KEY"] = JWT_SECRET_KEY
+    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is too short!")
+    logger.critical(f"Current length: {len(JWT_SECRET_KEY)} characters, minimum required: 32")
+    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+    raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
 
 logger.info("✅ JWT_SECRET_KEY configured (length: %d chars)", len(JWT_SECRET_KEY))
 

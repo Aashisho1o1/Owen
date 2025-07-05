@@ -21,11 +21,14 @@ else
     echo "✅ DATABASE_URL: SET (${#DATABASE_URL} chars)"
 fi
 
-# Generate JWT secret if missing
+# CRITICAL: JWT_SECRET_KEY must be set in Railway environment variables
 if [ -z "$JWT_SECRET_KEY" ]; then
-    echo "⚠️ JWT_SECRET_KEY not set, generating temporary one..."
-    export JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
-    echo "✅ JWT_SECRET_KEY: GENERATED (${#JWT_SECRET_KEY} chars)"
+    echo "❌ CRITICAL: JWT_SECRET_KEY environment variable is not set!"
+    echo "💡 This MUST be set in Railway dashboard -> Variables tab"
+    echo "💡 Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+    echo "🚨 SECURITY: Auto-generating JWT keys invalidates all user sessions on restart!"
+    echo "🚨 DEPLOYMENT BLOCKED: Set JWT_SECRET_KEY in Railway environment variables"
+    exit 1
 else
     echo "✅ JWT_SECRET_KEY: SET (${#JWT_SECRET_KEY} chars)"
 fi
