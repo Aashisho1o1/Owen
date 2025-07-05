@@ -458,11 +458,6 @@ export const DOCUMENT_THEMES: Record<string, DocumentTheme> = {
   },
 };
 
-// Helper function to get theme by template ID
-export const getThemeForTemplate = (templateId: string): DocumentTheme | null => {
-  return DOCUMENT_THEMES[templateId] || null;
-};
-
 // Helper function to get all available themes
 export const getAllThemes = (): DocumentTheme[] => {
   return Object.values(DOCUMENT_THEMES);
