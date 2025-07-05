@@ -89,8 +89,8 @@ class SimpleInputValidator:
     ]
     
     def __init__(self):
-        self.max_text_length = 10000
-        self.max_message_length = 2000
+        self.max_text_length = 100000  # Increased from 10,000 to 100,000 for large documents
+        self.max_message_length = 5000  # Increased from 2,000 to 5,000 for longer chat messages
     
     def validate_text_input(self, text: str, max_length: Optional[int] = None) -> str:
         """Enhanced text validation and sanitization with comprehensive security checks"""
@@ -104,8 +104,8 @@ class SimpleInputValidator:
         # Remove or replace dangerous Unicode characters
         text = self._sanitize_unicode(text)
         
-        # Check length after sanitization
-        max_len = max_length or self.max_text_length
+        # Check length after sanitization - use 100,000 characters for editor content
+        max_len = max_length or 100000  # Increased from self.max_text_length to 100,000
         if len(text) > max_len:
             raise ValidationError(f"Text too long. Maximum {max_len} characters allowed")
         
