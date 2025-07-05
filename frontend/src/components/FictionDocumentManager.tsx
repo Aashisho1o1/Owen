@@ -63,6 +63,10 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createType, setCreateType] = useState<'document' | 'folder'>('document');
+  
+  // NEW: Add state for template modal
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedTemplateForCreation, setSelectedTemplateForCreation] = useState<FictionTemplate | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -445,10 +449,8 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
                         key={template.id} 
                         className="template-card"
                         onClick={() => {
-                          const title = prompt(`Enter title for new ${template.name}:`);
-                          if (title) {
-                            createFromTemplate(template.id, title);
-                          }
+                          setSelectedTemplateForCreation(template);
+                          setShowTemplateModal(true);
                         }}
                       >
                         <div className="template-icon">
@@ -492,6 +494,19 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
         <CreateFolderModal
           onClose={() => setShowCreateModal(false)}
           onCreate={createFolder}
+        />
+      )}
+
+      {showTemplateModal && selectedTemplateForCreation && (
+        <TemplateModal
+          onClose={() => {
+            setShowTemplateModal(false);
+            setSelectedTemplateForCreation(null);
+          }}
+          onSubmit={(title) => {
+            createFromTemplate(selectedTemplateForCreation.id, title);
+          }}
+          template={selectedTemplateForCreation}
         />
       )}
     </div>
@@ -640,6 +655,66 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
           <div className="modal-actions">
             <button type="button" onClick={onClose}>Cancel</button>
             <button type="submit" disabled={!name.trim()}>Create Folder</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// NEW: Template modal
+interface TemplateModalProps {
+  onClose: () => void;
+  onSubmit: (title: string) => void;
+  template: FictionTemplate;
+}
+
+const TemplateModal: React.FC<TemplateModalProps> = ({
+  onClose,
+  onSubmit,
+  template
+}) => {
+  const [title, setTitle] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onSubmit(title);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <form onSubmit={handleSubmit}>
+          <h3>Create New {template.name}</h3>
+          
+          <div className="template-info" style={{ 
+            marginBottom: '16px', 
+            padding: '12px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '6px',
+            border: '1px solid #e9ecef'
+          }}>
+            <p style={{ margin: '0 0 8px 0' }}><strong>Template:</strong> {template.name}</p>
+            <p style={{ margin: '0', color: '#666', fontSize: '14px' }}><strong>Description:</strong> {template.description}</p>
+          </div>
+          
+          <div className="form-group">
+            <label>Document Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={`Enter title for your ${template.name.toLowerCase()}...`}
+              autoFocus
+            />
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={!title.trim()}>Create Document</button>
           </div>
         </form>
       </div>
