@@ -173,6 +173,30 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
     }
   };
 
+  const createFolder = async (name: string, folderType: string, color: string) => {
+    try {
+      const payload = {
+        name,
+        color
+      };
+
+      console.log('Creating folder with payload:', payload);
+
+      const response = await apiClient.post('/api/folders', payload);
+      
+      const newFolder = response.data;
+      setFolders(prev => [newFolder, ...prev]);
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error('Error creating folder:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to create folder');
+      }
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => {
     if (selectedFolder && doc.folder_id !== selectedFolder) return false;
     if (filterType !== 'all' && doc.document_type !== filterType) return false;
@@ -244,9 +268,22 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
           <p>{documents.length} documents • {folders.length} folders</p>
         </div>
         <div className="header-right">
-          <button className="btn-create" onClick={() => setShowCreateModal(true)}>
-            ✨ New Document
-          </button>
+          {activeView === 'documents' && (
+            <button className="btn-create" onClick={() => {
+              setCreateType('document');
+              setShowCreateModal(true);
+            }}>
+              ✨ New Document
+            </button>
+          )}
+          {activeView === 'folders' && (
+            <button className="btn-create" onClick={() => {
+              setCreateType('folder');
+              setShowCreateModal(true);
+            }}>
+              📁 New Folder
+            </button>
+          )}
           <button className="btn-close" onClick={onClose}>✕</button>
         </div>
       </div>
@@ -427,11 +464,18 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
         </div>
       )}
 
-      {showCreateModal && (
+      {showCreateModal && createType === 'document' && (
         <CreateDocumentModal
           onClose={() => setShowCreateModal(false)}
           onCreate={createDocument}
           templates={templates}
+        />
+      )}
+
+      {showCreateModal && createType === 'folder' && (
+        <CreateFolderModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={createFolder}
         />
       )}
     </div>
@@ -510,6 +554,76 @@ const CreateDocumentModal: React.FC<CreateDocumentModalProps> = ({
           <div className="modal-actions">
             <button type="button" onClick={onClose}>Cancel</button>
             <button type="submit" disabled={!title.trim()}>Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Create folder modal
+interface CreateFolderModalProps {
+  onClose: () => void;
+  onCreate: (name: string, folderType: string, color: string) => void;
+}
+
+const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
+  onClose,
+  onCreate
+}) => {
+  const [name, setName] = useState('');
+  const [folderType, setFolderType] = useState('general');
+  const [color, setColor] = useState('#3B82F6');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onCreate(name, folderType, color);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <form onSubmit={handleSubmit}>
+          <h3>Create New Folder</h3>
+          
+          <div className="form-group">
+            <label>Folder Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter folder name..."
+              autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Folder Type</label>
+            <select value={folderType} onChange={(e) => setFolderType(e.target.value)}>
+              <option value="general">General</option>
+              <option value="project">Project</option>
+              <option value="series">Series</option>
+              <option value="characters">Characters</option>
+              <option value="world_building">World Building</option>
+              <option value="research">Research</option>
+              <option value="drafts">Drafts</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Color</label>
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+            />
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={!name.trim()}>Create Folder</button>
           </div>
         </form>
       </div>
