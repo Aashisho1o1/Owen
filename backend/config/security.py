@@ -81,6 +81,8 @@ class SecurityConfig:
         
         # CORS Configuration
         self.ALLOWED_ORIGINS = [
+            "https://www.owenwrites.co",                        # NEW: Primary custom domain
+            "https://owenwrites.co",                            # NEW: Fallback without www
             "https://frontend-copy-production-0866.up.railway.app",  # NEW: Testing frontend URL
             "https://frontend-production-e178.up.railway.app",  # OLD: Keep as backup
             "https://frontend-production-88b0.up.railway.app",  # OLD: Keep as backup

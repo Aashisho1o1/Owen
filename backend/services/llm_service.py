@@ -198,7 +198,7 @@ Writing a {author_persona.lower()} story with their unique style and voice."""
         # Add user corrections (keep simple)
         if user_corrections:
             corrections_context = "**Remember these preferences:**"
-            for correction in user_corrections[-3:]:  # Only last 3
+            for correction in user_corrections[-2:]:  # Only last 2
                 corrections_context += f"\n- {correction}"
             context_parts.append(corrections_context)
         

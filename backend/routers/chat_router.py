@@ -33,7 +33,7 @@ router = APIRouter(
     tags=["chat"],
 )
 
-def build_conversation_context(chat_history: List[ChatMessage], max_history: int = 10) -> str:
+def build_conversation_context(chat_history: List[ChatMessage], max_history: int = 5) -> str:
     """Build conversation context from chat history using sliding window approach"""
     if not chat_history:
         return ""

@@ -172,6 +172,8 @@ app = FastAPI(
 
 # Define allowed origins with validation
 ALLOWED_ORIGINS = [
+    "https://www.owenwrites.co",                           # NEW: Primary custom domain
+    "https://owenwrites.co",                               # NEW: Fallback without www
     "https://frontend-copy-production-0866.up.railway.app",  # NEW: Testing frontend
     "https://frontend-production-e178.up.railway.app",  # OLD: Keep as backup
     "https://frontend-production-88b0.up.railway.app",  # OLD: Keep as backup
