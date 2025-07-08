@@ -4,8 +4,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UIProvider } from './contexts/UIContext';
 import { AppProvider } from './contexts/AppContext';
-import { ChatProvider } from './contexts/ChatContext';
-import { EditorProvider } from './contexts/EditorContext';
 import { DocumentThemeProvider } from './contexts/DocumentThemeContext';
 import DocumentsPage from './pages/DocumentsPage';
 import DocumentEditor from './pages/DocumentEditor';
@@ -77,21 +75,17 @@ const App: React.FC = () => {
   return (
       <Router>
         <ErrorBoundary>
-          <AppProvider>
-            <AuthProvider>
-              <ThemeProvider>
-                <UIProvider>
-                  <ChatProvider>
-                    <EditorProvider>
-                      <DocumentThemeProvider>
-                        <AppContent />
-                      </DocumentThemeProvider>
-                    </EditorProvider>
-                  </ChatProvider>
-                </UIProvider>
-              </ThemeProvider>
-            </AuthProvider>
-          </AppProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <UIProvider>
+                <DocumentThemeProvider>
+                  <AppProvider>
+                    <AppContent />
+                  </AppProvider>
+                </DocumentThemeProvider>
+              </UIProvider>
+            </ThemeProvider>
+          </AuthProvider>
         </ErrorBoundary>
       </Router>
   );

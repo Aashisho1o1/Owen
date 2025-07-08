@@ -69,7 +69,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         // Show suggestions on the last AI message if we have suggestions
         const isLastAIMessage = msg.role === 'assistant' && 
           index === messages.length - 1 && 
-          currentSuggestions && currentSuggestions.length > 0;
+          Array.isArray(currentSuggestions) && currentSuggestions.length > 0;
         
         // Debug logging
         if (index === messages.length - 1 && msg.role === 'assistant') {

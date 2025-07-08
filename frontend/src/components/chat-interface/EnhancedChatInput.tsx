@@ -19,17 +19,21 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   isLoading = false,
   placeholder = "Ask Owen anything about your writing..."
 }) => {
+  const { 
+    handleSendMessage, 
+    isThinking, 
+    isStreaming, 
+    highlightedText,
+    aiMode,
+    currentSuggestions = [],
+    isGeneratingSuggestions,
+    generateTextSuggestions
+  } = useChatContext();
+  
   const [message, setMessage] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  const { 
-    aiMode, 
-    highlightedText,
-    generateTextSuggestions,
-    isGeneratingSuggestions,
-    currentSuggestions
-  } = useChatContext();
-
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -65,7 +69,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   };
 
   const canGenerateSuggestions = aiMode === 'co-edit' && highlightedText.trim().length > 0;
-  const hasSuggestions = currentSuggestions && currentSuggestions.length > 0;
+  const hasSuggestions = Array.isArray(currentSuggestions) && currentSuggestions.length > 0;
 
   return (
     <div className="enhanced-chat-input">

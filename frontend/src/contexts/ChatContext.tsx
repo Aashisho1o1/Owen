@@ -636,5 +636,15 @@ export const useChatContext = (): ChatContextType => {
   if (context === undefined) {
     throw new Error('useChatContext must be used within a ChatProvider');
   }
+  
+  // Safety check: ensure currentSuggestions is always an array
+  if (!Array.isArray(context.currentSuggestions)) {
+    console.warn('⚠️ currentSuggestions is not an array, defaulting to empty array');
+    return {
+      ...context,
+      currentSuggestions: []
+    };
+  }
+  
   return context;
 }; 
