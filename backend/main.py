@@ -272,7 +272,8 @@ async def root():
             "database": "unhealthy",
             "railway_deployment": "partial_failure",
             "architecture": "modular",
-            "features": []
+            "features": [],
+            "error": "An internal error occurred while processing the request."
         }
 
 @app.get("/api/health")
@@ -364,10 +365,10 @@ async def health_check(request: Request = None):
             "status": "unhealthy",
             "timestamp": datetime.utcnow().isoformat(),
             "error_type": "HealthCheckFailed",
-            "error_message": str(e),
+            "error_message": "An internal error occurred during the health check.",
             "startup": {
                 "success": False,
-                "errors": [f"Health check failed: {e}"]
+                "errors": ["Health check failed due to an internal error."]
             }
         }
 
@@ -391,7 +392,7 @@ async def rate_limiter_health():
         return {
             "status": "error",
             "backend": "unknown",
-            "error": str(e),
+            "error": "An internal error occurred while checking rate limiter health.",
             "timestamp": datetime.utcnow().isoformat()
         }
 
