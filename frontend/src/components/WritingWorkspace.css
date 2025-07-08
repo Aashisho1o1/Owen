@@ -515,40 +515,33 @@ body.light-theme .highlightable-editor,
 }
 
 /* =================================================================
-   AI Discovery Hint - Subtle onboarding for new users
+   AI Discovery Hint - Leveraging existing design system
    ================================================================= */
 
 .ai-discovery-hint {
-  /* Positioning - Bottom left, non-intrusive */
+  /* Reuse existing tooltip positioning pattern */
   position: absolute;
   bottom: 24px;
   left: 24px;
   z-index: 10;
   
-  /* Visual Design - Elegant and subtle */
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-left: 3px solid #3B82F6;
-  border-radius: 8px;
-  padding: 12px 16px;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.05);
+  /* Extend existing help-button styling */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-left: 3px solid var(--primary-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-lg);
   
-  /* Typography - Beautiful serif italic */
-  font-family: 'Georgia', 'Times New Roman', serif;
+  /* Typography using design system */
+  font-family: var(--font-serif);
   font-style: italic;
-  font-size: 14px;
-  line-height: 1.4;
-  color: #374151;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
   
-  /* Interaction - Subtle animation */
+  /* Interaction using existing transition patterns */
   opacity: 0.85;
-  transform: translateY(0);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Accessibility - Ensure it doesn't interfere */
+  transition: all var(--transition-normal);
   pointer-events: none;
   user-select: none;
   max-width: 280px;
@@ -557,14 +550,12 @@ body.light-theme .highlightable-editor,
 .ai-discovery-hint:hover {
   opacity: 1;
   transform: translateY(-2px);
-  box-shadow: 
-    0 8px 20px rgba(0, 0, 0, 0.15),
-    0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-xl);
 }
 
 .hint-icon {
   display: inline-block;
-  margin-right: 8px;
+  margin-right: var(--space-2);
   font-size: 16px;
   animation: gentle-pulse 2s ease-in-out infinite;
 }
@@ -574,68 +565,53 @@ body.light-theme .highlightable-editor,
   50% { opacity: 1; transform: scale(1.05); }
 }
 
-/* Dark theme support */
-body.dark-theme .ai-discovery-hint {
-  background: rgba(31, 41, 55, 0.95);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #E5E7EB;
-}
-
 /* =================================================================
-   App Map Button - Help navigation for users
+   App Map Button - Extending existing nav-action-button pattern
    ================================================================= */
 
 .app-map-button {
-  /* Positioning - Top right, easily accessible */
+  /* Extend existing nav-action-button class */
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 50;
   
-  /* Visual Design - Clean and professional */
+  /* Use existing button styling */
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-md);
+  
+  /* Typography from design system */
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  
+  /* Interaction patterns from existing buttons */
+  cursor: pointer;
+  transition: all var(--transition-normal);
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #FFFFFF;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 10px 14px;
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.05);
-  
-  /* Typography */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  text-decoration: none;
-  
-  /* Interaction */
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateY(0);
+  gap: var(--space-2);
 }
 
 .app-map-button:hover {
-  background: #F9FAFB;
-  border-color: #3B82F6;
-  color: #1D4ED8;
+  background: var(--bg-secondary);
+  border-color: var(--primary-500);
+  color: var(--primary-700);
   transform: translateY(-1px);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .app-map-button:active {
   transform: translateY(0);
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-md);
 }
 
 .app-map-button:focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid var(--primary-500);
   outline-offset: 2px;
 }
 
@@ -645,108 +621,45 @@ body.dark-theme .ai-discovery-hint {
 }
 
 .app-map-text {
-  font-weight: 500;
+  font-weight: var(--font-medium);
   white-space: nowrap;
 }
 
-/* Dark theme support */
-body.dark-theme .app-map-button {
-  background: #1F2937;
-  border-color: #374151;
-  color: #E5E7EB;
-}
-
-body.dark-theme .app-map-button:hover {
-  background: #374151;
-  border-color: #60A5FA;
-  color: #93C5FD;
-}
-
 /* =================================================================
-   Responsive Design - Mobile-first approach
+   Responsive Design - Using existing breakpoint patterns
    ================================================================= */
 
-/* Mobile optimizations */
 @media (max-width: 768px) {
   .ai-discovery-hint {
-    /* Adjust positioning for mobile */
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
+    bottom: var(--space-4);
+    left: var(--space-4);
+    right: var(--space-4);
     max-width: none;
-    
-    /* Smaller padding and font */
-    padding: 10px 14px;
-    font-size: 13px;
-    
-    /* Ensure it doesn't interfere with mobile interactions */
-    pointer-events: none;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
   }
   
   .app-map-button {
-    /* Adjust positioning for mobile */
-    top: 16px;
-    right: 16px;
-    
-    /* Slightly smaller on mobile */
-    padding: 8px 12px;
-    font-size: 13px;
+    top: var(--space-4);
+    right: var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
   }
   
   .app-map-text {
-    /* Hide text on very small screens, keep icon */
-    display: none;
-  }
-}
-
-/* Very small screens */
-@media (max-width: 480px) {
-  .ai-discovery-hint {
-    bottom: 12px;
-    left: 12px;
-    right: 12px;
-    padding: 8px 12px;
-    font-size: 12px;
-  }
-  
-  .app-map-button {
-    top: 12px;
-    right: 12px;
-    padding: 8px;
-    min-width: 40px;
-    justify-content: center;
-  }
-}
-
-/* Large screens - enhanced experience */
-@media (min-width: 1200px) {
-  .ai-discovery-hint {
-    bottom: 32px;
-    left: 32px;
-    padding: 14px 18px;
-    font-size: 15px;
-  }
-  
-  .app-map-button {
-    top: 24px;
-    right: 24px;
-    padding: 12px 16px;
+    display: none; /* Hide text on mobile, keep icon */
   }
 }
 
 /* =================================================================
-   Accessibility & Motion Preferences
+   Accessibility - Using existing accessibility patterns
    ================================================================= */
 
-/* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .ai-discovery-hint,
-  .app-map-button {
-    transition: none;
-    animation: none;
-  }
-  
+  .app-map-button,
   .hint-icon {
+    transition: none;
     animation: none;
   }
   
@@ -756,7 +669,6 @@ body.dark-theme .app-map-button:hover {
   }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
   .ai-discovery-hint {
     border-width: 2px;
@@ -768,7 +680,21 @@ body.dark-theme .app-map-button:hover {
   }
 }
 
-/* Focus management for keyboard navigation */
-.app-map-button:focus:not(:focus-visible) {
-  outline: none;
+/* Dark theme support using existing theme variables */
+.theme-dark .ai-discovery-hint {
+  background: var(--bg-tertiary);
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.theme-dark .app-map-button {
+  background: var(--bg-tertiary);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.theme-dark .app-map-button:hover {
+  background: var(--bg-quaternary);
+  border-color: var(--primary-400);
+  color: var(--primary-300);
 } 

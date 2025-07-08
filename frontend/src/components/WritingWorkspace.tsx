@@ -204,8 +204,8 @@ export const WritingWorkspace: React.FC = () => {
   }, []);
 
   const handleAppMapClick = () => {
-    // Replace with your actual Google Doc URL
-    window.open('https://docs.google.com/document/d/YOUR_DOC_ID/edit', '_blank');
+    // Owen Writer User Guide - App Map
+    window.open('https://docs.google.com/document/d/1rt_PBb_q4bc9YL-QVsnCFx7B-jymU6D9dWPlQs_JD58/edit?usp=sharing', '_blank');
   };
 
   if (isLoading) {
