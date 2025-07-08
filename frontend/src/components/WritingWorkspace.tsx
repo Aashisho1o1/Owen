@@ -150,7 +150,8 @@ export const WritingWorkspace: React.FC = () => {
       setCopyStatus('copying');
       
       // Get plain text content (strip HTML tags if present)
-      const textContent = editorContent.replace(/<[^>]*>/g, '').trim();
+      const sanitizeHtml = require('sanitize-html');
+      const textContent = sanitizeHtml(editorContent, { allowedTags: [], allowedAttributes: {} }).trim();
       
       if (!textContent) {
         setCopyStatus('error');
