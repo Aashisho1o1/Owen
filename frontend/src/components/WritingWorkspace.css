@@ -96,12 +96,16 @@
 /* Title Section - Using design system */
 .title-section {
   flex: 1;
-  max-width: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 var(--space-4);
 }
 
 .document-title-input {
   width: 100%;
-  padding: var(--space-4) var(--space-8) var(--space-2);
+  max-width: 600px;
+  padding: var(--space-2) var(--space-4);
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
@@ -110,6 +114,7 @@
   outline: none;
   border-bottom: 1px solid transparent;
   transition: border-color var(--transition-normal);
+  text-align: center;
 }
 
 .document-title-input:focus {
@@ -374,16 +379,17 @@
 @media (max-width: 768px) {
   .workspace-header {
     padding: 12px 16px;
-    height: 56px;
+    height: auto;
     flex-wrap: wrap;
     gap: 8px;
   }
 
+  /* On mobile, reorder to have title at top, then buttons below */
   .title-section {
-    flex: 1;
+    flex: 1 1 100%;
     min-width: 0;
-    max-width: none;
     order: 1;
+    margin-bottom: 8px;
   }
 
   .header-buttons-container {
@@ -395,9 +401,16 @@
 
   .workspace-controls {
     order: 3;
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 8px;
+    flex: 1;
+    justify-content: flex-end;
+    margin-top: 0;
+  }
+
+  /* Center the title on mobile */
+  .document-title-input {
+    text-align: center;
+    font-size: 18px;
+    padding: 8px 16px;
   }
 
   .header-buttons-container .nav-action-button {
@@ -418,11 +431,6 @@
     width: 16px;
     height: 16px;
     font-size: 8px;
-  }
-
-  .document-title-input {
-    padding: 8px 16px 4px;
-    font-size: 18px;
   }
 
   .ai-discovery-hint-permanent {

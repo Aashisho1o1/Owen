@@ -150,8 +150,10 @@ export const WritingWorkspace: React.FC = () => {
       setCopyStatus('copying');
       
       // Get plain text content (strip HTML tags if present)
-      const sanitizeHtml = require('sanitize-html');
-      const textContent = sanitizeHtml(editorContent, { allowedTags: [], allowedAttributes: {} }).trim();
+      // Simple HTML stripping without external library
+      const div = document.createElement('div');
+      div.innerHTML = editorContent;
+      const textContent = (div.textContent || div.innerText || '').trim();
       
       if (!textContent) {
         setCopyStatus('error');
@@ -210,17 +212,7 @@ export const WritingWorkspace: React.FC = () => {
     <div className="writing-workspace">
       {/* Simplified Header - MVP Version */}
       <div className="workspace-header">
-        <div className="title-section">
-          <input
-            type="text"
-            value={documentTitle}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            className="document-title-input"
-            placeholder="Untitled Document"
-          />
-        </div>
-        
-        {/* Header Controls Container - Side by side buttons */}
+        {/* Header Controls Container - Side by side buttons - NOW ON THE LEFT */}
         <div className="header-buttons-container">
           {/* App Map Button - Using existing nav-action-button pattern */}
           <button
@@ -260,6 +252,17 @@ export const WritingWorkspace: React.FC = () => {
               <span className="nav-action-text">Sign In</span>
             </button>
           )}
+        </div>
+        
+        {/* Document Title - NOW IN THE CENTER */}
+        <div className="title-section">
+          <input
+            type="text"
+            value={documentTitle}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            className="document-title-input"
+            placeholder="Untitled Document"
+          />
         </div>
         
         {/* MVP Controls - Just essentials */}
