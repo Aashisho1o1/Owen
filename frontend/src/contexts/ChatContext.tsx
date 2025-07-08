@@ -437,7 +437,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
         suggestions: suggestions
       });
       
-      if (suggestions && suggestions.length > 0) {
+      if (suggestions && Array.isArray(suggestions) && suggestions.length > 0) {
         console.log('✨ Setting suggestions in ChatContext:', suggestions);
         setCurrentSuggestions(suggestions);
         setIsGeneratingSuggestions(false);
@@ -446,7 +446,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
         console.log('📝 Current suggestions state updated with', suggestions.length, 'suggestions');
       } else {
         console.warn('⚠️ No valid suggestions received in event');
-        setCurrentSuggestions([]);
+        setCurrentSuggestions([]); // Ensure we always set an array, never undefined
       }
     };
 
@@ -619,7 +619,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     submitFeedback,
     analyzeWritingSample,
     completeOnboarding,
-    currentSuggestions,
+    currentSuggestions: currentSuggestions || [], // Safety check to ensure it's never undefined
     isGeneratingSuggestions,
     isAcceptingSuggestion,
     acceptedSuggestionId,

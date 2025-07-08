@@ -65,7 +65,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   };
 
   const canGenerateSuggestions = aiMode === 'co-edit' && highlightedText.trim().length > 0;
-  const hasSuggestions = currentSuggestions.length > 0;
+  const hasSuggestions = currentSuggestions && currentSuggestions.length > 0;
 
   return (
     <div className="enhanced-chat-input">
@@ -143,7 +143,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           {/* Suggestions status */}
           {hasSuggestions && (
             <span className="suggestions-status">
-              ✨ {currentSuggestions.length} options ready
+              ✨ {currentSuggestions?.length || 0} options ready
             </span>
           )}
         </div>
