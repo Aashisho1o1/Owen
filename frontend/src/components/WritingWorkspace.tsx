@@ -25,7 +25,7 @@ import '../styles/FictionDocumentManager.css';
 export const WritingWorkspace: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { isChatVisible, toggleChat } = useChatContext();
-  const { editorContent, setEditorContent } = useEditorContext();
+  const { editorContent, setEditorContent, documentManager } = useEditorContext();
   const {
     createDocument,
     updateTitle,
@@ -46,6 +46,9 @@ export const WritingWorkspace: React.FC = () => {
   
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
+
+  // AI hint state
+  const [showAiHint, setShowAiHint] = useState(true);
 
   // Initialize document on component mount
   useEffect(() => {
@@ -121,9 +124,19 @@ export const WritingWorkspace: React.FC = () => {
 
   // Handle document selection from Fiction Document Manager
   const handleDocumentSelect = (document: { id: string; title: string; content: string }) => {
-    setCurrentDocument(document);
+    // Update the document manager with proper Document structure
+    const fullDocument = {
+      ...document,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: 'current-user', // Will be properly set by the backend
+      word_count: document.content.length,
+      document_type: 'novel' as const
+    };
+    
+    documentManager.setCurrentDocument(fullDocument);
+    setEditorContent(document.content);
     setDocumentTitle(document.title);
-    setEditorContent(document.content || '');
     setShowDocumentManager(false);
   };
 
@@ -167,6 +180,32 @@ export const WritingWorkspace: React.FC = () => {
       setCopyStatus('error');
       setTimeout(() => setCopyStatus('idle'), 2000);
     }
+  };
+
+  // Hide AI hint after user interaction or timeout
+  useEffect(() => {
+    const hideHintAfterDelay = setTimeout(() => {
+      setShowAiHint(false);
+    }, 10000); // Hide after 10 seconds
+
+    // Hide hint when user starts typing
+    const handleUserActivity = () => {
+      setShowAiHint(false);
+    };
+
+    document.addEventListener('keydown', handleUserActivity);
+    document.addEventListener('mousedown', handleUserActivity);
+
+    return () => {
+      clearTimeout(hideHintAfterDelay);
+      document.removeEventListener('keydown', handleUserActivity);
+      document.removeEventListener('mousedown', handleUserActivity);
+    };
+  }, []);
+
+  const handleAppMapClick = () => {
+    // Replace with your actual Google Doc URL
+    window.open('https://docs.google.com/document/d/YOUR_DOC_ID/edit', '_blank');
   };
 
   if (isLoading) {
@@ -269,8 +308,24 @@ export const WritingWorkspace: React.FC = () => {
       <div className={`workspace-content ${isChatVisible ? 'with-chat' : 'editor-only'}`}>
         {/* Writing Area */}
         <div className="editor-section">
-          {/* 🔧 CRITICAL FIX: Remove props to prevent state conflicts - let HighlightableEditor use EditorContext directly */}
-          <HighlightableEditor />
+          <div className="editor-container">
+            <HighlightableEditor
+              content={documentManager.pendingContent}
+              onChange={setEditorContent}
+            />
+            
+            {/* AI Discovery Hint - Subtle and Elegant */}
+            {showAiHint && (
+              <div 
+                className="ai-discovery-hint"
+                role="tooltip"
+                aria-label="AI feature hint"
+              >
+                <span className="hint-icon" aria-hidden="true">✨</span>
+                <em>Highlight any text to unlock AI assistance</em>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* AI Chat Panel */}
@@ -288,6 +343,18 @@ export const WritingWorkspace: React.FC = () => {
           onClose={() => setShowDocumentManager(false)}
         />
       )}
+
+      {/* App Map Button - Positioned for accessibility */}
+      <button
+        className="app-map-button"
+        onClick={handleAppMapClick}
+        type="button"
+        aria-label="Open app navigation guide"
+        title="App Map - Navigation Guide"
+      >
+        <span className="app-map-icon" aria-hidden="true">🗺️</span>
+        <span className="app-map-text">App Map</span>
+      </button>
     </div>
   );
 };
