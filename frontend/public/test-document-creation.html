@@ -88,7 +88,10 @@
             const logDiv = document.getElementById('log');
             const timestamp = new Date().toLocaleTimeString();
             const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
-            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            const logEntry = document.createElement('div');
+            logEntry.className = className;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
             logDiv.scrollTop = logDiv.scrollHeight;
         }
         
