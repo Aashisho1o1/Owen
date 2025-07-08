@@ -6,6 +6,8 @@ import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatContext } from '../contexts/ChatContext';
 import { useEditorContext } from '../contexts/EditorContext';
+import AuthModal from './AuthModal';
+import UserProfileModal from './UserProfileModal';
 import './WritingWorkspace.css';
 import '../styles/FictionDocumentManager.css';
 
@@ -37,6 +39,11 @@ export const WritingWorkspace: React.FC = () => {
     setCurrentDocument
   } = useDocuments();
 
+  // Auth state for header
+  const { user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
   const [documentTitle, setDocumentTitle] = useState('Untitled Document');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -46,9 +53,6 @@ export const WritingWorkspace: React.FC = () => {
   
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
-
-  // AI hint state
-  const [showAiHint, setShowAiHint] = useState(true);
 
   // Initialize document on component mount
   useEffect(() => {
@@ -182,26 +186,8 @@ export const WritingWorkspace: React.FC = () => {
     }
   };
 
-  // Hide AI hint after user interaction or timeout
-  useEffect(() => {
-    const hideHintAfterDelay = setTimeout(() => {
-      setShowAiHint(false);
-    }, 10000); // Hide after 10 seconds
-
-    // Hide hint when user starts typing
-    const handleUserActivity = () => {
-      setShowAiHint(false);
-    };
-
-    document.addEventListener('keydown', handleUserActivity);
-    document.addEventListener('mousedown', handleUserActivity);
-
-    return () => {
-      clearTimeout(hideHintAfterDelay);
-      document.removeEventListener('keydown', handleUserActivity);
-      document.removeEventListener('mousedown', handleUserActivity);
-    };
-  }, []);
+  // Remove auto-hide functionality for AI hint - keep it permanent
+  // No useEffect needed for hiding the hint
 
   const handleAppMapClick = () => {
     // Owen Writer User Guide - App Map
@@ -222,7 +208,7 @@ export const WritingWorkspace: React.FC = () => {
   return (
     <div className="writing-workspace">
       {/* Simplified Header - MVP Version */}
-      <div className="workspace-header-mvp">
+      <div className="workspace-header">
         <div className="title-section">
           <input
             type="text"
@@ -233,8 +219,50 @@ export const WritingWorkspace: React.FC = () => {
           />
         </div>
         
+        {/* Header Controls Container - Side by side buttons */}
+        <div className="header-buttons-container">
+          {/* App Map Button - Using existing nav-action-button pattern */}
+          <button
+            className="nav-action-button"
+            onClick={handleAppMapClick}
+            type="button"
+            aria-label="Open app navigation guide"
+            title="App Map - Navigation Guide"
+          >
+            <span className="nav-action-icon" aria-hidden="true">🗺️</span>
+            <span className="nav-action-text">App Map</span>
+          </button>
+
+          {/* Auth Button - Sign In or Profile */}
+          {isAuthenticated && user ? (
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="nav-action-button"
+              type="button"
+              aria-label="User profile"
+              title="User Profile"
+            >
+              <div className="profile-avatar">
+                {user.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <span className="nav-action-text">Profile</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="nav-action-button primary"
+              type="button"
+              aria-label="Sign in"
+              title="Sign In"
+            >
+              <span className="nav-action-icon" aria-hidden="true">👤</span>
+              <span className="nav-action-text">Sign In</span>
+            </button>
+          )}
+        </div>
+        
         {/* MVP Controls - Just essentials */}
-        <div className="workspace-controls-mvp">
+        <div className="workspace-controls">
           {/* Document Manager Button */}
           <button
             onClick={() => setShowDocumentManager(true)}
@@ -289,7 +317,7 @@ export const WritingWorkspace: React.FC = () => {
 
           {/* Save Status - Only for authenticated users */}
           {isAuthenticated && (
-            <div className="save-status-mvp">
+            <div className="save-status">
               {isSaving && <span className="status-saving">Saving...</span>}
               {!isSaving && hasUnsavedChanges && (
                 <button onClick={handleSaveNow} className="save-now-btn">
@@ -314,17 +342,10 @@ export const WritingWorkspace: React.FC = () => {
               onChange={setEditorContent}
             />
             
-            {/* AI Discovery Hint - Subtle and Elegant */}
-            {showAiHint && (
-              <div 
-                className="ai-discovery-hint"
-                role="tooltip"
-                aria-label="AI feature hint"
-              >
-                <span className="hint-icon" aria-hidden="true">✨</span>
-                <em>Highlight any text to unlock AI assistance</em>
-              </div>
-            )}
+            {/* Permanent AI Discovery Hint - Always visible */}
+            <div className="ai-discovery-hint-permanent">
+              <em>Highlight any text to unlock AI assistance</em>
+            </div>
           </div>
         </div>
 
@@ -344,17 +365,21 @@ export const WritingWorkspace: React.FC = () => {
         />
       )}
 
-      {/* App Map Button - Positioned for accessibility */}
-      <button
-        className="app-map-button"
-        onClick={handleAppMapClick}
-        type="button"
-        aria-label="Open app navigation guide"
-        title="App Map - Navigation Guide"
-      >
-        <span className="app-map-icon" aria-hidden="true">🗺️</span>
-        <span className="app-map-text">App Map</span>
-      </button>
+      {/* Auth Modals */}
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="signin"
+        />
+      )}
+      
+      {showProfileModal && (
+        <UserProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </div>
   );
 };
