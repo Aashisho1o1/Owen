@@ -454,26 +454,31 @@
   }
 
   .workspace-content {
-    flex-direction: column;
+    flex-direction: row; /* Keep side-by-side layout on mobile */
+    height: calc(100vh - 120px); /* Ensure proper height */
   }
 
   .editor-section {
-    width: 100% !important;
-    height: 50%;
+    width: 50% !important; /* Half width for side-by-side */
+    height: 100%;
+    border-right: 1px solid #e8e6e3;
   }
 
   .chat-section {
-    width: 100% !important;
-    height: 50%;
-    border-top: 1px solid #e8e6e3;
+    width: 50% !important; /* Half width for side-by-side */
+    height: 100%;
+    border-left: 1px solid #e8e6e3;
   }
 
   .editor-container {
-    padding: 8px;
+    margin: 8px; /* Reduce margin for mobile */
+    padding: 12px; /* Comfortable padding for mobile typing */
   }
 
   .highlightable-editor {
-    min-height: 200px;
+    min-height: 300px; /* Increase minimum height for better usability */
+    padding: 16px; /* Comfortable padding inside editor */
+    font-size: 16px; /* Ensure readable text size on mobile */
   }
 
   .document-title-input {
@@ -490,6 +495,7 @@
 @media (max-width: 480px) {
   .workspace-header {
     padding: 0.5rem 0.75rem;
+    height: auto; /* Allow header to grow if needed */
   }
 
   .document-title-input {
@@ -497,13 +503,34 @@
     padding: 0.5rem;
   }
 
+  /* Maintain side-by-side layout even on very small screens */
+  .workspace-content {
+    height: calc(100vh - 140px); /* Account for potentially taller header */
+  }
+
+  .editor-section, .chat-section {
+    width: 50% !important; /* Keep 50/50 split */
+  }
+
   .editor-container {
-    padding: 0.75rem;
+    margin: 4px; /* Minimal margin for very small screens */
+    padding: 8px; /* Reduced padding */
   }
 
   .highlightable-editor {
-    padding: 0.75rem;
-    font-size: 16px;
+    padding: 12px; /* Comfortable but compact padding */
+    font-size: 16px; /* Maintain readable text size */
+    min-height: 250px; /* Reasonable minimum height */
+  }
+
+  /* Hide some text on very small screens to save space */
+  .copy-text, .toggle-text, .manager-text {
+    display: none;
+  }
+
+  /* Make buttons more compact */
+  .workspace-controls {
+    gap: 0.25rem;
   }
 }
 
