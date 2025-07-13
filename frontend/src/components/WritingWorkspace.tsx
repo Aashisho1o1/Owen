@@ -236,18 +236,16 @@ export const WritingWorkspace: React.FC = () => {
         
         {/* MVP Controls - Streamlined essentials without Copy button */}
         <div className="workspace-controls">
-          {/* Hide AI Button - Positioned for better UX proximity to chat */}
-          {isChatVisible && (
-            <button
-              onClick={toggleChat}
-              className="copy-content-btn"
-              title="Hide AI Assistant"
-              aria-label="Hide AI Assistant"
-            >
-              <span className="copy-icon" aria-hidden="true">💬</span>
-              <span className="copy-text">Hide AI</span>
-            </button>
-          )}
+          {/* Chat Toggle Button - Always visible for better UX */}
+          <button
+            onClick={toggleChat}
+            className="copy-content-btn"
+            title={isChatVisible ? "Hide AI Assistant" : "Show AI Assistant"}
+            aria-label={isChatVisible ? "Hide AI Assistant" : "Show AI Assistant"}
+          >
+            <span className="copy-icon" aria-hidden="true">💬</span>
+            <span className="copy-text">{isChatVisible ? "Hide AI" : "Show AI"}</span>
+          </button>
 
           {/* Save Status - Only for authenticated users */}
           {isAuthenticated && (

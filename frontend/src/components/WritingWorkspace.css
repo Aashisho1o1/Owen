@@ -149,19 +149,20 @@
   user-select: none;
 }
 
-/* Enhanced AI hint - more prominent but tasteful */
+/* Enhanced AI hint - more prominent but rectangular */
 .ai-discovery-hint-permanent.enhanced {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
   color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 12px 20px; /* More rectangular padding */
+  border-radius: 10px; /* Slightly rounded but still rectangular */
   font-size: 14px;
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   border: none;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  max-width: 300px; /* Wider for rectangular look */
   text-align: center;
+  letter-spacing: 0.025em; /* Slight letter spacing for premium feel */
 }
 
 /* Bottom Controls Container - AI Hint + Copy Button */
@@ -239,12 +240,10 @@
   display: flex;
   flex-direction: column;
   background: #fefefe; /* Very subtle off-white */
-  margin: 20px; /* Add margin for breathing room */
-  border-radius: 12px; /* Gentle rounded corners */
-  /* Remove border to eliminate top horizontal line */
-  box-shadow: 
-    0 4px 6px rgba(0, 0, 0, 0.02),
-    0 1px 3px rgba(0, 0, 0, 0.03); /* Very subtle depth */
+  /* Remove margin to eliminate horizontal line visual conflict */
+  border-radius: 0; /* Remove border radius for seamless integration */
+  /* Remove all borders and shadows to eliminate horizontal lines */
+  border: none !important; /* Override global editor.css border */
   overflow: hidden;
 }
 
@@ -268,30 +267,29 @@
 .highlightable-editor .ProseMirror.is-empty::before {
   content: 'Start writing your story here...';
   color: #a0aec0; /* Soft gray placeholder */
-  font-style: italic;
   position: absolute;
+  top: 32px;
+  left: 32px;
   pointer-events: none;
-  font-size: 16px;
+  font-style: italic;
 }
 
 .highlightable-editor .ProseMirror {
   outline: none;
-  background: transparent;
+  border: none;
   padding: 0;
   margin: 0;
+  background: transparent;
 }
 
-/* Focus state for better UX */
 .highlightable-editor .ProseMirror:focus {
   outline: none;
 }
 
 .editor-container:focus-within {
-  border-color: #9f9aed; /* Subtle purple focus */
-  box-shadow: 
-    0 4px 6px rgba(0, 0, 0, 0.02),
-    0 1px 3px rgba(0, 0, 0, 0.03),
-    0 0 0 3px rgba(159, 154, 237, 0.1); /* Gentle focus ring */
+  /* Remove any focus styling that might create visual lines */
+  outline: none;
+  box-shadow: none;
 }
 
 /* Chat Panel Container */
@@ -378,27 +376,29 @@
   }
 
   .ai-discovery-hint-permanent {
-    bottom: 8px;
-    right: 8px;
-    padding: 4px 6px;
-    font-size: 9px;
-    max-width: 120px;
+    bottom: 12px;
+    right: 12px;
+    padding: 8px 12px; /* Maintain rectangular shape on mobile */
+    font-size: 11px;
+    max-width: 180px;
+    border-radius: 6px; /* Slightly less rounded on mobile */
   }
 
   /* Bottom controls responsive - stack vertically on mobile */
   .bottom-controls {
-    bottom: 8px;
-    right: 8px;
-    left: 8px;
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
     flex-direction: column;
     align-items: flex-end;
     gap: 8px;
   }
 
   .ai-discovery-hint-permanent.enhanced {
-    max-width: 200px;
+    max-width: 220px;
     font-size: 12px;
-    padding: 6px 12px;
+    padding: 10px 16px; /* Maintain rectangular padding on mobile */
+    border-radius: 8px; /* Maintain rectangular look on mobile */
   }
 
   /* Copy button styles removed */
@@ -502,18 +502,19 @@
 
   /* Bottom controls for very small screens */
   .bottom-controls {
-    bottom: 4px;
-    right: 4px;
-    left: 4px;
+    bottom: 8px;
+    right: 8px;
+    left: 8px;
     flex-direction: column;
     align-items: center;
     gap: 6px;
   }
 
   .ai-discovery-hint-permanent.enhanced {
-    max-width: 180px;
+    max-width: 200px;
     font-size: 11px;
-    padding: 4px 8px;
+    padding: 8px 12px; /* Maintain rectangular padding even on small screens */
+    border-radius: 6px; /* Maintain rectangular look */
   }
 
   .copy-content-btn.bottom-copy {
@@ -815,29 +816,25 @@ body.light-theme .highlightable-editor,
 /* Permanent AI Discovery Hint - Moved to bottom-right corner */
 .ai-discovery-hint-permanent {
   position: absolute;
-  bottom: 16px;
-  right: 16px;
+  bottom: 20px;
+  right: 20px;
   z-index: 5;
-  
-  /* Subtle styling */
   background: rgba(255, 255, 255, 0.95);
+  color: #6b7280;
+  padding: 10px 16px; /* More rectangular padding */
+  border-radius: 8px; /* Less rounded, more rectangular */
+  font-size: 13px;
+  font-style: normal; /* Remove italic for more professional look */
+  font-weight: 500;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 6px 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  
-  /* Typography */
-  font-family: Georgia, 'Times New Roman', serif;
-  font-style: italic;
-  font-size: 11px;
-  color: #9ca3af;
-  
-  /* Make it subtle and non-intrusive */
-  opacity: 0.8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 240px; /* Wider for more rectangular appearance */
+  line-height: 1.4;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
   pointer-events: none;
   user-select: none;
-  max-width: 180px;
-  backdrop-filter: blur(4px);
+  white-space: nowrap; /* Keep text on one line for rectangular shape */
 }
 
 .ai-discovery-hint-permanent:hover {
