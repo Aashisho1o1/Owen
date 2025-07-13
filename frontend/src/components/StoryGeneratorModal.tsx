@@ -113,7 +113,8 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       }
       
       // Make API request to our new endpoint
-      const response = await fetch('/api/story-generator/generate', {
+      const baseURL = import.meta.env.VITE_API_URL || 'https://backend-copy-production-95b5.up.railway.app';
+      const response = await fetch(`${baseURL}/api/story-generator/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
