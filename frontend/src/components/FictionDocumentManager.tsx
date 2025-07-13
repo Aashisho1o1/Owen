@@ -55,7 +55,7 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
   const [error, setError] = useState<string | null>(null);
   
   // View state
-  const [activeView, setActiveView] = useState<'documents' | 'folders' | 'templates'>('documents');
+  const [activeView, setActiveView] = useState<'documents' | 'folders' | 'templates' | 'app-map'>('documents');
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -312,6 +312,12 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
         >
           📋 Templates
         </button>
+        <button 
+          className={`nav-btn ${activeView === 'app-map' ? 'active' : ''}`}
+          onClick={() => setActiveView('app-map')}
+        >
+          🗺️ App Map
+        </button>
       </div>
 
       <div className="manager-controls">
@@ -471,6 +477,66 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
                 </div>
               ));
             })()}
+          </div>
+        )}
+
+        {activeView === 'app-map' && (
+          <div className="app-map-view">
+            <div className="app-map-content">
+              <div className="app-map-header">
+                <h3>🗺️ App Navigation Guide</h3>
+                <p>Learn how to make the most of Owen AI Writer</p>
+              </div>
+              
+              <div className="app-map-sections">
+                <div className="app-map-section">
+                  <h4>📝 Quick Start Guide</h4>
+                  <ul>
+                    <li><strong>Start Writing:</strong> Just click in the editor and start typing</li>
+                    <li><strong>Get AI Help:</strong> Highlight any text and get instant assistance</li>
+                    <li><strong>Generate Stories:</strong> Use the Story Generator for viral micro-fiction</li>
+                    <li><strong>Chat with AI:</strong> Click "Show AI" for writing guidance</li>
+                  </ul>
+                </div>
+                
+                <div className="app-map-section">
+                  <h4>✨ Key Features</h4>
+                  <ul>
+                    <li><strong>Story Generator:</strong> Create viral micro-stories for social media</li>
+                    <li><strong>AI Writing Assistant:</strong> Get real-time feedback and suggestions</li>
+                    <li><strong>Document Manager:</strong> Organize your writing projects</li>
+                    <li><strong>Auto-Save:</strong> Your work is automatically saved</li>
+                  </ul>
+                </div>
+                
+                <div className="app-map-section">
+                  <h4>🚀 Pro Tips</h4>
+                  <ul>
+                    <li><strong>Highlight for Help:</strong> Select text to get specific AI assistance</li>
+                    <li><strong>Share Stories:</strong> Generated stories come with easy sharing options</li>
+                    <li><strong>Use Templates:</strong> Start with pre-made fiction templates</li>
+                    <li><strong>Organize with Folders:</strong> Keep your projects structured</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="app-map-actions">
+                <button 
+                  className="app-map-button primary"
+                  onClick={() => {
+                    window.open('https://drive.google.com/file/d/1ab8nrRNUbZNAYsMThGVp9we3CapHMjfB/view?usp=sharing', '_blank');
+                  }}
+                >
+                  📖 View Full User Guide
+                </button>
+                <button 
+                  className="app-map-button secondary"
+                  onClick={() => setActiveView('documents')}
+                >
+                  📄 Go to Documents
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

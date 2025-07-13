@@ -45,7 +45,7 @@ export const WritingWorkspace: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const [documentTitle, setDocumentTitle] = useState('Untitled Document');
+  const [documentTitle, setDocumentTitle] = useState('untitled doc');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   
@@ -66,13 +66,13 @@ export const WritingWorkspace: React.FC = () => {
         
         if (isAuthenticated) {
           // Create a new document for authenticated users
-          const newDoc = await createDocument('Untitled Document');
+          const newDoc = await createDocument('untitled doc');
           setCurrentDocument(newDoc);
           setDocumentTitle(newDoc.title);
           setEditorContent(newDoc.content || '');
         } else {
           // Guest mode - just set up local state
-          setDocumentTitle('Untitled Document');
+          setDocumentTitle('untitled doc');
           setEditorContent('');
         }
         
@@ -80,7 +80,7 @@ export const WritingWorkspace: React.FC = () => {
       } catch (error) {
         console.error('Error initializing document:', error);
         // Fallback to guest mode
-        setDocumentTitle('Untitled Document');
+        setDocumentTitle('untitled doc');
         setEditorContent('');
         setIsInitialized(true);
       } finally {
@@ -196,10 +196,8 @@ export const WritingWorkspace: React.FC = () => {
   // Remove auto-hide functionality for AI hint - keep it permanent
   // No useEffect needed for hiding the hint
 
-  const handleAppMapClick = () => {
-    // Owen Writer User Guide - App Map
-    window.open('https://drive.google.com/file/d/1ab8nrRNUbZNAYsMThGVp9we3CapHMjfB/view?usp=sharing', '_blank');
-  };
+  // App Map functionality moved to Home section - remove from header
+  // This will be accessible through the Home button for better organization
 
   if (isLoading) {
     return (
@@ -214,35 +212,47 @@ export const WritingWorkspace: React.FC = () => {
 
   return (
     <div className="writing-workspace">
-      {/* Simplified Header - MVP Version */}
+      {/* Simplified Header - MVP Version with Viral-Focused Priority */}
       <div className="workspace-header">
-        {/* Header Controls Container - Side by side buttons - NOW ON THE LEFT */}
+        {/* Header Controls Container - Reordered for viral growth */}
         <div className="header-buttons-container">
-          {/* App Map Button - Using existing nav-action-button pattern */}
+          {/* Story Generator Button - PRIMARY POSITION for viral content creation */}
           <button
-            className="nav-action-button"
-            onClick={handleAppMapClick}
-            type="button"
-            aria-label="Open app navigation guide"
-            title="App Map - Navigation Guide"
-          >
-            <span className="nav-action-icon" aria-hidden="true">🗺️</span>
-            <span className="nav-action-text">App Map</span>
-          </button>
-
-          {/* Story Generator Button - NEW FEATURE */}
-          <button
-            className="nav-action-button"
+            className="nav-action-button primary"
             onClick={() => setShowStoryGenerator(true)}
             type="button"
             aria-label="Generate AI story"
-            title="AI Story Generator"
+            title="AI Story Generator - Create viral micro-stories"
           >
             <span className="nav-action-icon" aria-hidden="true">✨</span>
             <span className="nav-action-text">Story Generator</span>
           </button>
 
-          {/* Auth Button - Sign In or Profile */}
+          {/* Chat Toggle Button - SECONDARY POSITION for AI assistance */}
+          <button
+            onClick={toggleChat}
+            className={`nav-action-button ${isChatVisible ? 'active' : ''}`}
+            title={isChatVisible ? 'Hide AI Assistant' : 'Show AI Assistant'}
+          >
+            <span className="nav-action-icon">
+              {isChatVisible ? '💬' : '🤖'}
+            </span>
+            <span className="nav-action-text">
+              {isChatVisible ? 'Hide AI' : 'Show AI'}
+            </span>
+          </button>
+
+          {/* Home Button - THIRD POSITION for secondary features */}
+          <button
+            onClick={() => setShowDocumentManager(true)}
+            className="nav-action-button"
+            title="Home - Documents, App Map, and more"
+          >
+            <span className="nav-action-icon" aria-hidden="true">🏠</span>
+            <span className="nav-action-text">Home</span>
+          </button>
+
+          {/* Auth Button - FINAL POSITION for conversion */}
           {isAuthenticated && user ? (
             <button
               onClick={() => setShowProfileModal(true)}
@@ -259,7 +269,7 @@ export const WritingWorkspace: React.FC = () => {
           ) : (
             <button
               onClick={() => setShowAuthModal(true)}
-              className="nav-action-button primary"
+              className="nav-action-button"
               type="button"
               aria-label="Sign in"
               title="Sign In"
@@ -270,30 +280,20 @@ export const WritingWorkspace: React.FC = () => {
           )}
         </div>
         
-        {/* Document Title - NOW IN THE CENTER */}
+        {/* Document Title - Simplified and concise */}
         <div className="title-section">
           <input
             type="text"
             value={documentTitle}
             onChange={(e) => handleTitleChange(e.target.value)}
             className="document-title-input"
-            placeholder="Untitled Document"
+            placeholder="untitled doc"
           />
         </div>
         
-        {/* MVP Controls - Just essentials */}
+        {/* MVP Controls - Streamlined essentials with Copy moved here */}
         <div className="workspace-controls">
-          {/* Document Manager Button */}
-          <button
-            onClick={() => setShowDocumentManager(true)}
-            className="document-manager-btn"
-            title="Open Fiction Document Manager"
-          >
-            <span className="manager-icon">📚</span>
-            <span className="manager-text">Documents</span>
-          </button>
-
-          {/* Copy Button */}
+          {/* Copy Button - Moved from separate section for better organization */}
           <button
             onClick={handleCopyContent}
             className={`copy-content-btn ${copyStatus}`}
@@ -318,20 +318,6 @@ export const WritingWorkspace: React.FC = () => {
               {copyStatus === 'success' && 'Copied!'}
               {copyStatus === 'error' && 'Failed'}
               {copyStatus === 'idle' && 'Copy'}
-            </span>
-          </button>
-
-          {/* Chat Toggle Button */}
-          <button
-            onClick={toggleChat}
-            className={`chat-toggle-btn ${isChatVisible ? 'active' : ''}`}
-            title={isChatVisible ? 'Hide AI Assistant' : 'Show AI Assistant'}
-          >
-            <span className="toggle-icon">
-              {isChatVisible ? '💬' : '🤖'}
-            </span>
-            <span className="toggle-text">
-              {isChatVisible ? 'Hide AI' : 'Show AI'}
             </span>
           </button>
 
@@ -362,9 +348,9 @@ export const WritingWorkspace: React.FC = () => {
               onChange={setEditorContent}
             />
             
-            {/* Permanent AI Discovery Hint - Always visible */}
-            <div className="ai-discovery-hint-permanent">
-              <em>Highlight any text to unlock AI assistance</em>
+            {/* Enhanced AI Discovery Hint - More prominent but not overwhelming */}
+            <div className="ai-discovery-hint-permanent enhanced">
+              💡 Highlight any text for instant AI help
             </div>
           </div>
         </div>

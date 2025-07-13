@@ -149,8 +149,37 @@
   user-select: none;
 }
 
+/* Enhanced AI hint - more prominent but tasteful */
+.ai-discovery-hint-permanent.enhanced {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  border: none;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  max-width: 280px;
+  text-align: center;
+  animation: gentle-pulse 3s ease-in-out infinite;
+}
+
 .ai-discovery-hint-permanent:hover {
   opacity: 0.8;
+}
+
+/* Ensure primary button styling for Story Generator */
+.header-buttons-container .nav-action-button.primary {
+  background: #3b82f6;
+  color: white;
+  border: 2px solid #3b82f6;
+}
+
+.header-buttons-container .nav-action-button.primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  transform: translateY(-1px);
 }
 
 /* Workspace Controls */
