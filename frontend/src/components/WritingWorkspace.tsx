@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import HighlightableEditor from './HighlightableEditor';
 import ChatPane from './ChatPane';
 import { FictionDocumentManager } from './FictionDocumentManager';
+import { StoryGeneratorModal } from './StoryGeneratorModal';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
 import { useChatContext } from '../contexts/ChatContext';
@@ -53,6 +54,9 @@ export const WritingWorkspace: React.FC = () => {
   
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
+  
+  // Story Generator state
+  const [showStoryGenerator, setShowStoryGenerator] = useState(false);
 
   // Initialize document on component mount
   useEffect(() => {
@@ -226,6 +230,18 @@ export const WritingWorkspace: React.FC = () => {
             <span className="nav-action-text">App Map</span>
           </button>
 
+          {/* Story Generator Button - NEW FEATURE */}
+          <button
+            className="nav-action-button"
+            onClick={() => setShowStoryGenerator(true)}
+            type="button"
+            aria-label="Generate AI story"
+            title="AI Story Generator"
+          >
+            <span className="nav-action-icon" aria-hidden="true">✨</span>
+            <span className="nav-action-text">Story Generator</span>
+          </button>
+
           {/* Auth Button - Sign In or Profile */}
           {isAuthenticated && user ? (
             <button
@@ -366,6 +382,14 @@ export const WritingWorkspace: React.FC = () => {
         <FictionDocumentManager
           onDocumentSelect={handleDocumentSelect}
           onClose={() => setShowDocumentManager(false)}
+        />
+      )}
+
+      {/* Story Generator Modal */}
+      {showStoryGenerator && (
+        <StoryGeneratorModal
+          isOpen={showStoryGenerator}
+          onClose={() => setShowStoryGenerator(false)}
         />
       )}
 
