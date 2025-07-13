@@ -162,98 +162,66 @@
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   max-width: 280px;
   text-align: center;
-  animation: gentle-pulse 3s ease-in-out infinite;
 }
 
-.ai-discovery-hint-permanent:hover {
-  opacity: 0.8;
+/* Bottom Controls Container - AI Hint + Copy Button */
+.bottom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-/* Ensure primary button styling for Story Generator */
-.header-buttons-container .nav-action-button.primary {
-  background: #3b82f6;
-  color: white;
-  border: 2px solid #3b82f6;
+/* Copy Button in Bottom Position */
+.copy-content-btn.bottom-copy {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: auto;
 }
 
-.header-buttons-container .nav-action-button.primary:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+.copy-content-btn.bottom-copy:hover:not(:disabled) {
+  background: rgba(229, 231, 235, 0.95) !important;
   transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Workspace Controls */
-.workspace-controls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.chat-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #f3f4f6 !important;
-  color: #374151 !important;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.chat-toggle-btn:hover {
-  background: #e5e7eb !important;
-}
-
-.chat-toggle-btn.active {
-  background: #dbeafe !important;
-  color: #1d4ed8 !important;
-  border-color: #3b82f6;
-}
-
-/* Copy Button Styles - Matching chat toggle design */
-.copy-content-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #f3f4f6 !important;
-  color: #374151 !important;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.copy-content-btn:hover:not(:disabled) {
-  background: #e5e7eb !important;
-}
-
-.copy-content-btn:disabled {
+.copy-content-btn.bottom-copy:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-/* Copy button states */
-.copy-content-btn.copying {
-  background: #fef3c7 !important;
-  color: #92400e !important;
+/* Bottom copy button states */
+.copy-content-btn.bottom-copy.copying {
+  background: rgba(254, 243, 199, 0.95) !important;
+  color: #146414 !important;
   border-color: #f59e0b;
 }
 
-.copy-content-btn.success {
-  background: #d1fae5 !important;
+.copy-content-btn.bottom-copy.success {
+  background: rgba(209, 250, 229, 0.95) !important;
   color: #065f46 !important;
   border-color: #10b981;
 }
 
-.copy-content-btn.error {
-  background: #fee2e2 !important;
+.copy-content-btn.bottom-copy.error {
+  background: rgba(254, 226, 226, 0.95) !important;
   color: #991b1b !important;
   border-color: #ef4444;
 }
@@ -470,6 +438,31 @@
     max-width: 120px;
   }
 
+  /* Bottom controls responsive - stack vertically on mobile */
+  .bottom-controls {
+    bottom: 8px;
+    right: 8px;
+    left: 8px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .ai-discovery-hint-permanent.enhanced {
+    max-width: 200px;
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .copy-content-btn.bottom-copy {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .copy-content-btn.bottom-copy .copy-text {
+    display: none; /* Hide text on mobile, keep icon only */
+  }
+
   .document-title-section {
     max-width: none;
   }
@@ -565,6 +558,28 @@
   /* Hide some text on very small screens to save space */
   .copy-text, .toggle-text, .manager-text {
     display: none;
+  }
+
+  /* Bottom controls for very small screens */
+  .bottom-controls {
+    bottom: 4px;
+    right: 4px;
+    left: 4px;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ai-discovery-hint-permanent.enhanced {
+    max-width: 180px;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .copy-content-btn.bottom-copy {
+    font-size: 10px;
+    padding: 3px 6px;
+    min-width: 32px;
   }
 
   /* Make buttons more compact */
@@ -719,15 +734,8 @@ body.light-theme .highlightable-editor,
 }
 
 .hint-icon {
-  display: inline-block;
-  margin-right: var(--space-2);
-  font-size: 16px;
-  animation: gentle-pulse 2s ease-in-out infinite;
-}
-
-@keyframes gentle-pulse {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  margin-right: 4px;
+  font-size: 12px;
 }
 
 /* =================================================================
@@ -893,5 +901,94 @@ body.light-theme .highlightable-editor,
 }
 
 .ai-discovery-hint-permanent:hover {
-  opacity: 1;
+  opacity: 0.8;
+} 
+
+/* Ensure primary button styling for Story Generator */
+.header-buttons-container .nav-action-button.primary {
+  background: #3b82f6;
+  color: white;
+  border: 2px solid #3b82f6;
+}
+
+.header-buttons-container .nav-action-button.primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Workspace Controls */
+.workspace-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.chat-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-toggle-btn:hover {
+  background: #e5e7eb !important;
+}
+
+.chat-toggle-btn.active {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #3b82f6;
+}
+
+/* Copy Button Styles - For header usage (if needed elsewhere) */
+.copy-content-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-content-btn:hover:not(:disabled) {
+  background: #e5e7eb !important;
+}
+
+.copy-content-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Copy button states */
+.copy-content-btn.copying {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #f59e0b;
+}
+
+.copy-content-btn.success {
+  background: #d1fae5 !important;
+  color: #065f46 !important;
+  border-color: #10b981;
+}
+
+.copy-content-btn.error {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #ef4444;
 } 

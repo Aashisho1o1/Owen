@@ -485,7 +485,20 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
             <div className="app-map-content">
               <div className="app-map-header">
                 <h3>🗺️ App Navigation Guide</h3>
-                <p>Learn how to make the most of Owen AI Writer</p>
+                <p>
+                  <a 
+                    href="https://drive.google.com/file/d/1ab8nrRNUbZNAYsMThGVp9we3CapHMjfB/view?usp=sharing" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      color: '#3b82f6', 
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Click on this link to learn how to navigate Owen in detail
+                  </a>
+                </p>
               </div>
               
               <div className="app-map-sections">
@@ -521,14 +534,6 @@ export const FictionDocumentManager: React.FC<FictionDocumentManagerProps> = ({
               </div>
               
               <div className="app-map-actions">
-                <button 
-                  className="app-map-button primary"
-                  onClick={() => {
-                    window.open('https://drive.google.com/file/d/1ab8nrRNUbZNAYsMThGVp9we3CapHMjfB/view?usp=sharing', '_blank');
-                  }}
-                >
-                  📖 View Full User Guide
-                </button>
                 <button 
                   className="app-map-button secondary"
                   onClick={() => setActiveView('documents')}

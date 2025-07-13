@@ -232,14 +232,10 @@ export const WritingWorkspace: React.FC = () => {
           <button
             onClick={toggleChat}
             className={`nav-action-button ${isChatVisible ? 'active' : ''}`}
-            title={isChatVisible ? 'Hide AI Assistant' : 'Show AI Assistant'}
+            title="Show AI Assistant"
           >
-            <span className="nav-action-icon">
-              {isChatVisible ? '💬' : '🤖'}
-            </span>
-            <span className="nav-action-text">
-              {isChatVisible ? 'Hide AI' : 'Show AI'}
-            </span>
+            <span className="nav-action-icon">🤖</span>
+            <span className="nav-action-text">Show AI</span>
           </button>
 
           {/* Home Button - THIRD POSITION for secondary features */}
@@ -291,35 +287,20 @@ export const WritingWorkspace: React.FC = () => {
           />
         </div>
         
-        {/* MVP Controls - Streamlined essentials with Copy moved here */}
+        {/* MVP Controls - Streamlined essentials without Copy button */}
         <div className="workspace-controls">
-          {/* Copy Button - Moved from separate section for better organization */}
-          <button
-            onClick={handleCopyContent}
-            className={`copy-content-btn ${copyStatus}`}
-            title="Copy document content to clipboard"
-            disabled={copyStatus === 'copying' || !editorContent.trim()}
-            aria-label={`Copy document content to clipboard. ${
-              copyStatus === 'success' ? 'Content copied successfully!' :
-              copyStatus === 'error' ? 'Failed to copy content' :
-              copyStatus === 'copying' ? 'Copying content...' :
-              !editorContent.trim() ? 'No content to copy' :
-              'Copy document content'
-            }`}
-          >
-            <span className="copy-icon" aria-hidden="true">
-              {copyStatus === 'copying' && '⏳'}
-              {copyStatus === 'success' && '✅'}
-              {copyStatus === 'error' && '❌'}
-              {copyStatus === 'idle' && '📋'}
-            </span>
-            <span className="copy-text">
-              {copyStatus === 'copying' && 'Copying...'}
-              {copyStatus === 'success' && 'Copied!'}
-              {copyStatus === 'error' && 'Failed'}
-              {copyStatus === 'idle' && 'Copy'}
-            </span>
-          </button>
+          {/* Hide AI Button - Positioned for better UX proximity to chat */}
+          {isChatVisible && (
+            <button
+              onClick={toggleChat}
+              className="copy-content-btn"
+              title="Hide AI Assistant"
+              aria-label="Hide AI Assistant"
+            >
+              <span className="copy-icon" aria-hidden="true">💬</span>
+              <span className="copy-text">Hide AI</span>
+            </button>
+          )}
 
           {/* Save Status - Only for authenticated users */}
           {isAuthenticated && (
@@ -348,9 +329,39 @@ export const WritingWorkspace: React.FC = () => {
               onChange={setEditorContent}
             />
             
-            {/* Enhanced AI Discovery Hint - More prominent but not overwhelming */}
-            <div className="ai-discovery-hint-permanent enhanced">
-              💡 Highlight any text for instant AI help
+            {/* Enhanced AI Discovery Hint with Copy Button - More prominent but not overwhelming */}
+            <div className="bottom-controls">
+              <div className="ai-discovery-hint-permanent enhanced">
+                💡 Highlight any text for instant AI help
+              </div>
+              
+              {/* Copy Button - Moved to bottom for less header clutter */}
+              <button
+                onClick={handleCopyContent}
+                className={`copy-content-btn bottom-copy ${copyStatus}`}
+                title="Copy document content to clipboard"
+                disabled={copyStatus === 'copying' || !editorContent.trim()}
+                aria-label={`Copy document content to clipboard. ${
+                  copyStatus === 'success' ? 'Content copied successfully!' :
+                  copyStatus === 'error' ? 'Failed to copy content' :
+                  copyStatus === 'copying' ? 'Copying content...' :
+                  !editorContent.trim() ? 'No content to copy' :
+                  'Copy document content'
+                }`}
+              >
+                <span className="copy-icon" aria-hidden="true">
+                  {copyStatus === 'copying' && '⏳'}
+                  {copyStatus === 'success' && '✅'}
+                  {copyStatus === 'error' && '❌'}
+                  {copyStatus === 'idle' && '📋'}
+                </span>
+                <span className="copy-text">
+                  {copyStatus === 'copying' && 'Copying...'}
+                  {copyStatus === 'success' && 'Copied!'}
+                  {copyStatus === 'error' && 'Failed'}
+                  {copyStatus === 'idle' && 'Copy'}
+                </span>
+              </button>
             </div>
           </div>
         </div>
