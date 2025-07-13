@@ -7,50 +7,50 @@ interface StoryGeneratorModalProps {
   onClose: () => void;
 }
 
-// Story generator options - carefully curated for viral potential
+// Story generator options - optimized for viral micro-fiction
 const STORY_SPARKS = [
   "✨ Custom idea",
-  "☕ A barista discovers their coffee shop exists in multiple dimensions",
-  "🚚 Two rival food truck owners get snowed in together overnight", 
-  "📚 A librarian finds books that write themselves based on patron's secrets",
-  "🎭 An actor realizes they're living in someone else's dream",
-  "🌧️ Every time it rains, the same stranger appears at your door",
-  "📱 Your phone starts receiving texts from your future self",
-  "🗝️ A locksmith discovers keys that unlock memories instead of doors",
-  "🎨 A street artist's paintings start coming to life at midnight",
-  "🚂 The last train of the night only appears to people who need to escape"
+  "📱 Your phone shows a text from yourself... from tomorrow",
+  "🚪 Every door you open leads to a different year of your life", 
+  "👁️ You realize everyone has been mouthing your thoughts all day",
+  "⏰ Time stops for everyone except you and one stranger",
+  "🪞 Your reflection starts moving independently", 
+  "💭 You can hear everyone's last thought before they die",
+  "🌙 The moon blinks at you. Then winks.",
+  "🔑 You find a key that unlocks people's deepest secrets",
+  "📞 A payphone rings. The caller knows your name."
 ];
 
 const READER_EMOTIONS = [
-  "Wonder and amazement",
-  "Warm nostalgia", 
-  "Gentle melancholy",
-  "Quiet hope",
-  "Peaceful contentment",
-  "Bittersweet joy",
-  "Thrilling excitement",
-  "Cozy comfort",
-  "Mysterious intrigue",
-  "Heartwarming connection"
+  "Spine-tingling chills",
+  "Heart-racing excitement", 
+  "Mind-bending shock",
+  "Goosebump-inducing awe",
+  "Breath-catching suspense",
+  "Laugh-out-loud delight",
+  "Tear-jerking emotion",
+  "Hair-raising fear",
+  "Jaw-dropping surprise",
+  "Soul-stirring wonder"
 ];
 
-// Reuse existing author personas from ChatHeader for consistency
+// Authors known for punchy, viral-worthy prose perfect for micro-fiction
 const AUTHOR_VIBES = [
   "Ernest Hemingway",
-  "Virginia Woolf",
-  "Maya Angelou", 
-  "Haruki Murakami",
-  "Toni Morrison",
+  "Chuck Palahniuk", 
   "Neil Gaiman",
-  "George Orwell",
-  "J.K. Rowling",
-  "Margaret Atwood"
+  "Ray Bradbury",
+  "Haruki Murakami",
+  "Margaret Atwood",
+  "Edgar Allan Poe",
+  "Gillian Flynn",
+  "Stephen King"
 ];
 
 const STORY_LENGTHS = [
-  "Short (300-500 words)",
-  "Medium (500-800 words)", 
-  "Long (800-1200 words)"
+  "Flash (40-60 words)", 
+  "Micro (60-100 words)",
+  "Mini (100-200 words)"
 ];
 
 interface StoryGenerateRequest {
