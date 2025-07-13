@@ -134,6 +134,38 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
     }
   };
 
+  const handleShareToTwitter = () => {
+    const tweetText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`);
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+    window.open(tweetUrl, '_blank', 'width=550,height=420');
+  };
+
+  const handleShareToBluesky = () => {
+    const postText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`);
+    const blueskyUrl = `https://bsky.app/intent/compose?text=${postText}`;
+    window.open(blueskyUrl, '_blank', 'width=550,height=420');
+  };
+
+  const handleShareToReddit = () => {
+    const postTitle = encodeURIComponent('AI-Generated Micro-Fiction Story');
+    const postText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`);
+    const redditUrl = `https://www.reddit.com/submit?title=${postTitle}&text=${postText}`;
+    window.open(redditUrl, '_blank', 'width=600,height=500');
+  };
+
+  const handleCopyForSharing = async () => {
+    try {
+      setCopyStatus('copying');
+      const shareText = `${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`;
+      await navigator.clipboard.writeText(shareText);
+      setCopyStatus('success');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    } catch (err) {
+      setCopyStatus('error');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    }
+  };
+
   const handleCopyStory = async () => {
     try {
       setCopyStatus('copying');
@@ -425,6 +457,131 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
         }}>
           {generatedStory}
         </pre>
+      </div>
+      
+      {/* Social Media Sharing Section */}
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ 
+          fontSize: '16px', 
+          fontWeight: '600', 
+          color: 'var(--text-primary)', 
+          marginBottom: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          🚀 Share your story
+        </h3>
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          flexWrap: 'wrap',
+          marginBottom: '16px'
+        }}>
+          <button
+            onClick={handleShareToTwitter}
+            style={{
+              padding: '8px 16px',
+              background: '#1da1f2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#0d8bd9'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#1da1f2'}
+          >
+            🐦 Twitter
+          </button>
+          
+          <button
+            onClick={handleShareToBluesky}
+            style={{
+              padding: '8px 16px',
+              background: '#00d4ff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#00b8e6'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#00d4ff'}
+          >
+            🦋 Bluesky
+          </button>
+          
+          <button
+            onClick={handleShareToReddit}
+            style={{
+              padding: '8px 16px',
+              background: '#ff4500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#e03d00'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#ff4500'}
+          >
+            📰 Reddit
+          </button>
+          
+          <button
+            onClick={handleCopyForSharing}
+            disabled={copyStatus === 'copying'}
+            style={{
+              padding: '8px 16px',
+              background: copyStatus === 'success' ? '#10b981' : 
+                         copyStatus === 'error' ? '#ef4444' : 'var(--bg-elevated)',
+              color: copyStatus === 'success' || copyStatus === 'error' ? 'white' : 'var(--text-primary)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: '6px',
+              cursor: copyStatus === 'copying' ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s',
+              opacity: copyStatus === 'copying' ? 0.7 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (copyStatus === 'idle') {
+                e.currentTarget.style.background = 'var(--bg-secondary)';
+                e.currentTarget.style.borderColor = 'var(--accent-color)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (copyStatus === 'idle') {
+                e.currentTarget.style.background = 'var(--bg-elevated)';
+                e.currentTarget.style.borderColor = 'var(--border-medium)';
+              }
+            }}
+          >
+            {copyStatus === 'copying' && '⏳ Copying...'}
+            {copyStatus === 'success' && '✅ Copied!'}
+            {copyStatus === 'error' && '❌ Failed'}
+            {copyStatus === 'idle' && '📋 Copy to Share'}
+          </button>
+        </div>
       </div>
       
       {/* Action Buttons */}

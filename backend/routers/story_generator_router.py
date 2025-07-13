@@ -60,27 +60,31 @@ async def generate_story(
         logger.info(f"Story generation request from user {user_id}: {story_spark[:50]}...")
         
         # Construct the story generation prompt
-        # This prompt is carefully designed to produce engaging, complete stories
-        prompt = f"""Write a complete, engaging short story based on these specifications:
+        # This prompt is designed to create viral, engaging micro-stories that hook users instantly
+        prompt = f"""You are a master of viral micro-fiction. Create an instantly captivating story that will make readers gasp, laugh, or get chills. This needs to hook someone scrolling on their phone in 2 seconds.
 
-STORY CONCEPT: {story_spark}
-TARGET EMOTION: The reader should feel {reader_emotion}
-WRITING STYLE: Write in the style and voice of {author_vibe}
-LENGTH: {story_length}
+🎯 STORY MISSION: {story_spark}
+💫 READER REACTION TARGET: Make them feel {reader_emotion} - but INTENSE and IMMEDIATE
+✍️ VOICE: Channel {author_vibe}'s most compelling, punchy style
+📏 LENGTH: {story_length} - Every word must EARN its place
 
-REQUIREMENTS:
-- Create a complete story with beginning, middle, and end
-- Include a compelling title
-- Develop relatable characters
-- Build to an emotionally satisfying conclusion
-- Evoke {reader_emotion} in the reader through your narrative choices
-- Match the distinctive voice and style of {author_vibe}
-- Keep the length appropriate for {story_length}
+🔥 VIRAL STORY RULES:
+• HOOK in the first 5 words - make it impossible to look away
+• Create an "OH WOW" moment that makes people want to share
+• End with impact - leave them wanting MORE
+• Use vivid, sensory details that pop off the screen
+• Make it feel like a movie trailer in text form
+• Perfect for reading aloud - should sound amazing
+• Create that "I need to show this to someone" feeling
+
+📱 MOBILE-FIRST: Remember, they're reading this on their phone, probably while doing something else. GRAB their attention and don't let go.
+
+🎬 THINK LIKE: A TikTok that went viral, a tweet that got 100k likes, a story people screenshot and send to friends.
 
 Format your response as:
-TITLE: [Your compelling title]
+TITLE: [Punchy, intriguing title that makes people click]
 
-[Your complete story here]"""
+[Your viral micro-story here - every word counts!]"""
 
         # Generate story using existing LLM service
         # We use Google Gemini as it's good for creative writing
