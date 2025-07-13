@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ModalContainer } from './auth/ModalContainer';
+import { apiClient } from '../services/api/client';
 
 interface StoryGeneratorModalProps {
   isOpen: boolean;
@@ -106,39 +107,23 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       }
       
       // Get auth token - following existing auth patterns
-      const token = localStorage.getItem('owen_access_token') || localStorage.getItem('access_token');
-      if (!token) {
-        setError('Please sign in to generate stories.');
-        return;
-      }
+      // const token = localStorage.getItem('owen_access_token') || localStorage.getItem('access_token');
+      // Temporarily disable auth for testing
+      // if (!token) {
+      //   setError('Please sign in to generate stories.');
+      //   return;
+      // }
       
-      // Make API request to our new endpoint
-      const baseURL = import.meta.env.VITE_API_URL || 'https://backend-copy-production-95b5.up.railway.app';
-      const response = await fetch(`${baseURL}/api/story-generator/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          story_spark: finalSpark,
-          reader_emotion: readerEmotion,
-          author_vibe: authorVibe,
-          story_length: storyLength
-        })
+      // Make API request using centralized client (handles auth automatically)
+      const response = await apiClient.post('/api/story-generator/generate', {
+        story_spark: finalSpark,
+        reader_emotion: readerEmotion,
+        author_vibe: authorVibe,
+        story_length: storyLength
       });
       
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Please sign in to generate stories.');
-        } else if (response.status === 429) {
-          throw new Error('Too many requests. Please wait a moment and try again.');
-        } else {
-          throw new Error('Failed to generate story. Please try again.');
-        }
-      }
-      
-      const data: StoryGenerateResponse = await response.json();
+      // Response is already JSON with axios, no need to parse
+      const data: StoryGenerateResponse = response.data;
       setGeneratedStory(data.story);
       
     } catch (err) {
