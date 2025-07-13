@@ -177,54 +177,7 @@
   justify-content: flex-end;
 }
 
-/* Copy Button in Bottom Position */
-.copy-content-btn.bottom-copy {
-  background: rgba(255, 255, 255, 0.95) !important;
-  color: #374151 !important;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: auto;
-}
-
-.copy-content-btn.bottom-copy:hover:not(:disabled) {
-  background: rgba(229, 231, 235, 0.95) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-.copy-content-btn.bottom-copy:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Bottom copy button states */
-.copy-content-btn.bottom-copy.copying {
-  background: rgba(254, 243, 199, 0.95) !important;
-  color: #146414 !important;
-  border-color: #f59e0b;
-}
-
-.copy-content-btn.bottom-copy.success {
-  background: rgba(209, 250, 229, 0.95) !important;
-  color: #065f46 !important;
-  border-color: #10b981;
-}
-
-.copy-content-btn.bottom-copy.error {
-  background: rgba(254, 226, 226, 0.95) !important;
-  color: #991b1b !important;
-  border-color: #ef4444;
-}
+/* Copy button styles removed - functionality removed from interface */
 
 .copy-icon {
   font-size: 1rem;
@@ -288,22 +241,16 @@
   background: #fefefe; /* Very subtle off-white */
   margin: 20px; /* Add margin for breathing room */
   border-radius: 12px; /* Gentle rounded corners */
-  border: 1px solid #eeebe6; /* Warm, subtle border */
+  /* Remove border to eliminate top horizontal line */
   box-shadow: 
     0 4px 6px rgba(0, 0, 0, 0.02),
     0 1px 3px rgba(0, 0, 0, 0.03); /* Very subtle depth */
   overflow: hidden;
 }
 
+/* Remove gradient accent line to eliminate horizontal line confusion */
 .editor-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); /* Subtle gradient accent */
-  opacity: 0.6;
+  display: none;
 }
 
 .highlightable-editor {
@@ -454,14 +401,7 @@
     padding: 6px 12px;
   }
 
-  .copy-content-btn.bottom-copy {
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-
-  .copy-content-btn.bottom-copy .copy-text {
-    display: none; /* Hide text on mobile, keep icon only */
-  }
+  /* Copy button styles removed */
 
   .document-title-section {
     max-width: none;

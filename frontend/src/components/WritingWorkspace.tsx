@@ -50,7 +50,7 @@ export const WritingWorkspace: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   
   // Copy functionality state
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
+
   
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
@@ -148,50 +148,7 @@ export const WritingWorkspace: React.FC = () => {
     setShowDocumentManager(false);
   };
 
-  // Copy document content to clipboard
-  const handleCopyContent = async () => {
-    try {
-      setCopyStatus('copying');
-      
-      // Get plain text content (strip HTML tags if present)
-      // Simple HTML stripping without external library
-      const div = document.createElement('div');
-      div.innerHTML = editorContent;
-      const textContent = (div.textContent || div.innerText || '').trim();
-      
-      if (!textContent) {
-        setCopyStatus('error');
-        // Show a brief message for empty content
-        console.log('No content to copy');
-        setTimeout(() => setCopyStatus('idle'), 2000);
-        return;
-      }
 
-      // Use modern clipboard API with fallback
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(textContent);
-      } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = textContent;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
-        textArea.remove();
-      }
-      
-      setCopyStatus('success');
-      setTimeout(() => setCopyStatus('idle'), 2000);
-    } catch (error) {
-      console.error('Failed to copy content:', error);
-      setCopyStatus('error');
-      setTimeout(() => setCopyStatus('idle'), 2000);
-    }
-  };
 
   // Remove auto-hide functionality for AI hint - keep it permanent
   // No useEffect needed for hiding the hint
@@ -228,17 +185,7 @@ export const WritingWorkspace: React.FC = () => {
             <span className="nav-action-text">Story Generator</span>
           </button>
 
-          {/* Chat Toggle Button - SECONDARY POSITION for AI assistance */}
-          <button
-            onClick={toggleChat}
-            className={`nav-action-button ${isChatVisible ? 'active' : ''}`}
-            title="Show AI Assistant"
-          >
-            <span className="nav-action-icon">🤖</span>
-            <span className="nav-action-text">Show AI</span>
-          </button>
-
-          {/* Home Button - THIRD POSITION for secondary features */}
+          {/* Home Button - SECOND POSITION for secondary features */}
           <button
             onClick={() => setShowDocumentManager(true)}
             className="nav-action-button"
@@ -329,39 +276,11 @@ export const WritingWorkspace: React.FC = () => {
               onChange={setEditorContent}
             />
             
-            {/* Enhanced AI Discovery Hint with Copy Button - More prominent but not overwhelming */}
+            {/* Enhanced AI Discovery Hint - Clean and focused */}
             <div className="bottom-controls">
               <div className="ai-discovery-hint-permanent enhanced">
                 💡 Highlight any text for instant AI help
               </div>
-              
-              {/* Copy Button - Moved to bottom for less header clutter */}
-              <button
-                onClick={handleCopyContent}
-                className={`copy-content-btn bottom-copy ${copyStatus}`}
-                title="Copy document content to clipboard"
-                disabled={copyStatus === 'copying' || !editorContent.trim()}
-                aria-label={`Copy document content to clipboard. ${
-                  copyStatus === 'success' ? 'Content copied successfully!' :
-                  copyStatus === 'error' ? 'Failed to copy content' :
-                  copyStatus === 'copying' ? 'Copying content...' :
-                  !editorContent.trim() ? 'No content to copy' :
-                  'Copy document content'
-                }`}
-              >
-                <span className="copy-icon" aria-hidden="true">
-                  {copyStatus === 'copying' && '⏳'}
-                  {copyStatus === 'success' && '✅'}
-                  {copyStatus === 'error' && '❌'}
-                  {copyStatus === 'idle' && '📋'}
-                </span>
-                <span className="copy-text">
-                  {copyStatus === 'copying' && 'Copying...'}
-                  {copyStatus === 'success' && 'Copied!'}
-                  {copyStatus === 'error' && 'Failed'}
-                  {copyStatus === 'idle' && 'Copy'}
-                </span>
-              </button>
             </div>
           </div>
         </div>
