@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ModalContainer } from './auth/ModalContainer';
-import { apiClient } from '../services/api/client';
+import apiClient from '../services/api/client';
 
 interface StoryGeneratorModalProps {
   isOpen: boolean;
