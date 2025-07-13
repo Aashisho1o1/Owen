@@ -106,7 +106,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       }
       
       // Get auth token - following existing auth patterns
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('owen_access_token') || localStorage.getItem('access_token');
       if (!token) {
         setError('Please sign in to generate stories.');
         return;
