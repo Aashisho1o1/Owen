@@ -205,14 +205,18 @@
   min-width: 0;
   background: transparent;
   transition: all 0.3s ease;
+  /* Add right padding for symmetrical spacing */
+  padding-right: 32px; /* Match the left padding when chat is hidden */
 }
 
 .editor-section.with-chat {
   width: 60%;
+  padding-right: 16px; /* Reduced right padding when chat is visible */
 }
 
 .editor-section.without-chat {
   width: 100%;
+  padding-right: 32px; /* Full right padding when chat is hidden for symmetry */
 }
 
 .chat-section {
@@ -434,6 +438,7 @@
     width: 50% !important; /* Half width for side-by-side */
     height: 100%;
     border-right: 1px solid #e8e6e3;
+    padding-right: 16px; /* Reduced right padding for mobile */
   }
 
   .chat-section {
@@ -482,6 +487,11 @@
 
   .editor-section, .chat-section {
     width: 50% !important; /* Keep 50/50 split */
+  }
+
+  /* Add right padding for editor section on small screens */
+  .editor-section {
+    padding-right: 8px; /* Minimal right padding for very small screens */
   }
 
   .editor-container {
