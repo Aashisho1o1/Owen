@@ -33,7 +33,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const [message, setMessage] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {

@@ -98,8 +98,8 @@
 .highlightable-editor .ProseMirror.is-empty:focus::after {
   content: '|';
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 28px;  /* Match container's left padding (24px + 4px visual adjustment) */
+  top: 24px;   /* Match container's top padding */
   color: #2563eb;
   font-weight: normal;
   animation: typewriterBlink 1s infinite;
@@ -687,6 +687,12 @@
   .highlightable-editor {
     padding: 16px 20px;
     font-size: 15px;
+  }
+  
+  /* Adjust cursor position for mobile padding */
+  .highlightable-editor .ProseMirror.is-empty:focus::after {
+    left: 20px;  /* Match mobile container's left padding */
+    top: 16px;   /* Match mobile container's top padding */
   }
 }
 

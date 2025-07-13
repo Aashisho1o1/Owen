@@ -14,7 +14,7 @@ import './styles/chat-input-width-fix.css';
 
 // Light theme overrides for MVP
 const lightThemeOverrides = `
-  :root {
+:root {
     --background-primary: #fefefe;
     --background-secondary: #f8f9fa;
     --background-tertiary: #ffffff;
@@ -31,18 +31,18 @@ const lightThemeOverrides = `
   body {
     background: var(--background-primary);
     color: var(--text-primary);
-  }
-  
+}
+
   .writing-workspace {
     background: var(--background-primary);
-  }
-  
+}
+
   .workspace-header {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
-  }
-  
+}
+
   .highlightable-editor {
     background: var(--background-tertiary);
     color: var(--text-primary);
@@ -59,12 +59,12 @@ const AppContent: React.FC = () => {
   return (
       <div className="app-layout app-layout-mvp">
         <style dangerouslySetInnerHTML={{ __html: lightThemeOverrides }} />
-        <div className="app-main app-main-mvp">
-          <Routes>
-            <Route path="/" element={<WritingWorkspace />} />
-            <Route path="/documents" element={<DocumentsPage />} />
+      <div className="app-main app-main-mvp">
+        <Routes>
+          <Route path="/" element={<WritingWorkspace />} />
+          <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/editor/:documentId" element={<DocumentEditor />} />
-          </Routes>
+        </Routes>
         </div>
       </div>
   );
@@ -73,21 +73,21 @@ const AppContent: React.FC = () => {
 // Minimal App Component
 const App: React.FC = () => {
   return (
-      <Router>
-        <ErrorBoundary>
+    <Router>
+      <ErrorBoundary>
           <AuthProvider>
             <ThemeProvider>
               <UIProvider>
                 <DocumentThemeProvider>
-                  <AppProvider>
-                    <AppContent />
-                  </AppProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
                 </DocumentThemeProvider>
               </UIProvider>
             </ThemeProvider>
           </AuthProvider>
-        </ErrorBoundary>
-      </Router>
+      </ErrorBoundary>
+    </Router>
   );
 };
 
