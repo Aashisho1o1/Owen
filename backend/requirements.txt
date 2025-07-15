@@ -55,4 +55,4 @@ sentencepiece>=0.1.99
 einops>=0.7.0
 huggingface-hub>=0.20.0
 # For TinyStyler's mutual implication score
-mutual-implication-score>=0.1.0
+mutual-implication-score==0.0.0
