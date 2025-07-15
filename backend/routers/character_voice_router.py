@@ -25,9 +25,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
 
 # Initialize services
-character_voice_service = CharacterVoiceService()
+character_voice_service = None  # Will be initialized lazily
 rate_limiter = SimpleRateLimiter()
 security_logger = SecurityLogger()
+
+def get_character_voice_service():
+    """Get character voice service instance with lazy initialization"""
+    global character_voice_service
+    if character_voice_service is None:
+        character_voice_service = CharacterVoiceService()
+    return character_voice_service
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
 async def analyze_voice_consistency(
@@ -67,7 +74,7 @@ async def analyze_voice_consistency(
         )
         
         # Perform voice consistency analysis
-        results = await character_voice_service.analyze_text_for_voice_consistency(
+        results = await get_character_voice_service().analyze_text_for_voice_consistency(
             text=request.text,
             user_id=user_id,
             document_id=request.document_id
@@ -145,7 +152,7 @@ async def get_character_profiles(
             )
         
         # Get character profiles
-        profiles_data = await character_voice_service.get_character_profiles(user_id)
+        profiles_data = await get_character_voice_service().get_character_profiles(user_id)
         
         # Convert to API response format
         profiles = []
@@ -204,7 +211,7 @@ async def delete_character_profile(
             )
         
         # Delete character profile
-        success = await character_voice_service.delete_character_profile(
+        success = await get_character_voice_service().delete_character_profile(
             user_id=user_id,
             character_name=character_name.strip()
         )
@@ -266,12 +273,12 @@ async def reset_all_character_profiles(
             )
         
         # Get all profiles first
-        profiles_data = await character_voice_service.get_character_profiles(user_id)
+        profiles_data = await get_character_voice_service().get_character_profiles(user_id)
         
         # Delete each profile
         deleted_count = 0
         for profile_data in profiles_data:
-            success = await character_voice_service.delete_character_profile(
+            success = await get_character_voice_service().delete_character_profile(
                 user_id=user_id,
                 character_name=profile_data['character_name']
             )
@@ -319,7 +326,7 @@ async def character_voice_health():
     database connectivity, AI model availability, and service configuration.
     """
     try:
-        health_status = await character_voice_service.get_service_health()
+        health_status = await get_character_voice_service().get_service_health()
         
         status_code = 200 if health_status['status'] == 'healthy' else 503
         
@@ -365,14 +372,14 @@ async def get_voice_analysis_stats(
             )
         
         # Get character profiles
-        profiles_data = await character_voice_service.get_character_profiles(user_id)
+        profiles_data = await get_character_voice_service().get_character_profiles(user_id)
         
         # Calculate statistics
         total_characters = len(profiles_data)
         total_samples = sum(profile['sample_count'] for profile in profiles_data)
         
         # Get service health for additional stats
-        health_status = await character_voice_service.get_service_health()
+        health_status = await get_character_voice_service().get_service_health()
         
         stats = {
             "user_id": user_id,
