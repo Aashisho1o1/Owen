@@ -330,6 +330,21 @@ class PostgreSQLService:
                 correction_type VARCHAR(50) NOT NULL,
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
+            ''',
+            
+            # 8. CHARACTER VOICE PROFILES - For voice consistency detection with TinyStyler
+            '''
+            CREATE TABLE IF NOT EXISTS character_voice_profiles (
+                character_id VARCHAR(64) PRIMARY KEY,  -- MD5 hash of user_id + character_name
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                character_name VARCHAR(100) NOT NULL,
+                dialogue_samples JSONB NOT NULL DEFAULT '[]'::jsonb,  -- Array of dialogue samples
+                voice_embedding JSONB NOT NULL,  -- TinyStyler style embedding vector for voice similarity
+                voice_characteristics JSONB DEFAULT '{}'::jsonb,  -- Character voice metadata
+                sample_count INTEGER DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            )
             '''
         ]
         
@@ -360,7 +375,13 @@ class PostgreSQLService:
             
             # Preference indexes
             'CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id)'
+            'CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id)',
+            
+            # Character voice profiles indexes
+            'CREATE INDEX IF NOT EXISTS idx_character_voice_profiles_user_id ON character_voice_profiles(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_character_voice_profiles_character_name ON character_voice_profiles(character_name)',
+            'CREATE INDEX IF NOT EXISTS idx_character_voice_profiles_sample_count ON character_voice_profiles(sample_count)',
+            'CREATE INDEX IF NOT EXISTS idx_character_voice_profiles_last_updated ON character_voice_profiles(last_updated)'
         ]
         
         # Migration queries to add new columns to existing documents table

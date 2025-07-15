@@ -69,6 +69,20 @@ export {
   highlightSearchMatches
 } from './search';
 
+// === CHARACTER VOICE CONSISTENCY SERVICES ===
+export {
+  analyzeVoiceConsistency,
+  getCharacterProfiles,
+  deleteCharacterProfile,
+  resetAllCharacterProfiles,
+  getVoiceAnalysisStats,
+  checkVoiceServiceHealth,
+  formatVoiceConsistencyFeedback,
+  hasDialogue,
+  analyzeVoiceConsistencyDebounced,
+  getVoiceConsistencyStatus
+} from './character-voice';
+
 // === HEALTH CHECK ===
 import apiClient from './client';
 

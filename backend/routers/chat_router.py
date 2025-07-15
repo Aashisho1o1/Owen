@@ -20,12 +20,14 @@ from models.schemas import (
 )
 from services.llm_service import LLMService
 from services.database import db_service
+from services.character_voice_service import CharacterVoiceService
 
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
 
 # Initialize services
 llm_service = LLMService()
+character_voice_service = CharacterVoiceService()
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -254,6 +256,34 @@ async def chat(
                     user_feedback=validated_feedback,
                     correction_type="general"  # Could be enhanced to detect type
                 )
+            
+            # VOICE CONSISTENCY ANALYSIS: Check if editor text contains dialogue
+            voice_analysis_results = []
+            if validated_editor_text and len(validated_editor_text) > 100:
+                try:
+                    # Analyze editor text for voice consistency
+                    voice_results = await character_voice_service.analyze_text_for_voice_consistency(
+                        text=validated_editor_text,
+                        user_id=user_id
+                    )
+                    
+                    # Add voice consistency feedback to response if issues found
+                    if voice_results:
+                        inconsistent_characters = [r for r in voice_results if not r.is_consistent]
+                        if inconsistent_characters:
+                            voice_feedback = f"\n\n💬 **Voice Consistency Note:** I noticed some potential voice inconsistencies in your writing:\n"
+                            for result in inconsistent_characters[:2]:  # Limit to 2 for brevity
+                                voice_feedback += f"• **{result.character_name}**: {result.explanation}\n"
+                            
+                            # Add voice feedback to the response
+                            sanitized_response += voice_feedback
+                            
+                            logger.info(f"🎭 Voice consistency analysis: {len(inconsistent_characters)} inconsistencies found for user {user_id}")
+                    
+                except Exception as voice_error:
+                    logger.error(f"❌ Voice consistency analysis error: {voice_error}")
+                    # Don't fail the chat if voice analysis fails
+                    pass
             
             logger.info(f"🎉 Chat response generated successfully for user {user_id}")
             return ChatResponse(

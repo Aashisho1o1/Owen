@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 import re
 from pydantic import field_validator
 from enum import Enum
+from datetime import datetime
 
 # === ENUMS ===
 class DocumentType(str, Enum):
@@ -274,4 +275,69 @@ class GrammarCheckResponse(BaseModel):
     processing_time_ms: int
     cached: bool
     overall_score: Optional[int] = None
-    style_notes: Optional[str] = None 
+    style_notes: Optional[str] = None
+
+# === CHARACTER PERSONA SCHEMAS ===
+class CharacterPersona(BaseModel):
+    """Schema for character persona data."""
+    id: str
+    name: str
+    description: str
+    embedding: List[float]
+    author_id: int
+    created_at: datetime
+
+# === CHARACTER VOICE CONSISTENCY SCHEMAS ===
+class VoiceConsistencyRequest(BaseModel):
+    """Request for character voice consistency analysis"""
+    text: str = Field(..., min_length=50, max_length=10000, description="Text to analyze for voice consistency")
+    document_id: Optional[str] = Field(None, description="Optional document ID for context")
+    
+    @field_validator('text')
+    @classmethod
+    def validate_text(cls, v):
+        if not v.strip():
+            raise ValueError('Text cannot be empty')
+        return v
+
+class VoiceConsistencyResult(BaseModel):
+    """Result of character voice consistency analysis"""
+    is_consistent: bool = Field(..., description="Whether the dialogue is consistent with character voice")
+    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence in the analysis")
+    similarity_score: float = Field(..., ge=0.0, le=1.0, description="Embedding similarity score")
+    character_name: str = Field(..., description="Name of the character analyzed")
+    flagged_text: str = Field(..., description="The specific dialogue text flagged")
+    explanation: str = Field(..., description="Explanation of the consistency analysis")
+    suggestions: List[str] = Field(default_factory=list, description="Suggestions for improvement")
+    analysis_method: str = Field(..., description="Method used for analysis: 'embedding_only' or 'llm_validated'")
+
+class VoiceConsistencyResponse(BaseModel):
+    """Response containing voice consistency analysis results"""
+    results: List[VoiceConsistencyResult] = Field(default_factory=list, description="List of consistency analysis results")
+    characters_analyzed: int = Field(..., description="Number of characters analyzed")
+    dialogue_segments_found: int = Field(..., description="Number of dialogue segments found")
+    processing_time_ms: int = Field(..., description="Processing time in milliseconds")
+
+class CharacterVoiceProfile(BaseModel):
+    """Character voice profile information"""
+    character_id: str = Field(..., description="Unique character identifier")
+    character_name: str = Field(..., description="Character name")
+    sample_count: int = Field(..., description="Number of dialogue samples")
+    last_updated: datetime = Field(..., description="When the profile was last updated")
+    voice_characteristics: Dict[str, Any] = Field(default_factory=dict, description="Character voice metadata")
+
+class CharacterVoiceProfilesResponse(BaseModel):
+    """Response containing user's character voice profiles"""
+    profiles: List[CharacterVoiceProfile] = Field(default_factory=list, description="List of character profiles")
+    total_characters: int = Field(..., description="Total number of characters")
+
+class DeleteCharacterProfileRequest(BaseModel):
+    """Request to delete a character profile"""
+    character_name: str = Field(..., min_length=1, max_length=100, description="Name of character to delete")
+    
+    @field_validator('character_name')
+    @classmethod
+    def validate_character_name(cls, v):
+        if not v.strip():
+            raise ValueError('Character name cannot be empty')
+        return v.strip() 

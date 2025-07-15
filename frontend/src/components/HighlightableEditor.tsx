@@ -15,6 +15,11 @@ import { useEditorContext } from '../contexts/EditorContext';
 import { useChatContext } from '../contexts/ChatContext';
 import '../styles/highlightable-editor.css';
 import { createPortal } from 'react-dom';
+import { 
+  analyzeVoiceConsistencyDebounced, 
+  hasDialogue,
+  VoiceConsistencyResult 
+} from '../services/api/character-voice';
 
 interface HighlightableEditorProps {
   content?: string;
@@ -92,6 +97,20 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     isChatVisible, 
     openChatWithText 
   } = useChatContext();
+  
+  // Voice consistency analysis
+  const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
+  
+  // Analyze voice consistency when content changes
+  useEffect(() => {
+    if (contentProp && hasDialogue(contentProp)) {
+      analyzeVoiceConsistencyDebounced(contentProp, (results) => {
+        setVoiceConsistencyResults(results);
+      });
+    } else {
+      setVoiceConsistencyResults([]);
+    }
+  }, [contentProp]);
 
   // Fallback text selection detection using DOM selection
   const fallbackTextSelection = useCallback((selectedText: string) => {
@@ -660,6 +679,39 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         </button>,
         document.body
       )}
+      
+      {/* Voice consistency indicator */}
+      {(() => {
+        const inconsistentResults = voiceConsistencyResults.filter(r => !r.is_consistent);
+        const hasVoiceIssues = inconsistentResults.length > 0;
+        
+        if (!hasVoiceIssues) return null;
+        
+        return (
+          <div className="voice-consistency-indicator" style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: '#ff6b35',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            zIndex: 1000,
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span>💬</span>
+            <span>
+              {inconsistentResults.length === 1 
+                ? `1 character voice issue` 
+                : `${inconsistentResults.length} character voice issues`}
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 };

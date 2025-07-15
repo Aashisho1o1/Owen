@@ -30,6 +30,7 @@ from routers.chat_router import router as chat_router
 from routers.grammar_router import router as grammar_router
 from routers.indexing_router import router as indexing_router
 from routers.story_generator_router import router as story_generator_router
+from routers.character_voice_router import router as character_voice_router
 
 # Import security middleware
 from middleware.security_middleware import SecurityMiddleware
@@ -235,6 +236,7 @@ app.include_router(chat_router)
 app.include_router(grammar_router)
 app.include_router(indexing_router)
 app.include_router(story_generator_router)
+app.include_router(character_voice_router)
 
 # Explicit CORS preflight handler for all routes
 @app.options("/{path:path}")

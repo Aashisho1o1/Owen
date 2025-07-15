@@ -9,6 +9,7 @@ import { useChatContext } from '../contexts/ChatContext';
 import { useEditorContext } from '../contexts/EditorContext';
 import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
+// Voice consistency analysis is now handled in HighlightableEditor
 import './WritingWorkspace.css';
 
 /**
@@ -47,6 +48,8 @@ export const WritingWorkspace: React.FC = () => {
   const [documentTitle, setDocumentTitle] = useState('untitled doc');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Voice consistency analysis moved to HighlightableEditor component
   
   // Copy functionality state
 
