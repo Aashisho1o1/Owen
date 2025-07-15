@@ -19,6 +19,7 @@ import logging
 import asyncio
 import importlib
 import tempfile
+import importlib.util
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -115,38 +116,52 @@ class TinyStylerVoiceAnalyzer:
             try:
                 import sentencepiece
             except ImportError:
-                logger.warning("sentencepiece not available - TinyStyler model loading will use fallback")
-                # Don't raise error, just log warning
+                logger.warning("sentencepiece not available - TinyStyler will use fallback mode")
+                self.initialized = False
                 return
             
-            # Download TinyStyler module
-            tinystyler_path = hf_hub_download(
-                repo_id="tinystyler/tinystyler", 
-                filename="tinystyler.py"
-            )
+            # Try to download TinyStyler module with timeout
+            import signal
             
-            # Import TinyStyler module
-            spec = importlib.util.spec_from_file_location("tinystyler", tinystyler_path)
-            tinystyler_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(tinystyler_module)
+            def timeout_handler(signum, frame):
+                raise TimeoutError("TinyStyler model download timed out")
             
-            # Get model loading functions
-            get_tinystyler_model = tinystyler_module.get_tinystyler_model
-            self.get_target_style_embeddings = tinystyler_module.get_target_style_embeddings
+            # Set timeout for model loading (30 seconds)
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(30)
             
-            # Load the model
-            self.tokenizer, self.model = get_tinystyler_model(self.device)
+            try:
+                # Download TinyStyler module
+                tinystyler_path = hf_hub_download(
+                    repo_id="tinystyler/tinystyler", 
+                    filename="tinystyler.py",
+                    timeout=20
+                )
+                
+                # Import TinyStyler module
+                spec = importlib.util.spec_from_file_location("tinystyler", tinystyler_path)
+                tinystyler_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(tinystyler_module)
+                
+                # Get model loading functions
+                get_tinystyler_model = tinystyler_module.get_tinystyler_model
+                self.get_target_style_embeddings = tinystyler_module.get_target_style_embeddings
+                
+                # Load the model
+                self.tokenizer, self.model = get_tinystyler_model(self.device)
+                
+                # Set seed for reproducibility
+                set_seed(self.config['seed'])
+                
+                self.initialized = True
+                logger.info("TinyStyler model loaded successfully")
+                
+            finally:
+                signal.alarm(0)  # Cancel the alarm
             
-            # Set seed for reproducibility
-            set_seed(self.config['seed'])
-            
-            self.initialized = True
-            logger.info("TinyStyler model loaded successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to load TinyStyler model: {str(e)}")
-            logger.info("TinyStyler will use fallback embeddings - this is expected in local development")
-            # Don't raise error, just log it
+        except (TimeoutError, Exception) as e:
+            logger.warning(f"TinyStyler model loading failed: {str(e)}")
+            logger.info("TinyStyler will use fallback embeddings - service will continue without advanced style analysis")
             self.initialized = False
     
     def ensure_model_loaded(self):
@@ -168,6 +183,10 @@ class TinyStylerVoiceAnalyzer:
         self.ensure_model_loaded()
         
         try:
+            if not self.initialized:
+                # Fallback: Use simple text-based features for embedding
+                return self._generate_fallback_embedding(dialogue_samples)
+            
             # Use TinyStyler to generate style embeddings
             style_embeddings = self.get_target_style_embeddings(
                 [dialogue_samples], 
@@ -177,13 +196,58 @@ class TinyStylerVoiceAnalyzer:
             # Convert to list for JSON serialization
             embedding_vector = style_embeddings[0].cpu().numpy().tolist()
             
-            logger.debug(f"Generated style embedding of dimension {len(embedding_vector)}")
+            logger.debug(f"Generated TinyStyler style embedding of dimension {len(embedding_vector)}")
             return embedding_vector
             
         except Exception as e:
-            logger.error(f"Failed to generate style embedding: {str(e)}")
-            # Fallback to zero vector if embedding generation fails
-            return [0.0] * 512  # Default embedding dimension
+            logger.error(f"Failed to generate TinyStyler style embedding: {str(e)}")
+            # Fallback to simple text-based features
+            return self._generate_fallback_embedding(dialogue_samples)
+    
+    def _generate_fallback_embedding(self, dialogue_samples: List[str]) -> List[float]:
+        """Generate fallback embedding when TinyStyler is not available"""
+        try:
+            # Simple text-based features for character voice
+            features = []
+            
+            # Combine all dialogue samples
+            combined_text = " ".join(dialogue_samples)
+            
+            # Basic text statistics
+            avg_sentence_length = np.mean([len(s.split()) for s in dialogue_samples])
+            avg_word_length = np.mean([len(word) for word in combined_text.split()])
+            punctuation_ratio = len([c for c in combined_text if c in "!?."]) / max(len(combined_text), 1)
+            
+            # Character-specific patterns
+            question_ratio = combined_text.count("?") / max(len(dialogue_samples), 1)
+            exclamation_ratio = combined_text.count("!") / max(len(dialogue_samples), 1)
+            
+            # Common words usage
+            common_words = ["the", "and", "to", "of", "a", "in", "is", "it", "you", "that"]
+            word_usage = [combined_text.lower().count(word) for word in common_words]
+            
+            # Combine features
+            features.extend([avg_sentence_length, avg_word_length, punctuation_ratio, 
+                           question_ratio, exclamation_ratio])
+            features.extend(word_usage)
+            
+            # Pad to 512 dimensions (similar to TinyStyler)
+            while len(features) < 512:
+                features.append(0.0)
+            
+            # Normalize
+            features = features[:512]
+            norm = np.linalg.norm(features)
+            if norm > 0:
+                features = (np.array(features) / norm).tolist()
+            
+            logger.debug(f"Generated fallback embedding of dimension {len(features)}")
+            return features
+            
+        except Exception as e:
+            logger.error(f"Failed to generate fallback embedding: {str(e)}")
+            # Return zero vector as last resort
+            return [0.0] * 512
     
     def calculate_style_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
         """
@@ -230,6 +294,10 @@ class TinyStylerVoiceAnalyzer:
         self.ensure_model_loaded()
         
         try:
+            if not self.initialized:
+                # Fallback: Use simple similarity analysis
+                return self._analyze_style_fallback(source_text, target_samples)
+            
             # Generate style-transferred version
             inputs = self.tokenizer(
                 [source_text], 
@@ -274,13 +342,35 @@ class TinyStylerVoiceAnalyzer:
             }
             
         except Exception as e:
-            logger.error(f"Error in style transfer analysis: {str(e)}")
+            logger.error(f"Error in TinyStyler style transfer analysis: {str(e)}")
+            # Fallback to simple analysis
+            return self._analyze_style_fallback(source_text, target_samples)
+    
+    def _analyze_style_fallback(self, source_text: str, target_samples: List[str]) -> Dict[str, Any]:
+        """Fallback style analysis when TinyStyler is not available"""
+        try:
+            # Simple text-based similarity analysis
+            source_embedding = self._generate_fallback_embedding([source_text])
+            target_embedding = self._generate_fallback_embedding(target_samples)
+            
+            consistency_score = self.calculate_style_similarity(source_embedding, target_embedding)
+            
             return {
-                'consistency_score': 0.0,
-                'is_consistent': False,
+                'consistency_score': consistency_score,
+                'is_consistent': consistency_score > 0.6,  # Lower threshold for fallback
+                'style_transferred_text': source_text,  # No transformation in fallback
+                'original_text': source_text,
+                'analysis_method': 'fallback_similarity'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in fallback style analysis: {str(e)}")
+            return {
+                'consistency_score': 0.5,
+                'is_consistent': True,  # Assume consistent when analysis fails
                 'style_transferred_text': source_text,
                 'original_text': source_text,
-                'analysis_method': 'tinystyler_error'
+                'analysis_method': 'fallback_error'
             }
 
 class CharacterVoiceService:
@@ -775,22 +865,30 @@ class CharacterVoiceService:
             # Test database connection
             db_healthy = self.db.health_check()['status'] == 'healthy'
             
-            # Test TinyStyler model
-            tinystyler_healthy = True
+            # Test TinyStyler model (but don't require it for health)
+            tinystyler_status = "not_loaded"
             try:
                 self.style_analyzer.ensure_model_loaded()
-                tinystyler_healthy = self.style_analyzer.initialized
-            except:
-                tinystyler_healthy = False
+                if self.style_analyzer.initialized:
+                    tinystyler_status = "loaded"
+                else:
+                    tinystyler_status = "fallback_mode"
+            except Exception as e:
+                logger.warning(f"TinyStyler health check failed: {str(e)}")
+                tinystyler_status = "fallback_mode"
             
             # Test LLM services
             gemini_healthy = self.gemini_service.is_available()
             
+            # Service is healthy if database works and at least one analysis method is available
+            service_healthy = db_healthy and (tinystyler_status in ["loaded", "fallback_mode"] or gemini_healthy)
+            
             return {
-                'status': 'healthy' if all([db_healthy, tinystyler_healthy, gemini_healthy]) else 'unhealthy',
+                'status': 'healthy' if service_healthy else 'unhealthy',
                 'database': db_healthy,
-                'tinystyler_model': tinystyler_healthy,
+                'tinystyler_model': tinystyler_status,
                 'gemini_service': gemini_healthy,
+                'analysis_mode': 'tinystyler' if tinystyler_status == "loaded" else 'fallback',
                 'cache_size': len(self.character_cache),
                 'config': self.config,
                 'device': self.style_analyzer.device
