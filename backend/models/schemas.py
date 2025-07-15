@@ -126,14 +126,7 @@ class DocumentUpdate(BaseModel):
     series_name: Optional[str] = None
     chapter_number: Optional[int] = None
 
-class DocumentFromTemplateCreate(BaseModel):
-    """Create document from template model"""
-    template_id: str = Field(..., description="Template ID to use")
-    title: str = Field(..., min_length=1, max_length=200, description="Document title")
-    folder_id: Optional[str] = None
-    document_type: DocumentType = DocumentType.NOVEL
-    series_name: Optional[str] = None
-    chapter_number: Optional[int] = None
+# DocumentFromTemplateCreate removed - template system deprecated
 
 # === FOLDER SCHEMAS ===
 class FolderType(str, Enum):
@@ -161,18 +154,8 @@ class FolderUpdate(BaseModel):
     color: Optional[str] = None
     description: Optional[str] = None
 
-# === FICTION TEMPLATE SCHEMAS ===
-class FictionTemplate(BaseModel):
-    """Fiction writing templates"""
-    id: str
-    name: str
-    category: str  # "character", "plot", "world", "scene", etc.
-    description: str
-    content: str
-    document_type: DocumentType
-    tags: List[str] = Field(default_factory=list)
-    is_system_template: bool = True
-    created_by: Optional[str] = None
+# === FICTION TEMPLATE SCHEMAS REMOVED ===
+# Template system removed for MVP simplicity
 
 # === SERIES MANAGEMENT ===
 class SeriesCreate(BaseModel):

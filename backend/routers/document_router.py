@@ -13,12 +13,12 @@ import json
 
 # Import models from centralized schemas
 from models.schemas import (
-    DocumentCreate, DocumentUpdate, DocumentFromTemplateCreate, DocumentStatus, DocumentType
+    DocumentCreate, DocumentUpdate, DocumentStatus, DocumentType
 )
 
 # Import services
 from services.database import db_service, DatabaseError
-from services.fiction_templates import fiction_template_service
+# Template service removed - template system deprecated for MVP
 from services.security_logger import security_logger, get_client_ip
 
 # Import production rate limiter
@@ -144,74 +144,7 @@ async def get_documents(
         logger.error(f"Error fetching documents: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch documents")
 
-@router.post("/from-template")
-async def create_document_from_template(
-    doc_data: DocumentFromTemplateCreate, 
-    request: Request,
-    user_id: int = Depends(get_current_user_id)
-):
-    """Create a new document from a fiction template"""
-    try:
-        # Apply rate limiting for document creation
-        await check_rate_limit(request, "general")
-        
-        logger.info(f"Creating document from fiction template: {doc_data.template_id}")
-        
-        # Get template from fiction template service
-        template = fiction_template_service.get_template_by_id(doc_data.template_id)
-        if not template:
-            raise HTTPException(status_code=404, detail="Template not found")
-        
-        doc_id = str(uuid.uuid4())
-        content = template.content
-        word_count = calculate_word_count(content)
-        
-        # Convert tags list to JSON for storage
-        tags_json = json.dumps([])
-        
-        result = db_service.execute_query(
-            """INSERT INTO documents (
-                id, user_id, title, content, document_type, folder_id, status, 
-                word_count, word_count_target, tags, series_name, chapter_number,
-                created_at, updated_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, title, content, document_type, folder_id, status, 
-                     word_count, word_count_target, tags, series_name, chapter_number,
-                     created_at, updated_at""",
-            (
-                doc_id, user_id, doc_data.title, content, 
-                doc_data.document_type.value, doc_data.folder_id, 'draft',
-                word_count, None, tags_json, doc_data.series_name, doc_data.chapter_number,
-                datetime.utcnow(), datetime.utcnow()
-            ),
-            fetch='one'
-        )
-        
-        if not result:
-            raise HTTPException(status_code=500, detail="Failed to create document from template")
-        
-        # Format response
-        document = dict(result)
-        document['created_at'] = document['created_at'].isoformat() if document['created_at'] else None
-        document['updated_at'] = document['updated_at'].isoformat() if document['updated_at'] else None
-        document['tags'] = json.loads(document['tags']) if document['tags'] else []
-        
-        # SECURITY: Log document creation
-        client_ip = get_client_ip(request)
-        security_logger.log_document_access(
-            document_id=doc_id,
-            user_id=user_id,
-            action="create",
-            ip_address=client_ip,
-            success=True
-        )
-        
-        logger.info(f"Document created from template: {document['title']}")
-        return document
-        
-    except DatabaseError as e:
-        logger.error(f"Database error creating document from template: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create document from template")
+# Template endpoint removed - template system deprecated for MVP
 
 @router.post("")
 async def create_document(doc_data: DocumentCreate, request: Request, user_id: int = Depends(get_current_user_id)):

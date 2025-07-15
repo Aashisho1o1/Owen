@@ -8,10 +8,6 @@ This package contains:
 - User persona services
 """
 
-# This file can be empty, but its presence makes this directory a Python package. 
+# This file can be empty, but its presence makes this directory a Python package.
 
-# Import fiction template service
-from .fiction_templates import FictionTemplateService
-
-# Create global instances
-fiction_template_service = FictionTemplateService() 
+# Fiction template service removed - template system deprecated for MVP 

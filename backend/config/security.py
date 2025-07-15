@@ -86,18 +86,6 @@ class SecurityConfig:
             "https://frontend-copy-production-0866.up.railway.app",  # NEW: Testing frontend URL
             "https://frontend-production-e178.up.railway.app",  # OLD: Keep as backup
             "https://frontend-production-88b0.up.railway.app",  # OLD: Keep as backup
-            "https://owen-ai-writer.vercel.app",  # Add your production frontend URL
-            "http://localhost:3000",
-            "http://localhost:3001", 
-            "http://localhost:4173",
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175", 
-            "http://localhost:5176",
-            "http://localhost:5177",
-            "http://localhost:5178",
-            "http://localhost:5179",
-            "http://localhost:8080",
         ]
         
         # Content Security Policy

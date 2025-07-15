@@ -25,7 +25,7 @@ from services.database import db_service
 from routers.auth_router import router as auth_router
 from routers.document_router import router as document_router
 from routers.folder_router import router as folder_router
-from routers.fiction_template_router import router as fiction_template_router, legacy_router as legacy_template_router
+# Template routers removed - template system deprecated for MVP
 from routers.chat_router import router as chat_router
 from routers.grammar_router import router as grammar_router
 from routers.indexing_router import router as indexing_router
@@ -230,8 +230,7 @@ app.add_middleware(SecurityMiddleware)
 app.include_router(auth_router)
 app.include_router(document_router)
 app.include_router(folder_router)
-app.include_router(fiction_template_router)
-app.include_router(legacy_template_router)  # Backward compatibility for /api/templates
+# Template routers removed - template system deprecated for MVP
 app.include_router(chat_router)
 app.include_router(grammar_router)
 app.include_router(indexing_router)
