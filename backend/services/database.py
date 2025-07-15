@@ -30,28 +30,29 @@ class PostgreSQLService:
     """
     
     def __init__(self):
-        self.database_url = os.getenv("DATABASE_URL")
-        self.pool = None
-        self._retry_count = 3
-        self._retry_delay = 1  # seconds
-        self._connection_timeout = 10  # seconds
+        """Initialize PostgreSQL service with lazy connection pool"""
+        self.database_url = os.getenv('DATABASE_URL')
         
         if not self.database_url:
-            logger.error("DATABASE_URL environment variable is not set")
-            logger.info("Database service created but not connected - set DATABASE_URL to connect")
-            return
+            logger.error("DATABASE_URL environment variable not set")
+            raise DatabaseError("DATABASE_URL environment variable is required")
         
+        # Parse database URL for logging (without exposing credentials)
         try:
-            # Initialize connection pool with retry
-            self._init_connection_pool_with_retry()
-            
-            # Initialize database schema
-            self.init_database()
-            
-            logger.info("PostgreSQL service initialized successfully")
+            from urllib.parse import urlparse
+            parsed = urlparse(self.database_url)
+            logger.info(f"Database configured: {parsed.hostname}:{parsed.port}/{parsed.path[1:]}")
         except Exception as e:
-            logger.error(f"Failed to initialize database service: {e}")
-            self.pool = None
+            logger.warning(f"Could not parse database URL for logging: {e}")
+        
+        # Connection pool settings
+        self.pool = None  # Lazy initialization
+        self._connection_timeout = 30  # seconds
+        self._retry_count = 3
+        self._retry_delay = 1  # seconds
+        
+        # Don't initialize connection pool here - do it lazily when first needed
+        logger.info("PostgreSQL service initialized (connection pool will be created when first needed)")
     
     def _init_connection_pool_with_retry(self):
         """Initialize connection pool with retry logic"""
@@ -67,7 +68,7 @@ class PostgreSQLService:
                     raise
     
     def _init_connection_pool(self):
-        """Initialize PostgreSQL connection pool with enhanced settings"""
+        """Initialize PostgreSQL connection pool with Railway-optimized settings"""
         try:
             # Close existing pool if any
             if self.pool:
@@ -76,9 +77,24 @@ class PostgreSQLService:
                 except:
                     pass
             
+            # Railway-optimized connection pool settings
+            # Railway PostgreSQL has limited connections, so we use conservative settings
+            is_railway = os.getenv('RAILWAY_ENVIRONMENT') == 'production'
+            
+            if is_railway:
+                # Conservative settings for Railway
+                min_conn = 1
+                max_conn = 8  # Reduced from 30 to prevent exhaustion
+                logger.info("Using Railway-optimized connection pool settings")
+            else:
+                # Local development settings
+                min_conn = 2
+                max_conn = 15
+                logger.info("Using local development connection pool settings")
+            
             self.pool = ThreadedConnectionPool(
-                minconn=2,  # Increased minimum connections
-                maxconn=30,  # Increased maximum connections
+                minconn=min_conn,
+                maxconn=max_conn,
                 dsn=self.database_url,
                 cursor_factory=RealDictCursor,
                 connect_timeout=self._connection_timeout,
@@ -90,31 +106,63 @@ class PostgreSQLService:
                 keepalives_count=5
             )
             
-            # Test the pool
-            conn = self.pool.getconn()
-            conn.close()
-            self.pool.putconn(conn)
-            
-            logger.info("Connection pool initialized with enhanced settings")
+            # Test the pool with proper connection management
+            conn = None
+            try:
+                conn = self.pool.getconn()
+                if conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute("SELECT 1")
+                        cursor.fetchone()
+                    self.pool.putconn(conn)
+                    conn = None
+                    logger.info(f"Connection pool initialized with {min_conn}-{max_conn} connections")
+                else:
+                    raise DatabaseError("Failed to get connection from pool")
+            except Exception as test_error:
+                if conn:
+                    try:
+                        self.pool.putconn(conn)
+                    except:
+                        pass
+                raise test_error
+                
         except Exception as e:
             logger.error(f"Failed to initialize connection pool: {e}")
+            # More specific error handling for connection issues
+            if "connection pool exhausted" in str(e).lower():
+                logger.error("💡 Connection pool exhausted - this usually means:")
+                logger.error("   1. Too many concurrent connections to database")
+                logger.error("   2. Database connection limit reached")
+                logger.error("   3. Previous connections not properly closed")
+                logger.error("   4. Multiple app instances competing for connections")
             raise DatabaseError(f"Connection pool initialization failed: {e}")
     
     def _ensure_pool_health(self):
         """Ensure connection pool is healthy, recreate if needed"""
         if not self.pool:
-            logger.warning("Connection pool not initialized, attempting to create...")
+            logger.info("Connection pool not initialized, creating now...")
             self._init_connection_pool_with_retry()
             return
         
+        conn = None
         try:
-            # Test pool health
+            # Test pool health with better connection management
             conn = self.pool.getconn()
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-            self.pool.putconn(conn)
+            if conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                    cursor.fetchone()
+                self.pool.putconn(conn)
+                conn = None
+            else:
+                raise DatabaseError("Failed to get connection from pool")
         except Exception as e:
+            if conn:
+                try:
+                    self.pool.putconn(conn)
+                except:
+                    pass
             logger.error(f"Connection pool health check failed: {e}")
             logger.info("Recreating connection pool...")
             self._init_connection_pool_with_retry()
