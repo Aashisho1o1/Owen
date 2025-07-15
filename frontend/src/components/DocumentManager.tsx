@@ -25,6 +25,7 @@ import './DocumentManager.css';
 interface DocumentManagerProps {
   onDocumentSelect: (document: Document) => void;
   onClose: () => void;
+  onReturnToWriting?: () => void; // New prop for returning to writing space
 }
 
 /**
@@ -44,7 +45,8 @@ interface DocumentManagerProps {
  */
 const DocumentManager: React.FC<DocumentManagerProps> = ({ 
   onDocumentSelect, 
-  onClose 
+  onClose,
+  onReturnToWriting
 }) => {
   const { user } = useAuth();
   const {
@@ -207,6 +209,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           documentCount={documents.length}
           totalWordCount={getTotalWordCount()}
           onClose={onClose}
+          onReturnToWriting={onReturnToWriting}
         />
 
         {/* Navigation Section */}

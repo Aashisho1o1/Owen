@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ModalContainer } from './auth/ModalContainer';
 import apiClient from '../services/api/client';
+import { useEditorContext } from '../contexts/EditorContext';
 
 interface StoryGeneratorModalProps {
   isOpen: boolean;
@@ -83,6 +84,9 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
   const [error, setError] = useState('');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
 
+  // Get editor context for inserting story into writing space
+  const { setEditorContent } = useEditorContext();
+
   // Reset form when modal closes
   React.useEffect(() => {
     if (!isOpen) {
@@ -140,12 +144,22 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
     window.open(tweetUrl, '_blank', 'width=550,height=420');
   };
 
-  const handleShareToReddit = () => {
-    const postTitle = encodeURIComponent('AI-Generated Micro-Fiction Story');
-    const postText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`);
-    // Use 'text' parameter for Reddit's submit API (selftext is for new Reddit interface)
-    const redditUrl = `https://www.reddit.com/submit?title=${postTitle}&text=${postText}`;
-    window.open(redditUrl, '_blank', 'width=600,height=500');
+  const handleInsertIntoEditor = () => {
+    try {
+      // Insert the story into the writing space
+      setEditorContent(generatedStory);
+      
+      // Close the modal
+      onClose();
+      
+      // Optional: Show a brief success message
+      setCopyStatus('success');
+      setTimeout(() => setCopyStatus('idle'), 1000);
+    } catch (err) {
+      console.error('Error inserting story into editor:', err);
+      setCopyStatus('error');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    }
   };
 
   const handleCopyForSharing = async () => {
@@ -168,6 +182,8 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       // Use the same clipboard logic as WritingWorkspace
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(generatedStory);
+        setCopyStatus('success');
+        setTimeout(() => setCopyStatus('idle'), 2000);
       } else {
         // Fallback for older browsers
         const textArea = document.createElement('textarea');
@@ -178,14 +194,19 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        document.execCommand('copy');
-        textArea.remove();
+        
+        try {
+          document.execCommand('copy');
+          setCopyStatus('success');
+          setTimeout(() => setCopyStatus('idle'), 2000);
+        } catch (err) {
+          setCopyStatus('error');
+          setTimeout(() => setCopyStatus('idle'), 2000);
+        } finally {
+          document.body.removeChild(textArea);
+        }
       }
-      
-      setCopyStatus('success');
-      setTimeout(() => setCopyStatus('idle'), 2000);
     } catch (err) {
-      console.error('Failed to copy story:', err);
       setCopyStatus('error');
       setTimeout(() => setCopyStatus('idle'), 2000);
     }
@@ -454,7 +475,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
         </pre>
       </div>
       
-      {/* Social Media Sharing Section */}
+      {/* Story Actions Section */}
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ 
           fontSize: '16px', 
@@ -465,7 +486,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
           alignItems: 'center',
           gap: '8px'
         }}>
-          🚀 Share your story
+          ✨ Use your story
         </h3>
         <div style={{ 
           display: 'flex', 
@@ -473,6 +494,28 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
           flexWrap: 'wrap',
           marginBottom: '16px'
         }}>
+          <button
+            onClick={handleInsertIntoEditor}
+            style={{
+              padding: '8px 16px',
+              background: 'var(--accent-color)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-color-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--accent-color)'}
+          >
+            📝 Insert into Writing Space
+          </button>
+          
           <button
             onClick={handleShareToTwitter}
             style={{
@@ -492,29 +535,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.background = '#0d8bd9'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#1da1f2'}
           >
-            𝕏 X
-          </button>
-          
-          <button
-            onClick={handleShareToReddit}
-            style={{
-              padding: '8px 16px',
-              background: '#ff4500',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#e03d00'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#ff4500'}
-          >
-            🔴 Reddit
+            𝕏 Share on X
           </button>
           
           <button

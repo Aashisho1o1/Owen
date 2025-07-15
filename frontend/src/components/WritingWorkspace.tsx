@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HighlightableEditor from './HighlightableEditor';
 import ChatPane from './ChatPane';
-// FictionDocumentManager removed - template system deprecated
+import DocumentManager from './DocumentManager';
 import { StoryGeneratorModal } from './StoryGeneratorModal';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,6 @@ import { useEditorContext } from '../contexts/EditorContext';
 import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
 import './WritingWorkspace.css';
-// FictionDocumentManager.css removed - template system deprecated
 
 /**
  * WritingWorkspace - Clean layout component with single responsibility
@@ -28,7 +27,7 @@ import './WritingWorkspace.css';
 export const WritingWorkspace: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { isChatVisible, toggleChat } = useChatContext();
-  const { editorContent, setEditorContent, documentManager } = useEditorContext();
+  const { setEditorContent, documentManager } = useEditorContext();
   const {
     createDocument,
     updateTitle,
@@ -53,7 +52,7 @@ export const WritingWorkspace: React.FC = () => {
 
   
   // Fiction Document Manager state
-  // showDocumentManager removed - template system deprecated
+  const [showDocumentManager, setShowDocumentManager] = useState(false);
   
   // Story Generator state
   const [showStoryGenerator, setShowStoryGenerator] = useState(false);
@@ -148,6 +147,10 @@ export const WritingWorkspace: React.FC = () => {
     setShowDocumentManager(false);
   };
 
+  // Handle returning to writing space from Document Manager
+  const handleReturnToWriting = () => {
+    setShowDocumentManager(false);
+  };
 
 
   // Remove auto-hide functionality for AI hint - keep it permanent
@@ -291,7 +294,14 @@ export const WritingWorkspace: React.FC = () => {
         )}
       </div>
 
-      {/* Fiction Document Manager Modal - removed, template system deprecated */}
+      {/* Document Manager Modal */}
+      {showDocumentManager && (
+        <DocumentManager
+          onDocumentSelect={handleDocumentSelect}
+          onClose={() => setShowDocumentManager(false)}
+          onReturnToWriting={handleReturnToWriting}
+        />
+      )}
 
       {/* Story Generator Modal */}
       {showStoryGenerator && (

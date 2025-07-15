@@ -4,16 +4,18 @@ interface DocumentManagerHeaderProps {
   documentCount: number;
   totalWordCount: number;
   onClose: () => void;
+  onReturnToWriting?: () => void; // New prop for returning to writing space
 }
 
 /**
  * Molecular component: Document Manager Header
- * Single Responsibility: Display header with stats and close button
+ * Single Responsibility: Display header with stats, navigation, and close button
  */
 export const DocumentManagerHeader: React.FC<DocumentManagerHeaderProps> = ({
   documentCount,
   totalWordCount,
-  onClose
+  onClose,
+  onReturnToWriting
 }) => {
   return (
     <div className="document-manager-header">
@@ -22,9 +24,20 @@ export const DocumentManagerHeader: React.FC<DocumentManagerHeaderProps> = ({
         <div className="total-stats">
           {documentCount} documents • {totalWordCount.toLocaleString()} words
         </div>
-        <button onClick={onClose} className="close-button">
-          ✕
-        </button>
+        <div className="header-buttons">
+          {onReturnToWriting && (
+            <button 
+              onClick={onReturnToWriting} 
+              className="control-button"
+              title="Return to Writing Space"
+            >
+              ✏️ Writing
+            </button>
+          )}
+          <button onClick={onClose} className="close-button">
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   );
