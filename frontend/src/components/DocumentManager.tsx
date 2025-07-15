@@ -13,7 +13,7 @@ import {
   // Organism Components
   DocumentsView,
   FoldersView,
-  TemplatesView,
+  // TemplatesView removed - template system deprecated
   SearchResultsView,
   // Types
   ViewMode,
@@ -50,7 +50,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
   const {
     documents,
     folders,
-    templates,
+    // templates removed - template system deprecated
     searchResults,
     isLoading,
     error,
@@ -61,7 +61,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     duplicateDocument,
     searchDocuments,
     clearSearch,
-    createFromTemplate,
+          // createFromTemplate removed - template system deprecated
     getDocumentsByFolder,
     getRecentDocuments,
     getTotalWordCount
@@ -149,14 +149,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     setShowCreateFolderModal(false);
   };
 
-  const handleUseTemplate = async (templateId: string, templateName: string) => {
-    const newDoc = await createFromTemplate(
-      templateId, 
-      `New ${templateName}`, 
-      selectedFolder || undefined
-    );
-    onDocumentSelect(newDoc);
-  };
+  // handleUseTemplate removed - template system deprecated
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolder(folderId);
@@ -188,13 +181,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           />
         );
 
-      case 'templates':
-        return (
-          <TemplatesView
-            templates={templates}
-            onUseTemplate={handleUseTemplate}
-          />
-        );
+      // templates case removed - template system deprecated
 
       case 'search':
         return (

@@ -14,10 +14,10 @@ const DocumentsPage: React.FC = () => {
   // Destructure all needed values from useDocuments
   const {
     documents,
-    templates,
+    // templates removed - template system deprecated
     isLoading,
     refreshAll,
-    createFromTemplate,
+    // createFromTemplate removed - template system deprecated
     createDocument,
     deleteDocument,
     updateDocument,
@@ -36,21 +36,7 @@ const DocumentsPage: React.FC = () => {
     refreshAll();
   }, [refreshAll]);
 
-  const handleCreateFromTemplate = async (template: any) => {
-    if (!isAuthenticated) {
-      setAuthMode('signin');
-      setShowAuthModal(true);
-      return;
-    }
-
-    try {
-      const newDoc = await createFromTemplate(template.id, `New ${template.title}`);
-      navigate(`/document/${newDoc.id}`);
-    } catch (error) {
-      console.error('Failed to create document from template:', error);
-      alert('Failed to create document. Please try again.');
-    }
-  };
+  // handleCreateFromTemplate removed - template system deprecated
 
   const handleCreateBlankDocument = async () => {
     if (!isAuthenticated) {
@@ -166,48 +152,7 @@ const DocumentsPage: React.FC = () => {
               <h3>Blank document</h3>
             </div>
 
-            {/* Story Genre Templates */}
-            {templates.map((template) => {
-              // Map template IDs to genre icons and display names
-              const getTemplateIcon = (id: string) => {
-                switch(id) {
-                  case 'romance': return '💕';
-                  case 'fantasy': return '🐉';
-                  case 'mystery': return '🔍';
-                  case 'scifi': return '🚀';
-                  case 'horror': return '👻';
-                  default: return '✍️'; // Elegant writing icon instead of book
-                }
-              };
-
-              const getGenreDisplayName = (id: string) => {
-                switch(id) {
-                  case 'romance': return 'Romance';
-                  case 'fantasy': return 'Fantasy';
-                  case 'mystery': return 'Mystery';
-                  case 'scifi': return 'Sci-Fi';
-                  case 'horror': return 'Horror';
-                  default: return 'Template';
-                }
-              };
-
-              return (
-                <div 
-                  key={template.id}
-                  className="template-card"
-                  data-template-id={template.id}
-                  onClick={() => handleCreateFromTemplate(template)}
-                >
-                  <div className="template-preview">
-                    <div className="template-icon">{getTemplateIcon(template.id)}</div>
-                    <div className="template-content">
-                      <p>{template.description}</p>
-                    </div>
-                  </div>
-                  <h3>{template.title}</h3>
-                </div>
-              );
-            })}
+            {/* Story Genre Templates removed - template system deprecated */}
           </div>
         </div>
       </div>

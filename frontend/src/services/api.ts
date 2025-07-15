@@ -30,7 +30,7 @@ const api = {
   updateDocument: apiServices.updateDocument,
   deleteDocument: apiServices.deleteDocument,
   autoSaveDocument: apiServices.autoSaveDocument,
-  createDocumentFromTemplate: apiServices.createDocumentFromTemplate,
+  // createDocumentFromTemplate removed - template system deprecated
   duplicateDocument: apiServices.duplicateDocument,
   
   // Folders
@@ -40,8 +40,8 @@ const api = {
   deleteFolder: apiServices.deleteFolder,
   
   // Templates
-  getTemplates: apiServices.getTemplates,
-  getTemplate: apiServices.getTemplate,
+  // getTemplates removed - template system deprecated
+  // getTemplate removed - template system deprecated
   
   // Chat
   sendChatMessage: apiServices.sendChatMessage,

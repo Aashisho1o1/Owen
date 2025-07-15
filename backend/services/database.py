@@ -374,6 +374,13 @@ class PostgreSQLService:
             'ALTER TABLE folders ADD COLUMN IF NOT EXISTS description TEXT'
         ]
         
+        # Template system cleanup - remove template_id column if it exists
+        template_cleanup_queries = [
+            'ALTER TABLE documents DROP COLUMN IF EXISTS template_id',
+            'DROP TABLE IF EXISTS templates CASCADE',
+            'DROP TABLE IF EXISTS template_categories CASCADE'
+        ]
+        
         # DROP old tables that are no longer needed for MVP
         cleanup_queries = [
             'DROP TABLE IF EXISTS document_versions CASCADE',
@@ -383,7 +390,16 @@ class PostgreSQLService:
         
         logger.info("🗄️ Creating enhanced fiction-focused database schema...")
         
-        # Execute cleanup first
+        # Execute template cleanup first
+        logger.info("🧹 Cleaning up template system...")
+        for query in template_cleanup_queries:
+            try:
+                self.execute_query(query)
+                logger.info(f"✅ Template cleanup: {query}")
+            except Exception as e:
+                logger.warning(f"Template cleanup query failed (might not exist): {e}")
+        
+        # Execute general cleanup
         for query in cleanup_queries:
             try:
                 self.execute_query(query)

@@ -150,15 +150,7 @@ export interface DocumentFolder {
   document_count?: number;
 }
 
-export interface DocumentTemplate {
-  id: string;
-  name: string;
-  content: string;
-  document_type: string;
-  is_system: boolean;
-  user_id?: string;
-  preview_text: string;
-}
+// DocumentTemplate removed - template system deprecated
 
 export interface SearchRequest {
   query: string;
@@ -206,11 +198,7 @@ export interface CreateFolderRequest {
   color?: string;
 }
 
-export interface CreateFromTemplateRequest {
-  template_id: string;
-  title: string;
-  folder_id?: string;
-}
+// CreateFromTemplateRequest removed - template system deprecated
 
 // === AUTHENTICATION INTERFACES ===
 export interface LoginRequest {

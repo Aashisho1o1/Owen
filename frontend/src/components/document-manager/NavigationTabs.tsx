@@ -30,12 +30,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
         📁 Folders
       </button>
       
-      <button 
-        className={viewMode === 'templates' ? 'active' : ''}
-        onClick={() => onViewModeChange('templates')}
-      >
-        📋 Templates
-      </button>
+      {/* Templates tab removed - template system deprecated */}
       
       {viewMode === 'search' && (
         <button className="active">

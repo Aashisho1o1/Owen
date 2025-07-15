@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HighlightableEditor from './HighlightableEditor';
 import ChatPane from './ChatPane';
-import { FictionDocumentManager } from './FictionDocumentManager';
+// FictionDocumentManager removed - template system deprecated
 import { StoryGeneratorModal } from './StoryGeneratorModal';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,7 @@ import { useEditorContext } from '../contexts/EditorContext';
 import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
 import './WritingWorkspace.css';
-import '../styles/FictionDocumentManager.css';
+// FictionDocumentManager.css removed - template system deprecated
 
 /**
  * WritingWorkspace - Clean layout component with single responsibility
@@ -53,7 +53,7 @@ export const WritingWorkspace: React.FC = () => {
 
   
   // Fiction Document Manager state
-  const [showDocumentManager, setShowDocumentManager] = useState(false);
+  // showDocumentManager removed - template system deprecated
   
   // Story Generator state
   const [showStoryGenerator, setShowStoryGenerator] = useState(false);
@@ -291,13 +291,7 @@ export const WritingWorkspace: React.FC = () => {
         )}
       </div>
 
-      {/* Fiction Document Manager Modal */}
-      {showDocumentManager && (
-        <FictionDocumentManager
-          onDocumentSelect={handleDocumentSelect}
-          onClose={() => setShowDocumentManager(false)}
-        />
-      )}
+      {/* Fiction Document Manager Modal - removed, template system deprecated */}
 
       {/* Story Generator Modal */}
       {showStoryGenerator && (

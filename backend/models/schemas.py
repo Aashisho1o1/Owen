@@ -105,7 +105,7 @@ class DocumentCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     content: str = ""
     document_type: DocumentType = DocumentType.NOVEL
-    template_id: Optional[str] = None
+    # template_id: Optional[str] = None  # REMOVED - template system deprecated for MVP
     folder_id: Optional[str] = None
     status: DocumentStatus = DocumentStatus.DRAFT
     # Fiction-specific metadata

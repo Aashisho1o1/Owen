@@ -12,7 +12,7 @@ interface DocumentIconProps {
 export const DocumentIcon: React.FC<DocumentIconProps> = ({ type, className = '' }) => {
   const getDocumentIcon = (documentType?: string): string => {
     switch (documentType) {
-      case 'novel': return '📖';
+      case 'novel': return '📄';
       case 'chapter': return '📃';
       case 'character_sheet': return '👤';
       case 'outline': return '📋';

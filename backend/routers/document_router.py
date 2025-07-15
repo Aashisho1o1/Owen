@@ -158,11 +158,7 @@ async def create_document(doc_data: DocumentCreate, request: Request, user_id: i
         doc_id = str(uuid.uuid4())
         content = doc_data.content
         
-        # Use template content if provided
-        if doc_data.template_id:
-            template = fiction_template_service.get_template_by_id(doc_data.template_id)
-            if template:
-                content = template.content
+        # Template usage removed - template system deprecated for MVP
         
         word_count = calculate_word_count(content)
         

@@ -10,7 +10,7 @@ import {
   DocumentsResponse, 
   CreateDocumentRequest, 
   UpdateDocumentRequest,
-  CreateFromTemplateRequest 
+  // CreateFromTemplateRequest removed - template system deprecated 
 } from './types';
 
 // === DOCUMENT CRUD OPERATIONS ===
@@ -46,12 +46,8 @@ export const autoSaveDocument = async (id: string, content: string): Promise<{ s
   return response.data;
 };
 
-// === TEMPLATE OPERATIONS ===
-
-export const createDocumentFromTemplate = async (templateData: CreateFromTemplateRequest): Promise<Document> => {
-  const response = await apiClient.post('/api/documents/from-template', templateData);
-  return response.data;
-};
+// === TEMPLATE OPERATIONS REMOVED ===
+// Template system deprecated for MVP simplicity
 
 // === UTILITY FUNCTIONS ===
 

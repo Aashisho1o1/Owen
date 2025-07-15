@@ -140,22 +140,11 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
     window.open(tweetUrl, '_blank', 'width=550,height=420');
   };
 
-  const handleShareToInstagram = () => {
-    // Instagram doesn't have a direct sharing URL like Twitter/Reddit
-    // Instead, we'll copy the content and guide the user
-    const shareText = `${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`;
-    navigator.clipboard.writeText(shareText).then(() => {
-      alert('Story copied to clipboard! You can now paste it into Instagram or any other platform.');
-    }).catch(() => {
-      alert('Unable to copy automatically. Please copy the story manually and share it on Instagram.');
-    });
-  };
-
   const handleShareToReddit = () => {
     const postTitle = encodeURIComponent('AI-Generated Micro-Fiction Story');
     const postText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`);
-    // Use 'selftext' parameter instead of 'text' for Reddit's submit API
-    const redditUrl = `https://www.reddit.com/submit?title=${postTitle}&selftext=${postText}`;
+    // Use 'text' parameter for Reddit's submit API (selftext is for new Reddit interface)
+    const redditUrl = `https://www.reddit.com/submit?title=${postTitle}&text=${postText}`;
     window.open(redditUrl, '_blank', 'width=600,height=500');
   };
 
@@ -503,29 +492,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.background = '#0d8bd9'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#1da1f2'}
           >
-            🐦 Twitter
-          </button>
-          
-          <button
-            onClick={handleShareToInstagram}
-            style={{
-              padding: '8px 16px',
-              background: '#E4405F',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#C13584'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#E4405F'}
-          >
-            📸 Instagram
+            𝕏 X
           </button>
           
           <button
@@ -547,7 +514,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.background = '#e03d00'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#ff4500'}
           >
-            📰 Reddit
+            🔴 Reddit
           </button>
           
           <button

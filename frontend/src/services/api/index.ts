@@ -31,7 +31,7 @@ export {
   updateDocument,
   deleteDocument,
   autoSaveDocument,
-  createDocumentFromTemplate,
+  // createDocumentFromTemplate removed - template system deprecated
   duplicateDocument,
   moveDocumentToFolder
 } from './documents';
@@ -48,15 +48,8 @@ export {
   getRootFolders
 } from './folders';
 
-// === RE-EXPORT TEMPLATE SERVICES ===
-export {
-  getTemplates,
-  getTemplate,
-  getTemplateById,
-  getTemplatesByCategory,
-  getSystemTemplates,
-  getUserTemplates
-} from './templates';
+// === TEMPLATE SERVICES REMOVED ===
+// Template system deprecated for MVP simplicity
 
 // === RE-EXPORT CHAT SERVICES ===
 export {

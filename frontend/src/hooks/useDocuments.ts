@@ -4,7 +4,7 @@ import * as api from '../services/api';
 import { 
   Document, 
   DocumentFolder, 
-  DocumentTemplate,
+  // DocumentTemplate removed - template system deprecated
   SearchRequest,
   SearchResult
 } from '../services/api';
@@ -13,7 +13,7 @@ import {
 interface DocumentState {
   documents: Document[];
   folders: DocumentFolder[];
-  templates: DocumentTemplate[];
+  templates: []; // templates removed - template system deprecated
   currentDocument: Document | null;
   isLoading: boolean;
   error: string | null;
@@ -167,23 +167,23 @@ export const useDocuments = (): UseDocumentsReturn => {
       console.log('📊 useDocuments: Loading documents, folders, and templates...');
       
       // Only call endpoints that exist in MVP backend
-      const [documents, folders, templates] = await Promise.all([
+      const [documents, folders] = await Promise.all([
         api.getDocuments(),
-        api.getFolders(),
-        api.getTemplates()
+        api.getFolders()
+        // api.getTemplates() removed - template system deprecated
       ]);
       
       console.log('✅ useDocuments: Data loaded successfully', {
         documentsCount: documents.documents?.length || 0,
-        foldersCount: folders.length,
-        templatesCount: templates.length
+        foldersCount: folders.length
+        // templatesCount removed - template system deprecated
       });
       
       setState(prev => ({
         ...prev,
         documents: documents.documents || [],
         folders,
-        templates,
+        templates: [], // templates removed - template system deprecated
         isLoading: false
       }));
     } catch (error) {
@@ -444,29 +444,7 @@ export const useDocuments = (): UseDocumentsReturn => {
     }));
   }, []);
 
-  // Template functionality
-  const createFromTemplate = useCallback(async (templateId: string, title: string, folderId?: string): Promise<Document> => {
-    try {
-      const document = await api.createDocumentFromTemplate({
-        template_id: templateId,
-        title,
-        folder_id: folderId
-      });
-      
-      setState(prev => ({
-        ...prev,
-        documents: [document, ...prev.documents]
-      }));
-      
-      return document;
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to create document from template'
-      }));
-      throw error;
-    }
-  }, []);
+  // Template functionality removed - template system deprecated
 
   // Auto-save and content management
   const setCurrentDocument = useCallback((document: Document | null) => {
@@ -536,7 +514,7 @@ export const useDocuments = (): UseDocumentsReturn => {
     moveDocument,
     searchDocuments,
     clearSearch,
-    createFromTemplate,
+    // createFromTemplate removed - template system deprecated
     setCurrentDocument,
     updateContent,
     updateTitle,
