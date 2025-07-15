@@ -380,14 +380,14 @@ class PostgreSQLService:
             )
             ''',
             
-            # 8. CHARACTER VOICE PROFILES - For voice consistency detection with TinyStyler
+            # 8. CHARACTER VOICE PROFILES - For voice consistency detection with Gemini
             '''
             CREATE TABLE IF NOT EXISTS character_voice_profiles (
                 character_id VARCHAR(64) PRIMARY KEY,  -- MD5 hash of user_id + character_name
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 character_name VARCHAR(100) NOT NULL,
                 dialogue_samples JSONB NOT NULL DEFAULT '[]'::jsonb,  -- Array of dialogue samples
-                voice_embedding JSONB NOT NULL,  -- TinyStyler style embedding vector for voice similarity
+                voice_embedding JSONB NOT NULL,  -- Legacy field, now unused (kept for compatibility)
                 voice_characteristics JSONB DEFAULT '{}'::jsonb,  -- Character voice metadata
                 sample_count INTEGER DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

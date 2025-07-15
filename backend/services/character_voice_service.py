@@ -1,37 +1,27 @@
 """
-Character Voice Consistency Detection Service - TinyStyler Edition
+Ultra-Simple Character Voice Consistency Service - Gemini Edition
 
-This service analyzes character dialogue for voice consistency in fiction writing.
-It uses TinyStyler, a specialized model for text style transfer and authorship analysis,
-providing superior character voice detection compared to general-purpose embeddings.
+This service provides character voice consistency analysis using only Gemini 1.5 Flash.
+No complex ML dependencies, no TinyStyler, just pure Gemini-based analysis.
 
 Key Features:
-- TinyStyler-based character voice profiling
-- Few-shot style learning from minimal dialogue samples
-- Real-time style consistency detection
-- Authorship embedding analysis
-- Integration with existing chat system
+- Simple dialogue extraction using regex
+- Gemini-based character voice similarity analysis
+- Lightweight character profile storage
+- Fast deployment with minimal dependencies
+- Cost-effective using Gemini 1.5 Flash
 """
 
 import re
 import json
 import logging
-import asyncio
-import importlib
-import tempfile
-import importlib.util
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
-from datetime import datetime
-import numpy as np
-import torch
-from huggingface_hub import hf_hub_download
-from transformers import set_seed
 import hashlib
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+from datetime import datetime
 
 from services.database import PostgreSQLService
 from services.llm.gemini_service import GeminiService
-from services.llm.openai_service import OpenAIService
 from services.validation_service import SimpleInputValidator
 from services.security_logger import SecurityLogger, SecurityEventType, SecuritySeverity
 
@@ -46,18 +36,17 @@ class DialogueSegment:
     context_after: str
     position: int
     confidence: float
-    
+
 @dataclass
 class CharacterVoiceProfile:
-    """Character voice profile with TinyStyler embeddings and metadata"""
+    """Simple character voice profile with dialogue samples"""
     character_id: str
     character_name: str
     dialogue_samples: List[str]
-    style_embedding: List[float]  # TinyStyler style embedding
-    voice_characteristics: Dict[str, Any]
     sample_count: int
     last_updated: datetime
     user_id: int
+    voice_characteristics: Dict[str, Any]
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
@@ -65,11 +54,10 @@ class CharacterVoiceProfile:
             'character_id': self.character_id,
             'character_name': self.character_name,
             'dialogue_samples': self.dialogue_samples,
-            'style_embedding': self.style_embedding,
-            'voice_characteristics': self.voice_characteristics,
             'sample_count': self.sample_count,
             'last_updated': self.last_updated.isoformat(),
-            'user_id': self.user_id
+            'user_id': self.user_id,
+            'voice_characteristics': self.voice_characteristics
         }
 
 @dataclass
@@ -82,340 +70,44 @@ class VoiceConsistencyResult:
     flagged_text: str
     explanation: str
     suggestions: List[str]
-    analysis_method: str  # 'tinystyler_embedding' or 'tinystyler_llm_validated'
+    analysis_method: str
 
-class TinyStylerVoiceAnalyzer:
+class SimpleCharacterVoiceService:
     """
-    TinyStyler-based voice analyzer for character consistency detection
+    Ultra-Simple Character Voice Consistency Service
     
-    This class handles the TinyStyler model loading, style embedding generation,
-    and voice consistency analysis specifically for literary dialogue.
-    """
-    
-    def __init__(self):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.tokenizer = None
-        self.model = None
-        self.initialized = False
-        
-        # TinyStyler configuration
-        self.config = {
-            'max_length': 128,
-            'temperature': 0.8,
-            'top_p': 0.9,
-            'do_sample': True,
-            'seed': 42
-        }
-        
-        logger.info(f"TinyStyler analyzer initialized on device: {self.device}")
-    
-    def _load_tinystyler_model(self):
-        """Load TinyStyler model from Hugging Face Hub"""
-        try:
-            # Check for required dependencies first
-            try:
-                import sentencepiece
-            except ImportError:
-                logger.warning("sentencepiece not available - TinyStyler will use fallback mode")
-                self.initialized = False
-                return
-            
-            # Try to download TinyStyler module with timeout
-            import signal
-            
-            def timeout_handler(signum, frame):
-                raise TimeoutError("TinyStyler model download timed out")
-            
-            # Set timeout for model loading (30 seconds)
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(30)
-            
-            try:
-                # Download TinyStyler module
-                tinystyler_path = hf_hub_download(
-                    repo_id="tinystyler/tinystyler", 
-                    filename="tinystyler.py",
-                    timeout=20
-                )
-                
-                # Import TinyStyler module
-                spec = importlib.util.spec_from_file_location("tinystyler", tinystyler_path)
-                tinystyler_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(tinystyler_module)
-                
-                # Get model loading functions
-                get_tinystyler_model = tinystyler_module.get_tinystyler_model
-                self.get_target_style_embeddings = tinystyler_module.get_target_style_embeddings
-                
-                # Load the model
-                self.tokenizer, self.model = get_tinystyler_model(self.device)
-                
-                # Set seed for reproducibility
-                set_seed(self.config['seed'])
-                
-                self.initialized = True
-                logger.info("TinyStyler model loaded successfully")
-                
-            finally:
-                signal.alarm(0)  # Cancel the alarm
-            
-        except (TimeoutError, Exception) as e:
-            logger.warning(f"TinyStyler model loading failed: {str(e)}")
-            logger.info("TinyStyler will use fallback embeddings - service will continue without advanced style analysis")
-            self.initialized = False
-    
-    def ensure_model_loaded(self):
-        """Ensure TinyStyler model is loaded"""
-        if not self.initialized:
-            self._load_tinystyler_model()
-            # If still not initialized after loading attempt, that's okay for local development
-    
-    def get_style_embedding(self, dialogue_samples: List[str]) -> List[float]:
-        """
-        Generate style embedding for character dialogue samples using TinyStyler
-        
-        Args:
-            dialogue_samples: List of dialogue samples from the character
-            
-        Returns:
-            Style embedding vector as list of floats
-        """
-        self.ensure_model_loaded()
-        
-        try:
-            if not self.initialized:
-                # Fallback: Use simple text-based features for embedding
-                return self._generate_fallback_embedding(dialogue_samples)
-            
-            # Use TinyStyler to generate style embeddings
-            style_embeddings = self.get_target_style_embeddings(
-                [dialogue_samples], 
-                self.device
-            )
-            
-            # Convert to list for JSON serialization
-            embedding_vector = style_embeddings[0].cpu().numpy().tolist()
-            
-            logger.debug(f"Generated TinyStyler style embedding of dimension {len(embedding_vector)}")
-            return embedding_vector
-            
-        except Exception as e:
-            logger.error(f"Failed to generate TinyStyler style embedding: {str(e)}")
-            # Fallback to simple text-based features
-            return self._generate_fallback_embedding(dialogue_samples)
-    
-    def _generate_fallback_embedding(self, dialogue_samples: List[str]) -> List[float]:
-        """Generate fallback embedding when TinyStyler is not available"""
-        try:
-            # Simple text-based features for character voice
-            features = []
-            
-            # Combine all dialogue samples
-            combined_text = " ".join(dialogue_samples)
-            
-            # Basic text statistics
-            avg_sentence_length = np.mean([len(s.split()) for s in dialogue_samples])
-            avg_word_length = np.mean([len(word) for word in combined_text.split()])
-            punctuation_ratio = len([c for c in combined_text if c in "!?."]) / max(len(combined_text), 1)
-            
-            # Character-specific patterns
-            question_ratio = combined_text.count("?") / max(len(dialogue_samples), 1)
-            exclamation_ratio = combined_text.count("!") / max(len(dialogue_samples), 1)
-            
-            # Common words usage
-            common_words = ["the", "and", "to", "of", "a", "in", "is", "it", "you", "that"]
-            word_usage = [combined_text.lower().count(word) for word in common_words]
-            
-            # Combine features
-            features.extend([avg_sentence_length, avg_word_length, punctuation_ratio, 
-                           question_ratio, exclamation_ratio])
-            features.extend(word_usage)
-            
-            # Pad to 512 dimensions (similar to TinyStyler)
-            while len(features) < 512:
-                features.append(0.0)
-            
-            # Normalize
-            features = features[:512]
-            norm = np.linalg.norm(features)
-            if norm > 0:
-                features = (np.array(features) / norm).tolist()
-            
-            logger.debug(f"Generated fallback embedding of dimension {len(features)}")
-            return features
-            
-        except Exception as e:
-            logger.error(f"Failed to generate fallback embedding: {str(e)}")
-            # Return zero vector as last resort
-            return [0.0] * 512
-    
-    def calculate_style_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
-        """
-        Calculate style similarity between two TinyStyler embeddings
-        
-        Args:
-            embedding1: First style embedding
-            embedding2: Second style embedding
-            
-        Returns:
-            Similarity score between 0 and 1
-        """
-        try:
-            # Convert to torch tensors
-            tensor1 = torch.tensor(embedding1, device=self.device)
-            tensor2 = torch.tensor(embedding2, device=self.device)
-            
-            # Calculate cosine similarity
-            similarity = torch.nn.functional.cosine_similarity(
-                tensor1.unsqueeze(0), 
-                tensor2.unsqueeze(0)
-            ).item()
-            
-            # Normalize to 0-1 range
-            normalized_similarity = (similarity + 1) / 2
-            
-            return float(normalized_similarity)
-            
-        except Exception as e:
-            logger.error(f"Error calculating style similarity: {str(e)}")
-            return 0.0
-    
-    def analyze_style_transfer(self, source_text: str, target_samples: List[str]) -> Dict[str, Any]:
-        """
-        Analyze how well source text matches target style using TinyStyler
-        
-        Args:
-            source_text: Text to analyze
-            target_samples: Examples of target style
-            
-        Returns:
-            Analysis results including consistency score and suggestions
-        """
-        self.ensure_model_loaded()
-        
-        try:
-            if not self.initialized:
-                # Fallback: Use simple similarity analysis
-                return self._analyze_style_fallback(source_text, target_samples)
-            
-            # Generate style-transferred version
-            inputs = self.tokenizer(
-                [source_text], 
-                padding="longest", 
-                truncation=True, 
-                return_tensors="pt"
-            ).to(self.device)
-            
-            # Get target style embeddings
-            style_embeddings = self.get_target_style_embeddings(
-                [target_samples], 
-                self.device
-            )
-            
-            # Generate style-transferred text
-            with torch.no_grad():
-                output = self.model.generate(
-                    **inputs,
-                    style=style_embeddings.to(self.device),
-                    do_sample=self.config['do_sample'],
-                    temperature=self.config['temperature'],
-                    top_p=self.config['top_p'],
-                    max_new_tokens=self.config['max_length']
-                )
-            
-            # Decode generated text
-            generated_text = self.tokenizer.batch_decode(output, skip_special_tokens=True)[0]
-            
-            # Calculate similarity between original and style-transferred text
-            # If they're very similar, the original already matches the style
-            original_embedding = self.get_style_embedding([source_text])
-            target_embedding = self.get_style_embedding(target_samples)
-            
-            consistency_score = self.calculate_style_similarity(original_embedding, target_embedding)
-            
-            return {
-                'consistency_score': consistency_score,
-                'is_consistent': consistency_score > 0.75,
-                'style_transferred_text': generated_text,
-                'original_text': source_text,
-                'analysis_method': 'tinystyler_style_transfer'
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in TinyStyler style transfer analysis: {str(e)}")
-            # Fallback to simple analysis
-            return self._analyze_style_fallback(source_text, target_samples)
-    
-    def _analyze_style_fallback(self, source_text: str, target_samples: List[str]) -> Dict[str, Any]:
-        """Fallback style analysis when TinyStyler is not available"""
-        try:
-            # Simple text-based similarity analysis
-            source_embedding = self._generate_fallback_embedding([source_text])
-            target_embedding = self._generate_fallback_embedding(target_samples)
-            
-            consistency_score = self.calculate_style_similarity(source_embedding, target_embedding)
-            
-            return {
-                'consistency_score': consistency_score,
-                'is_consistent': consistency_score > 0.6,  # Lower threshold for fallback
-                'style_transferred_text': source_text,  # No transformation in fallback
-                'original_text': source_text,
-                'analysis_method': 'fallback_similarity'
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in fallback style analysis: {str(e)}")
-            return {
-                'consistency_score': 0.5,
-                'is_consistent': True,  # Assume consistent when analysis fails
-                'style_transferred_text': source_text,
-                'original_text': source_text,
-                'analysis_method': 'fallback_error'
-            }
-
-class CharacterVoiceService:
-    """
-    Character Voice Consistency Detection Service - TinyStyler Edition
-    
-    This service provides real-time character voice consistency analysis
-    for fiction writing using TinyStyler's specialized style analysis.
+    Uses only Gemini 1.5 Flash for character voice analysis.
+    No complex ML dependencies, fast deployment, cost-effective.
     """
     
     def __init__(self):
         self.db = PostgreSQLService()
         self.gemini_service = GeminiService()
-        self.openai_service = OpenAIService()
         self.validator = SimpleInputValidator()
         self.security_logger = SecurityLogger()
         
-        # Initialize TinyStyler analyzer
-        self.style_analyzer = TinyStylerVoiceAnalyzer()
-        
-        # Cache for character profiles
-        self.character_cache: Dict[str, CharacterVoiceProfile] = {}
-        
-        # Enhanced configuration for TinyStyler
-        self.config = {
-            'similarity_threshold': 0.75,  # Threshold for voice consistency
-            'min_samples_for_profile': 3,   # Minimum dialogue samples needed
-            'max_profile_samples': 15,      # Reduced for better style focus
-            'llm_validation_threshold': 0.65,  # When to use LLM validation
-            'dialogue_min_length': 15,      # Increased for better style analysis
-            'context_window': 200,          # Context characters before/after dialogue
-            'style_learning_rate': 0.1,    # How quickly to adapt to new samples
-        }
-        
-        # Enhanced dialogue patterns for better extraction
+        # Simple dialogue extraction patterns
         self.dialogue_patterns = [
-            # Pattern 1: "Dialogue text," Speaker said/asked/etc.
-            r'"([^"]{15,})"\s*[,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
-            # Pattern 2: Speaker said/asked/etc., "Dialogue text"
-            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)[,:]?\s*"([^"]{15,})"',
+            # Pattern 1: "Dialogue text," Speaker said
+            r'"([^"]{10,})",?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            
+            # Pattern 2: Speaker said, "Dialogue text"
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized),?\s*"([^"]{10,})"',
+            
             # Pattern 3: "Dialogue text," Speaker said with additional description
-            r'"([^"]{15,})"\s*[,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\s+[a-z]+',
+            r'"([^"]{10,})"\s*[,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\s+[a-z]+'
         ]
         
-        logger.info("CharacterVoiceService initialized with TinyStyler")
+        # Simple configuration
+        self.config = {
+            'min_samples_for_profile': 3,
+            'max_profile_samples': 10,
+            'dialogue_min_length': 10,
+            'context_window': 150,
+            'consistency_threshold': 0.7
+        }
+        
+        logger.info("Simple Character Voice Service initialized with Gemini")
     
     async def analyze_text_for_voice_consistency(
         self, 
@@ -424,15 +116,7 @@ class CharacterVoiceService:
         document_id: Optional[str] = None
     ) -> List[VoiceConsistencyResult]:
         """
-        Analyze text for character voice consistency issues using TinyStyler
-        
-        Args:
-            text: The text to analyze
-            user_id: User ID for personalization
-            document_id: Optional document ID for context
-            
-        Returns:
-            List of voice consistency results
+        Analyze text for character voice consistency using Gemini
         """
         try:
             # Validate input
@@ -447,18 +131,18 @@ class CharacterVoiceService:
             # Load user's character profiles
             character_profiles = await self._load_character_profiles(user_id)
             
-            # Analyze each dialogue segment using TinyStyler
+            # Analyze each dialogue segment using Gemini
             results = []
             for segment in dialogue_segments:
                 if segment.speaker and len(segment.text) >= self.config['dialogue_min_length']:
-                    result = await self._analyze_dialogue_consistency_tinystyler(
+                    result = await self._analyze_dialogue_with_gemini(
                         segment, character_profiles, user_id
                     )
                     if result:
                         results.append(result)
             
             # Update character profiles with new dialogue
-            await self._update_character_profiles_tinystyler(dialogue_segments, user_id)
+            await self._update_character_profiles(dialogue_segments, user_id)
             
             return results
             
@@ -473,7 +157,7 @@ class CharacterVoiceService:
             return []
     
     def _extract_dialogue_segments(self, text: str) -> List[DialogueSegment]:
-        """Extract dialogue segments from text with enhanced speaker attribution"""
+        """Extract dialogue segments from text using simple regex patterns"""
         segments = []
         
         for pattern_idx, pattern in enumerate(self.dialogue_patterns):
@@ -492,7 +176,7 @@ class CharacterVoiceService:
                         dialogue_text = match.group(1).strip()
                         speaker = match.group(2).strip()
                     
-                    # Skip if dialogue is too short for style analysis
+                    # Skip if dialogue is too short
                     if len(dialogue_text) < self.config['dialogue_min_length']:
                         continue
                     
@@ -514,7 +198,7 @@ class CharacterVoiceService:
                         context_before=context_before,
                         context_after=context_after,
                         position=match.start(),
-                        confidence=0.9  # Higher confidence for TinyStyler
+                        confidence=0.9
                     )
                     
                     segments.append(segment)
@@ -528,20 +212,15 @@ class CharacterVoiceService:
                 unique_segments.append(segment)
                 seen_positions.add(segment.position)
         
-        logger.info(f"Extracted {len(unique_segments)} dialogue segments for TinyStyler analysis")
+        logger.info(f"Extracted {len(unique_segments)} dialogue segments")
         return unique_segments
     
     async def _load_character_profiles(self, user_id: int) -> Dict[str, CharacterVoiceProfile]:
         """Load character voice profiles for a user"""
         try:
-            # Check cache first
-            cache_key = f"user_{user_id}_profiles"
-            if cache_key in self.character_cache:
-                return self.character_cache[cache_key]
-            
             # Load from database
             query = """
-            SELECT character_id, character_name, dialogue_samples, voice_embedding, 
+            SELECT character_id, character_name, dialogue_samples, 
                    voice_characteristics, sample_count, last_updated
             FROM character_voice_profiles 
             WHERE user_id = %s AND sample_count >= %s
@@ -560,31 +239,27 @@ class CharacterVoiceService:
                         character_id=row['character_id'],
                         character_name=row['character_name'],
                         dialogue_samples=json.loads(row['dialogue_samples']),
-                        style_embedding=json.loads(row['voice_embedding']),  # Now contains TinyStyler embedding
-                        voice_characteristics=json.loads(row['voice_characteristics']),
                         sample_count=row['sample_count'],
                         last_updated=row['last_updated'],
-                        user_id=user_id
+                        user_id=user_id,
+                        voice_characteristics=json.loads(row['voice_characteristics'])
                     )
                     profiles[row['character_name'].lower()] = profile
             
-            # Cache the profiles
-            self.character_cache[cache_key] = profiles
-            
-            logger.info(f"Loaded {len(profiles)} character profiles for TinyStyler analysis")
+            logger.info(f"Loaded {len(profiles)} character profiles")
             return profiles
             
         except Exception as e:
             logger.error(f"Error loading character profiles: {str(e)}")
             return {}
     
-    async def _analyze_dialogue_consistency_tinystyler(
+    async def _analyze_dialogue_with_gemini(
         self, 
         segment: DialogueSegment, 
         character_profiles: Dict[str, CharacterVoiceProfile],
         user_id: int
     ) -> Optional[VoiceConsistencyResult]:
-        """Analyze dialogue segment using TinyStyler for voice consistency"""
+        """Analyze dialogue segment using Gemini for voice consistency"""
         try:
             speaker_key = segment.speaker.lower()
             
@@ -594,94 +269,73 @@ class CharacterVoiceService:
             
             profile = character_profiles[speaker_key]
             
-            # Use TinyStyler for style analysis
-            style_analysis = self.style_analyzer.analyze_style_transfer(
-                source_text=segment.text,
-                target_samples=profile.dialogue_samples
+            # Create Gemini prompt for voice consistency analysis
+            previous_dialogue = "\n".join([f'"{sample}"' for sample in profile.dialogue_samples[-5:]])
+            
+            prompt = f"""
+            Analyze if this new dialogue is consistent with the character's established voice pattern.
+            
+            Character: {profile.character_name}
+            
+            Previous dialogue examples from this character:
+            {previous_dialogue}
+            
+            New dialogue to analyze:
+            "{segment.text}"
+            
+            Context: {segment.context_before} [...] {segment.context_after}
+            
+            Please analyze:
+            1. Is this dialogue consistent with the character's voice? (yes/no)
+            2. What is your confidence level? (0.0 to 1.0)
+            3. What makes it consistent or inconsistent?
+            4. If inconsistent, provide 2-3 specific suggestions to improve voice consistency.
+            
+            Focus on: vocabulary choice, sentence structure, tone, personality traits, and speech patterns.
+            
+            Respond in JSON format:
+            {{
+                "is_consistent": boolean,
+                "confidence_score": float,
+                "similarity_score": float,
+                "explanation": "detailed explanation",
+                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+            }}
+            """
+            
+            # Use Gemini 1.5 Flash for analysis (cheaper and faster)
+            response = await self.gemini_service.generate_json_response(
+                prompt, 
+                max_tokens=400, 
+                temperature=0.3
             )
             
-            # Extract results
-            is_consistent = style_analysis['is_consistent']
-            similarity_score = style_analysis['consistency_score']
-            
-            # Generate explanation based on TinyStyler analysis
-            if is_consistent:
-                explanation = f"The dialogue matches {profile.character_name}'s established speaking style well."
-            else:
-                explanation = f"The dialogue shows stylistic deviation from {profile.character_name}'s typical voice patterns."
-            
-            # Generate suggestions
-            suggestions = self._generate_tinystyler_suggestions(
-                segment.text, 
-                profile.character_name, 
-                style_analysis
-            )
-            
-            # Use LLM validation for borderline cases
-            analysis_method = 'tinystyler_embedding'
-            if (similarity_score < self.config['similarity_threshold'] and 
-                similarity_score > self.config['llm_validation_threshold']):
-                
-                llm_result = await self._get_llm_voice_validation(
-                    segment, profile, similarity_score
+            if response and isinstance(response, dict):
+                # Create result
+                result = VoiceConsistencyResult(
+                    is_consistent=response.get('is_consistent', True),
+                    confidence_score=min(response.get('confidence_score', 0.8), 1.0),
+                    similarity_score=min(response.get('similarity_score', 0.8), 1.0),
+                    character_name=profile.character_name,
+                    flagged_text=segment.text,
+                    explanation=response.get('explanation', 'Voice analysis completed'),
+                    suggestions=response.get('suggestions', []),
+                    analysis_method='gemini_voice_analysis'
                 )
                 
-                if llm_result:
-                    is_consistent = llm_result.get('is_consistent', False)
-                    explanation = llm_result.get('explanation', explanation)
-                    suggestions = llm_result.get('suggestions', suggestions)
-                    analysis_method = 'tinystyler_llm_validated'
-            
-            # Create result
-            result = VoiceConsistencyResult(
-                is_consistent=is_consistent,
-                confidence_score=min(similarity_score * 1.1, 1.0),  # Slight boost for TinyStyler
-                similarity_score=similarity_score,
-                character_name=profile.character_name,
-                flagged_text=segment.text,
-                explanation=explanation,
-                suggestions=suggestions,
-                analysis_method=analysis_method
-            )
-            
-            # Log analysis for debugging
-            logger.debug(f"TinyStyler analysis - Character: {profile.character_name}, "
-                        f"Similarity: {similarity_score:.3f}, "
-                        f"Consistent: {is_consistent}, "
-                        f"Method: {analysis_method}")
-            
-            return result
+                logger.debug(f"Gemini analysis - Character: {profile.character_name}, "
+                           f"Consistent: {result.is_consistent}, "
+                           f"Confidence: {result.confidence_score:.3f}")
+                
+                return result
             
         except Exception as e:
-            logger.error(f"Error in TinyStyler dialogue consistency analysis: {str(e)}")
-            return None
+            logger.error(f"Error in Gemini dialogue analysis: {str(e)}")
+        
+        return None
     
-    def _generate_tinystyler_suggestions(
-        self, 
-        dialogue_text: str, 
-        character_name: str, 
-        style_analysis: Dict[str, Any]
-    ) -> List[str]:
-        """Generate improvement suggestions based on TinyStyler analysis"""
-        suggestions = []
-        
-        # Add style-specific suggestions
-        if style_analysis.get('style_transferred_text'):
-            suggestions.append(
-                f"Consider this style-adjusted version: '{style_analysis['style_transferred_text']}'"
-            )
-        
-        # Add character-specific suggestions
-        suggestions.extend([
-            f"Review {character_name}'s previous dialogue for consistent vocabulary and tone",
-            f"Consider {character_name}'s personality traits and how they influence speech patterns",
-            f"Check if the sentence structure and rhythm match {character_name}'s established voice"
-        ])
-        
-        return suggestions
-    
-    async def _update_character_profiles_tinystyler(self, segments: List[DialogueSegment], user_id: int):
-        """Update character profiles with new dialogue samples using TinyStyler"""
+    async def _update_character_profiles(self, segments: List[DialogueSegment], user_id: int):
+        """Update character profiles with new dialogue samples"""
         try:
             character_updates = {}
             
@@ -695,27 +349,27 @@ class CharacterVoiceService:
             
             # Update each character's profile
             for speaker_key, speaker_segments in character_updates.items():
-                await self._update_single_character_profile_tinystyler(
+                await self._update_single_character_profile(
                     speaker_key, speaker_segments, user_id
                 )
             
         except Exception as e:
-            logger.error(f"Error updating character profiles with TinyStyler: {str(e)}")
+            logger.error(f"Error updating character profiles: {str(e)}")
     
-    async def _update_single_character_profile_tinystyler(
+    async def _update_single_character_profile(
         self, 
         speaker_key: str, 
         segments: List[DialogueSegment], 
         user_id: int
     ):
-        """Update a single character's voice profile using TinyStyler"""
+        """Update a single character's voice profile"""
         try:
             character_name = segments[0].speaker
             character_id = hashlib.md5(f"{user_id}_{character_name}".encode()).hexdigest()
             
             # Get existing profile
             query = """
-            SELECT dialogue_samples, voice_embedding, voice_characteristics, sample_count
+            SELECT dialogue_samples, voice_characteristics, sample_count
             FROM character_voice_profiles 
             WHERE character_id = %s AND user_id = %s
             """
@@ -730,32 +384,26 @@ class CharacterVoiceService:
                 existing_samples = json.loads(result['dialogue_samples'])
                 all_samples = existing_samples + new_samples
                 
-                # Keep only the most recent samples (reduced for better style focus)
+                # Keep only the most recent samples
                 if len(all_samples) > self.config['max_profile_samples']:
                     all_samples = all_samples[-self.config['max_profile_samples']:]
-                
-                # Generate new TinyStyler embedding
-                new_embedding = self.style_analyzer.get_style_embedding(all_samples)
                 
                 # Update database
                 update_query = """
                 UPDATE character_voice_profiles 
-                SET dialogue_samples = %s, voice_embedding = %s, sample_count = %s, 
+                SET dialogue_samples = %s, sample_count = %s, 
                     last_updated = CURRENT_TIMESTAMP
                 WHERE character_id = %s AND user_id = %s
                 """
                 
                 self.db.execute_query(
                     update_query, 
-                    (json.dumps(all_samples), json.dumps(new_embedding), 
-                     len(all_samples), character_id, user_id)
+                    (json.dumps(all_samples), len(all_samples), character_id, user_id)
                 )
                 
             else:
                 # Create new profile
                 if len(new_samples) >= self.config['min_samples_for_profile']:
-                    embedding = self.style_analyzer.get_style_embedding(new_samples)
-                    
                     insert_query = """
                     INSERT INTO character_voice_profiles 
                     (character_id, character_name, user_id, dialogue_samples, 
@@ -763,79 +411,42 @@ class CharacterVoiceService:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                     """
                     
+                    # Use empty JSON for voice_embedding since we're not using embeddings
                     self.db.execute_query(
                         insert_query,
                         (character_id, character_name, user_id, json.dumps(new_samples),
-                         json.dumps(embedding), json.dumps({}), len(new_samples))
+                         json.dumps([]), json.dumps({}), len(new_samples))
                     )
             
-            # Clear cache to force reload
-            cache_key = f"user_{user_id}_profiles"
-            if cache_key in self.character_cache:
-                del self.character_cache[cache_key]
-            
         except Exception as e:
-            logger.error(f"Error updating TinyStyler character profile for {speaker_key}: {str(e)}")
-    
-    async def _get_llm_voice_validation(
-        self, 
-        segment: DialogueSegment, 
-        profile: CharacterVoiceProfile, 
-        similarity_score: float
-    ) -> Optional[Dict[str, Any]]:
-        """Get LLM validation for borderline voice consistency cases"""
-        try:
-            # Prepare context for LLM
-            sample_dialogue = "\n".join(profile.dialogue_samples[-5:])  # Last 5 samples
-            
-            prompt = f"""
-            Analyze if the following dialogue is consistent with the character's established voice using advanced style analysis.
-            
-            Character: {profile.character_name}
-            
-            Previous dialogue examples from this character:
-            {sample_dialogue}
-            
-            New dialogue to analyze:
-            "{segment.text}"
-            
-            Context: {segment.context_before} [...] {segment.context_after}
-            
-            TinyStyler similarity score: {similarity_score:.3f}
-            
-            Please analyze:
-            1. Is this dialogue consistent with the character's voice? (yes/no)
-            2. What specific stylistic aspects make it consistent or inconsistent?
-            3. If inconsistent, provide 2-3 specific suggestions to improve voice consistency.
-            
-            Focus on: vocabulary choice, sentence structure, rhythm, tone, and character-specific speech patterns.
-            
-            Respond in JSON format:
-            {{
-                "is_consistent": boolean,
-                "explanation": "detailed explanation",
-                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
-            }}
-            """
-            
-            # Use Gemini for analysis (faster and cheaper than OpenAI for this task)
-            response = await self.gemini_service.generate_json_response(
-                prompt, max_tokens=500, temperature=0.3
-            )
-            
-            if response and isinstance(response, dict):
-                return response
-            
-        except Exception as e:
-            logger.error(f"Error getting LLM voice validation: {str(e)}")
-        
-        return None
+            logger.error(f"Error updating character profile for {speaker_key}: {str(e)}")
     
     async def get_character_profiles(self, user_id: int) -> List[Dict[str, Any]]:
         """Get all character profiles for a user"""
         try:
-            profiles = await self._load_character_profiles(user_id)
-            return [profile.to_dict() for profile in profiles.values()]
+            query = """
+            SELECT character_id, character_name, sample_count, 
+                   last_updated, voice_characteristics
+            FROM character_voice_profiles 
+            WHERE user_id = %s
+            ORDER BY last_updated DESC
+            """
+            
+            result = self.db.execute_query(query, (user_id,), fetch='all')
+            
+            profiles = []
+            if result:
+                for row in result:
+                    profiles.append({
+                        'character_id': row['character_id'],
+                        'character_name': row['character_name'],
+                        'sample_count': row['sample_count'],
+                        'last_updated': row['last_updated'].isoformat(),
+                        'voice_characteristics': json.loads(row['voice_characteristics'])
+                    })
+            
+            return profiles
+            
         except Exception as e:
             logger.error(f"Error getting character profiles: {str(e)}")
             return []
@@ -845,15 +456,13 @@ class CharacterVoiceService:
         try:
             character_id = hashlib.md5(f"{user_id}_{character_name}".encode()).hexdigest()
             
-            query = "DELETE FROM character_voice_profiles WHERE character_id = %s AND user_id = %s"
-            self.db.execute_query(query, (character_id, user_id))
+            query = """
+            DELETE FROM character_voice_profiles 
+            WHERE character_id = %s AND user_id = %s
+            """
             
-            # Clear cache
-            cache_key = f"user_{user_id}_profiles"
-            if cache_key in self.character_cache:
-                del self.character_cache[cache_key]
-            
-            return True
+            rows_affected = self.db.execute_query(query, (character_id, user_id))
+            return rows_affected > 0
             
         except Exception as e:
             logger.error(f"Error deleting character profile: {str(e)}")
@@ -865,35 +474,23 @@ class CharacterVoiceService:
             # Test database connection
             db_healthy = self.db.health_check()['status'] == 'healthy'
             
-            # Test TinyStyler model (but don't require it for health)
-            tinystyler_status = "not_loaded"
-            try:
-                self.style_analyzer.ensure_model_loaded()
-                if self.style_analyzer.initialized:
-                    tinystyler_status = "loaded"
-                else:
-                    tinystyler_status = "fallback_mode"
-            except Exception as e:
-                logger.warning(f"TinyStyler health check failed: {str(e)}")
-                tinystyler_status = "fallback_mode"
-            
-            # Test LLM services
+            # Test Gemini service
             gemini_healthy = self.gemini_service.is_available()
             
-            # Service is healthy if database works and at least one analysis method is available
-            service_healthy = db_healthy and (tinystyler_status in ["loaded", "fallback_mode"] or gemini_healthy)
+            # Service is healthy if both database and Gemini work
+            service_healthy = db_healthy and gemini_healthy
             
             return {
                 'status': 'healthy' if service_healthy else 'unhealthy',
                 'database': db_healthy,
-                'tinystyler_model': tinystyler_status,
                 'gemini_service': gemini_healthy,
-                'analysis_mode': 'tinystyler' if tinystyler_status == "loaded" else 'fallback',
-                'cache_size': len(self.character_cache),
-                'config': self.config,
-                'device': self.style_analyzer.device
+                'analysis_mode': 'gemini_only',
+                'config': self.config
             }
             
         except Exception as e:
             logger.error(f"Error checking service health: {str(e)}")
-            return {'status': 'error', 'error': str(e)} 
+            return {'status': 'error', 'error': str(e)}
+
+# Create alias for backward compatibility
+CharacterVoiceService = SimpleCharacterVoiceService 
