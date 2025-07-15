@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import json
 import re
 import logging
-from typing import List
+from typing import List, Optional
 
 # Import security services
 from services.auth_service import auth_service, AuthenticationError
@@ -27,7 +27,18 @@ from dependencies import get_current_user_id
 
 # Initialize services
 llm_service = LLMService()
-character_voice_service = CharacterVoiceService()
+# character_voice_service = CharacterVoiceService()  # REMOVE eager init
+character_voice_service: Optional[CharacterVoiceService] = None  # Lazy init placeholder
+
+
+def get_character_voice_service() -> CharacterVoiceService:
+    """Lazily initialize and return CharacterVoiceService instance"""
+    global character_voice_service
+    if character_voice_service is None:
+        character_voice_service = CharacterVoiceService()
+    return character_voice_service
+
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -262,7 +273,7 @@ async def chat(
             if validated_editor_text and len(validated_editor_text) > 100:
                 try:
                     # Analyze editor text for voice consistency
-                    voice_results = await character_voice_service.analyze_text_for_voice_consistency(
+                    voice_results = await get_character_voice_service().analyze_text_for_voice_consistency(
                         text=validated_editor_text,
                         user_id=user_id
                     )
