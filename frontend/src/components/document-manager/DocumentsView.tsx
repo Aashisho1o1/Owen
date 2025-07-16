@@ -4,7 +4,7 @@ import { DocumentItem } from './DocumentItem';
 
 interface DocumentsViewProps {
   documents: Document[];
-  recentDocuments: Document[];
+  allDocuments: Document[];
   folders: DocumentFolder[];
   onDocumentSelect: (document: Document) => void;
   onDuplicateDocument: (documentId: string) => void;
@@ -13,11 +13,11 @@ interface DocumentsViewProps {
 
 /**
  * Organism component: Documents View
- * Single Responsibility: Display recent documents in a clean, organized layout
+ * Single Responsibility: Display all documents in a clean, organized layout
  */
 export const DocumentsView: React.FC<DocumentsViewProps> = ({
   documents,
-  recentDocuments,
+  allDocuments,
   folders,
   onDocumentSelect,
   onDuplicateDocument,
@@ -25,11 +25,11 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
 }) => {
   return (
     <div className="documents-view-container">
-      {/* Recent Documents Section - Full Width */}
+      {/* All Documents Section - Full Width */}
       <div className="recent-documents-full">
-        <h3>📝 Recent Documents</h3>
+        <h3>📝 All Documents</h3>
         <div className="document-list-grid">
-          {recentDocuments.slice(0, 10).map(document => (
+          {allDocuments.map(document => (
             <DocumentItem
               key={document.id}
               document={document}
@@ -39,10 +39,10 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
               onDelete={onDeleteDocument}
             />
           ))}
-          {recentDocuments.length === 0 && (
+          {allDocuments.length === 0 && (
             <div className="empty-state-large">
               <div className="empty-icon">📄</div>
-              <h4>No recent documents yet</h4>
+              <h4>No documents yet</h4>
               <p>Create your first document to get started writing!</p>
             </div>
           )}

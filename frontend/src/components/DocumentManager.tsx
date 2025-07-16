@@ -163,7 +163,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
         return (
           <DocumentsView
             documents={getDisplayDocuments()}
-            recentDocuments={getDisplayDocuments().slice(0, 10)}
+            allDocuments={getDisplayDocuments()}
             folders={folders}
             onDocumentSelect={onDocumentSelect}
             onDuplicateDocument={duplicateDocument}
