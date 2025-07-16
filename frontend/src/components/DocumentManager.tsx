@@ -231,6 +231,9 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           filterBy={filterBy}
           onSortChange={(sort) => setSortBy(sort as SortBy)}
           onFilterChange={(filter) => setFilterBy(filter as FilterBy)}
+          viewMode={viewMode}
+          onCreateDocument={() => setShowCreateDocumentModal(true)}
+          onCreateFolder={() => setShowCreateFolderModal(true)}
         />
 
         {/* Content Section */}

@@ -12,6 +12,10 @@ interface SearchBarProps {
   filterBy?: string;
   onSortChange?: (sort: string) => void;
   onFilterChange?: (filter: string) => void;
+  // Add create button props
+  viewMode?: string;
+  onCreateDocument?: () => void;
+  onCreateFolder?: () => void;
 }
 
 /**
@@ -28,7 +32,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   sortBy,
   filterBy,
   onSortChange,
-  onFilterChange
+  onFilterChange,
+  viewMode,
+  onCreateDocument,
+  onCreateFolder
 }) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -87,6 +94,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               <option value="outline">Outlines</option>
               <option value="notes">Notes</option>
             </select>
+          )}
+          
+          {/* Create Buttons */}
+          {viewMode === 'documents' && onCreateDocument && (
+            <button onClick={onCreateDocument} className="create-button">
+              ✨ New Document
+            </button>
+          )}
+          {viewMode === 'folders' && onCreateFolder && (
+            <button onClick={onCreateFolder} className="create-button">
+              📁 New Folder
+            </button>
           )}
         </div>
       </div>
