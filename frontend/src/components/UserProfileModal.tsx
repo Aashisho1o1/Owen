@@ -232,11 +232,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           {/* User info header */}
           <div className="user-info-header">
             <div className="user-avatar">
-              {(user.display_name || user.username).charAt(0).toUpperCase()}
+              {(user.display_name || user.username || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="user-info-text">
-              <h3>{user.display_name || user.username}</h3>
-              <p>@{user.username}</p>
+              <h3>{user.display_name || user.username || 'Unknown User'}</h3>
+              <p>@{user.username || 'unknown'}</p>
               <small>Member since {new Date(user.created_at).toLocaleDateString()}</small>
             </div>
           </div>
