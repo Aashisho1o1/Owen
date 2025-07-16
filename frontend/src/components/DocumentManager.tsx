@@ -7,7 +7,6 @@ import {
   DocumentManagerHeader,
   NavigationTabs,
   SearchBar,
-  ControlsPanel,
   CreateModal,
   AuthPrompt,
   // Organism Components
@@ -218,24 +217,17 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           onViewModeChange={setViewMode}
         />
 
-        {/* Search Section */}
+        {/* Combined Search and Controls Section */}
         <SearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onSearch={handleSearch}
           onClearSearch={handleClearSearch}
           showClearButton={searchQuery !== '' || viewMode === 'search'}
-        />
-
-        {/* Controls Section */}
-        <ControlsPanel
           sortBy={sortBy}
           filterBy={filterBy}
-          viewMode={viewMode}
-          onSortChange={setSortBy}
-          onFilterChange={setFilterBy}
-          onCreateDocument={() => setShowCreateDocumentModal(true)}
-          onCreateFolder={() => setShowCreateFolderModal(true)}
+          onSortChange={(sort) => setSortBy(sort as SortBy)}
+          onFilterChange={(filter) => setFilterBy(filter as FilterBy)}
         />
 
         {/* Content Section */}
