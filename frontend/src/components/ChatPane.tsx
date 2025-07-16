@@ -8,7 +8,7 @@
  * - Follows React best practices for maintainability
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { EnhancedChatInput } from './chat-interface/EnhancedChatInput';
 import { ThinkingTrail } from './chat/ThinkingTrail';
 import { 
@@ -64,8 +64,8 @@ const ChatPane: React.FC = () => {
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
 
   // Business Logic: Generate contextual prompts for highlighted text
-  const contextualPrompts = useCallback(() => {
-    if (!highlightedText) return [];
+  const contextualPrompts = useMemo(() => {
+    if (!highlightedText || !highlightedText.trim()) return [];
     return generateContextualPrompts(authorPersona, helpFocus);
   }, [highlightedText, authorPersona, helpFocus]);
 
@@ -131,7 +131,7 @@ const ChatPane: React.FC = () => {
       <MessagesContainer
         messages={messages}
         highlightedText={highlightedText}
-        contextualPrompts={contextualPrompts()}
+        contextualPrompts={contextualPrompts}
         chatApiError={chatApiError}
         apiGlobalError={apiGlobalError}
         streamText={streamText}
