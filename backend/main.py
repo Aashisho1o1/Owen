@@ -11,9 +11,18 @@ import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-# Disable ChromaDB telemetry to prevent Railway deployment crashes
+# CRITICAL: Disable ChromaDB telemetry BEFORE any imports
+# This prevents Railway deployment crashes due to telemetry initialization errors
 os.environ['ANONYMIZED_TELEMETRY'] = 'False'
 os.environ['CHROMA_TELEMETRY'] = 'False'
+os.environ['CHROMA_TELEMETRY_ENABLED'] = 'False'
+os.environ['CHROMA_DISABLE_TELEMETRY'] = 'True'
+os.environ['CHROMA_ANONYMIZED_TELEMETRY'] = 'False'
+
+# Additional environment variables to completely disable telemetry
+os.environ['POSTHOG_DISABLED'] = 'True'
+os.environ['POSTHOG_CAPTURE_DISABLED'] = 'True'
+os.environ['TELEMETRY_DISABLED'] = 'True'
 
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
@@ -48,6 +57,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# CRITICAL: Suppress ChromaDB telemetry errors at the logging level
+# This prevents telemetry errors from appearing in logs even if they occur
+chromadb_logger = logging.getLogger('chromadb.telemetry')
+chromadb_logger.setLevel(logging.CRITICAL)  # Only show critical errors, not telemetry failures
+
+posthog_logger = logging.getLogger('chromadb.telemetry.product.posthog')
+posthog_logger.setLevel(logging.CRITICAL)  # Suppress PostHog telemetry errors
 
 # CRITICAL: JWT Secret validation - fail startup if not configured
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
