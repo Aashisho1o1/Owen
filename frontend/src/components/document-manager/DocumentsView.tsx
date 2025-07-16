@@ -13,7 +13,7 @@ interface DocumentsViewProps {
 
 /**
  * Organism component: Documents View
- * Single Responsibility: Display and organize document lists (recent + all)
+ * Single Responsibility: Display recent documents in a clean, organized layout
  */
 export const DocumentsView: React.FC<DocumentsViewProps> = ({
   documents,
@@ -25,50 +25,27 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
 }) => {
   return (
     <div className="documents-view-container">
-      {/* Documents Content Grid */}
-      <div className="documents-content-grid">
-        {/* Recent Documents Section */}
-        <div className="recent-section">
-          <h3>📝 Recent Documents</h3>
-          <div className="document-list">
-            {recentDocuments.slice(0, 5).map(document => (
-              <DocumentItem
-                key={document.id}
-                document={document}
-                folders={folders}
-                onSelect={onDocumentSelect}
-                onDuplicate={onDuplicateDocument}
-                onDelete={onDeleteDocument}
-              />
-            ))}
-            {recentDocuments.length === 0 && (
-              <div className="empty-state-small">
-                <p>No recent documents yet. Create your first document to get started!</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* All Documents Section */}
-        <div className="all-documents-section">
-          <h3>📚 All Documents</h3>
-          <div className="document-list">
-            {documents.map(document => (
-              <DocumentItem
-                key={document.id}
-                document={document}
-                folders={folders}
-                onSelect={onDocumentSelect}
-                onDuplicate={onDuplicateDocument}
-                onDelete={onDeleteDocument}
-              />
-            ))}
-            {documents.length === 0 && (
-              <div className="empty-state-small">
-                <p>No documents found. Start writing your first story!</p>
-              </div>
-            )}
-          </div>
+      {/* Recent Documents Section - Full Width */}
+      <div className="recent-documents-full">
+        <h3>📝 Recent Documents</h3>
+        <div className="document-list-grid">
+          {recentDocuments.slice(0, 10).map(document => (
+            <DocumentItem
+              key={document.id}
+              document={document}
+              folders={folders}
+              onSelect={onDocumentSelect}
+              onDuplicate={onDuplicateDocument}
+              onDelete={onDeleteDocument}
+            />
+          ))}
+          {recentDocuments.length === 0 && (
+            <div className="empty-state-large">
+              <div className="empty-icon">📄</div>
+              <h4>No recent documents yet</h4>
+              <p>Create your first document to get started writing!</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
