@@ -46,8 +46,10 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
   return (
     <div className="messages-container">
-      {/* Show highlighted text at top if no messages yet */}
-      {messages.length === 0 && highlightedText && highlightedText.trim() && (
+      {/* Show highlighted text at top if no messages yet OR if we have highlighted text but no user messages yet */}
+      {((messages.length === 0) || 
+        (highlightedText && highlightedText.trim() && !messages.some(msg => msg.role === 'user'))) && 
+        highlightedText && highlightedText.trim() && (
         <HighlightedTextDisplay
           highlightedText={highlightedText}
           contextualPrompts={contextualPrompts}
