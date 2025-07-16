@@ -753,7 +753,7 @@ class CharacterVoiceService:
     async def delete_character_profile(self, user_id: int, character_name: str) -> bool:
         """Delete a character profile"""
         try:
-            character_id = hashlib.md5(f"{user_id}_{character_name}".encode()).hexdigest()
+            character_id = hashlib.sha256(f"{user_id}_{character_name}".encode()).hexdigest()
             
             query = "DELETE FROM character_voice_profiles WHERE character_id = %s AND user_id = %s"
             self.db.execute_query(query, (character_id, user_id))
