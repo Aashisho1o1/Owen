@@ -102,7 +102,7 @@ async def chat(
         
         # SECURITY: Additional length checks for expensive operations
         total_input_length = len(validated_message) + len(validated_editor_text)
-        if total_input_length > 15000:  # Reasonable limit for LLM processing
+        if total_input_length > 100000:  # Increased limit to align with validation service
             raise HTTPException(
                 status_code=400,
                 detail="Input too long. Please reduce the length of your message and editor content."

@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApiHealth } from './useApiHealth';
 import api, { ChatMessage, ChatRequest, ChatResponse, UserPreferences } from '../services/api';
 import { logger } from '../utils/logger';
-import { truncateEditorContent, createTokenLimitErrorMessage } from '../utils/tokenLimitUtils';
 
 interface ApiErrorData {
   error?: string;
@@ -155,27 +154,9 @@ export const useChat = ({
         aiMode
       });
       
-      // 🔧 SMART TRUNCATION: Prevent token limit errors while preserving context
-      const truncationResult = truncateEditorContent(editorContent, message, {
-        highlightedText: highlightedText || undefined,
-        maxTotalLength: 12000, // Conservative limit
-        contextWindow: 2000, // 2KB around highlighted text
-        preserveStructure: true
-      });
-      
-      // Log truncation info for debugging
-      if (truncationResult.wasTruncated) {
-        logger.info('📝 Content truncated for AI processing:', {
-          originalLength: truncationResult.originalLength,
-          truncatedLength: truncationResult.truncatedLength,
-          highlightPreserved: truncationResult.highlightPreserved,
-          reductionPercentage: Math.round(((truncationResult.originalLength - truncationResult.truncatedLength) / truncationResult.originalLength) * 100)
-        });
-      }
-      
       const requestPayload = {
         message,
-        editor_text: truncationResult.truncatedContent, // Use truncated content
+        editor_text: editorContent, // Use original content
         author_persona: authorPersona,
         help_focus: helpFocus,
         chat_history: [...messages, userMessage],
@@ -220,17 +201,7 @@ export const useChat = ({
       setIsThinking(false);
       
       if (response && response.dialogue_response && response.dialogue_response.trim()) {
-        let finalResponse = response.dialogue_response;
-        
-        // 📝 Add truncation notice if content was truncated
-        if (truncationResult.wasTruncated) {
-          const truncationNotice = createTokenLimitErrorMessage(
-            truncationResult.originalLength,
-            truncationResult.truncatedLength,
-            truncationResult.highlightPreserved
-          );
-          finalResponse = `${truncationNotice}\n\n---\n\n${finalResponse}`;
-        }
+        const finalResponse = response.dialogue_response;
         
         setFullResponse(finalResponse);
         setIsStreaming(true); // Start streaming the response
@@ -336,11 +307,10 @@ export const useChat = ({
         const errorDetail = typedError.response?.data?.detail || '';
         if (errorDetail.includes('Input too long') || errorDetail.includes('too long')) {
           errorType = 'token_limit';
-          fallbackResponse = `📝 Your document is too long for AI processing. I've automatically implemented smart truncation to prevent this issue. Please try your request again - it should work now with the improved content handling.`;
+          fallbackResponse = `📝 Your document is too long for AI processing. The system supports documents up to 100,000 characters. Please try reducing the length of your document or break it into smaller sections.`;
         } else {
           fallbackResponse = `There was an issue with your request format. As ${authorPersona} would say, clarity is key in both writing and communication. Please try rephrasing your question.`;
         }
-      }
       } else if (typedError.response?.status === 403 || typedError.response?.status === 401) {
         errorType = 'auth';
         fallbackResponse = `🔐 Authentication Required: You need to be signed in to use the AI Writing Assistant. Please sign in or create an account to start getting personalized writing feedback from ${authorPersona}.`;
