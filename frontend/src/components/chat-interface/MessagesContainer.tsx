@@ -2,7 +2,6 @@ import React, { useRef, useEffect } from 'react';
 import { EnhancedChatMessage } from './EnhancedChatMessage';
 import { HighlightedTextDisplay } from './HighlightedTextDisplay';
 import { ErrorDisplay } from './ErrorDisplay';
-import { StreamingMessage } from './StreamingMessage';
 import { UnhighlightButton } from './UnhighlightButton';
 import { ChatMessage as ChatMessageType } from '../../services/api';
 import { SuggestionOption } from '../../services/api/types';
@@ -78,6 +77,15 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           index === messages.length - 1 && 
           Array.isArray(currentSuggestions) && currentSuggestions.length > 0;
         
+        // FIXED: Handle streaming for the last assistant message
+        const isStreamingMessage = msg.role === 'assistant' && 
+          index === messages.length - 1 && 
+          isStreaming;
+        
+        // Create a modified message for streaming display
+        const displayMessage = isStreamingMessage && streamText ? 
+          { ...msg, content: streamText } : msg;
+        
         return (
           <React.Fragment key={index}>
             {/* Show highlighted text inline before relevant user message */}
@@ -92,20 +100,15 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
             )}
             
             <EnhancedChatMessage 
-              message={msg}
+              message={displayMessage}
               suggestions={isLastAIMessage ? currentSuggestions : []}
               originalText={highlightedText || ''}
               showSuggestions={isLastAIMessage}
+              isStreaming={isStreamingMessage}
             />
           </React.Fragment>
         );
       })}
-      
-      {/* Streaming Message */}
-      <StreamingMessage
-        streamText={streamText || ''}
-        isStreaming={isStreaming}
-      />
       
       <div ref={messagesEndRef} />
     </div>

@@ -107,12 +107,11 @@ export const useChat = ({
   useEffect(() => {
     if (!isStreaming || streamIndex >= fullResponse.length) {
       if (isStreaming && streamIndex >= fullResponse.length) {
-        // Add the complete streamed message to chat history
-        setMessages(prev => [
-          ...prev,
-          { role: 'assistant' as const, content: fullResponse }
-        ]);
+        // FIXED: Don't add the message here - it should already be in the messages array
+        // The streaming effect should only handle the typing animation
         setIsStreaming(false); // End streaming
+        setStreamText(''); // Clear stream text
+        setStreamIndex(0); // Reset stream index
       }
       return;
     }
@@ -203,8 +202,17 @@ export const useChat = ({
       if (response && response.dialogue_response && response.dialogue_response.trim()) {
         const finalResponse = response.dialogue_response;
         
+        // FIXED: Add the assistant message immediately to ensure correct ordering
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: finalResponse,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        
         setFullResponse(finalResponse);
         setIsStreaming(true); // Start streaming the response
+        setStreamIndex(0); // Reset stream index
         setThinkingTrail(response.thinking_trail || null);
         
         // CRITICAL: Dispatch suggestions to ChatContext if available
