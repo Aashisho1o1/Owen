@@ -64,7 +64,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     clearSearch,
           // createFromTemplate removed - template system deprecated
     getDocumentsByFolder,
-    getRecentDocuments,
     getTotalWordCount
   } = useDocuments();
 
@@ -164,7 +163,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
         return (
           <DocumentsView
             documents={getDisplayDocuments()}
-            recentDocuments={getRecentDocuments()}
+            recentDocuments={getDisplayDocuments().slice(0, 10)}
             folders={folders}
             onDocumentSelect={onDocumentSelect}
             onDuplicateDocument={duplicateDocument}
