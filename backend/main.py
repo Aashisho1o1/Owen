@@ -28,28 +28,70 @@ os.environ['TELEMETRY_DISABLED'] = 'True'
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+# Add comprehensive startup logging
+print("🚀 DOG Writer Backend Starting...")
+print(f"📍 Current working directory: {os.getcwd()}")
+print(f"🐍 Python version: {sys.version}")
+print(f"🌍 Environment: {os.getenv('RAILWAY_ENVIRONMENT', 'local')}")
+print(f"🔧 PORT: {os.getenv('PORT', 'not set')}")
+print(f"🔑 JWT_SECRET_KEY: {'✅ SET' if os.getenv('JWT_SECRET_KEY') else '❌ NOT SET'}")
+print(f"🗄️ DATABASE_URL: {'✅ SET' if os.getenv('DATABASE_URL') else '❌ NOT SET'}")
 
-# Import our PostgreSQL services
-from services.database import db_service
+try:
+    from fastapi import FastAPI, Request
+    from fastapi.middleware.cors import CORSMiddleware
+    print("✅ FastAPI imports successful")
+except Exception as e:
+    print(f"❌ FastAPI imports failed: {e}")
+    sys.exit(1)
 
-# Import all routers
-from routers.auth_router import router as auth_router
-from routers.document_router import router as document_router
-from routers.folder_router import router as folder_router
-# Template routers removed - template system deprecated for MVP
-from routers.chat_router import router as chat_router
-from routers.grammar_router import router as grammar_router
-from routers.indexing_router import router as indexing_router
-from routers.story_generator_router import router as story_generator_router
-from routers.character_voice_router import router as character_voice_router
+try:
+    # Import our PostgreSQL services
+    from services.database import db_service
+    print("✅ Database service import successful")
+except Exception as e:
+    print(f"❌ Database service import failed: {e}")
+    # Continue without database for now
+    db_service = None
 
-# Import security middleware
-from middleware.security_middleware import SecurityMiddleware
+# Import all routers with error handling
+routers_to_import = [
+    ("routers.auth_router", "auth_router"),
+    ("routers.document_router", "document_router"),
+    ("routers.folder_router", "folder_router"),
+    ("routers.chat_router", "chat_router"),
+    ("routers.grammar_router", "grammar_router"),
+    ("routers.indexing_router", "indexing_router"),
+    ("routers.story_generator_router", "story_generator_router"),
+    ("routers.character_voice_router", "character_voice_router"),
+]
 
-# Import rate limiter for health checks
-from services.rate_limiter import rate_limiter
+imported_routers = []
+for module_name, router_name in routers_to_import:
+    try:
+        module = __import__(module_name, fromlist=[router_name])
+        router = getattr(module, "router")
+        imported_routers.append((router_name, router))
+        print(f"✅ {router_name} imported successfully")
+    except Exception as e:
+        print(f"❌ {router_name} import failed: {e}")
+        # Continue without this router
+
+try:
+    # Import security middleware
+    from middleware.security_middleware import SecurityMiddleware
+    print("✅ Security middleware import successful")
+except Exception as e:
+    print(f"❌ Security middleware import failed: {e}")
+    SecurityMiddleware = None
+
+try:
+    # Import rate limiter for health checks
+    from services.rate_limiter import rate_limiter
+    print("✅ Rate limiter import successful")
+except Exception as e:
+    print(f"❌ Rate limiter import failed: {e}")
+    rate_limiter = None
 
 # Configure logging
 logging.basicConfig(
@@ -91,6 +133,7 @@ async def lifespan(app: FastAPI):
     startup_errors = []
     
     try:
+        print("🚀 Starting DOG Writer MVP backend lifespan...")
         logger.info("🚀 Starting DOG Writer MVP backend...")
         
         # Check critical environment variables first
@@ -98,6 +141,11 @@ async def lifespan(app: FastAPI):
             'DATABASE_URL': os.getenv('DATABASE_URL'),
             'JWT_SECRET_KEY': os.getenv('JWT_SECRET_KEY'),
         }
+        
+        print(f"🔍 Checking critical environment variables...")
+        for var_name, var_value in critical_vars.items():
+            status = "✅ SET" if var_value else "❌ NOT SET"
+            print(f"   {var_name}: {status}")
         
         for var_name, var_value in critical_vars.items():
             if not var_value:
@@ -245,19 +293,21 @@ app.add_middleware(
     ],  # Only expose necessary headers for security
 )
 
-# Add security middleware AFTER CORS middleware
-app.add_middleware(SecurityMiddleware)
+# Add security middleware AFTER CORS middleware (if available)
+if SecurityMiddleware:
+    app.add_middleware(SecurityMiddleware)
+    print("✅ Security middleware added")
+else:
+    print("⚠️ Security middleware not available - continuing without it")
 
-# Include all modular routers
-app.include_router(auth_router)
-app.include_router(document_router)
-app.include_router(folder_router)
-# Template routers removed - template system deprecated for MVP
-app.include_router(chat_router)
-app.include_router(grammar_router)
-app.include_router(indexing_router)
-app.include_router(story_generator_router)
-app.include_router(character_voice_router)
+# Include all modular routers that were successfully imported
+print(f"📚 Including {len(imported_routers)} routers...")
+for router_name, router in imported_routers:
+    try:
+        app.include_router(router)
+        print(f"✅ {router_name} router included")
+    except Exception as e:
+        print(f"❌ Failed to include {router_name} router: {e}")
 
 # Explicit CORS preflight handler for all routes
 @app.options("/{path:path}")
@@ -316,13 +366,15 @@ async def health_check(request: Request = None):
             "OPENAI_API_KEY": "✅ SET" if os.getenv('OPENAI_API_KEY') else "⚠️ NOT SET (optional)",
         }
         
-        # Database health check (only if DATABASE_URL is set)
+        # Database health check (only if DATABASE_URL is set and db_service is available)
         db_health = {"status": "not_configured", "error": "DATABASE_URL not set"}
-        if os.getenv('DATABASE_URL'):
+        if os.getenv('DATABASE_URL') and db_service:
             try:
                 db_health = db_service.health_check()
             except Exception as e:
                 db_health = {"status": "unhealthy", "error": str(e)}
+        elif not db_service:
+            db_health = {"status": "service_unavailable", "error": "Database service failed to import"}
         
         # Overall status
         overall_status = "healthy" if startup_success and db_health['status'] == 'healthy' else "unhealthy"
