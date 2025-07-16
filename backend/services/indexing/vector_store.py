@@ -4,6 +4,7 @@ Optimized for narrative text with semantic chunking
 """
 
 from typing import List, Dict, Any, Optional, Tuple
+import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import chromadb
@@ -21,11 +22,25 @@ class VectorStore:
         # Initialize embedding model - using a model fine-tuned for narrative text
         self.embedding_model = SentenceTransformer('all-mpnet-base-v2')
         
-        # Initialize ChromaDB with persistence
-        self.client = chromadb.Client(Settings(
-            persist_directory=persist_directory,
-            anonymized_telemetry=False
-        ))
+        # Initialize ChromaDB with Railway-optimized settings
+        # Use in-memory storage for Railway's ephemeral filesystem
+        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') == 'production'
+        
+        if is_railway:
+            # In-memory storage for Railway
+            self.client = chromadb.Client(Settings(
+                anonymized_telemetry=False,
+                allow_reset=True,
+                is_persistent=False
+            ))
+        else:
+            # Local persistent storage
+            self.client = chromadb.Client(Settings(
+                persist_directory=persist_directory,
+                anonymized_telemetry=False,
+                allow_reset=True,
+                is_persistent=True
+            ))
         
         # Get or create collection
         self.collection = self.client.get_or_create_collection(

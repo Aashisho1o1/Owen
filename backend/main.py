@@ -11,6 +11,10 @@ import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
 
+# Disable ChromaDB telemetry to prevent Railway deployment crashes
+os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+os.environ['CHROMA_TELEMETRY'] = 'False'
+
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
 load_dotenv()

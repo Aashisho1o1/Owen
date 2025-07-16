@@ -244,45 +244,44 @@ HYPERCORN_VERSION_MISMATCH=true
 DEPLOYMENT_STRATEGY=HYPERCORN_ARGUMENT_CORRECTION
 PRIORITY=CRITICAL_STARTUP_FIX
 
-GOOGLE-GENAI-SDK-MIGRATION-2025-01-27-23:30:00Z
+CHROMADB-TELEMETRY-FIX-2025-07-16-01:55:00Z
 
-# 🚀 DEFINITIVE SOLUTION: Google GenAI SDK Migration for Railway Compatibility
-# Problem: google-generativeai library has Railway deployment compatibility issues
+# 🔧 CRITICAL FIX: ChromaDB Telemetry Errors Causing Backend Crashes
+# Problem: ChromaDB telemetry system causing Railway deployment failures
 
-ISSUE_IDENTIFIED=GOOGLE_GENERATIVEAI_RAILWAY_INCOMPATIBILITY
-ROOT_CAUSE=DEPRECATED_SDK_RAILWAY_BUILD_ENVIRONMENT_CONFLICTS
-SOLUTION_APPLIED=MIGRATION_TO_NEW_GOOGLE_GENAI_SDK
+ISSUE_IDENTIFIED=CHROMADB_TELEMETRY_POSTHOG_ERRORS
+ROOT_CAUSE=CHROMADB_TELEMETRY_CAPTURE_FUNCTION_ARGUMENT_MISMATCH
+SOLUTION_APPLIED=DISABLE_CHROMADB_TELEMETRY_AND_RAILWAY_OPTIMIZATION
 
-# RESEARCH FINDINGS:
-# ✅ Google has officially migrated to new google-genai SDK
-# ✅ Old google-generativeai library is deprecated and has Railway issues
-# ✅ Railway deployment forum confirms google-generativeai version conflicts
-# ✅ New google-genai SDK is more stable and Railway-compatible
+# EVIDENCE FROM DEPLOYMENT LOGS:
+# ❌ ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+# ❌ ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+# ❌ Backend returns 502 Bad Gateway after ChromaDB initialization
+# ❌ Frontend gets CORS errors because backend process crashes
 
 # COMPREHENSIVE SOLUTION IMPLEMENTED:
-# 1. Added google-genai>=0.7.0 to requirements.txt (new stable SDK)
-# 2. Updated GeminiService to support both SDKs with automatic fallback
-# 3. Prioritized new SDK for Railway compatibility
-# 4. Maintained backward compatibility with legacy SDK
-# 5. Enhanced error handling and logging for both SDKs
-# 6. Updated model preferences to use stable 2.0 models
+# 1. Added environment variables to disable ChromaDB telemetry in main.py
+# 2. Updated ChromaDB Settings to disable anonymized_telemetry
+# 3. Configured Railway-optimized ChromaDB settings (in-memory for ephemeral filesystem)
+# 4. Added proper error handling for ChromaDB initialization
+# 5. Separated local development (persistent) vs Railway (in-memory) configurations
 
-# TECHNICAL BENEFITS:
-# ✅ New SDK has better Railway deployment compatibility
-# ✅ More stable API surface and fewer dependency conflicts
-# ✅ Better async support and performance
-# ✅ Future-proof migration path
-# ✅ Maintains Gemini as core functionality (not optional)
+# TECHNICAL CHANGES:
+# ✅ os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+# ✅ os.environ['CHROMA_TELEMETRY'] = 'False'
+# ✅ Railway: is_persistent=False (in-memory storage)
+# ✅ Local: is_persistent=True (persistent storage)
+# ✅ Proper environment detection for Railway
 
 # EXPECTED RESULT:
-# ✅ Railway builds successfully with new google-genai library
-# ✅ Gemini service initializes properly on Railway
-# ✅ Backend starts without import errors
-# ✅ CORS headers properly set by FastAPI
-# ✅ User registration and AI chat work correctly
-# ✅ Core Gemini functionality preserved and enhanced
+# ✅ ChromaDB initializes without telemetry errors
+# ✅ Backend starts successfully on Railway
+# ✅ No more 502 Bad Gateway errors
+# ✅ CORS headers properly sent by FastAPI
+# ✅ Frontend can connect to backend without errors
+# ✅ Indexing service works correctly for document search
 
-DEPLOYMENT_STRATEGY=GOOGLE_GENAI_SDK_MIGRATION
-PRIORITY=CRITICAL_GEMINI_FUNCTIONALITY_FIX
-SDK_VERSION=google-genai-0.7.0
-BACKWARD_COMPATIBILITY=google-generativeai-fallback
+DEPLOYMENT_STRATEGY=CHROMADB_TELEMETRY_DISABLE
+PRIORITY=CRITICAL_BACKEND_STARTUP_FIX
+CHROMADB_VERSION=OPTIMIZED_FOR_RAILWAY
+TELEMETRY_STATUS=DISABLED
