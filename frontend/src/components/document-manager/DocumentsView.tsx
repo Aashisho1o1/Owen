@@ -23,54 +23,8 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
   onDuplicateDocument,
   onDeleteDocument
 }) => {
-  const getDocumentStats = () => {
-    const totalDocs = documents.length;
-    const totalWords = documents.reduce((sum, doc) => sum + (doc.word_count || 0), 0);
-    const recentCount = recentDocuments.length;
-    const folderCount = folders.length;
-    
-    return { totalDocs, totalWords, recentCount, folderCount };
-  };
-
-  const { totalDocs, totalWords, recentCount, folderCount } = getDocumentStats();
-
   return (
     <div className="documents-view-container">
-      {/* App Map Section - Quick Overview */}
-      <div className="app-map-section">
-        <h3>🗺️ Writing Dashboard</h3>
-        <div className="app-map-grid">
-          <div className="map-card">
-            <div className="map-icon">📝</div>
-            <div className="map-stats">
-              <div className="map-number">{totalDocs}</div>
-              <div className="map-label">Documents</div>
-            </div>
-          </div>
-          <div className="map-card">
-            <div className="map-icon">📊</div>
-            <div className="map-stats">
-              <div className="map-number">{totalWords.toLocaleString()}</div>
-              <div className="map-label">Total Words</div>
-            </div>
-          </div>
-          <div className="map-card">
-            <div className="map-icon">⏰</div>
-            <div className="map-stats">
-              <div className="map-number">{recentCount}</div>
-              <div className="map-label">Recent</div>
-            </div>
-          </div>
-          <div className="map-card">
-            <div className="map-icon">📁</div>
-            <div className="map-stats">
-              <div className="map-number">{folderCount}</div>
-              <div className="map-label">Folders</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Documents Content Grid */}
       <div className="documents-content-grid">
         {/* Recent Documents Section */}
