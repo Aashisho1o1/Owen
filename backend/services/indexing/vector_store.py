@@ -27,35 +27,24 @@ class VectorStore:
         is_railway = os.environ.get('RAILWAY_ENVIRONMENT') == 'production'
         
         try:
-            if is_railway:
-                # Railway: In-memory storage with minimal settings
-                self.client = chromadb.Client(Settings(
-                    anonymized_telemetry=False,
-                    allow_reset=True,
-                    is_persistent=False
-                ))
-            else:
-                # Local: Persistent storage with minimal settings
-                self.client = chromadb.Client(Settings(
-                    persist_directory=persist_directory,
-                    anonymized_telemetry=False,
-                    allow_reset=True,
-                    is_persistent=True
-                ))
+            # Correctly disable telemetry using Chroma's settings.
+            # This is the modern and recommended way to handle telemetry.
+            telemetry_settings = Settings(anonymized_telemetry=False)
             
-            print("✅ ChromaDB initialized successfully with optimized settings")
+            if is_railway:
+                # Railway: In-memory storage
+                self.client = chromadb.Client(telemetry_settings)
+            else:
+                # Local: Persistent storage
+                telemetry_settings.persist_directory = persist_directory
+                telemetry_settings.is_persistent = True
+                self.client = chromadb.Client(telemetry_settings)
+            
+            print("✅ ChromaDB initialized successfully with telemetry disabled.")
             
         except Exception as e:
-            # If even minimal settings fail, use default client
-            print(f"⚠️ ChromaDB initialization with settings failed: {e}")
-            print("🔄 Using default ChromaDB client...")
-            
-            try:
-                self.client = chromadb.Client()
-                print("✅ ChromaDB default client initialized successfully")
-            except Exception as fallback_error:
-                print(f"❌ ChromaDB initialization completely failed: {fallback_error}")
-                raise RuntimeError(f"Failed to initialize ChromaDB: {fallback_error}")
+            print(f"⚠️ ChromaDB initialization failed: {e}")
+            raise RuntimeError(f"Failed to initialize ChromaDB: {e}")
         
         # Get or create collection
         self.collection = self.client.get_or_create_collection(
