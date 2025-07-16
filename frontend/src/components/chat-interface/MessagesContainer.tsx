@@ -43,18 +43,20 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   
   // Track if highlighted text has been shown to prevent duplicate display
   const [shownHighlightedTextIndex, setShownHighlightedTextIndex] = useState<number | null>(null);
+  const [lastHighlightedText, setLastHighlightedText] = useState<string>('');
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamText]);
   
-  // Reset shown highlighted text when highlightedTextMessageIndex changes
+  // Reset shown highlighted text when the actual highlighted text changes (not just the index)
   useEffect(() => {
-    if (highlightedTextMessageIndex !== shownHighlightedTextIndex) {
+    if (highlightedText !== lastHighlightedText) {
       setShownHighlightedTextIndex(null);
+      setLastHighlightedText(highlightedText || '');
     }
-  }, [highlightedTextMessageIndex, shownHighlightedTextIndex]);
+  }, [highlightedText, lastHighlightedText]);
 
   return (
     <div className="messages-container">
