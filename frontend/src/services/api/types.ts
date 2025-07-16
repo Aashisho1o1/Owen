@@ -8,6 +8,9 @@
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  // Optional: Store highlighted text context for this message
+  highlightedText?: string;
+  highlightedTextId?: string;
 }
 
 export interface UserPreferences {

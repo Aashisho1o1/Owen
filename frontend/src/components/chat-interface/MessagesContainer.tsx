@@ -5,6 +5,7 @@ import { ErrorDisplay } from './ErrorDisplay';
 import { UnhighlightButton } from './UnhighlightButton';
 import { ChatMessage as ChatMessageType } from '../../services/api';
 import { SuggestionOption } from '../../services/api/types';
+import { StreamingMessage } from './StreamingMessage';
 
 interface MessagesContainerProps {
   messages: ChatMessageType[];
@@ -60,7 +61,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
   return (
     <div className="messages-container">
-      {/* Show highlighted text at top if no messages yet OR if we have highlighted text but no user messages yet */}
+      {/* Show current highlighted text at top if no messages yet OR if we have highlighted text but no user messages yet */}
       {((messages.length === 0) || 
         (highlightedText && highlightedText.trim() && !messages.some(msg => msg.role === 'user'))) && 
         highlightedText && highlightedText.trim() && (
@@ -81,16 +82,19 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         onTestConnection={onTestConnection}
       />
       
-      {/* Chat Messages with inline highlighted text */}
+      {/* Chat Messages with preserved highlighted text context */}
       {messages.map((msg, index) => {
-        // FIXED: Show highlighted text only once at the specific message it's associated with
-        const shouldShowHighlightedText = highlightedText && 
+        // Show current active highlighted text at the specific message it's associated with
+        const shouldShowCurrentHighlight = highlightedText && 
           highlightedText.trim() && 
           highlightedTextMessageIndex === index &&
           shownHighlightedTextIndex !== index;
         
-        // Mark as shown if we're about to show it
-        if (shouldShowHighlightedText) {
+        // Show preserved highlighted text from this message (if any)
+        const messageHasHighlightedText = msg.highlightedText && msg.highlightedText.trim();
+        
+        // Mark as shown if we're about to show current highlight
+        if (shouldShowCurrentHighlight) {
           setShownHighlightedTextIndex(index);
         }
         
@@ -98,20 +102,11 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         const isLastAIMessage = msg.role === 'assistant' && 
           index === messages.length - 1 && 
           Array.isArray(currentSuggestions) && currentSuggestions.length > 0;
-        
-        // FIXED: Handle streaming for the last assistant message
-        const isStreamingMessage = msg.role === 'assistant' && 
-          index === messages.length - 1 && 
-          isStreaming;
-        
-        // Create a modified message for streaming display
-        const displayMessage = isStreamingMessage && streamText ? 
-          { ...msg, content: streamText } : msg;
-        
+
         return (
-          <React.Fragment key={index}>
-            {/* Show highlighted text inline ONLY ONCE at the specific associated message */}
-            {shouldShowHighlightedText && (
+          <div key={index}>
+            {/* Show current active highlighted text before this message */}
+            {shouldShowCurrentHighlight && (
               <div className="inline-highlighted-text">
                 <HighlightedTextDisplay
                   highlightedText={highlightedText}
@@ -121,16 +116,35 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
               </div>
             )}
             
-            <EnhancedChatMessage 
-              message={displayMessage}
+            {/* Show preserved highlighted text from this message's context */}
+            {messageHasHighlightedText && msg.role === 'user' && (
+              <div className="inline-highlighted-text">
+                <HighlightedTextDisplay
+                  highlightedText={msg.highlightedText!}
+                  contextualPrompts={contextualPrompts}
+                  onPromptClick={onPromptClick}
+                />
+              </div>
+            )}
+            
+            {/* The actual message */}
+            <EnhancedChatMessage
+              message={msg}
               suggestions={isLastAIMessage ? currentSuggestions : []}
-              originalText={highlightedText || ''}
               showSuggestions={isLastAIMessage}
-              isStreaming={isStreamingMessage}
+              isStreaming={isStreaming && index === messages.length - 1}
             />
-          </React.Fragment>
+          </div>
         );
       })}
+      
+      {/* Streaming message */}
+      {isStreaming && streamText && (
+        <StreamingMessage
+          streamText={streamText}
+          isStreaming={isStreaming}
+        />
+      )}
       
       <div ref={messagesEndRef} />
     </div>

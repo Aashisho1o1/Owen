@@ -139,7 +139,9 @@ export const useChat = ({
     const userMessage: ChatMessage = {
       role: 'user',
       content: message,
-      timestamp: new Date(),
+      // Store highlighted text context with this message to preserve it in conversation
+      highlightedText: highlightedText || undefined,
+      highlightedTextId: highlightedTextId || undefined,
     };
     
     setMessages(prev => {

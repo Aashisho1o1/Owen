@@ -302,9 +302,9 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   // Text highlighting handlers
   const handleTextHighlighted = useCallback((text: string, highlightId?: string) => {
-    // ENHANCEMENT: Always clear previous highlights before adding new ones
+    // ENHANCEMENT: Only clear the active highlight in the editor, preserve chat context
     if (highlightedText && highlightedText !== text) {
-      // Clear the previous highlight first
+      // Clear ONLY the active highlight from the editor (not from chat context)
       const clearEvent = new CustomEvent('applyActiveDiscussionHighlight', {
         detail: { 
           text: highlightedText, 
@@ -314,16 +314,19 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
       });
       window.dispatchEvent(clearEvent);
       
-      logger.log('🧹 Cleared previous highlight before applying new one:', { 
+      logger.log('🧹 Cleared previous active highlight in editor (preserving chat context):', { 
         previousText: highlightedText.substring(0, 50) + '...',
         newText: text.substring(0, 50) + '...'
       });
     }
     
+    // Set new highlighted text (this will create a new conversation thread)
     setHighlightedText(text);
     setHighlightedTextId(highlightId || null);
+    // Reset message index so new highlight appears at the appropriate position
+    setHighlightedTextMessageIndex(null);
     
-    // Apply new highlight
+    // Apply new highlight in editor
     const highlightEvent = new CustomEvent('applyActiveDiscussionHighlight', {
       detail: { 
         text, 
@@ -333,7 +336,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     });
     window.dispatchEvent(highlightEvent);
     
-    logger.log('✨ Text highlighted for AI feedback:', { 
+    logger.log('✨ Text highlighted for AI feedback (new conversation thread):', { 
       text: text.substring(0, 50) + '...', 
       highlightId,
       timestamp: new Date().toISOString()
