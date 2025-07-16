@@ -27,6 +27,9 @@ from services.rate_limiter import check_rate_limit
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
 
+# Import helper functions
+from utils.helpers import calculate_word_count
+
 logger = logging.getLogger(__name__)
 
 # Create router
@@ -34,11 +37,6 @@ router = APIRouter(
     prefix="/api/documents",
     tags=["documents"],
 )
-
-# Helper function
-def calculate_word_count(content: str) -> int:
-    """Calculate word count"""
-    return len(content.split()) if content else 0
 
 @router.get("")
 async def get_documents(

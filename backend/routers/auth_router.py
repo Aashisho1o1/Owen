@@ -23,6 +23,9 @@ from services.rate_limiter import check_rate_limit
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
 
+# Import helper functions
+from utils.helpers import get_user_by_id
+
 logger = logging.getLogger(__name__)
 
 # Create router
@@ -30,19 +33,6 @@ router = APIRouter(
     prefix="/api/auth",
     tags=["authentication"],
 )
-
-# Helper function
-def get_user_by_id(user_id: int) -> Optional[dict]:
-    """Get user details by ID"""
-    try:
-        result = db_service.execute_query(
-            "SELECT id, username, name, email, created_at FROM users WHERE id = %s AND is_active = TRUE",
-            (user_id,),
-            fetch='one'
-        )
-        return dict(result) if result else None
-    except Exception:
-        return None
 
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, request: Request) -> TokenResponse:
