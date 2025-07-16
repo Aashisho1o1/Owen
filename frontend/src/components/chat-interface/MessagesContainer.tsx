@@ -47,12 +47,14 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
   return (
     <div className="messages-container">
-      {/* Highlighted Text Display with Unhighlight Button */}
-      <HighlightedTextDisplay
-        highlightedText={highlightedText || ''}
-        contextualPrompts={contextualPrompts}
-        onPromptClick={onPromptClick}
-      />
+      {/* Show highlighted text at top only if no messages yet */}
+      {messages.length === 0 && (
+        <HighlightedTextDisplay
+          highlightedText={highlightedText || ''}
+          contextualPrompts={contextualPrompts}
+          onPromptClick={onPromptClick}
+        />
+      )}
       
       {/* Unhighlight Button - appears when text is highlighted */}
       <UnhighlightButton className="unhighlight-in-chat" />
@@ -64,33 +66,41 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         onTestConnection={onTestConnection}
       />
       
-      {/* Chat Messages */}
+      {/* Chat Messages with inline highlighted text */}
       {messages.map((msg, index) => {
+        // Show highlighted text before the first user message that contains highlighted text
+        const showHighlightedTextBefore = highlightedText && 
+          msg.role === 'user' && 
+          msg.content.includes(highlightedText) &&
+          !messages.slice(0, index).some(prevMsg => 
+            prevMsg.role === 'user' && prevMsg.content.includes(highlightedText)
+          );
+        
         // Show suggestions on the last AI message if we have suggestions
         const isLastAIMessage = msg.role === 'assistant' && 
           index === messages.length - 1 && 
           Array.isArray(currentSuggestions) && currentSuggestions.length > 0;
         
-        // Debug logging
-        if (index === messages.length - 1 && msg.role === 'assistant') {
-          console.log('🔍 MessagesContainer: Last AI message check:', {
-            messageIndex: index,
-            totalMessages: messages.length,
-            messageRole: msg.role,
-            currentSuggestionsCount: currentSuggestions?.length || 0,
-            isLastAIMessage,
-            suggestions: currentSuggestions
-          });
-        }
-        
         return (
-          <EnhancedChatMessage 
-            key={index} 
-            message={msg}
-            suggestions={isLastAIMessage ? currentSuggestions : []}
-            originalText={highlightedText || ''}
-            showSuggestions={isLastAIMessage}
-          />
+          <React.Fragment key={index}>
+            {/* Show highlighted text inline before relevant user message */}
+            {showHighlightedTextBefore && (
+              <div className="inline-highlighted-text">
+                <HighlightedTextDisplay
+                  highlightedText={highlightedText}
+                  contextualPrompts={contextualPrompts}
+                  onPromptClick={onPromptClick}
+                />
+              </div>
+            )}
+            
+            <EnhancedChatMessage 
+              message={msg}
+              suggestions={isLastAIMessage ? currentSuggestions : []}
+              originalText={highlightedText || ''}
+              showSuggestions={isLastAIMessage}
+            />
+          </React.Fragment>
         );
       })}
       
