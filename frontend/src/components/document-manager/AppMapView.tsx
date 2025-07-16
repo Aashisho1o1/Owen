@@ -10,6 +10,16 @@ export const AppMapView: React.FC = () => {
       <div className="app-map-header">
         <h2>🗺️ App Map - How to Navigate This App</h2>
         <p>Your guide to using the writing workspace effectively</p>
+        <div className="detailed-guide-link">
+          <a 
+            href="https://drive.google.com/file/d/1ab8nrRNUbZNAYsMThGVp9we3CapHMjfB/view?usp=sharing" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="guide-link"
+          >
+            📖 Click here for further details on navigating this app
+          </a>
+        </div>
       </div>
 
       <div className="app-map-content">
