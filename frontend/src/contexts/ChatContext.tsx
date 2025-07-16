@@ -12,6 +12,7 @@ import {
   acceptSuggestion
 } from '../services/api/chat';
 import { SuggestionOption, EnhancedChatResponse, AcceptSuggestionResponse } from '../services/api/types';
+import { truncateEditorContent } from '../utils/tokenLimitUtils';
 
 interface WritingStyleProfile {
   formality?: string;
@@ -394,9 +395,26 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     try {
       logger.info('🎯 Generating suggestions for highlighted text...');
       
+      // 🔧 SMART TRUNCATION: Prevent token limit errors for suggestions
+      const truncationResult = truncateEditorContent(editorContent, message, {
+        highlightedText: highlightedText || undefined,
+        maxTotalLength: 12000, // Conservative limit
+        contextWindow: 2000, // 2KB around highlighted text
+        preserveStructure: true
+      });
+      
+      // Log truncation info for debugging
+      if (truncationResult.wasTruncated) {
+        logger.info('📝 Content truncated for suggestions:', {
+          originalLength: truncationResult.originalLength,
+          truncatedLength: truncationResult.truncatedLength,
+          highlightPreserved: truncationResult.highlightPreserved
+        });
+      }
+      
       const requestData = {
         message,
-        editor_text: editorContent,
+        editor_text: truncationResult.truncatedContent, // Use truncated content
         highlighted_text: highlightedText,
         highlight_id: highlightedTextId,
         author_persona: authorPersona,
