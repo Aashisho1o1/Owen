@@ -17,7 +17,7 @@
     0 4px 20px rgba(0, 0, 0, 0.04),
     0 1px 3px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  overflow: hidden;
+  overflow-y: auto; /* Enable vertical scrolling */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: text !important;
 }
@@ -42,6 +42,8 @@
   outline: none;
   user-select: text;
   cursor: text; /* Show text cursor on hover */
+  overflow-y: auto; /* Enable vertical scrolling */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 /* Tiptap Editor Content */
