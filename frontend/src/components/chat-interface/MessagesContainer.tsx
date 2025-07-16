@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { EnhancedChatMessage } from './EnhancedChatMessage';
 import { HighlightedTextDisplay } from './HighlightedTextDisplay';
 import { ErrorDisplay } from './ErrorDisplay';
@@ -40,11 +40,21 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   clearSuggestions
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Track if highlighted text has been shown to prevent duplicate display
+  const [shownHighlightedTextIndex, setShownHighlightedTextIndex] = useState<number | null>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamText]);
+  
+  // Reset shown highlighted text when highlightedTextMessageIndex changes
+  useEffect(() => {
+    if (highlightedTextMessageIndex !== shownHighlightedTextIndex) {
+      setShownHighlightedTextIndex(null);
+    }
+  }, [highlightedTextMessageIndex, shownHighlightedTextIndex]);
 
   return (
     <div className="messages-container">
@@ -71,10 +81,16 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
       
       {/* Chat Messages with inline highlighted text */}
       {messages.map((msg, index) => {
-        // FIXED: Show highlighted text before the specific message it's associated with
-        const showHighlightedTextBefore = highlightedText && 
+        // FIXED: Show highlighted text only once at the specific message it's associated with
+        const shouldShowHighlightedText = highlightedText && 
           highlightedText.trim() && 
-          highlightedTextMessageIndex === index;
+          highlightedTextMessageIndex === index &&
+          shownHighlightedTextIndex !== index;
+        
+        // Mark as shown if we're about to show it
+        if (shouldShowHighlightedText) {
+          setShownHighlightedTextIndex(index);
+        }
         
         // Show suggestions on the last AI message if we have suggestions
         const isLastAIMessage = msg.role === 'assistant' && 
@@ -92,8 +108,8 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         
         return (
           <React.Fragment key={index}>
-            {/* Show highlighted text inline before the specific associated message */}
-            {showHighlightedTextBefore && (
+            {/* Show highlighted text inline ONLY ONCE at the specific associated message */}
+            {shouldShowHighlightedText && (
               <div className="inline-highlighted-text">
                 <HighlightedTextDisplay
                   highlightedText={highlightedText}
