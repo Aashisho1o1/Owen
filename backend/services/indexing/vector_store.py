@@ -28,48 +28,33 @@ class VectorStore:
         
         try:
             if is_railway:
-                # In-memory storage for Railway with comprehensive telemetry disabling
+                # Railway: In-memory storage with minimal settings
                 self.client = chromadb.Client(Settings(
                     anonymized_telemetry=False,
                     allow_reset=True,
-                    is_persistent=False,
-                    # Additional settings to prevent telemetry initialization
-                    chroma_telemetry_enabled=False,
-                    chroma_disable_telemetry=True,
-                    chroma_anonymized_telemetry=False
+                    is_persistent=False
                 ))
             else:
-                # Local persistent storage with comprehensive telemetry disabling
+                # Local: Persistent storage with minimal settings
                 self.client = chromadb.Client(Settings(
                     persist_directory=persist_directory,
                     anonymized_telemetry=False,
                     allow_reset=True,
-                    is_persistent=True,
-                    # Additional settings to prevent telemetry initialization
-                    chroma_telemetry_enabled=False,
-                    chroma_disable_telemetry=True,
-                    chroma_anonymized_telemetry=False
+                    is_persistent=True
                 ))
+            
+            print("✅ ChromaDB initialized successfully with optimized settings")
+            
         except Exception as e:
-            # Fallback: Create client with minimal settings if comprehensive settings fail
-            print(f"⚠️ ChromaDB initialization with full settings failed: {e}")
-            print("🔄 Attempting fallback initialization...")
+            # If even minimal settings fail, use default client
+            print(f"⚠️ ChromaDB initialization with settings failed: {e}")
+            print("🔄 Using default ChromaDB client...")
             
             try:
-                if is_railway:
-                    self.client = chromadb.Client(Settings(
-                        anonymized_telemetry=False,
-                        is_persistent=False
-                    ))
-                else:
-                    self.client = chromadb.Client(Settings(
-                        persist_directory=persist_directory,
-                        anonymized_telemetry=False,
-                        is_persistent=True
-                    ))
-                print("✅ ChromaDB fallback initialization successful")
+                self.client = chromadb.Client()
+                print("✅ ChromaDB default client initialized successfully")
             except Exception as fallback_error:
-                print(f"❌ ChromaDB fallback initialization also failed: {fallback_error}")
+                print(f"❌ ChromaDB initialization completely failed: {fallback_error}")
                 raise RuntimeError(f"Failed to initialize ChromaDB: {fallback_error}")
         
         # Get or create collection

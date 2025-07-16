@@ -171,52 +171,127 @@ class HybridIndexer:
         Returns:
             Contextual analysis and suggestions
         """
-        if not self.path_retriever:
-            return {
-                'error': 'No documents indexed yet'
+        try:
+            # Check if we have any indexed documents
+            if not self.path_retriever and not self.indexed_documents:
+                # Provide helpful fallback response instead of error
+                return {
+                    'highlighted_text': highlighted_text,
+                    'semantic_context': [],
+                    'entities_mentioned': [],
+                    'narrative_paths': [],
+                    'suggestions': [
+                        "Start by writing more content to build your story's context",
+                        "Consider what characters, locations, or events this text relates to",
+                        "Think about how this connects to your overall narrative"
+                    ],
+                    'feedback_type': 'general_guidance',
+                    'status': 'limited_context'
+                }
+            
+            # Step 1: Get semantic context from vector store
+            semantic_results = []
+            try:
+                semantic_results = self.vector_store.search(
+                    highlighted_text,
+                    n_results=5,
+                    filter_dict={'doc_id': doc_id} if doc_id else None
+                )
+            except Exception as e:
+                logger.warning(f"Vector search failed: {e}")
+                # Try without filter if doc_id filter fails
+                try:
+                    semantic_results = self.vector_store.search(
+                        highlighted_text,
+                        n_results=5
+                    )
+                except Exception as e2:
+                    logger.warning(f"General vector search also failed: {e2}")
+                    semantic_results = []
+            
+            # Step 2: Extract entities from highlighted text
+            entities = {}
+            try:
+                entities = await self._extract_entities_from_text(highlighted_text)
+            except Exception as e:
+                logger.warning(f"Entity extraction failed: {e}")
+                entities = {}
+            
+            # Step 3: Get relevant paths (if path retriever is available)
+            paths = []
+            if self.path_retriever:
+                try:
+                    paths = self.path_retriever.retrieve_paths(highlighted_text, top_k=3)
+                except Exception as e:
+                    logger.warning(f"Path retrieval failed: {e}")
+                    paths = []
+            
+            # Step 4: Analyze context and provide comprehensive feedback
+            analysis = {
+                'highlighted_text': highlighted_text,
+                'semantic_context': [
+                    {
+                        'text': r['text'],
+                        'relevance_score': r['score']
+                    } for r in semantic_results[:3]
+                ],
+                'entities_mentioned': self._format_entities(entities),
+                'narrative_paths': self._format_paths(paths),
+                'suggestions': self._generate_enhanced_suggestions(highlighted_text, entities, paths, semantic_results),
+                'feedback_type': 'contextual_analysis',
+                'status': 'success'
             }
-        
-        # Step 1: Get semantic context from vector store
-        semantic_results = self.vector_store.search(
-            highlighted_text,
-            n_results=5,
-            filter_dict={'doc_id': doc_id}
-        )
-        
-        # Step 2: Extract entities from highlighted text
-        entities = await self._extract_entities_from_text(highlighted_text)
-        
-        # Step 3: Get relevant paths
-        paths = self.path_retriever.retrieve_paths(highlighted_text, top_k=3)
-        
-        # Step 4: Analyze context
-        analysis = {
-            'highlighted_text': highlighted_text,
-            'semantic_context': [
-                {
-                    'text': r['text'],
-                    'relevance_score': r['score']
-                } for r in semantic_results[:3]
-            ],
-            'entities_mentioned': self._format_entities(entities),
-            'narrative_paths': self._format_paths(paths),
-            'suggestions': self._generate_suggestions(highlighted_text, entities, paths)
-        }
-        
-        # Step 5: Get character-specific context if a character is mentioned
-        character_contexts = []
-        for char_entity in entities.get('CHARACTER', []):
-            char_name = char_entity['text']
-            # For now, skip character arc analysis as the method doesn't exist
-            character_contexts.append({
-                'character': char_name,
-                'arc_summary': f"Character {char_name} appears in the narrative"
-            })
-        
-        if character_contexts:
-            analysis['character_contexts'] = character_contexts
-        
-        return analysis
+            
+            # Step 5: Add character-specific context if characters are mentioned
+            character_contexts = []
+            for char_entity in entities.get('CHARACTER', []):
+                char_name = char_entity['text']
+                try:
+                    if self.path_retriever:
+                        char_paths = self.path_retriever.get_character_context_paths(char_name, 'all')
+                        character_contexts.append({
+                            'character': char_name,
+                            'arc_summary': self._summarize_character_arc(char_paths[:5]),
+                            'relationship_count': len([p for p in char_paths if 'SPEAKS_TO' in str(p)]),
+                            'event_count': len([p for p in char_paths if 'PARTICIPATES_IN' in str(p)])
+                        })
+                    else:
+                        character_contexts.append({
+                            'character': char_name,
+                            'arc_summary': f"Character {char_name} appears in the narrative",
+                            'relationship_count': 0,
+                            'event_count': 0
+                        })
+                except Exception as e:
+                    logger.warning(f"Character context analysis failed for {char_name}: {e}")
+            
+            if character_contexts:
+                analysis['character_contexts'] = character_contexts
+            
+            # Step 6: Add writing insights based on context
+            analysis['writing_insights'] = self._generate_writing_insights(
+                highlighted_text, semantic_results, entities, paths
+            )
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Contextual feedback failed: {e}")
+            # Return graceful fallback instead of error
+            return {
+                'highlighted_text': highlighted_text,
+                'semantic_context': [],
+                'entities_mentioned': [],
+                'narrative_paths': [],
+                'suggestions': [
+                    "Continue writing to build more context for analysis",
+                    "Consider how this text relates to your story's themes",
+                    "Think about character development and plot progression"
+                ],
+                'feedback_type': 'fallback_guidance',
+                'status': 'analysis_unavailable',
+                'error_note': 'Contextual analysis temporarily unavailable'
+            }
     
     async def check_consistency(self, 
                               statement: str,
@@ -463,6 +538,91 @@ class HybridIndexer:
             suggestions.append("Verify the spatial consistency with previous mentions of this location")
         
         return suggestions
+    
+    def _generate_enhanced_suggestions(self, text: str, entities: Dict, paths: List[Dict], semantic_results: List[Dict]) -> List[str]:
+        """Generate enhanced contextual suggestions with better fallbacks"""
+        suggestions = []
+        
+        # Character-based suggestions
+        if entities.get('CHARACTER'):
+            char_names = [e['text'] for e in entities['CHARACTER']]
+            suggestions.append(f"Consider the established traits and relationships of {', '.join(char_names)}")
+            suggestions.append("Ensure this dialogue/action aligns with the character's established voice")
+        
+        # Plot coherence suggestions
+        if paths:
+            if paths[0].get('score', 0) > 0.8:
+                suggestions.append("This connects well with established narrative elements")
+            elif paths[0].get('score', 0) > 0.5:
+                suggestions.append("Consider how this relates to your existing plot threads")
+            else:
+                suggestions.append("This seems to introduce new narrative elements - consider foreshadowing")
+        
+        # Location consistency
+        if entities.get('LOCATION'):
+            suggestions.append("Verify the spatial consistency with previous mentions of this location")
+            suggestions.append("Consider the atmosphere and mood this setting should convey")
+        
+        # Event/action suggestions
+        if entities.get('EVENT'):
+            suggestions.append("Consider the cause-and-effect relationships of this event")
+            suggestions.append("Think about how this advances your plot or character development")
+        
+        # Semantic context suggestions
+        if semantic_results:
+            high_relevance = [r for r in semantic_results if r['score'] > 0.7]
+            if high_relevance:
+                suggestions.append("This text has strong thematic connections to your existing content")
+            else:
+                suggestions.append("Consider how this new content fits with your established themes")
+        
+        # Fallback suggestions if no specific context
+        if not suggestions:
+            suggestions.extend([
+                "Consider how this text advances your story's central conflict",
+                "Think about the emotional impact this has on your characters",
+                "Ensure this moment serves the larger narrative purpose"
+            ])
+        
+        return suggestions[:5]  # Limit to 5 suggestions
+    
+    def _generate_writing_insights(self, text: str, semantic_results: List[Dict], entities: Dict, paths: List[Dict]) -> Dict[str, Any]:
+        """Generate writing insights based on contextual analysis"""
+        insights = {
+            'content_density': 'medium',
+            'narrative_connectivity': 'moderate',
+            'character_focus': 'balanced',
+            'thematic_resonance': 'developing'
+        }
+        
+        # Analyze content density
+        if len(text.split()) > 50:
+            insights['content_density'] = 'high'
+        elif len(text.split()) < 20:
+            insights['content_density'] = 'low'
+        
+        # Analyze narrative connectivity
+        if paths and len(paths) > 2:
+            insights['narrative_connectivity'] = 'strong'
+        elif not paths:
+            insights['narrative_connectivity'] = 'weak'
+        
+        # Analyze character focus
+        char_count = len(entities.get('CHARACTER', []))
+        if char_count > 2:
+            insights['character_focus'] = 'multi-character'
+        elif char_count == 1:
+            insights['character_focus'] = 'single-character'
+        elif char_count == 0:
+            insights['character_focus'] = 'descriptive'
+        
+        # Analyze thematic resonance
+        if semantic_results and semantic_results[0].get('score', 0) > 0.8:
+            insights['thematic_resonance'] = 'strong'
+        elif not semantic_results:
+            insights['thematic_resonance'] = 'emerging'
+        
+        return insights
     
     def _summarize_character_arc(self, arc: List[Dict]) -> str:
         """Summarize a character's arc"""
