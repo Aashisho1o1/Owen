@@ -47,10 +47,10 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
   return (
     <div className="messages-container">
-      {/* Show highlighted text at top only if no messages yet */}
-      {messages.length === 0 && (
+      {/* Show highlighted text at top if no messages yet */}
+      {messages.length === 0 && highlightedText && (
         <HighlightedTextDisplay
-          highlightedText={highlightedText || ''}
+          highlightedText={highlightedText}
           contextualPrompts={contextualPrompts}
           onPromptClick={onPromptClick}
         />
@@ -68,13 +68,10 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
       
       {/* Chat Messages with inline highlighted text */}
       {messages.map((msg, index) => {
-        // Show highlighted text before the first user message that contains highlighted text
-        const showHighlightedTextBefore = highlightedText && 
-          msg.role === 'user' && 
-          msg.content.includes(highlightedText) &&
-          !messages.slice(0, index).some(prevMsg => 
-            prevMsg.role === 'user' && prevMsg.content.includes(highlightedText)
-          );
+        // Show highlighted text before the first user message when text is highlighted
+        const isFirstUserMessage = msg.role === 'user' && 
+          !messages.slice(0, index).some(prevMsg => prevMsg.role === 'user');
+        const showHighlightedTextBefore = highlightedText && isFirstUserMessage;
         
         // Show suggestions on the last AI message if we have suggestions
         const isLastAIMessage = msg.role === 'assistant' && 
