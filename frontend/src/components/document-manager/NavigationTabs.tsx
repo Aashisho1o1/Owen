@@ -15,21 +15,25 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   onViewModeChange
 }) => {
   return (
-    <div className="document-nav">
-      <button 
-        className={viewMode === 'documents' ? 'active' : ''}
+    <div className="navigation-tabs">
+      <button
+        className={`nav-tab ${viewMode === 'documents' ? 'active' : ''}`}
         onClick={() => onViewModeChange('documents')}
       >
         📄 Documents
       </button>
-      
-      <button 
-        className={viewMode === 'folders' ? 'active' : ''}
+      <button
+        className={`nav-tab ${viewMode === 'folders' ? 'active' : ''}`}
         onClick={() => onViewModeChange('folders')}
       >
         📁 Folders
       </button>
-      
+      <button
+        className={`nav-tab ${viewMode === 'appmap' ? 'active' : ''}`}
+        onClick={() => onViewModeChange('appmap')}
+      >
+        🗺️ App Map
+      </button>
       {/* Templates tab removed - template system deprecated */}
       
       {viewMode === 'search' && (

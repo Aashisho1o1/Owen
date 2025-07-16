@@ -12,6 +12,7 @@ import {
   // Organism Components
   DocumentsView,
   FoldersView,
+  AppMapView,
   // TemplatesView removed - template system deprecated
   SearchResultsView,
   // Types
@@ -180,6 +181,9 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
             onDeleteFolder={deleteFolder}
           />
         );
+
+      case 'appmap':
+        return <AppMapView />;
 
       // templates case removed - template system deprecated
 

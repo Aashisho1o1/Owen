@@ -17,6 +17,7 @@ export { DocumentsView } from './DocumentsView';
 export { FoldersView } from './FoldersView';
 // TemplatesView removed - template system deprecated
 export { SearchResultsView } from './SearchResultsView';
+export { AppMapView } from './AppMapView';
 
 // Type exports
 export type { SortBy, FilterBy, ViewMode } from './ControlsPanel'; 
