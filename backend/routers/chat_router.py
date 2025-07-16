@@ -616,10 +616,10 @@ async def accept_suggestion(
             }
             
     except Exception as e:
-        logger.error(f"Error accepting suggestion: {e}")
+        logger.error("Error accepting suggestion:", exc_info=True)
         return {
             "success": False,
-            "error": str(e),
+            "error": "An internal error has occurred. Please try again later.",
             "updated_content": suggestion_request.editor_content
         }
 
@@ -656,12 +656,12 @@ async def debug_chat_service(user_id: int = Depends(get_current_user_id)):
         }
         
     except Exception as e:
-        logger.error(f"❌ Debug endpoint error: {e}")
+        logger.error("❌ Debug endpoint error:", exc_info=True)
         return {
             "status": "error",
-            "error": str(e),
-            "error_type": type(e).__name__,
-            "authentication": "failed" if "authentication" in str(e).lower() else "unknown"
+            "error": "An internal error has occurred. Please try again later.",
+            "error_type": "unknown",
+            "authentication": "unknown"
         }
 
  
