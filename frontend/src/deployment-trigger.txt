@@ -296,3 +296,29 @@ SOLUTION_APPLIED=REMOVED_DUPLICATE_REFRESHTOKEN_FUNCTION
 
 DEPLOYMENT_STRATEGY=DUPLICATE_SYMBOL_REMOVAL
 PRIORITY=CRITICAL_BUILD_FIX
+
+IMPORT_ERROR_FIX=2025-01-27-22:35:00Z
+
+# 🔧 CRITICAL FIX: Import error in character-voice.ts
+# Problem: Incorrect import statement causing build failure
+
+ISSUE_IDENTIFIED=NAMED_IMPORT_VS_DEFAULT_EXPORT
+BUILD_ERROR=apiClient_is_not_exported_by_client_ts
+SOLUTION_APPLIED=FIXED_IMPORT_STATEMENT
+
+# ERROR ANALYSIS:
+# ❌ character-voice.ts: import { apiClient } from './client'
+# ❌ client.ts exports apiClient as default export, not named export
+# ❌ Rollup build failing with "apiClient is not exported by client.ts"
+
+# SOLUTION IMPLEMENTED:
+# 1. ✅ Changed import { apiClient } from './client' 
+# 2. ✅ To import apiClient from './client' (default import)
+# 3. ✅ This matches the actual export from client.ts: export default apiClient
+
+# EXPECTED RESULT:
+# ✅ Frontend build should complete successfully
+# ✅ Character voice functionality should work properly
+# ✅ No more import/export errors during build
+
+DEPLOYMENT_TRIGGER=IMPORT_ERROR_FIX_2025_01_27_22_35

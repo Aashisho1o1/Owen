@@ -11,7 +11,7 @@
  * - Fast and accurate character voice consistency detection
  */
 
-import { apiClient } from './client';
+import apiClient from './client';
 
 // Types for character voice consistency
 export interface VoiceConsistencyRequest {
