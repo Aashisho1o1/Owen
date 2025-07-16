@@ -9,6 +9,7 @@ import { SuggestionOption } from '../../services/api/types';
 interface MessagesContainerProps {
   messages: ChatMessageType[];
   highlightedText?: string;
+  highlightedTextMessageIndex?: number | null;
   contextualPrompts: string[];
   chatApiError?: string | null;
   apiGlobalError?: string | null;
@@ -27,6 +28,7 @@ interface MessagesContainerProps {
 export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   messages,
   highlightedText,
+  highlightedTextMessageIndex,
   contextualPrompts,
   chatApiError,
   apiGlobalError,
@@ -69,10 +71,10 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
       
       {/* Chat Messages with inline highlighted text */}
       {messages.map((msg, index) => {
-        // Show highlighted text before the first user message when text is highlighted
-        const isFirstUserMessage = msg.role === 'user' && 
-          !messages.slice(0, index).some(prevMsg => prevMsg.role === 'user');
-        const showHighlightedTextBefore = highlightedText && highlightedText.trim() && isFirstUserMessage;
+        // FIXED: Show highlighted text before the specific message it's associated with
+        const showHighlightedTextBefore = highlightedText && 
+          highlightedText.trim() && 
+          highlightedTextMessageIndex === index;
         
         // Show suggestions on the last AI message if we have suggestions
         const isLastAIMessage = msg.role === 'assistant' && 
@@ -90,7 +92,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         
         return (
           <React.Fragment key={index}>
-            {/* Show highlighted text inline before relevant user message */}
+            {/* Show highlighted text inline before the specific associated message */}
             {showHighlightedTextBefore && (
               <div className="inline-highlighted-text">
                 <HighlightedTextDisplay

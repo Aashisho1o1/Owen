@@ -34,6 +34,7 @@ export interface UseChatOptions {
   highlightedText?: string;
   highlightedTextId?: string;
   onAuthRequired?: () => void;
+  setHighlightedTextMessageIndex?: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 export interface UseChatReturn {
@@ -63,6 +64,7 @@ export const useChat = ({
   highlightedText,
   highlightedTextId,
   onAuthRequired,
+  setHighlightedTextMessageIndex,
 }: UseChatOptions): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
@@ -140,7 +142,16 @@ export const useChat = ({
       timestamp: new Date(),
     };
     
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage];
+      
+      // If there's highlighted text, associate it with this message
+      if (highlightedText && highlightedText.trim() && setHighlightedTextMessageIndex) {
+        setHighlightedTextMessageIndex(newMessages.length - 1); // Index of the user message
+      }
+      
+      return newMessages;
+    });
     
     try {
       logger.info('📤 Sending chat request:', {

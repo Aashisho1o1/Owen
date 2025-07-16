@@ -62,6 +62,8 @@ export interface ChatContextType {
   setHighlightedText: React.Dispatch<React.SetStateAction<string>>;
   highlightedTextId: string | null;
   setHighlightedTextId: React.Dispatch<React.SetStateAction<string | null>>;
+  highlightedTextMessageIndex: number | null;
+  setHighlightedTextMessageIndex: React.Dispatch<React.SetStateAction<number | null>>;
   handleTextHighlighted: (text: string, highlightId?: string) => void;
   clearTextHighlight: () => void;
   clearAllTextHighlights: () => void;
@@ -126,6 +128,9 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   // Text highlighting state
   const [highlightedText, setHighlightedText] = useState<string>('');
   const [highlightedTextId, setHighlightedTextId] = useState<string | null>(null);
+  
+  // NEW: Track which message the highlighted text is associated with
+  const [highlightedTextMessageIndex, setHighlightedTextMessageIndex] = useState<number | null>(null);
 
   // NEW: Suggestions state
   const [currentSuggestions, setCurrentSuggestions] = useState<SuggestionOption[]>([]);
@@ -191,6 +196,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     feedbackOnPrevious,
     highlightedText,
     highlightedTextId: highlightedTextId || undefined, // Convert null to undefined
+    setHighlightedTextMessageIndex, // NEW: Pass message index setter
   });
 
   // Load user preferences ONLY when authenticated
@@ -340,6 +346,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     
     setHighlightedText('');
     setHighlightedTextId(null);
+    setHighlightedTextMessageIndex(null); // Clear message association
     
     // Dispatch event to remove active discussion highlighting
     if (previousText) {
@@ -364,6 +371,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     // Clear state
     setHighlightedText('');
     setHighlightedTextId(null);
+    setHighlightedTextMessageIndex(null); // Clear message association
     
     // Dispatch event to remove ALL highlights from the editor
     const clearAllEvent = new CustomEvent('applyActiveDiscussionHighlight', {
@@ -597,6 +605,8 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     setHighlightedText,
     highlightedTextId,
     setHighlightedTextId,
+    highlightedTextMessageIndex,
+    setHighlightedTextMessageIndex,
     handleTextHighlighted,
     clearTextHighlight,
     clearAllTextHighlights,

@@ -56,6 +56,7 @@ const ChatPane: React.FC = () => {
     setAiMode,
     // Text highlighting
     highlightedText,
+    highlightedTextMessageIndex,
     // CRITICAL FIX: Add suggestions state from context
     currentSuggestions,
     clearSuggestions,
@@ -131,6 +132,7 @@ const ChatPane: React.FC = () => {
       <MessagesContainer
         messages={messages}
         highlightedText={highlightedText}
+        highlightedTextMessageIndex={highlightedTextMessageIndex}
         contextualPrompts={contextualPrompts}
         chatApiError={chatApiError}
         apiGlobalError={apiGlobalError}
