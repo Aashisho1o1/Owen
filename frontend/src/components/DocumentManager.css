@@ -16,24 +16,22 @@
   backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
   box-sizing: border-box;
 }
 
 .document-manager {
   background: var(--bg-elevated);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
+  border-radius: 0;
+  box-shadow: none;
   width: 100%;
-  max-width: 1200px;
   height: 100%;
-  max-height: 800px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--border-light);
+  border: none;
   position: relative;
 }
 
@@ -531,12 +529,12 @@
 /* Small phones (320px - 479px) */
 @media (max-width: 479px) {
   .document-manager-overlay {
-    padding: var(--space-2);
+    padding: 0;
   }
   
   .document-manager {
-    border-radius: var(--radius-lg);
-    max-height: 95vh;
+    border-radius: 0;
+    max-height: 100vh;
   }
   
   .document-manager-header {
@@ -608,11 +606,11 @@
 /* Large phones (480px - 767px) */
 @media (min-width: 480px) and (max-width: 767px) {
   .document-manager-overlay {
-    padding: var(--space-3);
+    padding: 0;
   }
   
   .document-manager {
-    max-height: 90vh;
+    max-height: 100vh;
   }
   
   .document-manager-header {
@@ -654,8 +652,8 @@
 /* Tablets (768px - 1023px) */
 @media (min-width: 768px) and (max-width: 1023px) {
   .document-manager {
-    max-width: 95vw;
-    max-height: 85vh;
+    max-width: 100vw;
+    max-height: 100vh;
   }
   
   .controls-row {
@@ -670,7 +668,7 @@
 /* Small laptops (1024px - 1279px) */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .document-manager {
-    max-width: 1000px;
+    max-width: 100vw;
   }
   
   .documents-grid {
@@ -688,7 +686,7 @@
 /* Landscape orientation for mobile */
 @media (max-width: 767px) and (orientation: landscape) {
   .document-manager {
-    max-height: 95vh;
+    max-height: 100vh;
   }
   
   .document-manager-header {
@@ -1539,8 +1537,8 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .document-manager {
-    width: 95vw;
-    height: 90vh;
+    width: 100vw;
+    height: 100vh;
   }
 
   .document-manager-header {
