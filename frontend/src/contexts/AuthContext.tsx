@@ -477,37 +477,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const refreshToken = async (): Promise<boolean> => {
-    try {
-      const storedRefreshToken = localStorage.getItem('owen_refresh_token') || localStorage.getItem('refresh_token');
-      
-      if (!storedRefreshToken) {
-        console.log('🔐 No refresh token available');
-        return false;
-      }
-
-      console.log('🔄 Refreshing access token...');
-      const response = await apiInstance.post('/api/auth/refresh', {
-        refresh_token: storedRefreshToken,
-      });
-
-      const { access_token, refresh_token: newRefreshToken, token_type, expires_in } = response.data;
-      
-      // Store new tokens
-      localStorage.setItem('owen_access_token', access_token);
-      localStorage.setItem('owen_refresh_token', newRefreshToken);
-      localStorage.setItem('token_type', token_type);
-      localStorage.setItem('expires_at', (Date.now() + expires_in * 1000).toString());
-      
-      console.log('✅ Token refreshed successfully');
-      return true;
-    } catch (err) {
-      console.error('❌ Token refresh failed:', err);
-      logout(); // Auto-logout on refresh failure
-      return false;
-    }
-  };
-
   const clearError = () => {
     setError(null);
   };
