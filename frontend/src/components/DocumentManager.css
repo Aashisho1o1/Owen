@@ -289,7 +289,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0; /* Allow flex shrinking */
-  padding: var(--space-2);
+  padding: 0; /* Remove padding to eliminate white space */
 }
 
 /* ============= APP MAP SECTION ============= */
@@ -468,7 +468,8 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--space-3) 0;
+  padding: var(--space-3); /* Keep minimal padding for documents */
+  background: transparent; /* Remove any background */
 }
 
 .empty-state-large {

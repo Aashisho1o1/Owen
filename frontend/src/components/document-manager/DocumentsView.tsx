@@ -25,28 +25,24 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
 }) => {
   return (
     <div className="documents-view-container">
-      {/* All Documents Section - Full Width */}
-      <div className="recent-documents-full">
-        <h3>📝 All Documents</h3>
-        <div className="document-list-grid">
-          {allDocuments.map(document => (
-            <DocumentItem
-              key={document.id}
-              document={document}
-              folders={folders}
-              onSelect={onDocumentSelect}
-              onDuplicate={onDuplicateDocument}
-              onDelete={onDeleteDocument}
-            />
-          ))}
-          {allDocuments.length === 0 && (
-            <div className="empty-state-large">
-              <div className="empty-icon">📄</div>
-              <h4>No documents yet</h4>
-              <p>Create your first document to get started writing!</p>
-            </div>
-          )}
-        </div>
+      <div className="document-list-grid">
+        {allDocuments.map(document => (
+          <DocumentItem
+            key={document.id}
+            document={document}
+            folders={folders}
+            onSelect={onDocumentSelect}
+            onDuplicate={onDuplicateDocument}
+            onDelete={onDeleteDocument}
+          />
+        ))}
+        {allDocuments.length === 0 && (
+          <div className="empty-state-large">
+            <div className="empty-icon">📄</div>
+            <h4>No documents yet</h4>
+            <p>Create your first document to get started writing!</p>
+          </div>
+        )}
       </div>
     </div>
   );
