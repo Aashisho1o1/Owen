@@ -48,7 +48,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   return (
     <div className="messages-container">
       {/* Show highlighted text at top if no messages yet */}
-      {messages.length === 0 && highlightedText && (
+      {messages.length === 0 && highlightedText && highlightedText.trim() && (
         <HighlightedTextDisplay
           highlightedText={highlightedText}
           contextualPrompts={contextualPrompts}
@@ -71,7 +71,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         // Show highlighted text before the first user message when text is highlighted
         const isFirstUserMessage = msg.role === 'user' && 
           !messages.slice(0, index).some(prevMsg => prevMsg.role === 'user');
-        const showHighlightedTextBefore = highlightedText && isFirstUserMessage;
+        const showHighlightedTextBefore = highlightedText && highlightedText.trim() && isFirstUserMessage;
         
         // Show suggestions on the last AI message if we have suggestions
         const isLastAIMessage = msg.role === 'assistant' && 

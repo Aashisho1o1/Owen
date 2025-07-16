@@ -16,7 +16,7 @@ export const HighlightedTextDisplay: React.FC<HighlightedTextDisplayProps> = ({
   contextualPrompts,
   onPromptClick
 }) => {
-  if (!highlightedText) return null;
+  if (!highlightedText || !highlightedText.trim()) return null;
 
   const wordCount = highlightedText.split(/\s+/).length;
   const charCount = highlightedText.length;

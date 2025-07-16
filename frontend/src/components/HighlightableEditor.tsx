@@ -214,6 +214,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     if (!selection) return;
 
     console.log('🤖 Asking AI about selected text:', selection.text);
+    console.log('🔧 Setting highlighted text in context:', selection.text);
 
     // Apply visual highlighting through ChatContext
     handleTextHighlighted(selection.text);
@@ -226,6 +227,8 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     
     // Clear selection
     setSelection(null);
+    
+    console.log('✅ Text highlighting completed');
   }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
 
   const editor = useEditor({
