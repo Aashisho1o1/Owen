@@ -8,6 +8,14 @@ import {
   SearchResult
 } from '../services/api';
 
+interface ApiError extends Error {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 // MVP-focused DocumentState - removed analytics, versions, series, goals
 interface DocumentState {
   documents: Document[];
@@ -116,10 +124,11 @@ export const useDocuments = (): UseDocumentsReturn => {
         } : null
       }));
     } catch (error) {
+      const apiError = error as ApiError;
       setState(prev => ({ 
         ...prev, 
         isSaving: false, 
-        error: error instanceof Error ? error.message : 'Failed to save document' 
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to save document' 
       }));
     }
   }, [state.currentDocument, state.hasUnsavedChanges, state.pendingContent, state.pendingTitle]);
@@ -139,6 +148,20 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   // Fetch initial data (documents and folders)
   const fetchAllData = useCallback(async () => {
+    if (!user) {
+      console.log('🔐 useDocuments: No user, skipping data load');
+      // Clear any existing data when user logs out
+      setState(prev => ({
+        ...prev,
+        documents: [],
+        folders: [],
+        currentDocument: null,
+        isLoading: false,
+        error: null
+      }));
+      return;
+    }
+    
     setState(prev => ({ ...prev, isLoading: true }));
     try {
       const [docsResponse, foldersResponse] = await Promise.all([
@@ -160,20 +183,21 @@ export const useDocuments = (): UseDocumentsReturn => {
         isLoading: false,
         error: null,
       }));
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error('❌ useDocuments: Error fetching initial data', {
-        message: err.message,
-        stack: err.stack,
+        message: apiError.response?.data?.detail || apiError.message,
+        stack: apiError.stack,
       });
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: err.message || 'Failed to load documents.',
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to load documents.',
         documents: [],
         folders: []
       }));
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchAllData();
@@ -203,12 +227,13 @@ export const useDocuments = (): UseDocumentsReturn => {
       
       return document;
     } catch (error) {
+      const apiError = error as ApiError;
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to create document',
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to create document',
         isLoading: false
       }));
-      throw error;
+      throw apiError;
     }
   };
 
@@ -220,10 +245,11 @@ export const useDocuments = (): UseDocumentsReturn => {
         documents: prev.documents.map(d => (d.id === id ? doc : d)),
       }));
       return doc;
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error(`❌ useDocuments: Error fetching document ${id}`, err);
-      setState(prev => ({ ...prev, error: err.message || 'Failed to fetch document.' }));
-      throw err;
+      setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to fetch document.' }));
+      throw apiError;
     }
   };
 
@@ -241,11 +267,12 @@ export const useDocuments = (): UseDocumentsReturn => {
       
       return updatedDocument;
     } catch (error) {
+      const apiError = error as ApiError;
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to update document'
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to update document'
       }));
-      throw error;
+      throw apiError;
     }
   }, []);
 
@@ -259,11 +286,12 @@ export const useDocuments = (): UseDocumentsReturn => {
         currentDocument: prev.currentDocument?.id === id ? null : prev.currentDocument
       }));
     } catch (error) {
+      const apiError = error as ApiError;
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to delete document'
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to delete document'
       }));
-      throw error;
+      throw apiError;
     }
   }, []);
 
@@ -286,11 +314,12 @@ export const useDocuments = (): UseDocumentsReturn => {
       
       return duplicatedDoc;
     } catch (error) {
+      const apiError = error as ApiError;
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to duplicate document'
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to duplicate document'
       }));
-      throw error;
+      throw apiError;
     }
   }, [state.documents]);
 
@@ -309,10 +338,11 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       
       return folder;
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error('❌ useDocuments: Error creating folder', err);
-      setState(prev => ({ ...prev, error: err.message || 'Failed to create folder.' }));
-      throw err;
+      setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to create folder.' }));
+      throw apiError;
     }
   };
 
@@ -331,14 +361,15 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       
       return updatedFolder;
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error(`❌ useDocuments: Error updating folder ${id}`, err);
-      setState(prev => ({ ...prev, error: err.message || 'Failed to update folder.' }));
-      throw err;
+      setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to update folder.' }));
+      throw apiError;
     }
   };
 
-  const deleteFolder = async (id: string, moveDocumentsTo?: string) => {
+  const deleteFolder = async (id: string) => {
     try {
       await api.deleteFolder(id);
       
@@ -347,9 +378,10 @@ export const useDocuments = (): UseDocumentsReturn => {
         ...prev,
         folders: prev.folders.filter(f => f.id !== id),
       }));
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error(`❌ useDocuments: Error deleting folder ${id}`, err);
-      setState(prev => ({ ...prev, error: err.message || 'Failed to delete folder.' }));
+      setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to delete folder.' }));
       // NOTE: Consider reverting optimistic update on failure
     }
   };
@@ -361,9 +393,10 @@ export const useDocuments = (): UseDocumentsReturn => {
         ...prev,
         documents: prev.documents.map(d => (d.id === documentId ? updatedDoc : d)),
       }));
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error(`❌ useDocuments: Error moving document ${documentId}`, err);
-      setState(prev => ({ ...prev, error: err.message || 'Failed to move document.' }));
+      setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to move document.' }));
     }
   };
 
@@ -378,12 +411,13 @@ export const useDocuments = (): UseDocumentsReturn => {
         searchResults: results,
         isSearching: false,
       }));
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error('❌ useDocuments: Error searching documents', err);
       setState(prev => ({
         ...prev,
         isSearching: false,
-        error: err.message || 'Failed to search documents.',
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to search documents.',
       }));
     }
   };
@@ -451,12 +485,13 @@ export const useDocuments = (): UseDocumentsReturn => {
         ),
         currentDocument: updatedDocument
       }));
-    } catch (err: any) {
+    } catch (err) {
+      const apiError = err as ApiError;
       console.error(`❌ useDocuments: Error saving document ${state.currentDocument.id}`, err);
       setState(prev => ({
         ...prev,
         isSaving: false,
-        error: err.message || 'Failed to save document.',
+        error: apiError.response?.data?.detail || apiError.message || 'Failed to save document.',
       }));
     }
   }, [state.currentDocument, state.pendingContent, state.pendingTitle, state.hasUnsavedChanges]);
