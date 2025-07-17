@@ -4,104 +4,172 @@
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { clearAuthTokens, getStoredTokens, refreshToken } from './auth';
+import { logger } from '../utils/logger';
 
-// Base URL configuration
-const baseURL = import.meta.env.VITE_API_URL || 'https://backend-copy-production-95b5.up.railway.app';
+// Use VITE_API_URL from environment variables, with a fallback for local development
+const API_URL = import.meta.env.VITE_API_URL;
 
 console.log('🌐 API Configuration:', {
-  baseURL,
-  environment: import.meta.env.MODE,
-  apiUrl: import.meta.env.VITE_API_URL
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_URL,
+  NODE_ENV: import.meta.env.NODE_ENV
 });
 
 // Create axios instance
-const apiClient: AxiosInstance = axios.create({
-  baseURL,
+const apiClient = axios.create({
+  baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Token management
-const getStoredTokens = () => {
-  const accessToken = localStorage.getItem('access_token') || localStorage.getItem('owen_access_token');
-  const refreshToken = localStorage.getItem('refresh_token') || localStorage.getItem('owen_refresh_token');
-  return { accessToken, refreshToken };
+// Token refresh state management
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value: any) => void;
+  reject: (error: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  
+  failedQueue = [];
 };
 
-// Request interceptor
+const refreshTokens = async (): Promise<string | null> => {
+  const { refreshToken } = getStoredTokens();
+  
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  try {
+    // Use a fresh axios instance to avoid interceptor loops
+    const response = await axios.post(`${API_URL}/api/auth/refresh`, {
+      refresh_token: refreshToken
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const { access_token, refresh_token: newRefreshToken, token_type, expires_in } = response.data;
+    
+    // Store new tokens
+    localStorage.setItem('owen_access_token', access_token);
+    localStorage.setItem('owen_refresh_token', newRefreshToken);
+    localStorage.setItem('token_type', token_type);
+    localStorage.setItem('expires_at', (Date.now() + expires_in * 1000).toString());
+    
+    return access_token;
+  } catch (error) {
+    // Refresh failed, clear all tokens
+    localStorage.removeItem('owen_access_token');
+    localStorage.removeItem('owen_refresh_token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token_type');
+    localStorage.removeItem('expires_at');
+    
+    throw error;
+  }
+};
+
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const { accessToken } = getStoredTokens();
+    const { accessToken, tokenType } = getStoredTokens();
+    
     if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.Authorization = `${tokenType} ${accessToken}`;
     }
     
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log('🚀 API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
   (error) => {
-    console.error('❌ Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor
+// Response interceptor to handle 401 errors with token refresh
 apiClient.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse) => {
     return response;
   },
   async (error) => {
-    // Handle 401 errors immediately
-    if (error.response?.status === 401) {
-      console.log('🔐 401 Unauthorized - clearing tokens');
-      
-      // Clear all tokens
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('owen_access_token');
-      localStorage.removeItem('owen_refresh_token');
-      
-      // Dispatch token expired event
-      window.dispatchEvent(new CustomEvent('auth:token-expired'));
-      
-      throw new Error('🔐 Authentication required. Please sign in again to continue using the AI Writing Assistant.');
+    const originalRequest = error.config;
+    
+    // Handle 401 errors with token refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        }).catch((err) => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        console.log('🔄 Attempting token refresh...');
+        const newToken = await refreshTokens();
+        
+        processQueue(null, newToken);
+        isRefreshing = false;
+        
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+        
+      } catch (refreshError) {
+        console.log('🔐 Token refresh failed - logging out user');
+        
+        processQueue(refreshError, null);
+        isRefreshing = false;
+        
+        // Clear all tokens
+        localStorage.removeItem('owen_access_token');
+        localStorage.removeItem('owen_refresh_token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('token_type');
+        localStorage.removeItem('expires_at');
+        
+        // Dispatch token expired event ONLY once
+        window.dispatchEvent(new CustomEvent('auth:token-expired'));
+        
+        throw new Error('🔐 Authentication required. Please sign in again to continue using the AI Writing Assistant.');
+      }
     }
     
     // Handle other HTTP errors
     if (error.response) {
-      const status = error.response.status;
-      const message = error.response.data?.detail || error.response.data?.message || `HTTP ${status} Error`;
-      
-      if (status === 403) {
-        throw new Error('🚫 Access forbidden. You do not have permission to access this resource.');
-      } else if (status === 404) {
-        throw new Error('🔍 Resource not found. The requested item may have been deleted or moved.');
-      } else if (status === 422) {
-        throw new Error('📝 Invalid data provided. Please check your input and try again.');
-      } else if (status === 429) {
-        throw new Error('⏰ Too many requests. Please wait a moment and try again.');
-      } else if (status >= 500) {
-        throw new Error('🔧 Server error. Our team has been notified. Please try again later.');
-      } else {
-        throw new Error(message);
-      }
+      console.error('❌ API Error:', error.response.status, error.response.data);
+      throw error;
+    } else if (error.request) {
+      console.error('❌ Network Error:', error.message);
+      throw new Error('Network error. Please check your connection and try again.');
+    } else {
+      console.error('❌ Request Error:', error.message);
+      throw error;
     }
-    
-    // Handle network errors
-    if (error.request) {
-      console.error('❌ Network Error - No response received:', error.message);
-      throw new Error('🌐 Network error. Please check your internet connection and try again.');
-    }
-    
-    // Handle other errors
-    throw new Error(`⚠️ Request failed: ${error.message}`);
   }
 );
 
-export { apiClient };
 export default apiClient; 

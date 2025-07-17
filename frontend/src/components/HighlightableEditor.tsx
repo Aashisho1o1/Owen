@@ -214,6 +214,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     if (!selection) return;
 
     console.log('🤖 Asking AI about selected text:', selection.text);
+    console.log('🔧 Setting highlighted text in context:', selection.text);
 
     // Apply visual highlighting through ChatContext
     handleTextHighlighted(selection.text);
@@ -226,6 +227,8 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     
     // Clear selection
     setSelection(null);
+    
+    console.log('✅ Text highlighting completed');
   }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
 
   const editor = useEditor({
@@ -513,8 +516,39 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
 
   // Update editor content when the content prop changes
   useEffect(() => {
-    if (editor && contentProp && editor.getHTML() !== contentProp) {
-      editor.commands.setContent(contentProp);
+    if (editor && contentProp !== undefined) {
+      const currentContent = editor.getHTML();
+      const currentText = editor.getText();
+      
+      // Handle both HTML and plain text content
+      const isContentDifferent = currentContent !== contentProp && currentText !== contentProp;
+      
+      if (isContentDifferent) {
+        console.log('🔄 Updating editor content:', {
+          currentContentLength: currentContent.length,
+          currentTextLength: currentText.length,
+          newContentLength: contentProp.length,
+          newContentPreview: contentProp.substring(0, 100) + '...',
+          isHTML: contentProp.includes('<') && contentProp.includes('>')
+        });
+        
+        // Set content and preserve cursor position if possible
+        const { from } = editor.state.selection;
+        editor.commands.setContent(contentProp);
+        
+        // Try to restore cursor position or focus at the end
+        try {
+          if (from <= editor.state.doc.content.size) {
+            editor.commands.setTextSelection(from);
+          } else {
+            editor.commands.focus('end');
+          }
+        } catch (error) {
+          // If cursor positioning fails, just focus at the end
+          console.warn('Failed to restore cursor position:', error);
+          editor.commands.focus('end');
+        }
+      }
     }
   }, [contentProp, editor]);
 

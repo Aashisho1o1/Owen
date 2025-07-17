@@ -48,11 +48,5 @@ networkx==3.2.1
 spacy==3.7.2
 # Note: Run `python -m spacy download en_core_web_sm` after installation
 
-# TinyStyler dependencies for character voice consistency
-torch>=1.11.0
-transformers>=4.41.0
-sentencepiece>=0.1.99
-einops>=0.7.0
-huggingface-hub>=0.20.0
-# For TinyStyler's mutual implication score
-mutual-implication-score==0.0.0
+# Character voice consistency using Gemini (no heavy ML dependencies)
+# All character voice analysis is now handled by Gemini 1.5 Flash for simplicity and reliability

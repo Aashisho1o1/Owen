@@ -1,17 +1,17 @@
 /**
- * Character Voice Consistency API Service - TinyStyler Edition
+ * Character Voice Consistency API Service - Gemini Edition
  * 
- * Frontend service for character voice consistency detection using TinyStyler.
+ * Frontend service for character voice consistency detection using Gemini 1.5 Flash.
  * Integrates with the existing API client for authentication and error handling.
  * 
- * TinyStyler provides superior character voice analysis through:
- * - Specialized style transfer models
- * - Authorship embedding analysis
- * - Few-shot learning from minimal dialogue samples
- * - Literary-focused voice consistency detection
+ * Gemini provides reliable character voice analysis through:
+ * - Natural language understanding for voice patterns
+ * - Cost-effective analysis using Gemini 1.5 Flash
+ * - Simple deployment with no complex ML dependencies
+ * - Fast and accurate character voice consistency detection
  */
 
-import { apiClient } from './client';
+import apiClient from './client';
 
 // Types for character voice consistency
 export interface VoiceConsistencyRequest {
@@ -27,7 +27,7 @@ export interface VoiceConsistencyResult {
   flagged_text: string;
   explanation: string;
   suggestions: string[];
-  analysis_method: string; // 'tinystyler_embedding' or 'tinystyler_llm_validated'
+  analysis_method: string; // 'gemini_voice_analysis'
 }
 
 export interface VoiceConsistencyResponse {
@@ -136,7 +136,7 @@ export const formatVoiceConsistencyFeedback = (
     return '✅ All character voices are consistent with their established patterns.';
   }
 
-  let feedback = `🎭 **Voice Consistency Analysis (TinyStyler):**\n\n`;
+  let feedback = `🎭 **Voice Consistency Analysis (Gemini):**\n\n`;
   
   inconsistentResults.forEach((result, index) => {
     feedback += `**${result.character_name}** (${(result.confidence_score * 100).toFixed(1)}% confidence):\n`;
@@ -147,9 +147,9 @@ export const formatVoiceConsistencyFeedback = (
     }
     
     // Show analysis method for transparency
-    const methodLabel = result.analysis_method === 'tinystyler_llm_validated' 
-      ? 'TinyStyler + LLM Validated' 
-      : 'TinyStyler Analysis';
+    const methodLabel = result.analysis_method === 'gemini_voice_analysis' 
+      ? 'Gemini Voice Analysis' 
+      : 'Character Voice Analysis';
     feedback += `• Method: ${methodLabel}\n`;
     
     if (index < inconsistentResults.length - 1) {
@@ -164,10 +164,10 @@ export const formatVoiceConsistencyFeedback = (
  * Check if text contains dialogue worth analyzing
  */
 export const hasDialogue = (text: string): boolean => {
-  // Enhanced dialogue detection patterns for TinyStyler
+  // Simple dialogue detection patterns for Gemini analysis
   const dialoguePatterns = [
-    /"[^"]{15,}"/g,  // Quoted speech (minimum 15 chars for style analysis)
-    /'[^']{15,}'/g,  // Single quoted speech
+    /"[^"]{10,}"/g,  // Quoted speech (minimum 10 chars for analysis)
+    /'[^']{10,}'/g,  // Single quoted speech
     /\b[A-Z][a-z]+\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized):/g
   ];
   
@@ -179,12 +179,12 @@ let analysisTimeout: NodeJS.Timeout | null = null;
 
 /**
  * Analyze voice consistency with debouncing for real-time analysis
- * Optimized for TinyStyler's processing characteristics
+ * Optimized for Gemini's processing characteristics
  */
 export const analyzeVoiceConsistencyDebounced = (
   text: string,
   callback: (results: VoiceConsistencyResult[]) => void,
-  delay: number = 2000 // Slightly longer delay for TinyStyler processing
+  delay: number = 1500 // Shorter delay for Gemini processing
 ): void => {
   if (analysisTimeout) {
     clearTimeout(analysisTimeout);
@@ -207,7 +207,7 @@ export const analyzeVoiceConsistencyDebounced = (
 
 /**
  * Get voice consistency status summary
- * Enhanced for TinyStyler analysis results
+ * Optimized for Gemini analysis results
  */
 export const getVoiceConsistencyStatus = (
   results: VoiceConsistencyResult[]

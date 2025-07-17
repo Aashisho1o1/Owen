@@ -61,7 +61,6 @@ interface UseDocumentsReturn extends DocumentState {
   // Utility functions
   getWordCount: (text: string) => number;
   getDocumentsByFolder: (folderId: string) => Document[];
-  getRecentDocuments: (limit?: number) => Document[];
   getTotalWordCount: () => number;
   
   // Refresh data
@@ -491,12 +490,6 @@ export const useDocuments = (): UseDocumentsReturn => {
     return state.documents.filter(doc => doc.folder_id === folderId);
   }, [state.documents]);
 
-  const getRecentDocuments = useCallback((limit: number = 5): Document[] => {
-    return [...state.documents]
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, limit);
-  }, [state.documents]);
-
   const getTotalWordCount = useCallback((): number => {
     return state.documents.reduce((total, doc) => total + (doc.word_count || 0), 0);
   }, [state.documents]);
@@ -521,7 +514,6 @@ export const useDocuments = (): UseDocumentsReturn => {
     saveNow,
     getWordCount,
     getDocumentsByFolder,
-    getRecentDocuments,
     getTotalWordCount,
     refreshAll
   };

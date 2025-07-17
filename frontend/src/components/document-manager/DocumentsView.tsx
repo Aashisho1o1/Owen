@@ -4,7 +4,7 @@ import { DocumentItem } from './DocumentItem';
 
 interface DocumentsViewProps {
   documents: Document[];
-  recentDocuments: Document[];
+  allDocuments: Document[];
   folders: DocumentFolder[];
   onDocumentSelect: (document: Document) => void;
   onDuplicateDocument: (documentId: string) => void;
@@ -13,50 +13,36 @@ interface DocumentsViewProps {
 
 /**
  * Organism component: Documents View
- * Single Responsibility: Display and organize document lists (recent + all)
+ * Single Responsibility: Display all documents in a clean, organized layout
  */
 export const DocumentsView: React.FC<DocumentsViewProps> = ({
   documents,
-  recentDocuments,
+  allDocuments,
   folders,
   onDocumentSelect,
   onDuplicateDocument,
   onDeleteDocument
 }) => {
   return (
-    <div className="documents-grid">
-      {/* Recent Documents Section */}
-      <div className="recent-section">
-        <h3>📝 Recent Documents</h3>
-        <div className="document-list">
-          {recentDocuments.slice(0, 5).map(document => (
-            <DocumentItem
-              key={document.id}
-              document={document}
-              folders={folders}
-              onSelect={onDocumentSelect}
-              onDuplicate={onDuplicateDocument}
-              onDelete={onDeleteDocument}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* All Documents Section */}
-      <div className="all-documents-section">
-        <h3>📚 All Documents</h3>
-        <div className="document-list">
-          {documents.map(document => (
-            <DocumentItem
-              key={document.id}
-              document={document}
-              folders={folders}
-              onSelect={onDocumentSelect}
-              onDuplicate={onDuplicateDocument}
-              onDelete={onDeleteDocument}
-            />
-          ))}
-        </div>
+    <div className="documents-view-container">
+      <div className="document-list-grid">
+        {allDocuments.map(document => (
+          <DocumentItem
+            key={document.id}
+            document={document}
+            folders={folders}
+            onSelect={onDocumentSelect}
+            onDuplicate={onDuplicateDocument}
+            onDelete={onDeleteDocument}
+          />
+        ))}
+        {allDocuments.length === 0 && (
+          <div className="empty-state-large">
+            <div className="empty-icon">📄</div>
+            <h4>No documents yet</h4>
+            <p>Create your first document to get started writing!</p>
+          </div>
+        )}
       </div>
     </div>
   );

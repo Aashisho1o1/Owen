@@ -78,8 +78,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // API Configuration
-const rawApiUrl = import.meta.env.VITE_API_URL || 'https://backend-copy-production-95b5.up.railway.app';
-const API_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
+const rawApiUrl = import.meta.env.VITE_API_URL;
+const API_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
 
 // Debug log to show which API URL is being used
 console.log('🌐 API Configuration:', { 
@@ -309,14 +309,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Add token expiration listener
   useEffect(() => {
+    let isHandlingExpiration = false;
+    
     const handleTokenExpiration = () => {
+      if (isHandlingExpiration) {
+        console.log('🔐 AuthContext: Token expiration already being handled, skipping...');
+        return;
+      }
+      
+      isHandlingExpiration = true;
       console.log('🔐 AuthContext: Token expired event received, logging out user');
-      logout();
+      
+      // Set user to null immediately to prevent multiple calls
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // Clear tokens without making API call since tokens are already invalid
+      localStorage.removeItem('owen_access_token');
+      localStorage.removeItem('owen_refresh_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('token_type');
+      localStorage.removeItem('expires_at');
+      
+      // Reset expiration handling flag after a short delay
+      setTimeout(() => {
+        isHandlingExpiration = false;
+      }, 1000);
     };
 
     window.addEventListener('auth:token-expired', handleTokenExpiration);
     return () => window.removeEventListener('auth:token-expired', handleTokenExpiration);
-  }, [logout]);
+  }, []); // Remove logout dependency to prevent re-registration
 
   const login = async (data: LoginData): Promise<boolean> => {
     setIsLoading(true);

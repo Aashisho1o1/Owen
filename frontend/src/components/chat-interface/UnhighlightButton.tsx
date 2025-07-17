@@ -11,7 +11,7 @@ export const UnhighlightButton: React.FC<UnhighlightButtonProps> = ({
   const { highlightedText, clearAllTextHighlights } = useChatContext();
 
   // Only show the button if there's highlighted text
-  if (!highlightedText) {
+  if (!highlightedText || !highlightedText.trim()) {
     return null;
   }
 

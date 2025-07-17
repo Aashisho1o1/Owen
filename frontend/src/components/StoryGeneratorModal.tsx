@@ -85,7 +85,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle');
 
   // Get editor context for inserting story into writing space
-  const { setEditorContent } = useEditorContext();
+  const { setEditorContent, documentManager } = useEditorContext();
 
   // Reset form when modal closes
   React.useEffect(() => {
@@ -146,17 +146,31 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
 
   const handleInsertIntoEditor = () => {
     try {
+      console.log('📝 Inserting story into editor:', {
+        storyLength: generatedStory.length,
+        storyPreview: generatedStory.substring(0, 100) + '...'
+      });
+      
       // Insert the story into the writing space
+      // We need to update both the editor content and the document manager content
+      
+      // Update the editor content
       setEditorContent(generatedStory);
       
-      // Close the modal
-      onClose();
+      // Also update the document manager's pending content
+      documentManager.updateContent(generatedStory);
       
-      // Optional: Show a brief success message
-      setCopyStatus('success');
-      setTimeout(() => setCopyStatus('idle'), 1000);
+      // Brief delay to ensure content is set before closing modal
+      setTimeout(() => {
+        // Close the modal
+        onClose();
+        
+        // Show success feedback
+        console.log('✅ Story successfully inserted into editor');
+      }, 100);
+      
     } catch (err) {
-      console.error('Error inserting story into editor:', err);
+      console.error('❌ Error inserting story into editor:', err);
       setCopyStatus('error');
       setTimeout(() => setCopyStatus('idle'), 2000);
     }

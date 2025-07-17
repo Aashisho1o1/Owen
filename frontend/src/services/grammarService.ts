@@ -44,9 +44,8 @@ class GrammarService {
   private readonly DEBOUNCE_MS = 1000;
 
   constructor() {
-    // Use environment variable or fallback to production URL
-    this.baseURL = import.meta.env.VITE_API_URL || 
-      'https://backend-copy-production-95b5.up.railway.app';
+    this.baseURL =
+      import.meta.env.VITE_API_URL;
   }
 
   /**

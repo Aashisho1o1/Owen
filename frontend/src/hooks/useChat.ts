@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { sendChatMessage, buildChatRequest, generateSuggestions } from '../services/api/chat';
 import { useAuth } from '../contexts/AuthContext';
 import { useApiHealth } from './useApiHealth';
@@ -34,6 +34,7 @@ export interface UseChatOptions {
   highlightedText?: string;
   highlightedTextId?: string;
   onAuthRequired?: () => void;
+  setHighlightedTextMessageIndex?: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 export interface UseChatReturn {
@@ -50,6 +51,16 @@ export interface UseChatReturn {
   fullResponse: string; 
 }
 
+// Configuration for the chat API
+const CHAT_CONFIG = {
+  // Use VITE_API_URL from environment variables, with a fallback for local development
+  apiUrl: import.meta.env.VITE_API_URL,
+  endpoints: {
+    chat: '/api/chat/stream',
+    suggestions: '/api/chat/suggestions',
+  }
+};
+
 export const useChat = ({
   initialMessages = [],
   authorPersona,
@@ -63,7 +74,11 @@ export const useChat = ({
   highlightedText,
   highlightedTextId,
   onAuthRequired,
+  setHighlightedTextMessageIndex,
 }: UseChatOptions): UseChatReturn => {
+  // Track which highlighted text has already been used so that
+  // we only attach a given highlight to the very first follow-up question.
+  const lastHighlightTextRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -107,12 +122,11 @@ export const useChat = ({
   useEffect(() => {
     if (!isStreaming || streamIndex >= fullResponse.length) {
       if (isStreaming && streamIndex >= fullResponse.length) {
-        // Add the complete streamed message to chat history
-        setMessages(prev => [
-          ...prev,
-          { role: 'assistant' as const, content: fullResponse }
-        ]);
+        // FIXED: Don't add the message here - it should already be in the messages array
+        // The streaming effect should only handle the typing animation
         setIsStreaming(false); // End streaming
+        setStreamText(''); // Clear stream text
+        setStreamIndex(0); // Reset stream index
       }
       return;
     }
@@ -135,13 +149,30 @@ export const useChat = ({
     setThinkingTrail('');
     setApiError(null);
     
+    // Determine whether this highlighted text has already been used
+    const isFirstHighlightUse = highlightedText && highlightedText.trim() && highlightedText !== lastHighlightTextRef.current;
+
     const userMessage: ChatMessage = {
       role: 'user',
       content: message,
-      timestamp: new Date(),
-    };
+      // Only preserve highlight on the first message after a selection
+      ...(isFirstHighlightUse && highlightedText?.trim()
+        ? { highlightedText, highlightedTextId }
+        : {}),
+    } as ChatMessage;
     
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage];
+      
+      // Associate the highlight with ONLY the first related message
+      if (isFirstHighlightUse && setHighlightedTextMessageIndex) {
+        setHighlightedTextMessageIndex(newMessages.length - 1);
+        // Remember that we've now consumed this highlight
+        lastHighlightTextRef.current = highlightedText || null;
+      }
+      
+      return newMessages;
+    });
     
     try {
       logger.info('📤 Sending chat request:', {
@@ -156,7 +187,7 @@ export const useChat = ({
       
       const requestPayload = {
         message,
-        editor_text: editorContent,
+        editor_text: editorContent, // Use original content
         author_persona: authorPersona,
         help_focus: helpFocus,
         chat_history: [...messages, userMessage],
@@ -166,8 +197,9 @@ export const useChat = ({
           user_corrections: []
         },
         feedback_on_previous: feedbackOnPrevious || "",
-        highlighted_text: highlightedText || "",
-        highlight_id: highlightedTextId || "",
+        // Send highlight context to the backend only the first time
+        highlighted_text: isFirstHighlightUse ? highlightedText || "" : "",
+        highlight_id: isFirstHighlightUse ? highlightedTextId || "" : "",
         english_variant: "US",
         ai_mode: aiMode
       };
@@ -201,8 +233,19 @@ export const useChat = ({
       setIsThinking(false);
       
       if (response && response.dialogue_response && response.dialogue_response.trim()) {
-        setFullResponse(response.dialogue_response);
+        const finalResponse = response.dialogue_response;
+        
+        // FIXED: Add the assistant message immediately to ensure correct ordering
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: finalResponse,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        setFullResponse(finalResponse);
         setIsStreaming(true); // Start streaming the response
+        setStreamIndex(0); // Reset stream index
         setThinkingTrail(response.thinking_trail || null);
         
         // CRITICAL: Dispatch suggestions to ChatContext if available
@@ -247,7 +290,7 @@ export const useChat = ({
         isAuthError: typedError.isAuthError,
         isNetworkError: typedError.isNetworkError,
         debugInfo: typedError.debugInfo,
-        apiUrl: 'https://backend-copy-production-95b5.up.railway.app',
+        apiUrl: CHAT_CONFIG.apiUrl,
         timestamp: new Date().toISOString()
       });
       
@@ -300,7 +343,15 @@ export const useChat = ({
         fallbackResponse = `I'm receiving too many requests right now. As ${authorPersona} would say, good writing takes time. Please wait a moment and try again.`;
       } else if (typedError.response?.status === 400) {
         errorType = 'bad_request';
-        fallbackResponse = `There was an issue with your request format. As ${authorPersona} would say, clarity is key in both writing and communication. Please try rephrasing your question.`;
+        
+        // Check if this is a token limit error
+        const errorDetail = typedError.response?.data?.detail || '';
+        if (errorDetail.includes('Input too long') || errorDetail.includes('too long')) {
+          errorType = 'token_limit';
+          fallbackResponse = `📝 Your document is too long for AI processing. The system supports documents up to 100,000 characters. Please try reducing the length of your document or break it into smaller sections.`;
+        } else {
+          fallbackResponse = `There was an issue with your request format. As ${authorPersona} would say, clarity is key in both writing and communication. Please try rephrasing your question.`;
+        }
       } else if (typedError.response?.status === 403 || typedError.response?.status === 401) {
         errorType = 'auth';
         fallbackResponse = `🔐 Authentication Required: You need to be signed in to use the AI Writing Assistant. Please sign in or create an account to start getting personalized writing feedback from ${authorPersona}.`;
@@ -330,7 +381,7 @@ export const useChat = ({
       // Set global error only for critical connection-related issues
       // Don't set global error for auth issues if they happen right after login
       if (setApiGlobalError && (errorType === 'network' || errorType === 'timeout')) {
-        setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: https://backend-copy-production-95b5.up.railway.app. Please check if the server is running.`);
+        setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: ${CHAT_CONFIG.apiUrl}. Please check if the server is running.`);
       }
     }
   }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId, aiMode]);

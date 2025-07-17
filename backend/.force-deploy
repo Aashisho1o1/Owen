@@ -244,45 +244,142 @@ HYPERCORN_VERSION_MISMATCH=true
 DEPLOYMENT_STRATEGY=HYPERCORN_ARGUMENT_CORRECTION
 PRIORITY=CRITICAL_STARTUP_FIX
 
-GOOGLE-GENAI-SDK-MIGRATION-2025-01-27-23:30:00Z
+CHROMADB-TELEMETRY-FIX-2025-07-16-01:55:00Z
 
-# 🚀 DEFINITIVE SOLUTION: Google GenAI SDK Migration for Railway Compatibility
-# Problem: google-generativeai library has Railway deployment compatibility issues
+# 🔧 CRITICAL FIX: ChromaDB Telemetry Errors Causing Backend Crashes
+# Problem: ChromaDB telemetry system causing Railway deployment failures
 
-ISSUE_IDENTIFIED=GOOGLE_GENERATIVEAI_RAILWAY_INCOMPATIBILITY
-ROOT_CAUSE=DEPRECATED_SDK_RAILWAY_BUILD_ENVIRONMENT_CONFLICTS
-SOLUTION_APPLIED=MIGRATION_TO_NEW_GOOGLE_GENAI_SDK
+ISSUE_IDENTIFIED=CHROMADB_TELEMETRY_POSTHOG_ERRORS
+ROOT_CAUSE=CHROMADB_TELEMETRY_CAPTURE_FUNCTION_ARGUMENT_MISMATCH
+SOLUTION_APPLIED=DISABLE_CHROMADB_TELEMETRY_AND_RAILWAY_OPTIMIZATION
 
-# RESEARCH FINDINGS:
-# ✅ Google has officially migrated to new google-genai SDK
-# ✅ Old google-generativeai library is deprecated and has Railway issues
-# ✅ Railway deployment forum confirms google-generativeai version conflicts
-# ✅ New google-genai SDK is more stable and Railway-compatible
+# EVIDENCE FROM DEPLOYMENT LOGS:
+# ❌ ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+# ❌ ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+# ❌ Backend returns 502 Bad Gateway after ChromaDB initialization
+# ❌ Frontend gets CORS errors because backend process crashes
 
 # COMPREHENSIVE SOLUTION IMPLEMENTED:
-# 1. Added google-genai>=0.7.0 to requirements.txt (new stable SDK)
-# 2. Updated GeminiService to support both SDKs with automatic fallback
-# 3. Prioritized new SDK for Railway compatibility
-# 4. Maintained backward compatibility with legacy SDK
-# 5. Enhanced error handling and logging for both SDKs
-# 6. Updated model preferences to use stable 2.0 models
+# 1. Added environment variables to disable ChromaDB telemetry in main.py
+# 2. Updated ChromaDB Settings to disable anonymized_telemetry
+# 3. Configured Railway-optimized ChromaDB settings (in-memory for ephemeral filesystem)
+# 4. Added proper error handling for ChromaDB initialization
+# 5. Separated local development (persistent) vs Railway (in-memory) configurations
 
-# TECHNICAL BENEFITS:
-# ✅ New SDK has better Railway deployment compatibility
-# ✅ More stable API surface and fewer dependency conflicts
-# ✅ Better async support and performance
-# ✅ Future-proof migration path
-# ✅ Maintains Gemini as core functionality (not optional)
+# TECHNICAL CHANGES:
+# ✅ os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+# ✅ os.environ['CHROMA_TELEMETRY'] = 'False'
+# ✅ Railway: is_persistent=False (in-memory storage)
+# ✅ Local: is_persistent=True (persistent storage)
+# ✅ Proper environment detection for Railway
 
 # EXPECTED RESULT:
-# ✅ Railway builds successfully with new google-genai library
-# ✅ Gemini service initializes properly on Railway
-# ✅ Backend starts without import errors
-# ✅ CORS headers properly set by FastAPI
-# ✅ User registration and AI chat work correctly
-# ✅ Core Gemini functionality preserved and enhanced
+# ✅ ChromaDB initializes without telemetry errors
+# ✅ Backend starts successfully on Railway
+# ✅ No more 502 Bad Gateway errors
+# ✅ CORS headers properly sent by FastAPI
+# ✅ Frontend can connect to backend without errors
+# ✅ Indexing service works correctly for document search
 
-DEPLOYMENT_STRATEGY=GOOGLE_GENAI_SDK_MIGRATION
-PRIORITY=CRITICAL_GEMINI_FUNCTIONALITY_FIX
-SDK_VERSION=google-genai-0.7.0
-BACKWARD_COMPATIBILITY=google-generativeai-fallback
+DEPLOYMENT_STRATEGY=CHROMADB_TELEMETRY_DISABLE
+PRIORITY=CRITICAL_BACKEND_STARTUP_FIX
+CHROMADB_VERSION=OPTIMIZED_FOR_RAILWAY
+TELEMETRY_STATUS=DISABLED
+
+CHROMADB-TELEMETRY-COMPREHENSIVE-FIX-2025-07-16-02:05:00Z
+
+# 🔧 COMPREHENSIVE FIX: ChromaDB Telemetry Errors - Final Solution
+# Problem: ChromaDB 0.4.22 telemetry system causing Railway deployment crashes
+
+ISSUE_IDENTIFIED=CHROMADB_TELEMETRY_POSTHOG_CAPTURE_FUNCTION_SIGNATURE_MISMATCH
+ROOT_CAUSE=CHROMADB_VERSION_0_4_22_TELEMETRY_BUG
+SOLUTION_APPLIED=COMPREHENSIVE_TELEMETRY_DISABLING_WITH_FALLBACK
+
+# EVIDENCE FROM DEPLOYMENT LOGS:
+# ❌ ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+# ❌ ERROR:chromadb.telemetry.product.posthog:Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+# ❌ Backend crashes after ChromaDB initialization
+# ❌ Frontend gets CORS errors because backend process dies
+
+# COMPREHENSIVE SOLUTION IMPLEMENTED:
+
+# 1. ENVIRONMENT VARIABLES (main.py - before any imports):
+# ✅ os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+# ✅ os.environ['CHROMA_TELEMETRY'] = 'False'
+# ✅ os.environ['CHROMA_TELEMETRY_ENABLED'] = 'False'
+# ✅ os.environ['CHROMA_DISABLE_TELEMETRY'] = 'True'
+# ✅ os.environ['CHROMA_ANONYMIZED_TELEMETRY'] = 'False'
+# ✅ os.environ['POSTHOG_DISABLED'] = 'True'
+# ✅ os.environ['POSTHOG_CAPTURE_DISABLED'] = 'True'
+# ✅ os.environ['TELEMETRY_DISABLED'] = 'True'
+
+# 2. CHROMADB SETTINGS (vector_store.py):
+# ✅ Primary: Full settings with comprehensive telemetry disabling
+# ✅ Fallback: Minimal settings if comprehensive settings fail
+# ✅ Error handling for both Railway and local environments
+
+# 3. LOGGING SUPPRESSION (main.py):
+# ✅ chromadb_logger.setLevel(logging.CRITICAL)
+# ✅ posthog_logger.setLevel(logging.CRITICAL)
+# ✅ Prevents telemetry errors from appearing in logs
+
+# 4. RAILWAY OPTIMIZATION:
+# ✅ In-memory storage (is_persistent=False) for ephemeral filesystem
+# ✅ Proper environment detection for Railway vs local
+
+# EXPECTED RESULT:
+# ✅ ChromaDB initializes without telemetry errors
+# ✅ Backend starts successfully on Railway
+# ✅ No more 502 Bad Gateway errors
+# ✅ CORS headers properly sent by FastAPI
+# ✅ Frontend can connect to backend without errors
+# ✅ Indexing service works correctly for document search
+# ✅ No telemetry errors in deployment logs
+
+DEPLOYMENT_STRATEGY=COMPREHENSIVE_CHROMADB_TELEMETRY_FIX
+PRIORITY=CRITICAL_RAILWAY_DEPLOYMENT_FIX
+CHROMADB_VERSION=0.4.22_TELEMETRY_BUG_WORKAROUND
+TELEMETRY_STATUS=COMPLETELY_DISABLED
+FALLBACK_STRATEGY=ENABLED
+
+BACKEND-502-DEBUGGING-2025-07-16-02:15:00Z
+
+# 🚨 CRITICAL: Backend returning 502 Bad Gateway - Application failed to respond
+# Problem: Backend service is not starting properly on Railway
+
+DEPLOYMENT_STATUS=BACKEND_502_DEBUGGING
+ISSUE_IDENTIFIED=APPLICATION_FAILED_TO_RESPOND
+EVIDENCE=RAILWAY_RETURNS_502_ERROR
+
+# DIAGNOSIS FROM CURL TEST:
+# ❌ HTTP/2 502 Bad Gateway
+# ❌ {"status":"error","code":502,"message":"Application failed to respond"}
+# ❌ x-railway-fallback: true (Railway trying fallback)
+# ❌ Backend process not responding to requests
+
+# POTENTIAL CAUSES:
+# 1. ChromaDB telemetry still causing crashes despite fixes
+# 2. Port binding issues (hypercorn not binding correctly)
+# 3. Environment variable issues
+# 4. Python import failures
+# 5. Database connection preventing startup
+
+# COMPREHENSIVE DEBUGGING APPROACH:
+# 1. Force complete container recreation
+# 2. Test with minimal imports first
+# 3. Add extensive logging to startup process
+# 4. Check if ChromaDB is still problematic
+
+DEPLOYMENT_STRATEGY=MINIMAL_STARTUP_DEBUGGING
+PRIORITY=CRITICAL_BACKEND_DOWN
+EXPECTED_RESULT=BACKEND_RESPONDS_TO_HEALTH_CHECK
+
+# This deployment will:
+# ✅ Force fresh container with no cached state
+# ✅ Add extensive startup logging
+# ✅ Test each component individually
+# ✅ Identify exact failure point
+
+RAILWAY_FORCE_REBUILD=TRUE
+RAILWAY_CLEAR_CACHE=TRUE
+CONTAINER_RESTART=TRUE

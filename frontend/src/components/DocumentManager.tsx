@@ -7,12 +7,12 @@ import {
   DocumentManagerHeader,
   NavigationTabs,
   SearchBar,
-  ControlsPanel,
   CreateModal,
   AuthPrompt,
   // Organism Components
   DocumentsView,
   FoldersView,
+  AppMapView,
   // TemplatesView removed - template system deprecated
   SearchResultsView,
   // Types
@@ -65,7 +65,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     clearSearch,
           // createFromTemplate removed - template system deprecated
     getDocumentsByFolder,
-    getRecentDocuments,
     getTotalWordCount
   } = useDocuments();
 
@@ -165,7 +164,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
         return (
           <DocumentsView
             documents={getDisplayDocuments()}
-            recentDocuments={getRecentDocuments()}
+            allDocuments={getDisplayDocuments()}
             folders={folders}
             onDocumentSelect={onDocumentSelect}
             onDuplicateDocument={duplicateDocument}
@@ -182,6 +181,9 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
             onDeleteFolder={deleteFolder}
           />
         );
+
+      case 'appmap':
+        return <AppMapView />;
 
       // templates case removed - template system deprecated
 
@@ -218,22 +220,18 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           onViewModeChange={setViewMode}
         />
 
-        {/* Search Section */}
+        {/* Combined Search and Controls Section */}
         <SearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onSearch={handleSearch}
           onClearSearch={handleClearSearch}
           showClearButton={searchQuery !== '' || viewMode === 'search'}
-        />
-
-        {/* Controls Section */}
-        <ControlsPanel
           sortBy={sortBy}
           filterBy={filterBy}
+          onSortChange={(sort) => setSortBy(sort as SortBy)}
+          onFilterChange={(filter) => setFilterBy(filter as FilterBy)}
           viewMode={viewMode}
-          onSortChange={setSortBy}
-          onFilterChange={setFilterBy}
           onCreateDocument={() => setShowCreateDocumentModal(true)}
           onCreateFolder={() => setShowCreateFolderModal(true)}
         />

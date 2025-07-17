@@ -1143,3 +1143,67 @@
 .messages-container::-webkit-scrollbar-thumb:hover {
   background: rgba(160, 174, 192, 0.7);
 } 
+
+/* Inline highlighted text display for better chat flow */
+.inline-highlighted-text {
+  margin: 12px 0;
+  padding: 0 16px;
+  opacity: 0.9;
+}
+
+.inline-highlighted-text .highlighted-text-box {
+  background: rgba(59, 130, 246, 0.08) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+  font-size: 14px;
+  position: relative;
+}
+
+.inline-highlighted-text .highlighted-title {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #3b82f6 !important;
+  margin-bottom: 6px;
+}
+
+.inline-highlighted-text .highlighted-content {
+  font-size: 14px !important;
+  line-height: 1.4;
+  color: #374151 !important;
+  font-style: italic;
+  margin: 6px 0;
+}
+
+.inline-highlighted-text .contextual-prompts {
+  margin-top: 8px;
+}
+
+.inline-highlighted-text .contextual-prompts-title {
+  font-size: 12px !important;
+  color: #6b7280 !important;
+  margin-bottom: 4px;
+}
+
+.inline-highlighted-text .contextual-prompts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.inline-highlighted-text .contextual-prompt-button {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.inline-highlighted-text .contextual-prompt-button:hover {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+} 

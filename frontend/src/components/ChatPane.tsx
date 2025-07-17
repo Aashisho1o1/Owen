@@ -8,7 +8,7 @@
  * - Follows React best practices for maintainability
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { EnhancedChatInput } from './chat-interface/EnhancedChatInput';
 import { ThinkingTrail } from './chat/ThinkingTrail';
 import { 
@@ -16,7 +16,6 @@ import {
   MessagesContainer,
   generateContextualPrompts
 } from './chat-interface';
-import { logger } from '../utils/logger';
 import { useChatContext } from '../contexts/ChatContext';
 
 /**
@@ -57,6 +56,7 @@ const ChatPane: React.FC = () => {
     setAiMode,
     // Text highlighting
     highlightedText,
+    highlightedTextMessageIndex,
     // CRITICAL FIX: Add suggestions state from context
     currentSuggestions,
     clearSuggestions,
@@ -65,53 +65,38 @@ const ChatPane: React.FC = () => {
   const [showThinkingTrail, setShowThinkingTrail] = useState(false);
 
   // Business Logic: Generate contextual prompts for highlighted text
-  const contextualPrompts = useCallback(() => {
-    if (!highlightedText) return [];
+  const contextualPrompts = useMemo(() => {
+    if (!highlightedText || !highlightedText.trim()) return [];
     return generateContextualPrompts(authorPersona, helpFocus);
   }, [highlightedText, authorPersona, helpFocus]);
 
   // Event Handler: Send message with highlighted text context
   const handleSendMessageWrapper = useCallback((message: string) => {
-    let finalMessage = message;
-    
-    // Include highlighted text context if available and not already included
-    if (highlightedText && !message.includes(highlightedText)) {
-      finalMessage = `${message}\n\nSelected text: "${highlightedText}"`;
-    }
-    
-    handleSendMessage(finalMessage);
-  }, [highlightedText, handleSendMessage]);
+    // Always send the original message to maintain clean chat history
+    // The backend will handle highlighted text context separately
+    handleSendMessage(message);
+  }, [handleSendMessage]);
 
   // Note: handleGetOptions removed - EnhancedChatInput handles suggestions internally
 
   // Event Handler: Handle quick question prompts
   const handlePromptClick = useCallback((prompt: string) => {
-    let finalMessage = prompt;
-    
-    // Include highlighted text context if available
-    if (highlightedText) {
-      finalMessage = `${prompt}\n\nSelected text: "${highlightedText}"`;
-    }
-    
-    handleSendMessageWrapper(finalMessage);
-  }, [highlightedText, handleSendMessageWrapper]);
+    // Send the prompt directly - backend handles highlighted text context
+    handleSendMessage(prompt);
+  }, [handleSendMessage]);
 
   // Event Handler: Test API connection
   const handleTestConnection = useCallback(async () => {
     try {
       await checkApiConnection();
-      let testMessage = "Test connection - please respond with a simple greeting.";
+      const testMessage = "Test connection - please respond with a simple greeting.";
       
-      // Include highlighted text context in test if available
-      if (highlightedText) {
-        testMessage += `\n\nSelected text for context: "${highlightedText}"`;
-      }
-      
-      handleSendMessageWrapper(testMessage);
+      // Send clean test message - backend handles highlighted text context
+      handleSendMessage(testMessage);
     } catch (error) {
-      logger.error('Connection test failed:', error);
+      console.error('API connection test failed:', error);
     }
-  }, [checkApiConnection, handleSendMessageWrapper, highlightedText]);
+  }, [checkApiConnection, handleSendMessage]);
 
   // Event Handler: Toggle thinking trail visibility
   const toggleThinkingTrail = useCallback(() => {
@@ -147,7 +132,8 @@ const ChatPane: React.FC = () => {
       <MessagesContainer
         messages={messages}
         highlightedText={highlightedText}
-        contextualPrompts={contextualPrompts()}
+        highlightedTextMessageIndex={highlightedTextMessageIndex}
+        contextualPrompts={contextualPrompts}
         chatApiError={chatApiError}
         apiGlobalError={apiGlobalError}
         streamText={streamText}

@@ -4,6 +4,7 @@ Optimized for narrative text with semantic chunking
 """
 
 from typing import List, Dict, Any, Optional, Tuple
+import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import chromadb
@@ -21,11 +22,29 @@ class VectorStore:
         # Initialize embedding model - using a model fine-tuned for narrative text
         self.embedding_model = SentenceTransformer('all-mpnet-base-v2')
         
-        # Initialize ChromaDB with persistence
-        self.client = chromadb.Client(Settings(
-            persist_directory=persist_directory,
-            anonymized_telemetry=False
-        ))
+        # Initialize ChromaDB with Railway-optimized settings
+        # Use in-memory storage for Railway's ephemeral filesystem
+        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') == 'production'
+        
+        try:
+            # Correctly disable telemetry using Chroma's settings.
+            # This is the modern and recommended way to handle telemetry.
+            telemetry_settings = Settings(anonymized_telemetry=False)
+            
+            if is_railway:
+                # Railway: In-memory storage
+                self.client = chromadb.Client(telemetry_settings)
+            else:
+                # Local: Persistent storage
+                telemetry_settings.persist_directory = persist_directory
+                telemetry_settings.is_persistent = True
+                self.client = chromadb.Client(telemetry_settings)
+            
+            print("✅ ChromaDB initialized successfully with telemetry disabled.")
+            
+        except Exception as e:
+            print(f"⚠️ ChromaDB initialization failed: {e}")
+            raise RuntimeError(f"Failed to initialize ChromaDB: {e}")
         
         # Get or create collection
         self.collection = self.client.get_or_create_collection(

@@ -17,6 +17,7 @@ interface EnhancedChatMessageProps {
   suggestions?: SuggestionOption[];
   originalText?: string;
   showSuggestions?: boolean;
+  isStreaming?: boolean;
 }
 
 interface ReplacementInfo {
@@ -27,7 +28,8 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
   message,
   suggestions = [],
   originalText = '',
-  showSuggestions = false
+  showSuggestions = false,
+  isStreaming = false
 }) => {
   const { 
     acceptTextSuggestion, 
@@ -200,6 +202,7 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
       
       <div className="message-content">
         {renderMessageContent(message)}
+        {isStreaming && <span className="typing-cursor">|</span>}
         
         {/* Show suggestions if available */}
         {showSuggestions && suggestions.length > 0 && (
