@@ -153,6 +153,76 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     }
   }, [contentProp, isAuthenticated]);
 
+  // ENHANCED: Track content changes separately for better debugging
+  useEffect(() => {
+    console.log('📊 Content flow tracking:', {
+      timestamp: new Date().toISOString(),
+      contentProp: {
+        exists: !!contentProp,
+        length: contentProp?.length || 0,
+        preview: contentProp?.substring(0, 50) || 'No content',
+        type: typeof contentProp
+      },
+      context: {
+        exists: !!contextContent,
+        length: contextContent?.length || 0,
+        preview: contextContent?.substring(0, 50) || 'No context content'
+      },
+      props: {
+        exists: !!content,
+        length: content?.length || 0,
+        preview: content?.substring(0, 50) || 'No props content'
+      },
+      auth: {
+        isAuthenticated,
+        hasUser: !!isAuthenticated
+      }
+    });
+  }, [contentProp, contextContent, content, isAuthenticated]);
+
+  // ENHANCED: Voice consistency analysis with better timing
+  useEffect(() => {
+    // Add a small delay to ensure content is properly set
+    const timeoutId = setTimeout(() => {
+      const hasContentToAnalyze = contentProp && contentProp.trim().length > 50;
+      const hasDialogueContent = hasContentToAnalyze && hasDialogue(contentProp);
+      
+      console.log('🎯 Voice consistency effect (delayed):', {
+        isAuthenticated,
+        hasContent: !!contentProp,
+        hasContentToAnalyze,
+        contentLength: contentProp?.length || 0,
+        contentPreview: contentProp?.substring(0, 100) || 'No content',
+        hasDialogueContent,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Only proceed if user is authenticated AND we have meaningful dialogue content
+      if (isAuthenticated && hasContentToAnalyze && hasDialogueContent) {
+        console.log('✅ Proceeding with voice analysis - all conditions met');
+        analyzeVoiceConsistencyDebounced(contentProp, (results) => {
+          console.log('📊 Voice analysis results:', results);
+          setVoiceConsistencyResults(results);
+        });
+      } else {
+        console.log('❌ Skipping voice analysis - conditions not met:', {
+          isAuthenticated,
+          hasContentProp: !!contentProp,
+          hasContentToAnalyze,
+          hasDialogueContent,
+          reason: !isAuthenticated 
+            ? 'User not authenticated' 
+            : !hasContentToAnalyze 
+              ? 'Insufficient content (need >50 chars)' 
+              : 'No dialogue detected'
+        });
+        setVoiceConsistencyResults([]);
+      }
+    }, 100); // Small delay to ensure content is properly set
+
+    return () => clearTimeout(timeoutId);
+  }, [contentProp, isAuthenticated]);
+
   // Fallback text selection detection using DOM selection
   const fallbackTextSelection = useCallback((selectedText: string) => {
     const sel = window.getSelection();
@@ -286,6 +356,46 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         hasOnChangeProp: !!onChangeProp
       });
       onChangeProp(newContent);
+      
+      // CRITICAL FIX: Immediately trigger voice consistency analysis when editor content changes
+      // This ensures we analyze the actual content from the editor, not just props
+      setTimeout(() => {
+        const hasContentToAnalyze = newContent && newContent.trim().length > 50;
+        const hasDialogueContent = hasContentToAnalyze && hasDialogue(newContent);
+        
+        console.log('🎯 Voice consistency effect (editor onUpdate):', {
+          isAuthenticated,
+          hasContent: !!newContent,
+          hasContentToAnalyze,
+          contentLength: newContent?.length || 0,
+          contentPreview: newContent?.substring(0, 100) || 'No content',
+          hasDialogueContent,
+          timestamp: new Date().toISOString(),
+          source: 'TipTap onUpdate'
+        });
+        
+        // Only proceed if user is authenticated AND we have meaningful dialogue content
+        if (isAuthenticated && hasContentToAnalyze && hasDialogueContent) {
+          console.log('✅ Proceeding with voice analysis from editor update - all conditions met');
+          analyzeVoiceConsistencyDebounced(newContent, (results) => {
+            console.log('📊 Voice analysis results from editor:', results);
+            setVoiceConsistencyResults(results);
+          });
+        } else {
+          console.log('❌ Skipping voice analysis from editor - conditions not met:', {
+            isAuthenticated,
+            hasContent: !!newContent,
+            hasContentToAnalyze,
+            hasDialogueContent,
+            reason: !isAuthenticated 
+              ? 'User not authenticated' 
+              : !hasContentToAnalyze 
+                ? 'Insufficient content (need >50 chars)' 
+                : 'No dialogue detected'
+          });
+          setVoiceConsistencyResults([]);
+        }
+      }, 50); // Very small delay to ensure state is updated
     },
     // ADDED: Handle text selection updates for floating AI button with debouncing
     onSelectionUpdate: (() => {
