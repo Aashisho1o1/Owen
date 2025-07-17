@@ -11,14 +11,14 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from ..dependencies import get_current_user_id
-from ..services.character_voice_service import CharacterVoiceService
-from ..models.schemas import (
+from dependencies import get_current_user_id
+from services.character_voice_service import CharacterVoiceService
+from models.schemas import (
     VoiceConsistencyRequest, VoiceConsistencyResponse, VoiceConsistencyResult,
-    CharacterVoiceProfilesResponse, DeleteCharacterProfileRequest
+    CharacterVoiceProfilesResponse, CharacterVoiceProfile, DeleteCharacterProfileRequest
 )
-from ..services.rate_limiter import SimpleRateLimiter
-from ..services.security_logger import SecurityLogger, SecurityEventType, SecuritySeverity
+from services.rate_limiter import SimpleRateLimiter
+from services.security_logger import SecurityLogger, SecurityEventType, SecuritySeverity
 
 logger = logging.getLogger(__name__)
 
