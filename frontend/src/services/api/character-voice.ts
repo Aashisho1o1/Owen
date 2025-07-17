@@ -160,18 +160,43 @@ export const formatVoiceConsistencyFeedback = (
   return feedback;
 };
 
+// Utility: strip HTML tags and decode basic HTML entities
+const htmlToPlain = (html: string): string => {
+  if (!html) return '';
+  // Remove tags
+  let text = html.replace(/<[^>]*>/g, ' ');
+  // Decode common entities
+  const entities: Record<string, string> = {
+    '&quot;': '"',
+    '&#39;': "'",
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>'
+  };
+  Object.entries(entities).forEach(([e, char]) => {
+    text = text.split(e).join(char);
+  });
+  return text;
+};
+
 /**
  * Check if text contains dialogue worth analyzing
+ * Now robust to HTML input from TipTap (strips tags & decodes entities)
  */
 export const hasDialogue = (text: string): boolean => {
-  // Simple dialogue detection patterns for Gemini analysis
+  if (!text || text.trim().length === 0) return false;
+
+  // Work with plain text
+  const plain = htmlToPlain(text);
+
+  // Dialogue detection patterns
   const dialoguePatterns = [
-    /"[^"]{10,}"/g,  // Quoted speech (minimum 10 chars for analysis)
-    /'[^']{10,}'/g,  // Single quoted speech
-    /\b[A-Z][a-z]+\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized):/g
+    /"[^"\n]{5,}?"/g,  // Quoted speech (min 5 chars)
+    /'[^'\n]{5,}?'/g,    // Single quotes
+    /\b[A-Z][a-z]+\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\b/g
   ];
-  
-  return dialoguePatterns.some(pattern => pattern.test(text));
+
+  return dialoguePatterns.some((pattern) => pattern.test(plain));
 };
 
 // Debounced voice consistency analysis
