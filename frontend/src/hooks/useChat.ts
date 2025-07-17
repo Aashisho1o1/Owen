@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { sendChatMessage, buildChatRequest, generateSuggestions } from '../services/api/chat';
 import { useAuth } from '../contexts/AuthContext';
 import { useApiHealth } from './useApiHealth';
@@ -66,6 +66,9 @@ export const useChat = ({
   onAuthRequired,
   setHighlightedTextMessageIndex,
 }: UseChatOptions): UseChatReturn => {
+  // Track which highlighted text has already been used so that
+  // we only attach a given highlight to the very first follow-up question.
+  const lastHighlightTextRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -136,20 +139,26 @@ export const useChat = ({
     setThinkingTrail('');
     setApiError(null);
     
+    // Determine whether this highlighted text has already been used
+    const isFirstHighlightUse = highlightedText && highlightedText.trim() && highlightedText !== lastHighlightTextRef.current;
+
     const userMessage: ChatMessage = {
       role: 'user',
       content: message,
-      // Store highlighted text context with this message to preserve it in conversation
-      highlightedText: highlightedText || undefined,
-      highlightedTextId: highlightedTextId || undefined,
-    };
+      // Only preserve highlight on the first message after a selection
+      ...(isFirstHighlightUse && highlightedText?.trim()
+        ? { highlightedText, highlightedTextId }
+        : {}),
+    } as ChatMessage;
     
     setMessages(prev => {
       const newMessages = [...prev, userMessage];
       
-      // If there's highlighted text, associate it with this message
-      if (highlightedText && highlightedText.trim() && setHighlightedTextMessageIndex) {
-        setHighlightedTextMessageIndex(newMessages.length - 1); // Index of the user message
+      // Associate the highlight with ONLY the first related message
+      if (isFirstHighlightUse && setHighlightedTextMessageIndex) {
+        setHighlightedTextMessageIndex(newMessages.length - 1);
+        // Remember that we've now consumed this highlight
+        lastHighlightTextRef.current = highlightedText || null;
       }
       
       return newMessages;
@@ -178,8 +187,9 @@ export const useChat = ({
           user_corrections: []
         },
         feedback_on_previous: feedbackOnPrevious || "",
-        highlighted_text: highlightedText || "",
-        highlight_id: highlightedTextId || "",
+        // Send highlight context to the backend only the first time
+        highlighted_text: isFirstHighlightUse ? highlightedText || "" : "",
+        highlight_id: isFirstHighlightUse ? highlightedTextId || "" : "",
         english_variant: "US",
         ai_mode: aiMode
       };

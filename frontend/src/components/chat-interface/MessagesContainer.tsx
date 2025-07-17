@@ -61,10 +61,11 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
   return (
     <div className="messages-container">
-      {/* Show current highlighted text at top if no messages yet OR if we have highlighted text but no user messages yet */}
-      {((messages.length === 0) || 
-        (highlightedText && highlightedText.trim() && !messages.some(msg => msg.role === 'user'))) && 
-        highlightedText && highlightedText.trim() && (
+      {/* Display an inline preview of the currently selected text
+          as soon as the user clicks “Ask AI”. It remains visible
+          until the first related question is asked, after which it
+          gets anchored to that message via highlightedTextMessageIndex. */}
+      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && messages.length === 0 && (
         <HighlightedTextDisplay
           highlightedText={highlightedText}
           contextualPrompts={contextualPrompts}
@@ -144,6 +145,17 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           streamText={streamText}
           isStreaming={isStreaming}
         />
+      )}
+
+      {/* If a highlight is pending display (before first question) AND we already have messages above, make sure it appears just before the bottom anchor so it’s in the reader’s view. */}
+      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && messages.length > 0 && (
+        <div className="inline-highlighted-text">
+          <HighlightedTextDisplay
+            highlightedText={highlightedText}
+            contextualPrompts={contextualPrompts}
+            onPromptClick={onPromptClick}
+          />
+        </div>
       )}
       
       <div ref={messagesEndRef} />
