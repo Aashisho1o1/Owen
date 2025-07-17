@@ -221,7 +221,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       return doc;
     } catch (err: any) {
-      console.error(`❌ useDocuments: Error fetching document ${id}`, err);
+      console.error('❌ useDocuments: Error fetching document %s', id, err);
       setState(prev => ({ ...prev, error: err.message || 'Failed to fetch document.' }));
       throw err;
     }
