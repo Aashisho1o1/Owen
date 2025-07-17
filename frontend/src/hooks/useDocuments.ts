@@ -4,7 +4,6 @@ import * as api from '../services/api';
 import { 
   Document, 
   DocumentFolder, 
-  // DocumentTemplate removed - template system deprecated
   SearchRequest,
   SearchResult
 } from '../services/api';
@@ -13,7 +12,6 @@ import {
 interface DocumentState {
   documents: Document[];
   folders: DocumentFolder[];
-  templates: []; // templates removed - template system deprecated
   currentDocument: Document | null;
   isLoading: boolean;
   error: string | null;
@@ -49,9 +47,6 @@ interface UseDocumentsReturn extends DocumentState {
   searchDocuments: (searchRequest: SearchRequest) => Promise<void>;
   clearSearch: () => void;
   
-  // Templates
-  createFromTemplate: (templateId: string, title: string, folderId?: string) => Promise<Document>;
-  
   // Auto-save & sync
   setCurrentDocument: (document: Document | null) => void;
   updateContent: (content: string) => void;
@@ -72,9 +67,8 @@ export const useDocuments = (): UseDocumentsReturn => {
   const [state, setState] = useState<DocumentState>({
     documents: [],
     folders: [],
-    templates: [],
     currentDocument: null,
-    isLoading: false,
+    isLoading: true,
     error: null,
     searchResults: [],
     isSearching: false,
@@ -143,86 +137,52 @@ export const useDocuments = (): UseDocumentsReturn => {
     };
   }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument]);
 
-  // Load initial data - MVP VERSION (only endpoints that exist)
-  const refreshAll = useCallback(async () => {
-    if (!user) {
-      console.log('🔐 useDocuments: No user, skipping data load');
-      // Clear any existing data when user logs out
-      setState(prev => ({
-        ...prev,
-        documents: [],
-        folders: [],
-        templates: [],
-        currentDocument: null,
-        isLoading: false,
-        error: null
-      }));
-      return;
-    }
-    
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+  // Fetch initial data (documents and folders)
+  const fetchAllData = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true }));
     try {
-      console.log('📊 useDocuments: Loading documents, folders, and templates...');
-      
-      // Only call endpoints that exist in MVP backend
-      const [documents, folders] = await Promise.all([
+      const [docsResponse, foldersResponse] = await Promise.all([
         api.getDocuments(),
         api.getFolders()
-        // api.getTemplates() removed - template system deprecated
       ]);
       
-      console.log('✅ useDocuments: Data loaded successfully', {
-        documentsCount: documents.documents?.length || 0,
-        foldersCount: folders.length
-        // templatesCount removed - template system deprecated
-      });
-      
+      const documents = docsResponse.documents || [];
+      const folders = foldersResponse || [];
+
+      console.log(
+        `📊 useDocuments: Loaded ${documents.length} documents and ${folders.length} folders.`
+      );
+
       setState(prev => ({
         ...prev,
-        documents: documents.documents || [],
+        documents,
         folders,
-        templates: [], // templates removed - template system deprecated
-        isLoading: false
+        isLoading: false,
+        error: null,
       }));
-    } catch (error) {
-      console.error('❌ useDocuments: Failed to load data:', error);
-      
-      // Enhanced error handling for authentication issues
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load data';
-      const isAuthError = errorMessage.includes('Invalid token') || 
-                         errorMessage.includes('Authentication') ||
-                         errorMessage.includes('Unauthorized') ||
-                         errorMessage.includes('401');
-      
-      if (isAuthError) {
-        console.error('🔐 useDocuments: Authentication error detected, user may need to re-login');
-        setState(prev => ({
-          ...prev,
-          error: null, // Don't show error for auth issues
-          isLoading: false,
-          documents: [],
-          folders: [],
-          templates: []
-        }));
-      } else {
-        setState(prev => ({
-          ...prev,
-          error: errorMessage,
-          isLoading: false
-        }));
-      }
+    } catch (err: any) {
+      console.error('❌ useDocuments: Error fetching initial data', {
+        message: err.message,
+        stack: err.stack,
+      });
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: err.message || 'Failed to load documents.',
+        documents: [],
+        folders: []
+      }));
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
-    refreshAll();
-  }, [refreshAll]);
+    fetchAllData();
+  }, [fetchAllData]);
 
-  // Document CRUD operations - simplified without series
-  const createDocument = useCallback(async (
-    title: string, 
-    documentType: string = 'novel', 
+  // Document CRUD operations
+  const createDocument = async (
+    title: string,
+    documentType: string = 'novel',
     folderId?: string
   ): Promise<Document> => {
     try {
@@ -237,7 +197,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       
       setState(prev => ({
         ...prev,
-        documents: [document, ...prev.documents],
+        documents: [...state.documents, document],
         isLoading: false
       }));
       
@@ -250,20 +210,22 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       throw error;
     }
-  }, []);
+  };
 
-  const getDocument = useCallback(async (id: string): Promise<Document> => {
+  const getDocument = async (id: string): Promise<Document> => {
     try {
-      const document = await api.getDocument(id);
-      return document;
-    } catch (error) {
+      const doc = await api.getDocument(id);
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to get document'
+        documents: prev.documents.map(d => (d.id === id ? doc : d)),
       }));
-      throw error;
+      return doc;
+    } catch (err: any) {
+      console.error(`❌ useDocuments: Error fetching document ${id}`, err);
+      setState(prev => ({ ...prev, error: err.message || 'Failed to fetch document.' }));
+      throw err;
     }
-  }, []);
+  };
 
   const updateDocument = useCallback(async (id: string, updates: Partial<Document>): Promise<Document> => {
     try {
@@ -333,7 +295,11 @@ export const useDocuments = (): UseDocumentsReturn => {
   }, [state.documents]);
 
   // Folder management
-  const createFolder = useCallback(async (name: string, parentId?: string, color?: string): Promise<DocumentFolder> => {
+  const createFolder = async (
+    name: string,
+    parentId?: string,
+    color?: string
+  ): Promise<DocumentFolder> => {
     try {
       const folder = await api.createFolder({ name, parent_id: parentId, color });
       
@@ -343,16 +309,17 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       
       return folder;
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to create folder'
-      }));
-      throw error;
+    } catch (err: any) {
+      console.error('❌ useDocuments: Error creating folder', err);
+      setState(prev => ({ ...prev, error: err.message || 'Failed to create folder.' }));
+      throw err;
     }
-  }, []);
+  };
 
-  const updateFolder = useCallback(async (id: string, updates: Partial<DocumentFolder>): Promise<DocumentFolder> => {
+  const updateFolder = async (
+    id: string,
+    updates: Partial<DocumentFolder>
+  ): Promise<DocumentFolder> => {
     try {
       const updatedFolder = await api.updateFolder(id, updates);
       
@@ -364,102 +331,86 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       
       return updatedFolder;
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to update folder'
-      }));
-      throw error;
+    } catch (err: any) {
+      console.error(`❌ useDocuments: Error updating folder ${id}`, err);
+      setState(prev => ({ ...prev, error: err.message || 'Failed to update folder.' }));
+      throw err;
     }
-  }, []);
+  };
 
-  const deleteFolder = useCallback(async (id: string, moveDocumentsTo?: string): Promise<void> => {
+  const deleteFolder = async (id: string, moveDocumentsTo?: string) => {
     try {
       await api.deleteFolder(id);
       
+      // Optimistically update UI
       setState(prev => ({
         ...prev,
-        folders: prev.folders.filter(folder => folder.id !== id),
-        documents: prev.documents.map(doc => 
-          doc.folder_id === id 
-            ? { ...doc, folder_id: moveDocumentsTo || undefined }
-            : doc
-        )
+        folders: prev.folders.filter(f => f.id !== id),
       }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to delete folder'
-      }));
-      throw error;
+    } catch (err: any) {
+      console.error(`❌ useDocuments: Error deleting folder ${id}`, err);
+      setState(prev => ({ ...prev, error: err.message || 'Failed to delete folder.' }));
+      // NOTE: Consider reverting optimistic update on failure
     }
-  }, []);
+  };
 
-  const moveDocument = useCallback(async (documentId: string, folderId?: string): Promise<void> => {
+  const moveDocument = async (documentId: string, folderId?: string) => {
     try {
-      await api.updateDocument(documentId, { folder_id: folderId });
-      
+      const updatedDoc = await api.moveDocumentToFolder(documentId, folderId);
       setState(prev => ({
         ...prev,
-        documents: prev.documents.map(doc => 
-          doc.id === documentId ? { ...doc, folder_id: folderId } : doc
-        )
+        documents: prev.documents.map(d => (d.id === documentId ? updatedDoc : d)),
       }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to move document'
-      }));
-      throw error;
+    } catch (err: any) {
+      console.error(`❌ useDocuments: Error moving document ${documentId}`, err);
+      setState(prev => ({ ...prev, error: err.message || 'Failed to move document.' }));
     }
-  }, []);
+  };
 
-  // Search functionality
-  const searchDocuments = useCallback(async (searchRequest: SearchRequest): Promise<void> => {
+
+  // Search
+  const searchDocuments = async (searchRequest: SearchRequest) => {
+    setState(prev => ({ ...prev, isSearching: true, error: null }));
     try {
-      setState(prev => ({ ...prev, isSearching: true }));
-      
       const results = await api.searchDocuments(searchRequest);
-      
       setState(prev => ({
         ...prev,
         searchResults: results,
-        isSearching: false
+        isSearching: false,
       }));
-    } catch (error) {
+    } catch (err: any) {
+      console.error('❌ useDocuments: Error searching documents', err);
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Search failed',
-        isSearching: false
+        isSearching: false,
+        error: err.message || 'Failed to search documents.',
       }));
     }
-  }, []);
+  };
 
-  const clearSearch = useCallback(() => {
+  const clearSearch = () => {
+    setState(prev => ({ ...prev, searchResults: [], isSearching: false }));
+  };
+
+  // Auto-save & sync
+  const setCurrentDocument = (doc: Document | null) => {
+    if (state.currentDocument && state.hasUnsavedChanges) {
+      saveNow();
+    }
+    
     setState(prev => ({
       ...prev,
-      searchResults: [],
-      isSearching: false
-    }));
-  }, []);
-
-  // Template functionality removed - template system deprecated
-
-  // Auto-save and content management
-  const setCurrentDocument = useCallback((document: Document | null) => {
-    setState(prev => ({
-      ...prev,
-      currentDocument: document,
-      pendingContent: document?.content || '',
-      pendingTitle: document?.title || '',
+      currentDocument: doc,
+      pendingContent: doc?.content || '',
+      pendingTitle: doc?.title || '',
       hasUnsavedChanges: false
     }));
     
-    if (document) {
-      lastContentRef.current = document.content;
-      lastTitleRef.current = document.title;
+    if (doc) {
+      lastContentRef.current = doc.content;
+      lastTitleRef.current = doc.title;
     }
-  }, []);
+  };
 
   const updateContent = useCallback((content: string) => {
     setState(prev => ({
@@ -478,13 +429,42 @@ export const useDocuments = (): UseDocumentsReturn => {
   }, []);
 
   const saveNow = useCallback(async () => {
-    await performAutoSave();
-  }, [performAutoSave]);
+    if (!state.currentDocument || !state.hasUnsavedChanges) return;
+
+    setState(prev => ({ ...prev, isSaving: true }));
+    
+    try {
+      const updates: Partial<Document> = {
+        content: state.pendingContent,
+        title: state.pendingTitle,
+      };
+
+      const updatedDocument = await api.updateDocument(state.currentDocument.id, updates);
+      
+      setState(prev => ({
+        ...prev,
+        isSaving: false,
+        lastSaved: new Date(),
+        hasUnsavedChanges: false,
+        documents: prev.documents.map(doc => 
+          doc.id === state.currentDocument?.id ? updatedDocument : doc
+        ),
+        currentDocument: updatedDocument
+      }));
+    } catch (err: any) {
+      console.error(`❌ useDocuments: Error saving document ${state.currentDocument.id}`, err);
+      setState(prev => ({
+        ...prev,
+        isSaving: false,
+        error: err.message || 'Failed to save document.',
+      }));
+    }
+  }, [state.currentDocument, state.pendingContent, state.pendingTitle, state.hasUnsavedChanges]);
 
   // Utility functions
-  const getWordCount = useCallback((text: string): number => {
-    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-  }, []);
+  const getWordCount = (text: string): number => {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
 
   const getDocumentsByFolder = useCallback((folderId: string): Document[] => {
     return state.documents.filter(doc => doc.folder_id === folderId);
@@ -507,7 +487,6 @@ export const useDocuments = (): UseDocumentsReturn => {
     moveDocument,
     searchDocuments,
     clearSearch,
-    // createFromTemplate removed - template system deprecated
     setCurrentDocument,
     updateContent,
     updateTitle,
@@ -515,7 +494,7 @@ export const useDocuments = (): UseDocumentsReturn => {
     getWordCount,
     getDocumentsByFolder,
     getTotalWordCount,
-    refreshAll
+    refreshAll: fetchAllData,
   };
 };
 

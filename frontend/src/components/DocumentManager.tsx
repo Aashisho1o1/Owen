@@ -13,7 +13,6 @@ import {
   DocumentsView,
   FoldersView,
   AppMapView,
-  // TemplatesView removed - template system deprecated
   SearchResultsView,
   // Types
   ViewMode,
@@ -52,7 +51,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
   const {
     documents,
     folders,
-    // templates removed - template system deprecated
     searchResults,
     isLoading,
     error,
@@ -63,7 +61,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     duplicateDocument,
     searchDocuments,
     clearSearch,
-          // createFromTemplate removed - template system deprecated
     getDocumentsByFolder,
     getTotalWordCount
   } = useDocuments();
@@ -150,8 +147,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     setShowCreateFolderModal(false);
   };
 
-  // handleUseTemplate removed - template system deprecated
-
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolder(folderId);
     setViewMode('documents');
@@ -184,8 +179,6 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
 
       case 'appmap':
         return <AppMapView />;
-
-      // templates case removed - template system deprecated
 
       case 'search':
         return (
