@@ -372,7 +372,8 @@ async def health_check(request: Request = None):
             try:
                 db_health = db_service.health_check()
             except Exception as e:
-                db_health = {"status": "unhealthy", "error": str(e)}
+                logger.error(f"Database health check error: {e}", exc_info=True)
+                db_health = {"status": "unhealthy", "error": "An internal error occurred while checking the database health."}
         elif not db_service:
             db_health = {"status": "service_unavailable", "error": "Database service failed to import"}
         
