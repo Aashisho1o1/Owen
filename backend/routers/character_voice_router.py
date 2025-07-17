@@ -348,7 +348,7 @@ async def character_voice_health():
                 "service": "character_voice_consistency",
                 "status": "error",
                 "timestamp": time.time(),
-                "error": str(e)
+                "message": "An internal error occurred while checking service health."
             }
         )
 
