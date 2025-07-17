@@ -114,44 +114,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
   
-  // Analyze voice consistency when content changes
-  useEffect(() => {
-    // Only run analysis if we have meaningful content
-    const hasContentToAnalyze = contentProp && contentProp.trim().length > 50; // At least 50 characters
-    const hasDialogueContent = hasContentToAnalyze && hasDialogue(contentProp);
-    
-    console.log('🔍 Voice consistency effect triggered:', {
-      isAuthenticated,
-      hasContent: !!contentProp,
-      hasContentToAnalyze,
-      contentLength: contentProp?.length || 0,
-      contentPreview: contentProp?.substring(0, 100) || 'No content',
-      contentType: typeof contentProp,
-      hasDialogueContent
-    });
-    
-    // Only proceed if user is authenticated AND we have meaningful dialogue content
-    if (isAuthenticated && hasContentToAnalyze && hasDialogueContent) {
-      console.log('✅ Proceeding with voice analysis - all conditions met');
-      analyzeVoiceConsistencyDebounced(contentProp, (results) => {
-        console.log('📊 Voice analysis results:', results);
-        setVoiceConsistencyResults(results);
-      });
-    } else {
-      console.log('❌ Skipping voice analysis - conditions not met:', {
-        isAuthenticated,
-        hasContentProp: !!contentProp,
-        hasContentToAnalyze,
-        hasDialogueContent,
-        reason: !isAuthenticated 
-          ? 'User not authenticated' 
-          : !hasContentToAnalyze 
-            ? 'Insufficient content (need >50 chars)' 
-            : 'No dialogue detected'
-      });
-      setVoiceConsistencyResults([]);
-    }
-  }, [contentProp, isAuthenticated]);
+  // REMOVED: Redundant useEffect-based voice consistency analysis
+  // This was causing conflicts with the TipTap onUpdate analysis
+  // Now we only use the TipTap onUpdate handler for real-time analysis
 
   // ENHANCED: Track content changes separately for better debugging
   useEffect(() => {
@@ -179,49 +144,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       }
     });
   }, [contentProp, contextContent, content, isAuthenticated]);
-
-  // ENHANCED: Voice consistency analysis with better timing
-  useEffect(() => {
-    // Add a small delay to ensure content is properly set
-    const timeoutId = setTimeout(() => {
-      const hasContentToAnalyze = contentProp && contentProp.trim().length > 50;
-      const hasDialogueContent = hasContentToAnalyze && hasDialogue(contentProp);
-      
-      console.log('🎯 Voice consistency effect (delayed):', {
-        isAuthenticated,
-        hasContent: !!contentProp,
-        hasContentToAnalyze,
-        contentLength: contentProp?.length || 0,
-        contentPreview: contentProp?.substring(0, 100) || 'No content',
-        hasDialogueContent,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Only proceed if user is authenticated AND we have meaningful dialogue content
-      if (isAuthenticated && hasContentToAnalyze && hasDialogueContent) {
-        console.log('✅ Proceeding with voice analysis - all conditions met');
-        analyzeVoiceConsistencyDebounced(contentProp, (results) => {
-          console.log('📊 Voice analysis results:', results);
-          setVoiceConsistencyResults(results);
-        });
-      } else {
-        console.log('❌ Skipping voice analysis - conditions not met:', {
-          isAuthenticated,
-          hasContentProp: !!contentProp,
-          hasContentToAnalyze,
-          hasDialogueContent,
-          reason: !isAuthenticated 
-            ? 'User not authenticated' 
-            : !hasContentToAnalyze 
-              ? 'Insufficient content (need >50 chars)' 
-              : 'No dialogue detected'
-        });
-        setVoiceConsistencyResults([]);
-      }
-    }, 100); // Small delay to ensure content is properly set
-
-    return () => clearTimeout(timeoutId);
-  }, [contentProp, isAuthenticated]);
 
   // Fallback text selection detection using DOM selection
   const fallbackTextSelection = useCallback((selectedText: string) => {
