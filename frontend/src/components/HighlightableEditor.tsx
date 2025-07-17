@@ -84,6 +84,17 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   const contentProp = content !== undefined ? content : contextContent;
   const onChangeProp = onChange || contextOnChange;
 
+  // DEBUG: Log content changes
+  useEffect(() => {
+    console.log('📝 Content tracking:', {
+      contentProp: contentProp?.length || 0,
+      contentPreview: contentProp?.substring(0, 100) || 'No content',
+      contentSource: content !== undefined ? 'props' : 'context',
+      contextContent: contextContent?.length || 0,
+      propsContent: content?.length || 0
+    });
+  }, [contentProp, contextContent, content]);
+
   // Text selection state
   const [selection, setSelection] = useState<{top: number; left: number; text: string} | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -105,20 +116,39 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   
   // Analyze voice consistency when content changes
   useEffect(() => {
+    // Only run analysis if we have meaningful content
+    const hasContentToAnalyze = contentProp && contentProp.trim().length > 50; // At least 50 characters
+    const hasDialogueContent = hasContentToAnalyze && hasDialogue(contentProp);
+    
     console.log('🔍 Voice consistency effect triggered:', {
       isAuthenticated,
       hasContent: !!contentProp,
-      hasDialogue: hasDialogue(contentProp)
+      hasContentToAnalyze,
+      contentLength: contentProp?.length || 0,
+      contentPreview: contentProp?.substring(0, 100) || 'No content',
+      contentType: typeof contentProp,
+      hasDialogueContent
     });
     
-    if (isAuthenticated && contentProp && hasDialogue(contentProp)) {
-      console.log('✅ Proceeding with voice analysis');
+    // Only proceed if user is authenticated AND we have meaningful dialogue content
+    if (isAuthenticated && hasContentToAnalyze && hasDialogueContent) {
+      console.log('✅ Proceeding with voice analysis - all conditions met');
       analyzeVoiceConsistencyDebounced(contentProp, (results) => {
         console.log('📊 Voice analysis results:', results);
         setVoiceConsistencyResults(results);
       });
     } else {
-      console.log('❌ Skipping voice analysis - conditions not met');
+      console.log('❌ Skipping voice analysis - conditions not met:', {
+        isAuthenticated,
+        hasContentProp: !!contentProp,
+        hasContentToAnalyze,
+        hasDialogueContent,
+        reason: !isAuthenticated 
+          ? 'User not authenticated' 
+          : !hasContentToAnalyze 
+            ? 'Insufficient content (need >50 chars)' 
+            : 'No dialogue detected'
+      });
       setVoiceConsistencyResults([]);
     }
   }, [contentProp, isAuthenticated]);
