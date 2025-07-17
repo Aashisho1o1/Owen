@@ -163,40 +163,132 @@ export const formatVoiceConsistencyFeedback = (
 // Utility: strip HTML tags and decode basic HTML entities
 const htmlToPlain = (html: string): string => {
   if (!html) return '';
-  // Remove tags
+  
+  // Remove tags and replace with spaces to maintain word boundaries
   let text = html.replace(/<[^>]*>/g, ' ');
-  // Decode common entities
+  
+  // Decode common HTML entities (expanded list)
   const entities: Record<string, string> = {
     '&quot;': '"',
     '&#39;': "'",
+    '&#x27;': "'",
+    '&apos;': "'",
     '&amp;': '&',
     '&lt;': '<',
-    '&gt;': '>'
+    '&gt;': '>',
+    '&nbsp;': ' ',
+    '&#160;': ' ',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&ldquo;': '"',
+    '&rdquo;': '"',
+    '&lsquo;': ''',
+    '&rsquo;': ''',
+    '&#8220;': '"',
+    '&#8221;': '"',
+    '&#8216;': ''',
+    '&#8217;': ''',
+    '&#8211;': '–',
+    '&#8212;': '—'
   };
-  Object.entries(entities).forEach(([e, char]) => {
-    text = text.split(e).join(char);
+  
+  // Decode entities
+  Object.entries(entities).forEach(([entity, char]) => {
+    text = text.split(entity).join(char);
   });
+  
+  // Normalize whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  console.log('🔧 htmlToPlain conversion:', {
+    originalLength: html.length,
+    processedLength: text.length,
+    hasQuotes: /["""''']/.test(text),
+    originalPreview: html.substring(0, 100) + '...',
+    processedPreview: text.substring(0, 100) + '...'
+  });
+  
   return text;
 };
 
 /**
  * Check if text contains dialogue worth analyzing
  * Now robust to HTML input from TipTap (strips tags & decodes entities)
+ * Enhanced with better debugging and more flexible patterns
  */
 export const hasDialogue = (text: string): boolean => {
-  if (!text || text.trim().length === 0) return false;
+  if (!text || text.trim().length === 0) {
+    console.log('🔍 hasDialogue: No text provided');
+    return false;
+  }
 
   // Work with plain text
   const plain = htmlToPlain(text);
+  console.log('🔍 hasDialogue: Processing text:', {
+    originalLength: text.length,
+    plainLength: plain.length,
+    plainPreview: plain.substring(0, 200) + '...'
+  });
 
-  // Dialogue detection patterns
+  // Enhanced dialogue detection patterns - more flexible
   const dialoguePatterns = [
-    /"[^"\n]{5,}?"/g,  // Quoted speech (min 5 chars)
-    /'[^'\n]{5,}?'/g,    // Single quotes
-    /\b[A-Z][a-z]+\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\b/g
+    // Basic quoted speech (reduced minimum to 3 chars)
+    /"[^"\n]{3,}?"/g,
+    /'[^'\n]{3,}?'/g,
+    
+    // Dialogue with attribution (more flexible)
+    /["""][^"""]{3,}?["""][^.!?]*(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)/gi,
+    
+    // Attribution before dialogue
+    /\b[A-Z][a-z]+\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)[^.!?]*["""][^"""]{3,}?["""]/gi,
+    
+    // Simple dialogue patterns without attribution
+    /^\s*["""][^"""]{3,}?["""]$/gm,
+    /^\s*"[^"]{3,}?"$/gm,
+    /^\s*'[^']{3,}?'$/gm,
+    
+    // Dialogue in the middle of paragraphs
+    /\.\s*["""][^"""]{3,}?["""][\s,]/g,
+    /\.\s*"[^"]{3,}?"[\s,]/g,
+    /\.\s*'[^']{3,}?'[\s,]/g,
+    
+    // Dialogue with em-dashes (common in literature)
+    /—\s*[A-Z][^—]{3,}?[.!?]?\s*—/g,
+    /—[^—]{3,}?—/g
   ];
 
-  return dialoguePatterns.some((pattern) => pattern.test(plain));
+  // Test each pattern and log results
+  for (let i = 0; i < dialoguePatterns.length; i++) {
+    const pattern = dialoguePatterns[i];
+    const matches = plain.match(pattern);
+    
+    if (matches && matches.length > 0) {
+      console.log(`✅ hasDialogue: Pattern ${i + 1} matched:`, {
+        pattern: pattern.toString(),
+        matches: matches.slice(0, 3), // Show first 3 matches
+        totalMatches: matches.length
+      });
+      return true;
+    } else {
+      console.log(`❌ hasDialogue: Pattern ${i + 1} no match:`, {
+        pattern: pattern.toString()
+      });
+    }
+  }
+
+  // Additional check: look for any quotation marks with reasonable content
+  const basicQuoteCheck = /["""''"][^"""''']{3,}?["""'']/g;
+  const basicMatches = plain.match(basicQuoteCheck);
+  if (basicMatches && basicMatches.length > 0) {
+    console.log('✅ hasDialogue: Basic quote check passed:', {
+      matches: basicMatches.slice(0, 3),
+      totalMatches: basicMatches.length
+    });
+    return true;
+  }
+
+  console.log('❌ hasDialogue: No dialogue patterns found');
+  return false;
 };
 
 // Debounced voice consistency analysis
