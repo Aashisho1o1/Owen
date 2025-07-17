@@ -15,6 +15,7 @@ import { useEditorContext } from '../contexts/EditorContext';
 import { useChatContext } from '../contexts/ChatContext';
 import '../styles/highlightable-editor.css';
 import { createPortal } from 'react-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   analyzeVoiceConsistencyDebounced, 
   hasDialogue,
@@ -77,6 +78,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     editorContent: contextContent, 
     setEditorContent: contextOnChange
   } = useEditorContext();
+  const { isAuthenticated } = useAuth();
 
   // Use props if provided, otherwise use context
   const contentProp = content !== undefined ? content : contextContent;
@@ -103,14 +105,14 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   
   // Analyze voice consistency when content changes
   useEffect(() => {
-    if (contentProp && hasDialogue(contentProp)) {
+    if (isAuthenticated && contentProp && hasDialogue(contentProp)) {
       analyzeVoiceConsistencyDebounced(contentProp, (results) => {
         setVoiceConsistencyResults(results);
       });
     } else {
       setVoiceConsistencyResults([]);
     }
-  }, [contentProp]);
+  }, [contentProp, isAuthenticated]);
 
   // Fallback text selection detection using DOM selection
   const fallbackTextSelection = useCallback((selectedText: string) => {
