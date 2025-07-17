@@ -490,7 +490,7 @@ class SimpleCharacterVoiceService:
             
         except Exception as e:
             logger.error(f"Error checking service health: {str(e)}")
-            return {'status': 'error', 'error': str(e)}
+            return {'status': 'error'}
 
 # Create alias for backward compatibility
 CharacterVoiceService = SimpleCharacterVoiceService 
