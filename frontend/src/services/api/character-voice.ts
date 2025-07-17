@@ -175,7 +175,7 @@ export const hasDialogue = (text: string): boolean => {
 };
 
 // Debounced voice consistency analysis
-let analysisTimeout: NodeJS.Timeout | null = null;
+let debounceTimer: NodeJS.Timeout | null = null;
 
 /**
  * Analyze voice consistency with debouncing for real-time analysis
@@ -186,20 +186,22 @@ export const analyzeVoiceConsistencyDebounced = (
   callback: (results: VoiceConsistencyResult[]) => void,
   delay: number = 1500 // Shorter delay for Gemini processing
 ): void => {
-  if (analysisTimeout) {
-    clearTimeout(analysisTimeout);
+  console.log('🔄 Voice analysis debounced called:', { textLength: text.length });
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
   }
 
-  analysisTimeout = setTimeout(async () => {
+  debounceTimer = setTimeout(async () => {
     try {
-      if (hasDialogue(text)) {
-        const response = await analyzeVoiceConsistency({ text });
-        callback(response.results);
-      } else {
-        callback([]);
-      }
+      const response = await apiClient.post<VoiceConsistencyResponse>('/api/character-voice/analyze', {
+        text,
+        document_id: undefined
+      });
+      
+      console.log('✅ Voice analysis response:', response.data);
+      callback(response.data.results);
     } catch (error) {
-      console.error('Voice consistency analysis failed:', error);
+      console.error('❌ Voice analysis error:', error);
       callback([]);
     }
   }, delay);

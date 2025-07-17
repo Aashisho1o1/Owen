@@ -105,11 +105,20 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   
   // Analyze voice consistency when content changes
   useEffect(() => {
+    console.log('🔍 Voice consistency effect triggered:', {
+      isAuthenticated,
+      hasContent: !!contentProp,
+      hasDialogue: hasDialogue(contentProp)
+    });
+    
     if (isAuthenticated && contentProp && hasDialogue(contentProp)) {
+      console.log('✅ Proceeding with voice analysis');
       analyzeVoiceConsistencyDebounced(contentProp, (results) => {
+        console.log('📊 Voice analysis results:', results);
         setVoiceConsistencyResults(results);
       });
     } else {
+      console.log('❌ Skipping voice analysis - conditions not met');
       setVoiceConsistencyResults([]);
     }
   }, [contentProp, isAuthenticated]);
