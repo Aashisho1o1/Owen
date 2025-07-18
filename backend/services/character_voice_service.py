@@ -130,20 +130,32 @@ class SimpleCharacterVoiceService:
             logger.info(f"📝 Text preview: {text[:200]}...")
             
             # Validate input
-            text = self.validator.validate_text_input(text, max_length=10000)
-            logger.info(f"✅ Text validation passed")
+            try:
+                text = self.validator.validate_text_input(text, max_length=10000)
+                logger.info(f"✅ Text validation passed")
+            except Exception as e:
+                logger.error(f"❌ Text validation failed: {e}")
+                raise
             
             # Extract dialogue segments
-            dialogue_segments = self._extract_dialogue_segments(text)
-            logger.info(f"📊 Found {len(dialogue_segments)} dialogue segments")
+            try:
+                dialogue_segments = self._extract_dialogue_segments(text)
+                logger.info(f"📊 Found {len(dialogue_segments)} dialogue segments")
+            except Exception as e:
+                logger.error(f"❌ Dialogue extraction failed: {e}")
+                raise
             
             if not dialogue_segments:
                 logger.warning("❌ No dialogue segments found - returning empty results")
                 return []
             
             # Load user's character profiles
-            character_profiles = await self._load_character_profiles(user_id)
-            logger.info(f"👥 Loaded {len(character_profiles)} character profiles for user {user_id}")
+            try:
+                character_profiles = await self._load_character_profiles(user_id)
+                logger.info(f"👥 Loaded {len(character_profiles)} character profiles for user {user_id}")
+            except Exception as e:
+                logger.error(f"❌ Character profile loading failed: {e}")
+                raise
             
             # Analyze each dialogue segment using Gemini
             results = []
@@ -151,20 +163,30 @@ class SimpleCharacterVoiceService:
                 logger.info(f"🔍 Analyzing segment {i+1}/{len(dialogue_segments)}: '{segment.text[:50]}...' by {segment.speaker}")
                 
                 if segment.speaker and len(segment.text) >= self.config['dialogue_min_length']:
-                    result = await self._analyze_dialogue_with_gemini(
-                        segment, character_profiles, user_id
-                    )
-                    if result:
-                        results.append(result)
-                        logger.info(f"✅ Analysis complete for segment {i+1}: {result.character_name} - {'Consistent' if result.is_consistent else 'Inconsistent'}")
-                    else:
-                        logger.warning(f"❌ Analysis failed for segment {i+1}")
+                    try:
+                        result = await self._analyze_dialogue_with_gemini(
+                            segment, character_profiles, user_id
+                        )
+                        if result:
+                            results.append(result)
+                            logger.info(f"✅ Analysis complete for segment {i+1}: {result.character_name} - {'Consistent' if result.is_consistent else 'Inconsistent'}")
+                        else:
+                            logger.warning(f"❌ Analysis failed for segment {i+1}")
+                    except Exception as e:
+                        logger.error(f"❌ Gemini analysis failed for segment {i+1}: {e}")
+                        # Continue with other segments instead of failing completely
+                        continue
                 else:
                     logger.warning(f"⚠️ Skipping segment {i+1}: speaker='{segment.speaker}', length={len(segment.text)}, min_length={self.config['dialogue_min_length']}")
             
             # Update character profiles with new dialogue
-            await self._update_character_profiles(dialogue_segments, user_id)
-            logger.info(f"📝 Updated character profiles with {len(dialogue_segments)} segments")
+            try:
+                await self._update_character_profiles(dialogue_segments, user_id)
+                logger.info(f"📝 Updated character profiles with {len(dialogue_segments)} segments")
+            except Exception as e:
+                logger.error(f"❌ Character profile update failed: {e}")
+                # Don't fail the whole process if profile update fails
+                pass
             
             logger.info(f"🎉 Voice consistency analysis complete: {len(results)} results generated")
             return results
@@ -172,6 +194,9 @@ class SimpleCharacterVoiceService:
         except Exception as e:
             logger.error(f"❌ Error analyzing text for voice consistency: {str(e)}")
             logger.error(f"🔍 Error details: {type(e).__name__}: {str(e)}")
+            logger.error(f"🔍 Error traceback: {e.__traceback__}")
+            import traceback
+            logger.error(f"🔍 Full traceback: {traceback.format_exc()}")
             self.security_logger.log_security_event(
                 SecurityEventType.SUSPICIOUS_ACTIVITY,
                 SecuritySeverity.MEDIUM,
