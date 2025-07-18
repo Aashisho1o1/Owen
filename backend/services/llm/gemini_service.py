@@ -65,9 +65,9 @@ class GeminiService(BaseLLMService):
             # OPTIMIZED MODEL PREFERENCES - Fast, reliable models only
             # Removed slow thinking models that cause timeouts
             model_preferences = [
-                'gemini-1.5-flash-latest',  # FASTER: Use latest flash model for speed
-                'gemini-1.5-flash',
-                'gemini-pro'
+                'gemini-1.5-flash-8b',  # Ultra-fast experimental model
+                'gemini-1.5-flash-latest',
+                'gemini-1.5-flash'
             ]
             
             for model_name in model_preferences:
@@ -123,7 +123,7 @@ class GeminiService(BaseLLMService):
     async def generate_response(
         self,
         prompt: str,
-        max_tokens: int = 1000,
+        max_tokens: int = 500,
         temperature: float = 0.7,
         **kwargs
     ) -> str:
@@ -133,12 +133,12 @@ class GeminiService(BaseLLMService):
         
         try:
             # NEW: Truncate input to prevent timeouts with large text
-            if len(prompt) > 2000:
-                prompt = prompt[:2000] + " [TRUNCATED FOR PERFORMANCE]"
+            if len(prompt) > 1000:
+                prompt = prompt[:1000] + " [TRUNCATED]"
             loop = asyncio.get_running_loop()
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
-                timeout=10.0  # REDUCED: Stricter timeout for faster failure
+                timeout=8.0  # REDUCED: Stricter timeout for faster failure
             )
             return response.text
         except asyncio.TimeoutError:

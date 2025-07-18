@@ -71,8 +71,23 @@ export interface VoiceAnalysisStats {
 export const analyzeVoiceConsistency = async (
   request: VoiceConsistencyRequest
 ): Promise<VoiceConsistencyResponse> => {
-  const response = await apiClient.post('/api/character-voice/analyze', request);
-  return response.data;
+    // NEW: Add retry logic
+    const maxRetries = 2;
+    let attempts = 0;
+    while (attempts <= maxRetries) {
+        try {
+            const response = await apiClient.post<VoiceConsistencyResponse>('/api/character-voice/analyze', request);
+            return response.data;
+        } catch (error) {
+            attempts++;
+            if (attempts > maxRetries) {
+                throw new Error('Voice analysis failed after retries. Please try again later.');
+            }
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
+        }
+    }
+    throw new Error('Voice analysis unavailable');
 };
 
 /**

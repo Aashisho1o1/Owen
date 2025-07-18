@@ -70,7 +70,7 @@ class PostgreSQLService:
             # Railway PostgreSQL typically allows 22-100 connections total
             # We need to be very conservative to prevent exhaustion
             min_conn = 1  # Reduced from 2 to 1
-            max_conn = 2  # REDUCED: Even more conservative for Railway
+            max_conn = 1  # Temporary for testing
             
             self.pool = ThreadedConnectionPool(
                 minconn=min_conn,
@@ -108,6 +108,7 @@ class PostgreSQLService:
     
     def _ensure_pool_health(self):
         """Ensure connection pool is healthy, recreate if needed"""
+        logger.info('Checking pool health')
         if not self.pool:
             logger.info("Connection pool not initialized, creating now...")
             self._init_connection_pool()
