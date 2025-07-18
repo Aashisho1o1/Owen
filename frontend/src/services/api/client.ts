@@ -20,7 +20,7 @@ console.log('🌐 API Configuration:', {
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 30000,
+  timeout: 25000, // Reduced from 30000 to 25000 (25 seconds) to work with backend timeout
   headers: {
     'Content-Type': 'application/json',
   },
