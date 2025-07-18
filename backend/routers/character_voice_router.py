@@ -66,6 +66,10 @@ async def analyze_voice_consistency(
             )
         
         # Log analysis request
+        logger.info(f"🎭 Voice analysis request received from user {effective_user_id}")
+        logger.info(f"📝 Request details: text_length={len(request.text)}, document_id={request.document_id}")
+        logger.info(f"📝 Text preview: {request.text[:200]}...")
+        
         security_logger.log_security_event(
             SecurityEventType.DOCUMENT_ACCESS,
             SecuritySeverity.LOW,
@@ -79,17 +83,22 @@ async def analyze_voice_consistency(
         )
         
         # Perform voice consistency analysis
+        logger.info(f"🔍 Calling voice consistency service...")
         results = await get_character_voice_service().analyze_text_for_voice_consistency(
             text=request.text,
             user_id=effective_user_id,
             document_id=request.document_id
         )
         
+        logger.info(f"📊 Service returned {len(results)} results")
+        
         # Convert service results to API response format
         api_results = []
         characters_analyzed = set()
         
-        for result in results:
+        for i, result in enumerate(results):
+            logger.info(f"🔄 Converting result {i+1}: {result.character_name} - {'Consistent' if result.is_consistent else 'Inconsistent'}")
+            
             api_result = VoiceConsistencyResult(
                 is_consistent=result.is_consistent,
                 confidence_score=result.confidence_score,
@@ -113,6 +122,8 @@ async def analyze_voice_consistency(
             dialogue_segments_found=len(results),
             processing_time_ms=processing_time
         )
+        
+        logger.info(f"📤 Sending response: {len(api_results)} results, {len(characters_analyzed)} characters, {processing_time}ms")
         
         # Log successful analysis
         logger.info(f"Voice consistency analysis completed for user {effective_user_id}: "

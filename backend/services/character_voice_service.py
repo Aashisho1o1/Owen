@@ -95,19 +95,22 @@ class SimpleCharacterVoiceService:
             'consistency_threshold': 0.7
         }
         
-        # Enhanced dialogue extraction patterns - more flexible to match frontend
+        # Enhanced dialogue extraction patterns - FIXED to match frontend exactly
         self.dialogue_patterns = [
-            # Pattern 1: Basic quoted dialogue (matches frontend pattern)
+            # Pattern 1: Basic quoted dialogue (MATCHES FRONTEND EXACTLY)
             r'"([^"]{3,})"',
             
-            # Pattern 2: "Dialogue text," Speaker said
+            # Pattern 2: "Dialogue text," Speaker said (SIMPLIFIED)
             r'"([^"]{3,})",?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
             
-            # Pattern 3: Speaker said, "Dialogue text"
+            # Pattern 3: Speaker said, "Dialogue text" (SIMPLIFIED)
             r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized),?\s*"([^"]{3,})"',
             
-            # Pattern 4: "Dialogue text," Speaker said with additional description
-            r'"([^"]{3,})"\s*[,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\s+[a-z]+'
+            # Pattern 4: "Dialogue," he/she said (COMMON PATTERN)
+            r'"([^"]{3,})"\s*[,.]?\s*(he|she|it)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            
+            # Pattern 5: Simple "dialogue" with basic punctuation
+            r'"([^"]{3,})[.!?]?"'
         ]
         
         logger.info("Simple Character Voice Service initialized with Gemini")
@@ -122,35 +125,53 @@ class SimpleCharacterVoiceService:
         Analyze text for character voice consistency using Gemini
         """
         try:
+            logger.info(f"🎭 Starting voice consistency analysis for user {user_id}")
+            logger.info(f"📝 Text length: {len(text)} characters")
+            logger.info(f"📝 Text preview: {text[:200]}...")
+            
             # Validate input
             text = self.validator.validate_text_input(text, max_length=10000)
+            logger.info(f"✅ Text validation passed")
             
             # Extract dialogue segments
             dialogue_segments = self._extract_dialogue_segments(text)
+            logger.info(f"📊 Found {len(dialogue_segments)} dialogue segments")
             
             if not dialogue_segments:
+                logger.warning("❌ No dialogue segments found - returning empty results")
                 return []
             
             # Load user's character profiles
             character_profiles = await self._load_character_profiles(user_id)
+            logger.info(f"👥 Loaded {len(character_profiles)} character profiles for user {user_id}")
             
             # Analyze each dialogue segment using Gemini
             results = []
-            for segment in dialogue_segments:
+            for i, segment in enumerate(dialogue_segments):
+                logger.info(f"🔍 Analyzing segment {i+1}/{len(dialogue_segments)}: '{segment.text[:50]}...' by {segment.speaker}")
+                
                 if segment.speaker and len(segment.text) >= self.config['dialogue_min_length']:
                     result = await self._analyze_dialogue_with_gemini(
                         segment, character_profiles, user_id
                     )
                     if result:
                         results.append(result)
+                        logger.info(f"✅ Analysis complete for segment {i+1}: {result.character_name} - {'Consistent' if result.is_consistent else 'Inconsistent'}")
+                    else:
+                        logger.warning(f"❌ Analysis failed for segment {i+1}")
+                else:
+                    logger.warning(f"⚠️ Skipping segment {i+1}: speaker='{segment.speaker}', length={len(segment.text)}, min_length={self.config['dialogue_min_length']}")
             
             # Update character profiles with new dialogue
             await self._update_character_profiles(dialogue_segments, user_id)
+            logger.info(f"📝 Updated character profiles with {len(dialogue_segments)} segments")
             
+            logger.info(f"🎉 Voice consistency analysis complete: {len(results)} results generated")
             return results
             
         except Exception as e:
-            logger.error(f"Error analyzing text for voice consistency: {str(e)}")
+            logger.error(f"❌ Error analyzing text for voice consistency: {str(e)}")
+            logger.error(f"🔍 Error details: {type(e).__name__}: {str(e)}")
             self.security_logger.log_security_event(
                 SecurityEventType.SUSPICIOUS_ACTIVITY,
                 SecuritySeverity.MEDIUM,
@@ -164,6 +185,9 @@ class SimpleCharacterVoiceService:
         segments = []
         
         logger.info(f"Starting dialogue extraction from text with {len(text)} characters")
+        logger.info(f"Text preview: {text[:200]}...")
+        logger.info(f"Dialogue patterns count: {len(self.dialogue_patterns)}")
+        logger.info(f"Minimum dialogue length: {self.config['dialogue_min_length']}")
         
         # First, try to extract dialogue with speaker attribution
         attributed_segments = 0
@@ -173,6 +197,9 @@ class SimpleCharacterVoiceService:
             
             for match in matches:
                 # Extract dialogue text and speaker based on pattern
+                dialogue_text = None
+                speaker = None
+                
                 if len(match.groups()) >= 2:
                     if pattern_idx == 1:  # Pattern 2: "Dialogue," Speaker said
                         dialogue_text = match.group(1).strip()
@@ -180,40 +207,44 @@ class SimpleCharacterVoiceService:
                     elif pattern_idx == 2:  # Pattern 3: Speaker said, "Dialogue"
                         speaker = match.group(1).strip()
                         dialogue_text = match.group(2).strip()
-                    else:  # Pattern 4: "Dialogue," Speaker said with description
+                    elif pattern_idx == 3:  # Pattern 4: "Dialogue," he/she said
                         dialogue_text = match.group(1).strip()
-                        speaker = match.group(2).strip()
-                    
-                    # Skip if dialogue is too short
-                    if len(dialogue_text) < self.config['dialogue_min_length']:
-                        logger.debug(f"Skipping short dialogue: '{dialogue_text}' (length: {len(dialogue_text)})")
-                        continue
-                    
-                    # Skip if speaker is None or empty
-                    if not speaker:
-                        logger.debug(f"Skipping dialogue with no speaker: '{dialogue_text}'")
-                        continue
-                    
-                    # Extract context
-                    start_pos = max(0, match.start() - self.config['context_window'])
-                    end_pos = min(len(text), match.end() + self.config['context_window'])
-                    
-                    context_before = text[start_pos:match.start()].strip()
-                    context_after = text[match.end():end_pos].strip()
-                    
-                    # Create dialogue segment
-                    segment = DialogueSegment(
-                        text=dialogue_text,
-                        speaker=speaker,
-                        context_before=context_before,
-                        context_after=context_after,
-                        position=match.start(),
-                        confidence=0.9
-                    )
-                    
-                    segments.append(segment)
-                    attributed_segments += 1
-                    logger.debug(f"Added attributed dialogue: '{dialogue_text}' by {speaker}")
+                        speaker = match.group(2).strip().title()  # Convert "he" to "He"
+                elif len(match.groups()) >= 1:
+                    # Pattern 5: Simple "dialogue" with basic punctuation
+                    dialogue_text = match.group(1).strip()
+                    speaker = "Unknown Speaker"
+                
+                # Skip if dialogue is too short
+                if not dialogue_text or len(dialogue_text) < self.config['dialogue_min_length']:
+                    logger.debug(f"Skipping short dialogue: '{dialogue_text}' (length: {len(dialogue_text) if dialogue_text else 0})")
+                    continue
+                
+                # Skip if speaker is None or empty
+                if not speaker:
+                    logger.debug(f"Skipping dialogue with no speaker: '{dialogue_text}'")
+                    continue
+                
+                # Extract context
+                start_pos = max(0, match.start() - self.config['context_window'])
+                end_pos = min(len(text), match.end() + self.config['context_window'])
+                
+                context_before = text[start_pos:match.start()].strip()
+                context_after = text[match.end():end_pos].strip()
+                
+                # Create dialogue segment
+                segment = DialogueSegment(
+                    text=dialogue_text,
+                    speaker=speaker,
+                    context_before=context_before,
+                    context_after=context_after,
+                    position=match.start(),
+                    confidence=0.9 if speaker != "Unknown Speaker" else 0.6
+                )
+                
+                segments.append(segment)
+                attributed_segments += 1
+                logger.debug(f"Added attributed dialogue: '{dialogue_text}' by {speaker}")
         
         logger.info(f"Found {attributed_segments} attributed dialogue segments")
         
@@ -222,6 +253,14 @@ class SimpleCharacterVoiceService:
         logger.info("Extracting basic quoted dialogue for speaker inference")
         basic_quotes = list(re.finditer(self.dialogue_patterns[0], text, re.IGNORECASE | re.MULTILINE))
         logger.info(f"Found {len(basic_quotes)} basic quoted dialogue segments")
+        
+        # CRITICAL: Log the actual pattern and some sample matches for debugging
+        logger.info(f"Basic dialogue pattern: {self.dialogue_patterns[0]}")
+        if basic_quotes:
+            for i, match in enumerate(basic_quotes[:3]):  # Log first 3 matches
+                logger.info(f"Basic match {i+1}: '{match.group(1)}' at position {match.start()}")
+        else:
+            logger.warning("❌ No basic quoted dialogue found - this might indicate a pattern issue")
         
         inferred_segments = 0
         for match in basic_quotes:
@@ -426,11 +465,13 @@ class SimpleCharacterVoiceService:
             """
             
             # Use Gemini 1.5 Flash for analysis (cheaper and faster)
+            logger.info(f"🤖 Calling Gemini for voice analysis: {profile.character_name}")
             response = await self.gemini_service.generate_json_response(
                 prompt, 
                 max_tokens=400, 
                 temperature=0.3
             )
+            logger.info(f"🤖 Gemini response received for {profile.character_name}: {type(response)}")
             
             if response and isinstance(response, dict):
                 # Create result
@@ -491,11 +532,13 @@ class SimpleCharacterVoiceService:
             """
             
             # Use Gemini 1.5 Flash for analysis
+            logger.info(f"🤖 Calling Gemini for quality analysis: Unknown Speaker")
             response = await self.gemini_service.generate_json_response(
                 prompt, 
                 max_tokens=400, 
                 temperature=0.3
             )
+            logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor
@@ -560,11 +603,13 @@ class SimpleCharacterVoiceService:
             """
             
             # Use Gemini 1.5 Flash for analysis
+            logger.info(f"🤖 Calling Gemini for first-time analysis: {segment.speaker}")
             response = await self.gemini_service.generate_json_response(
                 prompt, 
                 max_tokens=400, 
                 temperature=0.3
             )
+            logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor

@@ -310,15 +310,44 @@ export const analyzeVoiceConsistencyDebounced = (
 
   debounceTimer = setTimeout(async () => {
     try {
+      console.log('🚀 Sending voice analysis request to backend...');
+      console.log('📝 Request payload:', { 
+        textLength: text.length, 
+        textPreview: text.substring(0, 100) + '...',
+        endpoint: '/api/character-voice/analyze'
+      });
+      
       const response = await apiClient.post<VoiceConsistencyResponse>('/api/character-voice/analyze', {
         text,
         document_id: undefined
       });
       
-      console.log('✅ Voice analysis response:', response.data);
+      console.log('✅ Voice analysis response received:', {
+        status: response.status,
+        resultsCount: response.data.results.length,
+        charactersAnalyzed: response.data.characters_analyzed,
+        dialogueSegmentsFound: response.data.dialogue_segments_found,
+        processingTime: response.data.processing_time_ms
+      });
+      console.log('📊 Full response data:', response.data);
+      
       callback(response.data.results);
     } catch (error) {
       console.error('❌ Voice analysis error:', error);
+      
+      // Enhanced error logging
+      if (error.response) {
+        console.error('❌ Response error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      } else if (error.request) {
+        console.error('❌ Request error (no response):', error.request);
+      } else {
+        console.error('❌ Setup error:', error.message);
+      }
+      
       callback([]);
     }
   }, delay);
