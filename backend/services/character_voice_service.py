@@ -189,12 +189,22 @@ class SimpleCharacterVoiceService:
         logger.info(f"Dialogue patterns count: {len(self.dialogue_patterns)}")
         logger.info(f"Minimum dialogue length: {self.config['dialogue_min_length']}")
         
+        # DEBUG: Test each pattern individually
+        for i, pattern in enumerate(self.dialogue_patterns):
+            try:
+                matches = list(re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE))
+                logger.info(f"🔍 Pattern {i} found {len(matches)} matches")
+                for j, match in enumerate(matches[:3]):  # Show first 3 matches
+                    logger.info(f"  Match {j+1}: {match.group()}")
+            except Exception as e:
+                logger.error(f"❌ Pattern {i} failed: {e}")
+        
         # First, try to extract dialogue with speaker attribution
         attributed_segments = 0
         for pattern_idx in range(1, len(self.dialogue_patterns)):  # Skip pattern 0 (basic quotes)
             pattern = self.dialogue_patterns[pattern_idx]
             matches = list(re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE))
-            logger.debug(f"Pattern {pattern_idx} found {len(matches)} matches")
+            logger.info(f"Pattern {pattern_idx} found {len(matches)} matches")
             
             for match in matches:
                 # Extract dialogue text and speaker based on pattern
