@@ -86,26 +86,29 @@ class SimpleCharacterVoiceService:
         self.validator = SimpleInputValidator()
         self.security_logger = SecurityLogger()
         
-        # Simple dialogue extraction patterns
-        self.dialogue_patterns = [
-            # Pattern 1: "Dialogue text," Speaker said
-            r'"([^"]{10,})",?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
-            
-            # Pattern 2: Speaker said, "Dialogue text"
-            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized),?\s*"([^"]{10,})"',
-            
-            # Pattern 3: "Dialogue text," Speaker said with additional description
-            r'"([^"]{10,})"\s*[,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\s+[a-z]+'
-        ]
-        
         # Simple configuration
         self.config = {
-            'min_samples_for_profile': 3,
+            'min_samples_for_profile': 1,  # Reduced from 3 to 1 for immediate analysis
             'max_profile_samples': 10,
-            'dialogue_min_length': 10,
+            'dialogue_min_length': 3,  # Reduced from 10 to 3 to match frontend
             'context_window': 150,
             'consistency_threshold': 0.7
         }
+        
+        # Enhanced dialogue extraction patterns - more flexible to match frontend
+        self.dialogue_patterns = [
+            # Pattern 1: Basic quoted dialogue (matches frontend pattern)
+            r'"([^"]{3,})"',
+            
+            # Pattern 2: "Dialogue text," Speaker said
+            r'"([^"]{3,})",?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            
+            # Pattern 3: Speaker said, "Dialogue text"
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized),?\s*"([^"]{3,})"',
+            
+            # Pattern 4: "Dialogue text," Speaker said with additional description
+            r'"([^"]{3,})"\s*[,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\s+[a-z]+'
+        ]
         
         logger.info("Simple Character Voice Service initialized with Gemini")
     
@@ -160,19 +163,20 @@ class SimpleCharacterVoiceService:
         """Extract dialogue segments from text using simple regex patterns"""
         segments = []
         
-        for pattern_idx, pattern in enumerate(self.dialogue_patterns):
+        # First, try to extract dialogue with speaker attribution
+        for pattern_idx, pattern in enumerate(self.dialogue_patterns[1:], 1):  # Skip pattern 0 (basic quotes)
             matches = re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE)
             
             for match in matches:
                 # Extract dialogue text and speaker based on pattern
                 if len(match.groups()) >= 2:
-                    if pattern_idx == 0:  # Pattern 1: "Dialogue," Speaker said
+                    if pattern_idx == 1:  # Pattern 2: "Dialogue," Speaker said
                         dialogue_text = match.group(1).strip()
                         speaker = match.group(2).strip()
-                    elif pattern_idx == 1:  # Pattern 2: Speaker said, "Dialogue"
+                    elif pattern_idx == 2:  # Pattern 3: Speaker said, "Dialogue"
                         speaker = match.group(1).strip()
                         dialogue_text = match.group(2).strip()
-                    else:  # Pattern 3: "Dialogue," Speaker said with description
+                    else:  # Pattern 4: "Dialogue," Speaker said with description
                         dialogue_text = match.group(1).strip()
                         speaker = match.group(2).strip()
                     
@@ -203,6 +207,42 @@ class SimpleCharacterVoiceService:
                     
                     segments.append(segment)
         
+        # If no attributed dialogue found, try to extract basic quoted dialogue
+        # and attempt to infer speakers from context
+        if not segments:
+            logger.info("No attributed dialogue found, trying basic quote extraction")
+            basic_quotes = re.finditer(self.dialogue_patterns[0], text, re.IGNORECASE | re.MULTILINE)
+            
+            for match in basic_quotes:
+                dialogue_text = match.group(1).strip()
+                
+                # Skip if dialogue is too short
+                if len(dialogue_text) < self.config['dialogue_min_length']:
+                    continue
+                
+                # Try to infer speaker from surrounding context
+                start_pos = max(0, match.start() - self.config['context_window'])
+                end_pos = min(len(text), match.end() + self.config['context_window'])
+                
+                context_before = text[start_pos:match.start()].strip()
+                context_after = text[match.end():end_pos].strip()
+                
+                # Simple speaker inference - look for capitalized names near the dialogue
+                speaker = self._infer_speaker_from_context(context_before, context_after, dialogue_text)
+                
+                if speaker:
+                    # Create dialogue segment
+                    segment = DialogueSegment(
+                        text=dialogue_text,
+                        speaker=speaker,
+                        context_before=context_before,
+                        context_after=context_after,
+                        position=match.start(),
+                        confidence=0.6  # Lower confidence for inferred speakers
+                    )
+                    
+                    segments.append(segment)
+        
         # Remove duplicates and sort by position
         unique_segments = []
         seen_positions = set()
@@ -212,8 +252,44 @@ class SimpleCharacterVoiceService:
                 unique_segments.append(segment)
                 seen_positions.add(segment.position)
         
-        logger.info(f"Extracted {len(unique_segments)} dialogue segments")
+        logger.info(f"Extracted {len(unique_segments)} dialogue segments from {len(text)} characters")
+        
+        # Debug logging
+        for i, segment in enumerate(unique_segments[:3]):  # Log first 3 segments
+            logger.debug(f"Segment {i+1}: Speaker='{segment.speaker}', Text='{segment.text[:50]}...', Confidence={segment.confidence}")
+        
         return unique_segments
+    
+    def _infer_speaker_from_context(self, context_before: str, context_after: str, dialogue_text: str) -> Optional[str]:
+        """Try to infer speaker from surrounding context"""
+        # Combine contexts for analysis
+        full_context = f"{context_before} {context_after}"
+        
+        # Look for patterns like "John said" or "Mary asked" near the dialogue
+        speaker_patterns = [
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            r'(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'
+        ]
+        
+        for pattern in speaker_patterns:
+            matches = re.finditer(pattern, full_context, re.IGNORECASE)
+            for match in matches:
+                speaker = match.group(1).strip()
+                # Basic validation - speaker should be a reasonable name
+                if len(speaker) >= 2 and len(speaker) <= 50:
+                    return speaker
+        
+        # If no speaker found, try to find any capitalized name in context
+        name_pattern = r'\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)\b'
+        names = re.findall(name_pattern, full_context)
+        
+        if names:
+            # Return the first reasonable name found
+            for name in names:
+                if len(name) >= 3 and len(name) <= 50:
+                    return name
+        
+        return None
     
     async def _load_character_profiles(self, user_id: int) -> Dict[str, CharacterVoiceProfile]:
         """Load character voice profiles for a user"""
@@ -265,7 +341,8 @@ class SimpleCharacterVoiceService:
             
             # Check if we have a profile for this character
             if speaker_key not in character_profiles:
-                return None
+                # NEW: For first-time analysis, provide general dialogue quality feedback
+                return await self._analyze_dialogue_first_time(segment, user_id)
             
             profile = character_profiles[speaker_key]
             
@@ -331,6 +408,75 @@ class SimpleCharacterVoiceService:
             
         except Exception as e:
             logger.error(f"Error in Gemini dialogue analysis: {str(e)}")
+        
+        return None
+    
+    async def _analyze_dialogue_first_time(
+        self, 
+        segment: DialogueSegment, 
+        user_id: int
+    ) -> Optional[VoiceConsistencyResult]:
+        """Analyze dialogue for first-time character appearance"""
+        try:
+            # Create a general dialogue quality analysis prompt
+            prompt = f"""
+            Analyze this dialogue for character voice quality and consistency. This is the first time we're seeing this character, so focus on general dialogue quality.
+            
+            Character: {segment.speaker}
+            
+            Dialogue to analyze:
+            "{segment.text}"
+            
+            Context: {segment.context_before} [...] {segment.context_after}
+            
+            Please analyze:
+            1. Is this dialogue well-written and characteristic? (yes/no)
+            2. What is your confidence level? (0.0 to 1.0)
+            3. What makes this dialogue effective or ineffective?
+            4. Provide 2-3 specific suggestions to improve this dialogue.
+            
+            Focus on: clarity, naturalness, character voice distinctiveness, and dialogue quality.
+            
+            Respond in JSON format:
+            {{
+                "is_consistent": boolean,
+                "confidence_score": float,
+                "similarity_score": float,
+                "explanation": "detailed explanation of dialogue quality",
+                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+            }}
+            """
+            
+            # Use Gemini 1.5 Flash for analysis
+            response = await self.gemini_service.generate_json_response(
+                prompt, 
+                max_tokens=400, 
+                temperature=0.3
+            )
+            
+            if response and isinstance(response, dict):
+                # Create result - mark as inconsistent if dialogue quality is poor
+                is_consistent = response.get('is_consistent', True)
+                
+                result = VoiceConsistencyResult(
+                    is_consistent=is_consistent,
+                    confidence_score=min(response.get('confidence_score', 0.7), 1.0),
+                    similarity_score=min(response.get('similarity_score', 0.7), 1.0),
+                    character_name=segment.speaker,
+                    flagged_text=segment.text,
+                    explanation=response.get('explanation', 'First-time character analysis completed'),
+                    suggestions=response.get('suggestions', []),
+                    analysis_method='gemini_first_time_analysis'
+                )
+                
+                logger.debug(f"First-time analysis - Character: {segment.speaker}, "
+                           f"Quality: {result.is_consistent}, "
+                           f"Confidence: {result.confidence_score:.3f}")
+                
+                return result
+            
+        except Exception as e:
+            logger.error(f"Error in first-time dialogue analysis: {str(e)}")
         
         return None
     
@@ -417,6 +563,8 @@ class SimpleCharacterVoiceService:
                         (character_id, character_name, user_id, json.dumps(new_samples),
                          json.dumps([]), json.dumps({}), len(new_samples))
                     )
+                    
+                    logger.info(f"Created new character profile for '{character_name}' with {len(new_samples)} samples")
             
         except Exception as e:
             logger.error(f"Error updating character profile for {speaker_key}: {str(e)}")
