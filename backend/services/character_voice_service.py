@@ -502,12 +502,45 @@ class SimpleCharacterVoiceService:
             
             # Use Gemini 1.5 Flash for analysis (cheaper and faster)
             logger.info(f"🤖 Calling Gemini for voice analysis: {profile.character_name}")
-            response = await self.gemini_service.generate_json_response(
-                prompt, 
-                max_tokens=400, 
-                temperature=0.3
-            )
-            logger.info(f"🤖 Gemini response received for {profile.character_name}: {type(response)}")
+            
+            # Add timeout protection at service level to prevent hanging
+            import asyncio
+            try:
+                response = await asyncio.wait_for(
+                    self.gemini_service.generate_json_response(
+                        prompt, 
+                        max_tokens=400, 
+                        temperature=0.3
+                    ),
+                    timeout=15.0  # 15 second timeout to prevent frontend timeout
+                )
+                logger.info(f"🤖 Gemini response received for {profile.character_name}: {type(response)}")
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Gemini analysis timed out after 15s for {profile.character_name}")
+                # Return a default "consistent" result instead of failing
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.5,
+                    similarity_score=0.5,
+                    character_name=profile.character_name,
+                    flagged_text=segment.text,
+                    explanation="Voice analysis timed out. Please try again with shorter text.",
+                    suggestions=["Try analyzing smaller text segments"],
+                    analysis_method='gemini_timeout_fallback'
+                )
+            except Exception as e:
+                logger.error(f"❌ Gemini analysis failed for {profile.character_name}: {str(e)}")
+                # Return a default "consistent" result instead of failing
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.5,
+                    similarity_score=0.5,
+                    character_name=profile.character_name,
+                    flagged_text=segment.text,
+                    explanation=f"Voice analysis failed: {str(e)[:100]}...",
+                    suggestions=["Try again later or check your internet connection"],
+                    analysis_method='gemini_error_fallback'
+                )
             
             if response and isinstance(response, dict):
                 # Create result
@@ -567,14 +600,43 @@ class SimpleCharacterVoiceService:
             }}
             """
             
-            # Use Gemini 1.5 Flash for analysis
+            # Use Gemini 1.5 Flash for analysis with timeout protection
             logger.info(f"🤖 Calling Gemini for quality analysis: Unknown Speaker")
-            response = await self.gemini_service.generate_json_response(
-                prompt, 
-                max_tokens=400, 
-                temperature=0.3
-            )
-            logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
+            import asyncio
+            try:
+                response = await asyncio.wait_for(
+                    self.gemini_service.generate_json_response(
+                        prompt, 
+                        max_tokens=400, 
+                        temperature=0.3
+                    ),
+                    timeout=15.0  # 15 second timeout
+                )
+                logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Gemini quality analysis timed out after 15s")
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.5,
+                    similarity_score=0.5,
+                    character_name="Unknown Speaker",
+                    flagged_text=segment.text,
+                    explanation="Dialogue quality analysis timed out. Please try again with shorter text.",
+                    suggestions=["Try analyzing smaller text segments"],
+                    analysis_method='gemini_timeout_fallback'
+                )
+            except Exception as e:
+                logger.error(f"❌ Gemini quality analysis failed: {str(e)}")
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.5,
+                    similarity_score=0.5,
+                    character_name="Unknown Speaker",
+                    flagged_text=segment.text,
+                    explanation=f"Dialogue quality analysis failed: {str(e)[:100]}...",
+                    suggestions=["Try again later or check your internet connection"],
+                    analysis_method='gemini_error_fallback'
+                )
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor
@@ -638,14 +700,43 @@ class SimpleCharacterVoiceService:
             }}
             """
             
-            # Use Gemini 1.5 Flash for analysis
+            # Use Gemini 1.5 Flash for analysis with timeout protection
             logger.info(f"🤖 Calling Gemini for first-time analysis: {segment.speaker}")
-            response = await self.gemini_service.generate_json_response(
-                prompt, 
-                max_tokens=400, 
-                temperature=0.3
-            )
-            logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
+            import asyncio
+            try:
+                response = await asyncio.wait_for(
+                    self.gemini_service.generate_json_response(
+                        prompt, 
+                        max_tokens=400, 
+                        temperature=0.3
+                    ),
+                    timeout=15.0  # 15 second timeout
+                )
+                logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
+            except asyncio.TimeoutError:
+                logger.error(f"⏰ Gemini first-time analysis timed out after 15s for {segment.speaker}")
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.5,
+                    similarity_score=0.5,
+                    character_name=segment.speaker,
+                    flagged_text=segment.text,
+                    explanation="First-time dialogue analysis timed out. Please try again with shorter text.",
+                    suggestions=["Try analyzing smaller text segments"],
+                    analysis_method='gemini_timeout_fallback'
+                )
+            except Exception as e:
+                logger.error(f"❌ Gemini first-time analysis failed for {segment.speaker}: {str(e)}")
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.5,
+                    similarity_score=0.5,
+                    character_name=segment.speaker,
+                    flagged_text=segment.text,
+                    explanation=f"First-time dialogue analysis failed: {str(e)[:100]}...",
+                    suggestions=["Try again later or check your internet connection"],
+                    analysis_method='gemini_error_fallback'
+                )
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor

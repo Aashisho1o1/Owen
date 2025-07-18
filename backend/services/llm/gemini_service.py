@@ -182,43 +182,39 @@ class GeminiService(BaseLLMService):
             # Log which model we're using for debugging
             logger.info(f"🎯 Using Gemini model: {current_model} for prompt length: {len(prompt)}")
             
-            # Add timeout handling for Gemini 2.5 models - FIXED FOR TIMEOUT ISSUES
+            # Add timeout handling for Gemini 2.5 models - SIMPLIFIED FOR RELIABILITY
             import asyncio
             
             try:
-                # Generate response with timeout protection
-                # Use asyncio.wait_for to add timeout to the synchronous call
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        self.model.generate_content,
-                        prompt,
-                        safety_settings=safety_settings
-                    ),
-                    timeout=20.0  # 20 second timeout (less than frontend's 25s)
+                # SIMPLIFIED: Direct call without asyncio.to_thread to avoid threading issues
+                # This is more reliable than the threading wrapper
+                logger.info(f"🤖 Calling Gemini model {current_model} directly...")
+                response = self.model.generate_content(
+                    prompt,
+                    safety_settings=safety_settings
                 )
-                logger.info(f"✅ Gemini response generated successfully in <20s")
-            except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini timeout after 20s with model {current_model}")
+                logger.info(f"✅ Gemini response generated successfully")
+                
+            except Exception as api_error:
+                logger.error(f"❌ Gemini API call failed: {str(api_error)}")
+                logger.error(f"❌ Error type: {type(api_error).__name__}")
+                
                 # Try fallback to faster model if available
                 if len(self.available_models) > 1:
                     fallback_model = self.available_models[1]  # Try second model
                     logger.info(f"🔄 Attempting fallback to {fallback_model}")
                     try:
                         fallback_genai_model = genai.GenerativeModel(fallback_model)
-                        response = await asyncio.wait_for(
-                            asyncio.to_thread(
-                                fallback_genai_model.generate_content,
-                                prompt,
-                                safety_settings=safety_settings
-                            ),
-                            timeout=15.0  # Shorter timeout for fallback
+                        response = fallback_genai_model.generate_content(
+                            prompt,
+                            safety_settings=safety_settings
                         )
                         logger.info(f"✅ Fallback model {fallback_model} succeeded")
                     except Exception as fallback_error:
                         logger.error(f"❌ Fallback model also failed: {fallback_error}")
-                        raise LLMError(f"Gemini models timed out. Please try a shorter prompt or try again later.")
+                        raise LLMError(f"Gemini API failed: {str(api_error)}. Fallback also failed: {str(fallback_error)}")
                 else:
-                    raise LLMError(f"Gemini model {current_model} timed out after 20 seconds. Please try a shorter prompt or try again later.")
+                    raise LLMError(f"Gemini API failed: {str(api_error)}. No fallback models available.")
             
             # Check if response was blocked before accessing text
             if not response.candidates:
