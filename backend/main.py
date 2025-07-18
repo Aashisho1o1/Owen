@@ -315,6 +315,63 @@ async def preflight_handler(path: str):
     """Handle CORS preflight requests for all paths"""
     return {"message": "OK"}
 
+@app.get("/api/db-test")
+async def test_database_connection():
+    """Test database connection for debugging"""
+    try:
+        # Test direct connection without pool
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        import os
+        
+        database_url = os.getenv('DATABASE_URL')
+        if not database_url:
+            return {"error": "DATABASE_URL not set"}
+        
+        # Test direct connection
+        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        cursor.execute("SELECT version(), current_user, current_database()")
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        return {
+            "status": "success",
+            "database_version": result['version'],
+            "user": result['current_user'],
+            "database": result['current_database'],
+            "connection_method": "direct"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
+
+@app.get("/api/auth-test")
+async def test_auth_service():
+    """Test auth service availability"""
+    try:
+        # Test if auth service can initialize
+        from services.auth_service import auth_service
+        
+        # Test database connection through auth service
+        test_result = auth_service.db.health_check()
+        
+        return {
+            "status": "success",
+            "auth_service": "available",
+            "database_health": test_result
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
+
 # Health endpoints
 @app.get("/")
 async def root():

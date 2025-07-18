@@ -82,15 +82,18 @@ class PostgreSQLService:
             is_railway = os.getenv('RAILWAY_ENVIRONMENT') == 'production'
             
             if is_railway:
-                # Conservative settings for Railway
+                # Very conservative settings for Railway
                 min_conn = 1
-                max_conn = 8  # Reduced from 30 to prevent exhaustion
+                max_conn = 5  # Further reduced to prevent exhaustion
                 logger.info("Using Railway-optimized connection pool settings")
             else:
                 # Local development settings
                 min_conn = 2
-                max_conn = 15
+                max_conn = 10
                 logger.info("Using local development connection pool settings")
+            
+            logger.info(f"Attempting to create connection pool with {min_conn}-{max_conn} connections")
+            logger.info(f"Database URL host: {self.database_url.split('@')[1].split('/')[0] if '@' in self.database_url else 'unknown'}")
             
             self.pool = ThreadedConnectionPool(
                 minconn=min_conn,
@@ -98,25 +101,30 @@ class PostgreSQLService:
                 dsn=self.database_url,
                 cursor_factory=RealDictCursor,
                 connect_timeout=self._connection_timeout,
-                # Additional connection parameters for reliability
+                # Additional connection parameters for Railway reliability
                 options='-c statement_timeout=30000',  # 30 second statement timeout
                 keepalives=1,
                 keepalives_idle=30,
                 keepalives_interval=10,
-                keepalives_count=5
+                keepalives_count=5,
+                # Railway-specific optimizations
+                sslmode='require',  # Railway requires SSL
+                application_name='dog-writer-backend'
             )
             
             # Test the pool with proper connection management
             conn = None
             try:
+                logger.info("Testing connection pool...")
                 conn = self.pool.getconn()
                 if conn:
                     with conn.cursor() as cursor:
-                        cursor.execute("SELECT 1")
-                        cursor.fetchone()
+                        cursor.execute("SELECT 1 as test, current_user, current_database()")
+                        result = cursor.fetchone()
+                        logger.info(f"Connection pool test successful: user={result['current_user']}, db={result['current_database']}")
                     self.pool.putconn(conn)
                     conn = None
-                    logger.info(f"Connection pool initialized with {min_conn}-{max_conn} connections")
+                    logger.info(f"✅ Connection pool initialized successfully with {min_conn}-{max_conn} connections")
                 else:
                     raise DatabaseError("Failed to get connection from pool")
             except Exception as test_error:
@@ -125,17 +133,43 @@ class PostgreSQLService:
                         self.pool.putconn(conn)
                     except:
                         pass
+                logger.error(f"Connection pool test failed: {test_error}")
                 raise test_error
                 
         except Exception as e:
-            logger.error(f"Failed to initialize connection pool: {e}")
+            logger.error(f"❌ Failed to initialize connection pool: {e}")
+            logger.error(f"❌ Error type: {type(e).__name__}")
+            
             # More specific error handling for connection issues
-            if "connection pool exhausted" in str(e).lower():
+            error_str = str(e).lower()
+            if "connection pool exhausted" in error_str:
                 logger.error("💡 Connection pool exhausted - this usually means:")
                 logger.error("   1. Too many concurrent connections to database")
                 logger.error("   2. Database connection limit reached")
                 logger.error("   3. Previous connections not properly closed")
                 logger.error("   4. Multiple app instances competing for connections")
+            elif "connection refused" in error_str:
+                logger.error("💡 Connection refused - this usually means:")
+                logger.error("   1. Database service is not running")
+                logger.error("   2. Incorrect host/port in DATABASE_URL")
+                logger.error("   3. Firewall blocking the connection")
+                logger.error("   4. Railway internal networking issue")
+            elif "authentication failed" in error_str:
+                logger.error("💡 Authentication failed - this usually means:")
+                logger.error("   1. Incorrect username/password in DATABASE_URL")
+                logger.error("   2. Database user doesn't exist")
+                logger.error("   3. Database user doesn't have required permissions")
+            elif "timeout" in error_str:
+                logger.error("💡 Connection timeout - this usually means:")
+                logger.error("   1. Database is overloaded")
+                logger.error("   2. Network connectivity issues")
+                logger.error("   3. Railway service startup delay")
+            elif "ssl" in error_str:
+                logger.error("💡 SSL connection issue - this usually means:")
+                logger.error("   1. SSL configuration mismatch")
+                logger.error("   2. Railway requires SSL connections")
+                logger.error("   3. SSL certificates not properly configured")
+            
             raise DatabaseError(f"Connection pool initialization failed: {e}")
     
     def _ensure_pool_health(self):
