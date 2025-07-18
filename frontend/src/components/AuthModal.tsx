@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ModalContainer, AuthForm } from './auth';
 import { AuthMode } from './auth/useAuthFormValidation';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'signin' 
 }) => {
   const [mode, setMode] = useState<AuthMode>(initialMode);
+  const { isAuthenticated } = useAuth();
 
   // Reset mode when modal opens with different initial mode
   useEffect(() => {
@@ -21,6 +23,19 @@ const AuthModal: React.FC<AuthModalProps> = ({
       setMode(initialMode);
     }
   }, [isOpen, initialMode]);
+
+  // Auto-close modal if user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && isOpen) {
+      console.log('🔐 User authenticated, closing auth modal');
+      onClose();
+    }
+  }, [isAuthenticated, isOpen, onClose]);
+
+  // Don't render modal if user is already authenticated
+  if (isAuthenticated) {
+    return null;
+  }
 
   // Handle successful authentication
   const handleSuccess = () => {

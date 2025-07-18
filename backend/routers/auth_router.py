@@ -81,9 +81,11 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
         # Apply strict rate limiting for login to prevent brute force attacks
         await check_rate_limit(request, "auth")
         
+        logger.info(f"Login attempt for email: {login_data.email}")
+        
         result = auth_service.login_user(login_data.email, login_data.password)
         
-        logger.info(f"User logged in: {login_data.email}")
+        logger.info(f"User logged in successfully: {login_data.email}")
         return TokenResponse(
             access_token=result['access_token'],
             refresh_token=result['refresh_token'],
@@ -96,10 +98,23 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
             }
         )
     except AuthenticationError as e:
+        logger.warning(f"Authentication failed for {login_data.email}: {str(e)}")
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
-        logger.error(f"Login error: {e}")
-        raise HTTPException(status_code=500, detail="Login failed")
+        logger.error(f"Login error for {login_data.email}: {type(e).__name__}: {e}")
+        
+        # Provide more specific error messages
+        error_message = "Login failed"
+        if "database" in str(e).lower():
+            error_message = "Database connection error. Please try again."
+        elif "timeout" in str(e).lower():
+            error_message = "Login request timed out. Please try again."
+        elif "connection" in str(e).lower():
+            error_message = "Connection error. Please check your internet connection."
+        else:
+            error_message = "An unexpected error occurred during login. Please try again."
+        
+        raise HTTPException(status_code=500, detail=error_message)
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> TokenResponse:

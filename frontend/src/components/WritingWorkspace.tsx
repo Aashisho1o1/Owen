@@ -26,7 +26,7 @@ import './WritingWorkspace.css';
  * - Duplicate context state
  */
 export const WritingWorkspace: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth(); // Add authLoading
   const { isChatVisible, toggleChat } = useChatContext();
   const { setEditorContent, documentManager } = useEditorContext();
   const {
@@ -48,11 +48,6 @@ export const WritingWorkspace: React.FC = () => {
   const [documentTitle, setDocumentTitle] = useState('untitled doc');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
-  
-  // Voice consistency analysis moved to HighlightableEditor component
-  
-  // Copy functionality state
-
   
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
@@ -90,10 +85,21 @@ export const WritingWorkspace: React.FC = () => {
       }
     };
 
-    if (!isInitialized) {
+    // Only initialize when auth is not loading and not already initialized
+    if (!authLoading && !isInitialized) {
       initializeDocument();
     }
-  }, [isAuthenticated, isInitialized, createDocument, setCurrentDocument, setEditorContent]);
+  }, [isAuthenticated, authLoading, isInitialized, createDocument, setCurrentDocument, setEditorContent]);
+
+  // Handle auth modal - prevent opening when already authenticated
+  const handleAuthModalOpen = () => {
+    // Prevent opening login modal if user is already authenticated
+    if (isAuthenticated || authLoading) {
+      console.log('🔐 Preventing login modal - user already authenticated or auth loading');
+      return;
+    }
+    setShowAuthModal(true);
+  };
 
   // Handle title changes  
   const handleTitleChange = (title: string) => {
@@ -162,7 +168,8 @@ export const WritingWorkspace: React.FC = () => {
   // App Map functionality moved to Home section - remove from header
   // This will be accessible through the Home button for better organization
 
-  if (isLoading) {
+  // Show loading state during both app initialization and auth loading
+  if (isLoading || authLoading) {
     return (
       <div className="writing-workspace loading">
         <div className="loading-content">
@@ -201,7 +208,7 @@ export const WritingWorkspace: React.FC = () => {
             <span className="nav-action-text">Home</span>
           </button>
 
-          {/* Auth Button - FINAL POSITION for conversion */}
+          {/* Auth Button - FINAL POSITION for conversion - IMPROVED LOGIC */}
           {isAuthenticated && user ? (
             <button
               onClick={() => setShowProfileModal(true)}
@@ -217,14 +224,15 @@ export const WritingWorkspace: React.FC = () => {
             </button>
           ) : (
             <button
-              onClick={() => setShowAuthModal(true)}
+              onClick={handleAuthModalOpen}
               className="nav-action-button"
               type="button"
               aria-label="Sign in"
               title="Sign In"
+              disabled={authLoading} // Disable during auth loading
             >
               <span className="nav-action-icon" aria-hidden="true">👤</span>
-              <span className="nav-action-text">Sign In</span>
+              <span className="nav-action-text">{authLoading ? 'Loading...' : 'Sign In'}</span>
             </button>
           )}
         </div>
@@ -314,8 +322,8 @@ export const WritingWorkspace: React.FC = () => {
         />
       )}
 
-      {/* Auth Modals */}
-      {showAuthModal && (
+      {/* Auth Modals - Only show when not authenticated */}
+      {!isAuthenticated && showAuthModal && (
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
@@ -323,7 +331,7 @@ export const WritingWorkspace: React.FC = () => {
         />
       )}
       
-      {showProfileModal && (
+      {isAuthenticated && showProfileModal && (
         <UserProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}

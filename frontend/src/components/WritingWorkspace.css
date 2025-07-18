@@ -66,6 +66,13 @@
   border-radius: var(--radius-md);
 }
 
+/* Disabled state for auth button during loading */
+.header-buttons-container .nav-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Profile Avatar for nav-action-button */
 .nav-action-button .profile-avatar {
   width: 20px;
