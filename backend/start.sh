@@ -122,11 +122,12 @@ echo "🔧 Starting Railway deployment process..."
 # Validate environment
 validate_env
 
-
-
 # Install dependencies (Railway usually handles this, but just in case)
 # install_dependencies
 
-# Start the server
-echo "🎯 All checks passed, starting server..."
-start_server 
+# TEMPORARY: Run comprehensive diagnostic to identify CORS issues
+echo "🔍 Running comprehensive diagnostic..."
+python3 railway_debug.py
+
+# If we get here, the diagnostic passed and server should be running
+echo "✅ Diagnostic completed" 
