@@ -483,12 +483,17 @@ class PostgreSQLService:
                 "timestamp": datetime.now().isoformat()
             }
         
+        # Initialize connection pool if not already done
         if not self.pool:
-            return {
-                "status": "unhealthy",
-                "error": "Database connection pool not initialized",
-                "timestamp": datetime.now().isoformat()
-            }
+            try:
+                logger.info("Connection pool not initialized, initializing for health check...")
+                self._init_connection_pool()
+            except Exception as e:
+                return {
+                    "status": "unhealthy",
+                    "error": f"Failed to initialize connection pool: {str(e)}",
+                    "timestamp": datetime.now().isoformat()
+                }
         
         try:
             result = self.execute_query("SELECT version()", fetch='one')
