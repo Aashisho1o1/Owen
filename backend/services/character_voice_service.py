@@ -129,9 +129,9 @@ class SimpleCharacterVoiceService:
             logger.info(f"📝 Text length: {len(text)} characters")
             logger.info(f"📝 Text preview: {text[:200]}...")
             
-            # Validate input
+            # Validate input - use validate_suggestion_text to avoid HTML escaping
             try:
-                text = self.validator.validate_text_input(text, max_length=10000)
+                text = self.validator.validate_suggestion_text(text, max_length=10000)
                 logger.info(f"✅ Text validation passed")
             except Exception as e:
                 logger.error(f"❌ Text validation failed: {e}")
