@@ -163,9 +163,13 @@ class SimpleCharacterVoiceService:
         """Extract dialogue segments from text using simple regex patterns"""
         segments = []
         
+        logger.info(f"Starting dialogue extraction from text with {len(text)} characters")
+        
         # First, try to extract dialogue with speaker attribution
+        attributed_segments = 0
         for pattern_idx, pattern in enumerate(self.dialogue_patterns[1:], 1):  # Skip pattern 0 (basic quotes)
-            matches = re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE)
+            matches = list(re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE))
+            logger.debug(f"Pattern {pattern_idx} found {len(matches)} matches")
             
             for match in matches:
                 # Extract dialogue text and speaker based on pattern
@@ -182,10 +186,12 @@ class SimpleCharacterVoiceService:
                     
                     # Skip if dialogue is too short
                     if len(dialogue_text) < self.config['dialogue_min_length']:
+                        logger.debug(f"Skipping short dialogue: '{dialogue_text}' (length: {len(dialogue_text)})")
                         continue
                     
                     # Skip if speaker is None or empty
                     if not speaker:
+                        logger.debug(f"Skipping dialogue with no speaker: '{dialogue_text}'")
                         continue
                     
                     # Extract context
@@ -206,42 +212,77 @@ class SimpleCharacterVoiceService:
                     )
                     
                     segments.append(segment)
+                    attributed_segments += 1
+                    logger.debug(f"Added attributed dialogue: '{dialogue_text}' by {speaker}")
         
-        # If no attributed dialogue found, try to extract basic quoted dialogue
-        # and attempt to infer speakers from context
-        if not segments:
-            logger.info("No attributed dialogue found, trying basic quote extraction")
-            basic_quotes = re.finditer(self.dialogue_patterns[0], text, re.IGNORECASE | re.MULTILINE)
+        logger.info(f"Found {attributed_segments} attributed dialogue segments")
+        
+        # ALWAYS try to extract basic quoted dialogue and attempt to infer speakers
+        # This ensures we don't miss dialogue just because it lacks clear attribution
+        logger.info("Extracting basic quoted dialogue for speaker inference")
+        basic_quotes = list(re.finditer(self.dialogue_patterns[0], text, re.IGNORECASE | re.MULTILINE))
+        logger.info(f"Found {len(basic_quotes)} basic quoted dialogue segments")
+        
+        inferred_segments = 0
+        for match in basic_quotes:
+            dialogue_text = match.group(1).strip()
             
-            for match in basic_quotes:
-                dialogue_text = match.group(1).strip()
+            # Skip if dialogue is too short
+            if len(dialogue_text) < self.config['dialogue_min_length']:
+                logger.debug(f"Skipping short basic dialogue: '{dialogue_text}' (length: {len(dialogue_text)})")
+                continue
+            
+            # Skip if this dialogue is already captured by attributed patterns
+            already_captured = False
+            for existing_segment in segments:
+                if abs(existing_segment.position - match.start()) < 50:  # Within 50 characters
+                    already_captured = True
+                    break
+            
+            if already_captured:
+                logger.debug(f"Skipping already captured dialogue: '{dialogue_text}'")
+                continue
+            
+            # Try to infer speaker from surrounding context
+            start_pos = max(0, match.start() - self.config['context_window'])
+            end_pos = min(len(text), match.end() + self.config['context_window'])
+            
+            context_before = text[start_pos:match.start()].strip()
+            context_after = text[match.end():end_pos].strip()
+            
+            # Simple speaker inference - look for capitalized names near the dialogue
+            speaker = self._infer_speaker_from_context(context_before, context_after, dialogue_text)
+            
+            if speaker:
+                # Create dialogue segment
+                segment = DialogueSegment(
+                    text=dialogue_text,
+                    speaker=speaker,
+                    context_before=context_before,
+                    context_after=context_after,
+                    position=match.start(),
+                    confidence=0.6  # Lower confidence for inferred speakers
+                )
                 
-                # Skip if dialogue is too short
-                if len(dialogue_text) < self.config['dialogue_min_length']:
-                    continue
+                segments.append(segment)
+                inferred_segments += 1
+                logger.debug(f"Added inferred dialogue: '{dialogue_text}' by {speaker} (inferred)")
+            else:
+                # Create segment with generic speaker for analysis
+                segment = DialogueSegment(
+                    text=dialogue_text,
+                    speaker="Unknown Speaker",
+                    context_before=context_before,
+                    context_after=context_after,
+                    position=match.start(),
+                    confidence=0.4  # Lower confidence for unknown speakers
+                )
                 
-                # Try to infer speaker from surrounding context
-                start_pos = max(0, match.start() - self.config['context_window'])
-                end_pos = min(len(text), match.end() + self.config['context_window'])
-                
-                context_before = text[start_pos:match.start()].strip()
-                context_after = text[match.end():end_pos].strip()
-                
-                # Simple speaker inference - look for capitalized names near the dialogue
-                speaker = self._infer_speaker_from_context(context_before, context_after, dialogue_text)
-                
-                if speaker:
-                    # Create dialogue segment
-                    segment = DialogueSegment(
-                        text=dialogue_text,
-                        speaker=speaker,
-                        context_before=context_before,
-                        context_after=context_after,
-                        position=match.start(),
-                        confidence=0.6  # Lower confidence for inferred speakers
-                    )
-                    
-                    segments.append(segment)
+                segments.append(segment)
+                inferred_segments += 1
+                logger.debug(f"Added unknown speaker dialogue: '{dialogue_text}' by Unknown Speaker")
+        
+        logger.info(f"Found {inferred_segments} basic dialogue segments (inferred/unknown speakers)")
         
         # Remove duplicates and sort by position
         unique_segments = []
@@ -252,11 +293,11 @@ class SimpleCharacterVoiceService:
                 unique_segments.append(segment)
                 seen_positions.add(segment.position)
         
-        logger.info(f"Extracted {len(unique_segments)} dialogue segments from {len(text)} characters")
+        logger.info(f"Final result: {len(unique_segments)} unique dialogue segments from {len(text)} characters")
         
-        # Debug logging
+        # Debug logging - show first few segments
         for i, segment in enumerate(unique_segments[:3]):  # Log first 3 segments
-            logger.debug(f"Segment {i+1}: Speaker='{segment.speaker}', Text='{segment.text[:50]}...', Confidence={segment.confidence}")
+            logger.info(f"Segment {i+1}: Speaker='{segment.speaker}', Text='{segment.text[:50]}...', Confidence={segment.confidence}")
         
         return unique_segments
     
@@ -339,9 +380,13 @@ class SimpleCharacterVoiceService:
         try:
             speaker_key = segment.speaker.lower()
             
+            # Handle "Unknown Speaker" segments with general quality analysis
+            if segment.speaker == "Unknown Speaker":
+                return await self._analyze_dialogue_quality_only(segment, user_id)
+            
             # Check if we have a profile for this character
             if speaker_key not in character_profiles:
-                # NEW: For first-time analysis, provide general dialogue quality feedback
+                # For first-time analysis, provide general dialogue quality feedback
                 return await self._analyze_dialogue_first_time(segment, user_id)
             
             profile = character_profiles[speaker_key]
@@ -408,6 +453,73 @@ class SimpleCharacterVoiceService:
             
         except Exception as e:
             logger.error(f"Error in Gemini dialogue analysis: {str(e)}")
+        
+        return None
+    
+    async def _analyze_dialogue_quality_only(
+        self, 
+        segment: DialogueSegment, 
+        user_id: int
+    ) -> Optional[VoiceConsistencyResult]:
+        """Analyze dialogue quality when speaker is unknown"""
+        try:
+            # Create a general dialogue quality analysis prompt
+            prompt = f"""
+            Analyze this dialogue for general quality and effectiveness. Since we don't know the speaker, focus on overall dialogue quality.
+            
+            Dialogue to analyze:
+            "{segment.text}"
+            
+            Context: {segment.context_before} [...] {segment.context_after}
+            
+            Please analyze:
+            1. Is this dialogue well-written and effective? (yes/no)
+            2. What is your confidence level? (0.0 to 1.0)
+            3. What makes this dialogue effective or ineffective?
+            4. Provide 2-3 specific suggestions to improve this dialogue.
+            
+            Focus on: naturalness, clarity, engagement, and overall dialogue quality.
+            
+            Respond in JSON format:
+            {{
+                "is_consistent": boolean,
+                "confidence_score": float,
+                "similarity_score": float,
+                "explanation": "detailed explanation of dialogue quality",
+                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+            }}
+            """
+            
+            # Use Gemini 1.5 Flash for analysis
+            response = await self.gemini_service.generate_json_response(
+                prompt, 
+                max_tokens=400, 
+                temperature=0.3
+            )
+            
+            if response and isinstance(response, dict):
+                # Create result - mark as inconsistent if dialogue quality is poor
+                is_consistent = response.get('is_consistent', True)
+                
+                result = VoiceConsistencyResult(
+                    is_consistent=is_consistent,
+                    confidence_score=min(response.get('confidence_score', 0.6), 1.0),
+                    similarity_score=min(response.get('similarity_score', 0.6), 1.0),
+                    character_name="Unknown Speaker",
+                    flagged_text=segment.text,
+                    explanation=response.get('explanation', 'General dialogue quality analysis completed'),
+                    suggestions=response.get('suggestions', []),
+                    analysis_method='gemini_quality_analysis'
+                )
+                
+                logger.debug(f"Quality analysis - Unknown Speaker, "
+                           f"Quality: {result.is_consistent}, "
+                           f"Confidence: {result.confidence_score:.3f}")
+                
+                return result
+            
+        except Exception as e:
+            logger.error(f"Error in dialogue quality analysis: {str(e)}")
         
         return None
     
