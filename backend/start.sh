@@ -62,46 +62,7 @@ validate_env() {
     echo "🚂 Railway Project: ${RAILWAY_PROJECT_NAME:-unknown}"
 }
 
-# Function to test database connectivity
-test_database() {
-    echo "🔍 Testing database connectivity..."
-    
-    python -c "
-import os
-import psycopg2
-from urllib.parse import urlparse
 
-try:
-    db_url = os.getenv('DATABASE_URL')
-    if not db_url:
-        print('❌ DATABASE_URL not set')
-        exit(1)
-    
-    # Parse the DATABASE_URL
-    parsed = urlparse(db_url)
-    print(f'🔍 Database host: {parsed.hostname}')
-    print(f'🔍 Database port: {parsed.port}')
-    print(f'🔍 Database name: {parsed.path[1:] if parsed.path else \"unknown\"}')
-    
-    # Test connection
-    conn = psycopg2.connect(db_url)
-    cursor = conn.cursor()
-    cursor.execute('SELECT version();')
-    version = cursor.fetchone()[0]
-    print(f'✅ Database connection successful')
-    print(f'🗄️ PostgreSQL version: {version[:50]}...')
-    cursor.close()
-    conn.close()
-    
-except Exception as e:
-    print(f'❌ Database connection failed: {e}')
-    print('💡 Common fixes:')
-    print('   - Ensure PostgreSQL service is running in Railway')
-    print('   - Check if DATABASE_URL uses postgres.railway.internal')
-    print('   - Verify database credentials are correct')
-    exit(1)
-"
-}
 
 # Function to install dependencies if needed
 install_dependencies() {
@@ -161,13 +122,7 @@ echo "🔧 Starting Railway deployment process..."
 # Validate environment
 validate_env
 
-# Test database (optional - don't fail if this doesn't work)
-echo "🔍 Testing database connectivity (optional)..."
-if test_database; then
-    echo "✅ Database test passed"
-else
-    echo "⚠️ Database test failed, but continuing startup..."
-fi
+
 
 # Install dependencies (Railway usually handles this, but just in case)
 # install_dependencies

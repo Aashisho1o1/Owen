@@ -74,32 +74,7 @@ print('✅ Application imports successful')
     return 0
 }
 
-# Function to test database connection
-test_database() {
-    log "📊 Testing database connection..."
-    
-    python3 -c "
-import sys
-sys.path.insert(0, '/app')
-from services.database import db_service
-try:
-    health = db_service.health_check()
-    if health['status'] == 'healthy':
-        print('✅ Database connection successful')
-        exit(0)
-    else:
-        print('❌ Database unhealthy:', health.get('error', 'Unknown'))
-        exit(1)
-except Exception as e:
-    print('❌ Database connection failed:', str(e))
-    exit(1)
-" || {
-        log "❌ Database connection test failed"
-        return 1
-    }
-    
-    return 0
-}
+
 
 # Function to start the application
 start_application() {
@@ -179,12 +154,7 @@ main() {
         exit 1
     fi
     
-    # Test database (optional - don't fail if DB is not ready yet)
-    if test_database; then
-        log "✅ Database test passed"
-    else
-        log "⚠️ Database test failed - starting anyway (will retry during app startup)"
-    fi
+
     
     # Start application
     log "🚀 All checks passed - starting application..."

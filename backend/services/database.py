@@ -54,21 +54,10 @@ class PostgreSQLService:
         # Don't initialize connection pool here - do it lazily when first needed
         logger.info("PostgreSQL service initialized (connection pool will be created when first needed)")
     
-    def _init_connection_pool_with_retry(self):
-        """Initialize connection pool with retry logic"""
-        for attempt in range(self._retry_count):
-            try:
-                self._init_connection_pool()
-                return  # Success
-            except Exception as e:
-                if attempt < self._retry_count - 1:
-                    logger.warning(f"Connection pool init attempt {attempt + 1} failed: {e}")
-                    time.sleep(self._retry_delay * (attempt + 1))
-                else:
-                    raise
+
     
     def _init_connection_pool(self):
-        """Initialize PostgreSQL connection pool with Railway-optimized settings"""
+        """Initialize PostgreSQL connection pool"""
         try:
             # Close existing pool if any
             if self.pool:
@@ -77,54 +66,29 @@ class PostgreSQLService:
                 except:
                     pass
             
-            # Railway-optimized connection pool settings
-            # Railway PostgreSQL has limited connections, so we use conservative settings
-            is_railway = os.getenv('RAILWAY_ENVIRONMENT') == 'production'
-            
-            if is_railway:
-                # Very conservative settings for Railway
-                min_conn = 1
-                max_conn = 5  # Further reduced to prevent exhaustion
-                logger.info("Using Railway-optimized connection pool settings")
-            else:
-                # Local development settings
-                min_conn = 2
-                max_conn = 10
-                logger.info("Using local development connection pool settings")
-            
-            logger.info(f"Attempting to create connection pool with {min_conn}-{max_conn} connections")
-            logger.info(f"Database URL host: {self.database_url.split('@')[1].split('/')[0] if '@' in self.database_url else 'unknown'}")
+            # Connection pool settings
+            min_conn = 2
+            max_conn = 10
             
             self.pool = ThreadedConnectionPool(
                 minconn=min_conn,
                 maxconn=max_conn,
                 dsn=self.database_url,
                 cursor_factory=RealDictCursor,
-                connect_timeout=self._connection_timeout,
-                # Additional connection parameters for Railway reliability
-                options='-c statement_timeout=30000',  # 30 second statement timeout
-                keepalives=1,
-                keepalives_idle=30,
-                keepalives_interval=10,
-                keepalives_count=5,
-                # Railway-specific optimizations
-                sslmode='require',  # Railway requires SSL
-                application_name='dog-writer-backend'
+                connect_timeout=self._connection_timeout
             )
             
-            # Test the pool with proper connection management
+            # Test the pool
             conn = None
             try:
-                logger.info("Testing connection pool...")
                 conn = self.pool.getconn()
                 if conn:
                     with conn.cursor() as cursor:
-                        cursor.execute("SELECT 1 as test, current_user, current_database()")
-                        result = cursor.fetchone()
-                        logger.info(f"Connection pool test successful: user={result['current_user']}, db={result['current_database']}")
+                        cursor.execute("SELECT 1")
+                        cursor.fetchone()
                     self.pool.putconn(conn)
                     conn = None
-                    logger.info(f"✅ Connection pool initialized successfully with {min_conn}-{max_conn} connections")
+                    logger.info(f"Connection pool initialized successfully with {min_conn}-{max_conn} connections")
                 else:
                     raise DatabaseError("Failed to get connection from pool")
             except Exception as test_error:
@@ -137,51 +101,18 @@ class PostgreSQLService:
                 raise test_error
                 
         except Exception as e:
-            logger.error(f"❌ Failed to initialize connection pool: {e}")
-            logger.error(f"❌ Error type: {type(e).__name__}")
-            
-            # More specific error handling for connection issues
-            error_str = str(e).lower()
-            if "connection pool exhausted" in error_str:
-                logger.error("💡 Connection pool exhausted - this usually means:")
-                logger.error("   1. Too many concurrent connections to database")
-                logger.error("   2. Database connection limit reached")
-                logger.error("   3. Previous connections not properly closed")
-                logger.error("   4. Multiple app instances competing for connections")
-            elif "connection refused" in error_str:
-                logger.error("💡 Connection refused - this usually means:")
-                logger.error("   1. Database service is not running")
-                logger.error("   2. Incorrect host/port in DATABASE_URL")
-                logger.error("   3. Firewall blocking the connection")
-                logger.error("   4. Railway internal networking issue")
-            elif "authentication failed" in error_str:
-                logger.error("💡 Authentication failed - this usually means:")
-                logger.error("   1. Incorrect username/password in DATABASE_URL")
-                logger.error("   2. Database user doesn't exist")
-                logger.error("   3. Database user doesn't have required permissions")
-            elif "timeout" in error_str:
-                logger.error("💡 Connection timeout - this usually means:")
-                logger.error("   1. Database is overloaded")
-                logger.error("   2. Network connectivity issues")
-                logger.error("   3. Railway service startup delay")
-            elif "ssl" in error_str:
-                logger.error("💡 SSL connection issue - this usually means:")
-                logger.error("   1. SSL configuration mismatch")
-                logger.error("   2. Railway requires SSL connections")
-                logger.error("   3. SSL certificates not properly configured")
-            
+            logger.error(f"Failed to initialize connection pool: {e}")
             raise DatabaseError(f"Connection pool initialization failed: {e}")
     
     def _ensure_pool_health(self):
         """Ensure connection pool is healthy, recreate if needed"""
         if not self.pool:
             logger.info("Connection pool not initialized, creating now...")
-            self._init_connection_pool_with_retry()
+            self._init_connection_pool()
             return
         
         conn = None
         try:
-            # Test pool health with better connection management
             conn = self.pool.getconn()
             if conn:
                 with conn.cursor() as cursor:
@@ -199,7 +130,7 @@ class PostgreSQLService:
                     pass
             logger.error(f"Connection pool health check failed: {e}")
             logger.info("Recreating connection pool...")
-            self._init_connection_pool_with_retry()
+            self._init_connection_pool()
     
     @contextmanager
     def get_connection(self):
@@ -288,52 +219,7 @@ class PostgreSQLService:
         if "SELECT" in query.upper() and "COUNT" not in query.upper():
             query = f"SET LOCAL statement_timeout = '10s'; {query}"
         
-        # FALLBACK: If connection pool is not available, use direct connection
-        if not self.pool:
-            logger.warning("Connection pool not available, using direct connection as fallback")
-            return self._execute_query_direct(query, params, fetch)
-        
-        # Try to use connection pool first
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, params)
-                
-                if fetch == 'one':
-                    result = cursor.fetchone()
-                    return dict(result) if result else None
-                elif fetch == 'all':
-                    results = cursor.fetchall()
-                    return [dict(row) for row in results] if results else []
-                elif fetch == 'none':
-                    return cursor.rowcount
-                else:
-                    return cursor.rowcount
-                    
-        except DatabaseError as e:
-            logger.error(f"Connection pool query failed, trying direct connection: {e}")
-            return self._execute_query_direct(query, params, fetch)
-        except Exception as e:
-            logger.error(f"Query execution error: {e}")
-            # Try direct connection as fallback
-            logger.warning("Attempting direct connection fallback")
-            return self._execute_query_direct(query, params, fetch)
-    
-    def _execute_query_direct(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
-        """Execute query using direct connection as fallback"""
-        conn = None
-        try:
-            import psycopg2
-            from psycopg2.extras import RealDictCursor
-            
-            conn = psycopg2.connect(
-                self.database_url,
-                cursor_factory=RealDictCursor,
-                connect_timeout=30,
-                sslmode='require'
-            )
-            conn.set_session(autocommit=True)
-            
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(query, params)
             
@@ -347,16 +233,8 @@ class PostgreSQLService:
                 return cursor.rowcount
             else:
                 return cursor.rowcount
-                
-        except Exception as e:
-            logger.error(f"Direct connection query failed: {e}")
-            raise DatabaseError(f"Database query failed: {e}")
-        finally:
-            if conn:
-                try:
-                    conn.close()
-                except:
-                    pass
+    
+
     
     def init_database(self):
         """Initialize clean MVP database schema with fiction-specific enhancements"""

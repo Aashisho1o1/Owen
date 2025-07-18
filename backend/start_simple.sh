@@ -52,19 +52,7 @@ echo "🚂 Railway Info:"
 echo "   Environment: ${RAILWAY_ENVIRONMENT:-unknown}"
 echo "   Service: ${RAILWAY_SERVICE:-unknown}"
 
-# Quick database connectivity test (optional)
-echo "🔍 Testing database connectivity..."
-python -c "
-import os
-try:
-    import psycopg2
-    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
-    conn.close()
-    print('✅ Database connection successful')
-except Exception as e:
-    print(f'⚠️ Database test failed: {e}')
-    print('💡 App will start anyway - database issues will be logged')
-" || echo "⚠️ Database test skipped (continuing startup)"
+
 
 echo "🚀 Starting FastAPI application with hypercorn..."
 
