@@ -114,6 +114,47 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
   
+  // DEBUG: Manual voice analysis test function
+  const testVoiceAnalysisManually = useCallback(() => {
+    console.log('🧪 MANUAL VOICE ANALYSIS TEST STARTED');
+    const testText = `
+    Sample Story Excerpt: "Echoes in the Old Mill" 
+    The old mill creaked under the weight of forgotten years, its wooden beams groaning like weary bones. 
+    Alex stood at the entrance, flashlight in hand, peering into the darkness that seemed to swallow the light whole. 
+    "This place has history," Alex murmured, voice barely above a whisper. 
+    "Built in 1892, abandoned after the flood of '47. Local records say three families lived here before the disaster struck. The Millers, the Johnsons, and the Carters—all lost everything when the river claimed the mill." 
+    The beam of the flashlight danced across weathered walls, revealing faded photographs still clinging to their frames. 
+    A child's laughter seemed to echo from somewhere deep within, though Alex knew it was just the wind playing tricks through the broken windows. 
+    "Proceed with caution—the structure may be unstable."
+    `;
+    
+    const hasDialogueContent = hasDialogue(testText);
+    console.log('🧪 Manual test conditions:', {
+      textLength: testText.length,
+      hasDialogueContent,
+      isAuthenticated,
+      shouldProceed: hasDialogueContent && isAuthenticated
+    });
+    
+    if (hasDialogueContent && isAuthenticated) {
+      console.log('🧪 Calling analyzeVoiceConsistencyDebounced manually...');
+      analyzeVoiceConsistencyDebounced(testText, (results) => {
+        console.log('🧪 Manual test results:', results);
+        setVoiceConsistencyResults(results);
+      });
+    } else {
+      console.log('🧪 Manual test skipped - conditions not met');
+    }
+  }, [isAuthenticated]);
+  
+  // DEBUG: Expose manual test function to window for console access
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).testVoiceAnalysisManually = testVoiceAnalysisManually;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).testVoiceAnalysisManually;
+    };
+  }, [testVoiceAnalysisManually]);
+  
   // REMOVED: Redundant useEffect-based voice consistency analysis
   // This was causing conflicts with the TipTap onUpdate analysis
   // Now we only use the TipTap onUpdate handler for real-time analysis
@@ -143,6 +184,18 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         hasUser: !!isAuthenticated
       }
     });
+    
+    // ADDITIONAL DEBUG: Test voice analysis conditions right here
+    if (contentProp && contentProp.length > 50) {
+      const hasDialogueContent = hasDialogue(contentProp);
+      console.log('🔍 IMMEDIATE VOICE ANALYSIS TEST:', {
+        contentLength: contentProp.length,
+        hasDialogueContent,
+        isAuthenticated,
+        shouldTriggerAnalysis: hasDialogueContent && isAuthenticated,
+        timestamp: new Date().toISOString()
+      });
+    }
   }, [contentProp, contextContent, content, isAuthenticated]);
 
   // Fallback text selection detection using DOM selection
@@ -275,9 +328,18 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         newContentLength: newContent.length,
         newContentPreview: newContent.substring(0, 100) + '...',
         onChangePropType: typeof onChangeProp,
-        hasOnChangeProp: !!onChangeProp
+        hasOnChangeProp: !!onChangeProp,
+        timestamp: new Date().toISOString()
       });
       onChangeProp(newContent);
+      
+      // IMMEDIATE DEBUG: Check authentication state right now
+      console.log('🔍 AUTH STATE CHECK IN onUpdate:', {
+        isAuthenticated,
+        hasContent: !!newContent,
+        contentLength: newContent.length,
+        timestamp: new Date().toISOString()
+      });
       
       // CRITICAL FIX: Immediately trigger voice consistency analysis when editor content changes
       // This ensures we analyze the actual content from the editor, not just props
