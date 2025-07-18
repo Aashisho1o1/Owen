@@ -288,10 +288,15 @@ class PostgreSQLService:
         if "SELECT" in query.upper() and "COUNT" not in query.upper():
             query = f"SET LOCAL statement_timeout = '10s'; {query}"
         
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            try:
+        # FALLBACK: If connection pool is not available, use direct connection
+        if not self.pool:
+            logger.warning("Connection pool not available, using direct connection as fallback")
+            return self._execute_query_direct(query, params, fetch)
+        
+        # Try to use connection pool first
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
                 cursor.execute(query, params)
                 
                 if fetch == 'one':
@@ -299,11 +304,59 @@ class PostgreSQLService:
                     return dict(result) if result else None
                 elif fetch == 'all':
                     results = cursor.fetchall()
-                    return [dict(row) for row in results]
+                    return [dict(row) for row in results] if results else []
+                elif fetch == 'none':
+                    return cursor.rowcount
                 else:
                     return cursor.rowcount
-            finally:
-                cursor.close()
+                    
+        except DatabaseError as e:
+            logger.error(f"Connection pool query failed, trying direct connection: {e}")
+            return self._execute_query_direct(query, params, fetch)
+        except Exception as e:
+            logger.error(f"Query execution error: {e}")
+            # Try direct connection as fallback
+            logger.warning("Attempting direct connection fallback")
+            return self._execute_query_direct(query, params, fetch)
+    
+    def _execute_query_direct(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
+        """Execute query using direct connection as fallback"""
+        conn = None
+        try:
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            
+            conn = psycopg2.connect(
+                self.database_url,
+                cursor_factory=RealDictCursor,
+                connect_timeout=30,
+                sslmode='require'
+            )
+            conn.set_session(autocommit=True)
+            
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            
+            if fetch == 'one':
+                result = cursor.fetchone()
+                return dict(result) if result else None
+            elif fetch == 'all':
+                results = cursor.fetchall()
+                return [dict(row) for row in results] if results else []
+            elif fetch == 'none':
+                return cursor.rowcount
+            else:
+                return cursor.rowcount
+                
+        except Exception as e:
+            logger.error(f"Direct connection query failed: {e}")
+            raise DatabaseError(f"Database query failed: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except:
+                    pass
     
     def init_database(self):
         """Initialize clean MVP database schema with fiction-specific enhancements"""
