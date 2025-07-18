@@ -66,9 +66,11 @@ class PostgreSQLService:
                 except:
                     pass
             
-            # Connection pool settings
-            min_conn = 2
-            max_conn = 10
+            # Connection pool settings - OPTIMIZED for Railway PostgreSQL limits
+            # Railway PostgreSQL typically allows 22-100 connections total
+            # We need to be very conservative to prevent exhaustion
+            min_conn = 1  # Reduced from 2 to 1
+            max_conn = 3  # Reduced from 10 to 3 - critical for Railway
             
             self.pool = ThreadedConnectionPool(
                 minconn=min_conn,
@@ -88,7 +90,7 @@ class PostgreSQLService:
                         cursor.fetchone()
                     self.pool.putconn(conn)
                     conn = None
-                    logger.info(f"Connection pool initialized successfully with {min_conn}-{max_conn} connections")
+                    logger.info(f"Connection pool initialized successfully with {min_conn}-{max_conn} connections (Railway optimized)")
                 else:
                     raise DatabaseError("Failed to get connection from pool")
             except Exception as test_error:
@@ -189,11 +191,17 @@ class PostgreSQLService:
                 raise DatabaseError(f"Database operation failed: {e}")
                 
             finally:
-                if conn and attempt == self._retry_count - 1:  # Last attempt
+                # CRITICAL: Always return connection to pool to prevent leaks
+                if conn:
                     try:
                         self.pool.putconn(conn)
-                    except:
-                        pass
+                    except Exception as cleanup_error:
+                        logger.error(f"Failed to return connection to pool: {cleanup_error}")
+                        # If putconn fails, try to close the connection directly
+                        try:
+                            conn.close()
+                        except:
+                            pass
     
     def execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
         """Execute database query with enhanced error handling and retry logic"""
@@ -518,16 +526,36 @@ class PostgreSQLService:
             }
     
     def close(self):
-        """Close all database connections"""
+        """Close connection pool and cleanup resources"""
         if self.pool:
             try:
+                logger.info("Closing database connection pool...")
                 self.pool.closeall()
-                logger.info("Database connections closed")
+                logger.info("✅ Database connection pool closed successfully")
             except Exception as e:
-                logger.error(f"Error closing connections: {e}")
+                logger.error(f"Error closing connection pool: {e}")
+            finally:
+                self.pool = None
+
+    def get_pool_status(self) -> Dict[str, Any]:
+        """Get connection pool status for monitoring"""
+        if not self.pool:
+            return {"status": "not_initialized", "connections": 0}
+        
+        try:
+            # Note: psycopg2 ThreadedConnectionPool doesn't expose detailed stats
+            # We can only check if pool exists and is working
+            return {
+                "status": "healthy",
+                "pool_initialized": True,
+                "min_connections": getattr(self.pool, 'minconn', 'unknown'),
+                "max_connections": getattr(self.pool, 'maxconn', 'unknown')
+            }
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
     # === USER PREFERENCES METHODS (Essential for MVP) ===
-    
+
     def get_user_preferences(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get simplified user preferences from database"""
         try:
@@ -585,8 +613,8 @@ class PostgreSQLService:
             )
             return True
         except Exception as e:
-            logger.error(f"Error adding user feedback: {e}")
+            logger.error(f"Failed to add user feedback: {e}")
             return False
 
-# Global database service instance
+# Create global service instance
 db_service = PostgreSQLService() 
