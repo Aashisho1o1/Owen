@@ -95,22 +95,22 @@ class SimpleCharacterVoiceService:
             'consistency_threshold': 0.7
         }
         
-        # Enhanced dialogue extraction patterns - FIXED to match frontend exactly
+        # Enhanced dialogue extraction patterns - Support both straight and curly quotes
         self.dialogue_patterns = [
-            # Pattern 1: Basic quoted dialogue (MATCHES FRONTEND EXACTLY)
-            r'"([^"]{3,})"',
+            # Pattern 0: Basic quoted dialogue (MATCHES FRONTEND EXACTLY - supports all quote types)
+            r'[""\']([^""\']{3,})[""\']',
             
-            # Pattern 2: "Dialogue text," Speaker said (SIMPLIFIED)
-            r'"([^"]{3,})",?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            # Pattern 1: "Dialogue text," Speaker said 
+            r'[""\']([^""\']{3,})[""\'][,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
             
-            # Pattern 3: Speaker said, "Dialogue text" (SIMPLIFIED)
-            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized),?\s*"([^"]{3,})"',
+            # Pattern 2: Speaker said, "Dialogue text"
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)[,.]?\s*[""\']([^""\']{3,})[""\']',
             
-            # Pattern 4: "Dialogue," he/she said (COMMON PATTERN)
-            r'"([^"]{3,})"\s*[,.]?\s*(he|she|it)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            # Pattern 3: "Dialogue," he/she said
+            r'[""\']([^""\']{3,})[""\'][,.]?\s*(he|she|it)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
             
-            # Pattern 5: Simple "dialogue" with basic punctuation
-            r'"([^"]{3,})[.!?]?"'
+            # Pattern 4: Simple "dialogue" with basic punctuation
+            r'[""\']([^""\']{3,})[.!?]?[""\']'
         ]
         
         logger.info("Simple Character Voice Service initialized with Gemini")
@@ -191,7 +191,8 @@ class SimpleCharacterVoiceService:
         
         # First, try to extract dialogue with speaker attribution
         attributed_segments = 0
-        for pattern_idx, pattern in enumerate(self.dialogue_patterns[1:], 1):  # Skip pattern 0 (basic quotes)
+        for pattern_idx in range(1, len(self.dialogue_patterns)):  # Skip pattern 0 (basic quotes)
+            pattern = self.dialogue_patterns[pattern_idx]
             matches = list(re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE))
             logger.debug(f"Pattern {pattern_idx} found {len(matches)} matches")
             
@@ -201,17 +202,17 @@ class SimpleCharacterVoiceService:
                 speaker = None
                 
                 if len(match.groups()) >= 2:
-                    if pattern_idx == 1:  # Pattern 2: "Dialogue," Speaker said
+                    if pattern_idx == 1:  # Pattern 1: "Dialogue," Speaker said
                         dialogue_text = match.group(1).strip()
                         speaker = match.group(2).strip()
-                    elif pattern_idx == 2:  # Pattern 3: Speaker said, "Dialogue"
+                    elif pattern_idx == 2:  # Pattern 2: Speaker said, "Dialogue"
                         speaker = match.group(1).strip()
                         dialogue_text = match.group(2).strip()
-                    elif pattern_idx == 3:  # Pattern 4: "Dialogue," he/she said
+                    elif pattern_idx == 3:  # Pattern 3: "Dialogue," he/she said
                         dialogue_text = match.group(1).strip()
                         speaker = match.group(2).strip().title()  # Convert "he" to "He"
                 elif len(match.groups()) >= 1:
-                    # Pattern 5: Simple "dialogue" with basic punctuation
+                    # Pattern 4: Simple "dialogue" with basic punctuation
                     dialogue_text = match.group(1).strip()
                     speaker = "Unknown Speaker"
                 
