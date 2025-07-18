@@ -70,7 +70,7 @@ class PostgreSQLService:
             # Railway PostgreSQL typically allows 22-100 connections total
             # We need to be very conservative to prevent exhaustion
             min_conn = 1  # Reduced from 2 to 1
-            max_conn = 3  # Reduced from 10 to 3 - critical for Railway
+            max_conn = 2  # REDUCED: Even more conservative for Railway
             
             self.pool = ThreadedConnectionPool(
                 minconn=min_conn,

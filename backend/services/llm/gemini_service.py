@@ -65,14 +65,9 @@ class GeminiService(BaseLLMService):
             # OPTIMIZED MODEL PREFERENCES - Fast, reliable models only
             # Removed slow thinking models that cause timeouts
             model_preferences = [
-                'gemini-2.0-flash-exp',     # PRIMARY: Latest experimental 2.0 model (fast)
-                'gemini-2.0-flash',         # BACKUP: Stable 2.0 model (fast)
-                'gemini-1.5-flash',         # FALLBACK: Legacy fast model
-                'gemini-1.5-pro',           # FALLBACK: Legacy high-quality model
-                'gemini-pro'                # FINAL: Basic fallback
-                # REMOVED: gemini-2.5-pro (too slow, causes timeouts)
-                # REMOVED: gemini-2.5-flash (too slow, causes timeouts)  
-                # REMOVED: gemini-2.5-flash-lite-preview-06-17 (too slow, causes timeouts)
+                'gemini-1.5-flash-latest',  # FASTER: Use latest flash model for speed
+                'gemini-1.5-flash',
+                'gemini-pro'
             ]
             
             for model_name in model_preferences:
@@ -137,201 +132,21 @@ class GeminiService(BaseLLMService):
             raise LLMError("Gemini service not available")
         
         try:
-            # Configure generation parameters optimized for fast Gemini 2.0 models
-            # NOTE: Using simplified config for maximum speed and compatibility
-            use_config = False  # Disabled for optimal performance
-            
-            if use_config:
-                generation_config = genai.types.GenerationConfig(
-                    max_output_tokens=max_tokens,
-                    temperature=temperature
-                    # Note: top_p and top_k removed for Gemini 2.5 Pro compatibility
-                )
-            
-            # Enhanced safety settings for production use
-            safety_settings = kwargs.get('safety_settings', [])
-            if not safety_settings:
-                # Default safety settings that work well with fast Gemini models
-                # Use proper genai enums for safety settings
-                try:
-                    safety_settings = [
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
-                        },
-                    ]
-                except AttributeError:
-                    # Fallback if enum types are not available - use minimal safety
-                    safety_settings = []
-            
-            # Get current model name for adaptive behavior
-            current_model = self.available_models[0] if self.available_models else 'unknown'
-            
-            # Log which model we're using for debugging
-            logger.info(f"🎯 Using Gemini model: {current_model} for prompt length: {len(prompt)}")
-            
-            # Add timeout handling for Gemini 2.5 models - FIXED FOR ASYNC COMPATIBILITY
-            import asyncio
-            
-            try:
-                # FIXED: Use run_in_executor with timeout to avoid blocking the event loop
-                # The Gemini API call is synchronous and must be run in a thread pool
-                logger.info(f"🤖 Calling Gemini model {current_model} with timeout protection...")
-                
-                loop = asyncio.get_event_loop()
-                response = await asyncio.wait_for(
-                    loop.run_in_executor(
-                        None,  # Use default thread pool
-                        lambda: self.model.generate_content(
-                            prompt,
-                            safety_settings=safety_settings
-                        )
-                    ),
-                    timeout=20.0  # 20 second timeout (less than frontend's 30s)
-                )
-                logger.info(f"✅ Gemini response generated successfully")
-                
-            except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini API timed out after 20s with model {current_model}")
-                # Try fallback to faster model if available
-                if len(self.available_models) > 1:
-                    fallback_model = self.available_models[1]  # Try second model
-                    logger.info(f"🔄 Attempting fallback to {fallback_model}")
-                    try:
-                        fallback_genai_model = genai.GenerativeModel(fallback_model)
-                        loop = asyncio.get_event_loop()
-                        response = await asyncio.wait_for(
-                            loop.run_in_executor(
-                                None,
-                                lambda: fallback_genai_model.generate_content(
-                                    prompt,
-                                    safety_settings=safety_settings
-                                )
-                            ),
-                            timeout=15.0  # Shorter timeout for fallback
-                        )
-                        logger.info(f"✅ Fallback model {fallback_model} succeeded")
-                    except Exception as fallback_error:
-                        logger.error(f"❌ Fallback model also failed: {fallback_error}")
-                        raise LLMError(f"Gemini API timed out after 20s. Fallback also failed: {str(fallback_error)}")
-                else:
-                    raise LLMError(f"Gemini API timed out after 20 seconds. Please try a shorter prompt or try again later.")
-                    
-            except Exception as api_error:
-                logger.error(f"❌ Gemini API call failed: {str(api_error)}")
-                logger.error(f"❌ Error type: {type(api_error).__name__}")
-                
-                # Try fallback to faster model if available
-                if len(self.available_models) > 1:
-                    fallback_model = self.available_models[1]  # Try second model
-                    logger.info(f"🔄 Attempting fallback to {fallback_model}")
-                    try:
-                        fallback_genai_model = genai.GenerativeModel(fallback_model)
-                        loop = asyncio.get_event_loop()
-                        response = await asyncio.wait_for(
-                            loop.run_in_executor(
-                                None,
-                                lambda: fallback_genai_model.generate_content(
-                                    prompt,
-                                    safety_settings=safety_settings
-                                )
-                            ),
-                            timeout=15.0  # Shorter timeout for fallback
-                        )
-                        logger.info(f"✅ Fallback model {fallback_model} succeeded")
-                    except Exception as fallback_error:
-                        logger.error(f"❌ Fallback model also failed: {fallback_error}")
-                        raise LLMError(f"Gemini API failed: {str(api_error)}. Fallback also failed: {str(fallback_error)}")
-                else:
-                    raise LLMError(f"Gemini API failed: {str(api_error)}. No fallback models available.")
-            
-            # Check if response was blocked before accessing text
-            if not response.candidates:
-                raise LLMError("No response candidates generated - possibly blocked by safety filters")
-            
-            candidate = response.candidates[0]
-            
-            # Check safety ratings if response is blocked
-            if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                for rating in candidate.safety_ratings:
-                    if hasattr(rating, 'blocked') and rating.blocked:
-                        category = getattr(rating, 'category', 'Unknown')
-                        probability = getattr(rating, 'probability', 'Unknown')
-                        raise LLMError(f"Content blocked by safety filter - Category: {category}, Probability: {probability}")
-            
-            # Check finish reason
-            if hasattr(candidate, 'finish_reason'):
-                finish_reason = candidate.finish_reason
-                logger.info(f"🔍 Finish reason: {finish_reason}")
-                
-                # 1 = STOP (successful), 2 = MAX_TOKENS, 3 = SAFETY, 4 = RECITATION, 5 = OTHER
-                if finish_reason == 3:  # SAFETY
-                    raise LLMError("Content generation stopped due to safety concerns")
-                elif finish_reason == 4:  # RECITATION
-                    raise LLMError("Content generation stopped due to recitation concerns")
-                elif finish_reason == 5:  # OTHER (problematic)
-                    raise LLMError(f"Content generation stopped unexpectedly: {finish_reason}")
-                elif finish_reason == 2:  # MAX_TOKENS
-                    logger.info("ℹ️  Generation stopped due to max tokens limit")
-            
-            # Try to access text with better error handling
-            response_text = None
-            try:
-                response_text = response.text
-                if response_text:
-                    response_text = response_text.strip()
-            except Exception as text_error:
-                logger.warning(f"⚠️  Failed to access response.text: {text_error}")
-                
-                # Try to access through candidate content parts
-                try:
-                    if hasattr(candidate, 'content') and candidate.content:
-                        content = candidate.content
-                        if hasattr(content, 'parts') and content.parts:
-                            parts_text = []
-                            for part in content.parts:
-                                if hasattr(part, 'text') and part.text:
-                                    parts_text.append(part.text)
-                                    logger.info(f"✅ Found part with {len(part.text)} characters")
-                            if parts_text:
-                                response_text = ''.join(parts_text).strip()
-                                logger.info(f"✅ Retrieved text via content parts: {len(response_text)} chars")
-                            else:
-                                logger.warning("⚠️  Content parts exist but no text found in any part")
-                        else:
-                            logger.warning("⚠️  Content exists but no parts found")
-                    else:
-                        logger.warning("⚠️  No content found in candidate")
-                except Exception as parts_error:
-                    logger.error(f"❌ Failed to access content parts: {parts_error}")
-                    
-                    # If all else fails, check for prompt feedback
-                    if hasattr(response, 'prompt_feedback'):
-                        feedback = response.prompt_feedback
-                        if hasattr(feedback, 'block_reason'):
-                            raise LLMError(f"Prompt blocked by safety filters: {feedback.block_reason}")
-                    
-                    raise LLMError(f"Could not access response text: {text_error}")
-            
-            if not response_text:
-                raise LLMError("Empty response from Gemini - content may have been filtered")
-            
-            # Log successful generation with model info
-            logger.info(f"✅ Generated {len(response_text)} characters using {current_model}")
-            
-            return response_text
+            # NEW: Truncate input to prevent timeouts with large text
+            if len(prompt) > 2000:
+                prompt = prompt[:2000] + " [TRUNCATED FOR PERFORMANCE]"
+            loop = asyncio.get_running_loop()
+            response = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
+                timeout=10.0  # REDUCED: Stricter timeout for faster failure
+            )
+            return response.text
+        except asyncio.TimeoutError:
+            logger.warning("Gemini primary call timed out")
+            return "[TIMEOUT] Voice analysis took too long - please try shorter text"
+        except Exception as e:
+            logger.error(f"Gemini generation failed: {e}")
+            raise
             
         except Exception as e:
             current_model = self.available_models[0] if self.available_models else 'unknown'
