@@ -7,7 +7,7 @@ Provides real-time analysis, character profile management, and voice consistency
 
 import time
 import logging
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
@@ -41,17 +41,22 @@ async def analyze_voice_consistency(
     request: VoiceConsistencyRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id)  # Require authentication
 ):
     """
     Analyze text for character voice consistency issues
     
     This endpoint analyzes the provided text for dialogue and checks if characters
     speak consistently with their established voice patterns.
+    
+    Requires user authentication to maintain character profiles.
     """
     start_time = time.time()
     
     try:
+        # Use authenticated user ID
+        effective_user_id = user_id
+        
         # Rate limiting
         client_ip = http_request.client.host
         if not rate_limiter.check_rate_limit(http_request, "character_voice_analysis"):
@@ -64,7 +69,7 @@ async def analyze_voice_consistency(
         security_logger.log_security_event(
             SecurityEventType.DOCUMENT_ACCESS,
             SecuritySeverity.LOW,
-            user_id=user_id,
+            user_id=effective_user_id,
             ip_address=client_ip,
             details={
                 "action": "voice_consistency_analysis",
@@ -76,7 +81,7 @@ async def analyze_voice_consistency(
         # Perform voice consistency analysis
         results = await get_character_voice_service().analyze_text_for_voice_consistency(
             text=request.text,
-            user_id=user_id,
+            user_id=effective_user_id,
             document_id=request.document_id
         )
         
@@ -110,7 +115,7 @@ async def analyze_voice_consistency(
         )
         
         # Log successful analysis
-        logger.info(f"Voice consistency analysis completed for user {user_id}: "
+        logger.info(f"Voice consistency analysis completed for user {effective_user_id}: "
                    f"{len(results)} segments, {len(characters_analyzed)} characters, "
                    f"{processing_time}ms")
         
@@ -123,7 +128,7 @@ async def analyze_voice_consistency(
         security_logger.log_security_event(
             SecurityEventType.SUSPICIOUS_ACTIVITY,
             SecuritySeverity.HIGH,
-            user_id=user_id,
+            user_id=effective_user_id,
             ip_address=client_ip,
             details={"error": str(e), "endpoint": "analyze_voice_consistency"}
         )
@@ -131,6 +136,8 @@ async def analyze_voice_consistency(
             status_code=500,
             detail="Internal server error during voice analysis"
         )
+
+
 
 @router.get("/profiles", response_model=CharacterVoiceProfilesResponse)
 async def get_character_profiles(

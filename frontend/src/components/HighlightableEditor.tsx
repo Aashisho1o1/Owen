@@ -286,18 +286,18 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         const hasDialogueContent = hasContentToAnalyze && hasDialogue(newContent);
         
         console.log('🎯 Voice consistency effect (editor onUpdate):', {
-          isAuthenticated,
           hasContent: !!newContent,
           hasContentToAnalyze,
           contentLength: newContent?.length || 0,
           contentPreview: newContent?.substring(0, 100) || 'No content',
           hasDialogueContent,
+          isAuthenticated,
           timestamp: new Date().toISOString(),
           source: 'TipTap onUpdate'
         });
         
-        // Only proceed if user is authenticated AND we have meaningful dialogue content
-        if (isAuthenticated && hasContentToAnalyze && hasDialogueContent) {
+        // Only run voice analysis for authenticated users
+        if (hasContentToAnalyze && hasDialogueContent && isAuthenticated) {
           console.log('✅ Proceeding with voice analysis from editor update - all conditions met');
           analyzeVoiceConsistencyDebounced(newContent, (results) => {
             console.log('📊 Voice analysis results from editor:', results);
@@ -305,15 +305,15 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           });
         } else {
           console.log('❌ Skipping voice analysis from editor - conditions not met:', {
-            isAuthenticated,
             hasContent: !!newContent,
             hasContentToAnalyze,
             hasDialogueContent,
-            reason: !isAuthenticated 
-              ? 'User not authenticated' 
-              : !hasContentToAnalyze 
-                ? 'Insufficient content (need >50 chars)' 
-                : 'No dialogue detected'
+            isAuthenticated,
+            reason: !hasContentToAnalyze 
+              ? 'Insufficient content (need >50 chars)' 
+              : !hasDialogueContent 
+                ? 'No dialogue detected'
+                : 'User not authenticated'
           });
           setVoiceConsistencyResults([]);
         }
