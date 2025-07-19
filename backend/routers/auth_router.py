@@ -78,15 +78,22 @@ async def register(user_data: UserCreate, request: Request) -> TokenResponse:
 async def login(login_data: UserLogin, request: Request) -> TokenResponse:
     """Authenticate user and return tokens"""
     try:
+        print("🔐 STEP 1: Login endpoint called")
+        print(f"🔐 STEP 1a: Email: {login_data.email}")
+        
         # Apply strict rate limiting for login to prevent brute force attacks
+        print("🔐 STEP 2: Checking rate limit...")
         await check_rate_limit(request, "auth")
+        print("🔐 STEP 2: ✅ Rate limit check passed")
         
         logger.info(f"Login attempt for email: {login_data.email}")
         
+        print("🔐 STEP 3: Calling auth_service.login_user...")
         result = auth_service.login_user(login_data.email, login_data.password)
+        print("🔐 STEP 3: ✅ auth_service.login_user completed successfully")
         
-        logger.info(f"User logged in successfully: {login_data.email}")
-        return TokenResponse(
+        print("🔐 STEP 4: Creating TokenResponse...")
+        response = TokenResponse(
             access_token=result['access_token'],
             refresh_token=result['refresh_token'],
             token_type=result['token_type'],
@@ -97,10 +104,19 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
                 "email": result['user']['email']
             }
         )
+        print("🔐 STEP 4: ✅ TokenResponse created successfully")
+        
+        logger.info(f"User logged in successfully: {login_data.email}")
+        print("🔐 STEP 5: ✅ Login completed successfully")
+        return response
+        
     except AuthenticationError as e:
+        print(f"🔐 ❌ AUTHENTICATION ERROR: {str(e)}")
         logger.warning(f"Authentication failed for {login_data.email}: {str(e)}")
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
+        print(f"🔐 ❌ UNEXPECTED ERROR: {type(e).__name__}: {str(e)}")
+        print(f"🔐 ❌ ERROR DETAILS: {repr(e)}")
         logger.error(f"Login error for {login_data.email}: {type(e).__name__}: {e}")
         
         # Provide more specific error messages
