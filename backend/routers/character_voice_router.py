@@ -11,39 +11,10 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-# CRITICAL FIX: Make dependencies import resilient to database failures
-try:
-    from dependencies import get_current_user_id
-    DEPENDENCIES_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️ Dependencies import failed: {e}")
-    print("🔧 Character voice router will use fallback authentication")
-    DEPENDENCIES_AVAILABLE = False
-    
-    # Fallback dependency function
-    def get_current_user_id():
-        """Fallback authentication dependency"""
-        from fastapi import HTTPException
-        raise HTTPException(status_code=401, detail="Authentication service unavailable")
-
-# CRITICAL FIX: Make CharacterVoiceService import resilient to database failures
-try:
-    from services.character_voice_service import SimpleCharacterVoiceService as CharacterVoiceService
-    CHARACTER_VOICE_SERVICE_AVAILABLE = True
-    print("✅ SimpleCharacterVoiceService imported successfully")
-except Exception as e:
-    print(f"⚠️ SimpleCharacterVoiceService import failed: {e}")
-    print("🔧 Character voice router will use fallback service")
-    CHARACTER_VOICE_SERVICE_AVAILABLE = False
-    
-    # Fallback CharacterVoiceService
-    class CharacterVoiceService:
-        def __init__(self):
-            pass
-        
-        async def analyze_text_for_voice_consistency(self, *args, **kwargs):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail="Voice analysis service unavailable - database connection required")
+# CRITICAL FIX: Remove the flawed resilient import. 
+# We want the application to fail on startup if the service cannot be imported or initialized.
+# This makes the actual error (e.g., missing API key) visible in deployment logs.
+from services.character_voice_service import SimpleCharacterVoiceService
 from models.schemas import (
     VoiceConsistencyRequest, VoiceConsistencyResponse, VoiceConsistencyResult,
     CharacterVoiceProfilesResponse, CharacterVoiceProfile, DeleteCharacterProfileRequest
@@ -54,30 +25,33 @@ from services.security_logger import SecurityLogger, SecurityEventType, Security
 logger = logging.getLogger(__name__)
 
 print("✅ Character voice router module loaded successfully!")
-print(f"🔧 Service availability: Dependencies={DEPENDENCIES_AVAILABLE}, CharacterVoice={CHARACTER_VOICE_SERVICE_AVAILABLE}")
 
 router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
 print(f"✅ Character voice router created with prefix: {router.prefix}")
 
 # Initialize services
-character_voice_service = None  # Will be initialized lazily
-rate_limiter = SimpleRateLimiter()
-security_logger = SecurityLogger()
+# --- SIMPLIFIED AND ROBUST SERVICE INITIALIZATION ---
+character_voice_service: SimpleCharacterVoiceService | None = None
 
-def get_character_voice_service():
-    """Get character voice service instance with lazy initialization"""
+def get_character_voice_service() -> SimpleCharacterVoiceService:
+    """
+    Get the character voice service instance.
+    Initializes the service on the first call and reuses the instance.
+    """
     global character_voice_service
     if character_voice_service is None:
         try:
-            print("🔧 Initializing CharacterVoiceService...")
-            character_voice_service = CharacterVoiceService()
-            print("✅ CharacterVoiceService initialized successfully")
+            logger.info("🔧 Initializing SimpleCharacterVoiceService for the first time...")
+            character_voice_service = SimpleCharacterVoiceService()
+            logger.info("✅ SimpleCharacterVoiceService initialized successfully.")
         except Exception as e:
-            print(f"❌ Failed to initialize CharacterVoiceService: {e}")
-            import traceback
-            print(f"   Error details: {traceback.format_exc()}")
-            raise Exception(f"Character voice service initialization failed: {e}")
+            logger.exception("❌ CRITICAL: Failed to initialize SimpleCharacterVoiceService.")
+            # This exception will now propagate and be clearly visible.
+            raise e
     return character_voice_service
+
+rate_limiter = SimpleRateLimiter()
+security_logger = SecurityLogger()
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
 async def analyze_voice_consistency(
