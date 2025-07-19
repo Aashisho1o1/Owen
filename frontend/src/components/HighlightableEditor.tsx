@@ -600,7 +600,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             inconsistencySpan.style.setProperty('background-position', '0 100%', 'important');
             inconsistencySpan.style.setProperty('background-size', '4px 2px', 'important');
             inconsistencySpan.style.setProperty('background-repeat', 'repeat-x', 'important');
-            inconsistencySpan.style.setProperty('animation', 'voice-inconsistency-wiggle 2s ease-in-out infinite', 'important');
+            
+            // CRITICAL FIX: Force the animation to apply by setting it directly
+            inconsistencySpan.style.animation = 'voice-inconsistency-wiggle 2s ease-in-out infinite !important';
             
             // Add tooltip data
             inconsistencySpan.setAttribute('data-voice-explanation', 

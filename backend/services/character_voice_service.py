@@ -574,55 +574,54 @@ class SimpleCharacterVoiceService:
         try:
             speaker_key = segment.speaker.lower()
             
-            # Handle "Unknown Speaker" segments with general quality analysis
-            if segment.speaker == "Unknown Speaker":
-                return await self._analyze_dialogue_quality_only(segment, user_id)
+            # CRITICAL FIX: Remove "Unknown Speaker" fallback
+            # Always send dialogue to Gemini for a real analysis, even if the speaker
+            # is unknown. Gemini is smart enough to analyze dialogue quality and
+            # even infer the speaker from context. This ensures we always get a
+            # real analysis instead of a fast, useless fallback.
             
             # Check if we have a profile for this character
-            if speaker_key not in character_profiles:
-                # For first-time analysis, provide general dialogue quality feedback
+            if segment.speaker != "Unknown Speaker" and speaker_key not in character_profiles:
+                # For first-time analysis of a KNOWN character, provide quality feedback
                 return await self._analyze_dialogue_first_time(segment, user_id)
             
-            profile = character_profiles[speaker_key]
+            profile = character_profiles.get(speaker_key)
             
             # Create Gemini prompt for voice consistency analysis
-            previous_dialogue = "\n".join([f'"{sample}"' for sample in profile.dialogue_samples[-5:]])
+            previous_dialogue = ""
+            if profile:
+                previous_dialogue = "\n".join([f'"{sample}"' for sample in profile.dialogue_samples[-5:]])
             
             prompt = f"""
-            You are analyzing character voice consistency. Be CRITICAL and look for actual inconsistencies.
-            
-            Character: {profile.character_name}
-            
-            Previous dialogue examples from this character:
-            {previous_dialogue}
-            
+            You are an expert literary analyst specializing in character voice.
+            Your task is to analyze a new line of dialogue for consistency with
+            a character's established voice, or to assess its quality if the
+            character is new or unknown.
+
+            Character: {segment.speaker}
+
+            {f"Previous dialogue examples from this character:\n{previous_dialogue}" if previous_dialogue else "This is a new or unknown character. Analyze the quality and distinctiveness of the dialogue."}
+
             New dialogue to analyze:
             "{segment.text}"
-            
-            CRITICAL ANALYSIS - Look for these inconsistencies:
-            - Different vocabulary level (formal vs casual)
-            - Different sentence structure patterns  
-            - Different personality traits showing through speech
-            - Different regional/cultural speech patterns
-            - Different emotional expression styles
-            - Contradictory character voice elements
-            
-            BE CRITICAL: Only mark as consistent if the voice truly matches the established pattern.
-            If there are ANY noticeable differences in how this character speaks, mark as inconsistent.
-            
-            Respond in JSON format:
+
+            CRITICAL ANALYSIS:
+            1.  **If previous dialogue exists**: Is the new dialogue consistent with the character's established patterns in terms of vocabulary, syntax, tone, and personality? Be very critical. If there are noticeable deviations, it is inconsistent.
+            2.  **If no previous dialogue exists (or speaker is "Unknown")**: Assess the quality of this dialogue. Is it generic, or does it establish a distinct and compelling voice? Is it well-written?
+
+            Respond in STRICT JSON format with no extra text or explanations outside the JSON structure:
             {{
-                "is_consistent": boolean,
-                "confidence_score": float (0.7-1.0),
-                "similarity_score": float (0.7-1.0),
-                "explanation": "specific explanation with examples from the text",
-                "suggestions": ["specific actionable suggestions"]
+                "is_consistent": boolean (true if consistent or high-quality, false if inconsistent or low-quality),
+                "confidence_score": float (your confidence in this assessment, from 0.0 to 1.0),
+                "similarity_score": float (how similar it is to past dialogue, 0.0 to 1.0; use 0.5 for new characters),
+                "explanation": "A detailed, specific explanation for your reasoning, with examples from the text.",
+                "suggestions": ["A list of 1-2 specific, actionable suggestions for improvement if inconsistent or low-quality."]
             }}
             """
             
-            # Use Gemini 2.0 Flash for enhanced analysis (faster and more accurate)
-            logger.info(f"🤖 Calling Gemini 2.0 Flash for voice analysis: {profile.character_name}")
-            logger.info(f"⏳ Processing dialogue with Gemini 2.0 - this may take 1-3 minutes for complex analysis...")
+            # Use Gemini 2.5 Flash for enhanced analysis (faster and more accurate)
+            logger.info(f"🤖 Calling Gemini 2.5 Flash for voice analysis: {segment.speaker}")
+            logger.info(f"⏳ Processing dialogue with Gemini 2.5 - this may take 1-3 minutes for complex analysis...")
             
             # Add timeout protection at service level to prevent hanging
             import asyncio
@@ -635,28 +634,28 @@ class SimpleCharacterVoiceService:
                     ),
                     timeout=240.0  # Increased to 4 minutes for Gemini 2.5 Flash complex analysis
                 )
-                logger.info(f"✅ Gemini 2.5 Flash response received for {profile.character_name}: {type(response)}")
+                logger.info(f"✅ Gemini 2.5 Flash response received for {segment.speaker}: {type(response)}")
             except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini 2.5 Flash analysis timed out after 4 minutes for {profile.character_name}")
+                logger.error(f"⏰ Gemini 2.5 Flash analysis timed out after 4 minutes for {segment.speaker}")
                 # Return a more realistic "needs review" result instead of failing
                 return VoiceConsistencyResult(
                     is_consistent=False,  # Changed to False to indicate needs review
                     confidence_score=0.3,  # Lower confidence to indicate uncertainty
                     similarity_score=0.3,  # Lower similarity to indicate uncertainty
-                    character_name=profile.character_name,
+                    character_name=segment.speaker,
                     flagged_text=segment.text,
                     explanation="Voice analysis timed out. This dialogue needs manual review for voice consistency.",
                     suggestions=["Try analyzing smaller text segments", "Review this dialogue manually for voice consistency"],
                     analysis_method='gemini_timeout_fallback'
                 )
             except Exception as e:
-                logger.error(f"❌ Gemini analysis failed for {profile.character_name}: {str(e)}")
+                logger.error(f"❌ Gemini analysis failed for {segment.speaker}: {str(e)}")
                 # Return a more realistic "needs review" result instead of failing
                 return VoiceConsistencyResult(
                     is_consistent=False,  # Changed to False to indicate needs review
                     confidence_score=0.2,  # Very low confidence to indicate error
                     similarity_score=0.2,  # Very low similarity to indicate error
-                    character_name=profile.character_name,
+                    character_name=segment.speaker,
                     flagged_text=segment.text,
                     explanation=f"Voice analysis failed: {str(e)[:100]}... This dialogue needs manual review.",
                     suggestions=["Try again later or check your internet connection", "Review this dialogue manually for voice consistency"],
@@ -679,14 +678,14 @@ class SimpleCharacterVoiceService:
                     is_consistent=is_consistent,
                     confidence_score=confidence,  # Use actual confidence from Gemini 2.0
                     similarity_score=similarity,  # Use actual similarity from Gemini 2.0
-                    character_name=profile.character_name,
+                    character_name=profile.character_name if profile else segment.speaker,
                     flagged_text=segment.text,
                     explanation=response.get('explanation', 'Voice analysis completed by Gemini 2.0 Flash'),
                     suggestions=response.get('suggestions', []),
                     analysis_method='gemini_2_5_voice_analysis'
                 )
                 
-                logger.debug(f"Gemini analysis - Character: {profile.character_name}, "
+                logger.debug(f"Gemini analysis - Character: {profile.character_name if profile else segment.speaker}, "
                            f"Consistent: {result.is_consistent}, "
                            f"Confidence: {result.confidence_score:.3f}")
                 
