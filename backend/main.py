@@ -10,6 +10,8 @@ import logging
 import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 # Disable ChromaDB telemetry to prevent backend crashes on Railway
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
@@ -365,102 +367,26 @@ async def root():
 
 @app.get("/api/health")
 async def health_check(request: Request = None):
-    """Enhanced health check with detailed diagnostics"""
-    try:
-        # Check startup status
-        startup_success = getattr(app.state, 'startup_success', False)
-        startup_errors = getattr(app.state, 'startup_errors', [])
-        
-        # Basic environment check
-        env_status = {
-            "DATABASE_URL": "✅ SET" if os.getenv('DATABASE_URL') else "❌ NOT SET",
-            "JWT_SECRET_KEY": "✅ SET" if os.getenv('JWT_SECRET_KEY') else "❌ NOT SET",
-            "GEMINI_API_KEY": "✅ SET" if os.getenv('GEMINI_API_KEY') else "⚠️ NOT SET (optional)",
-            "OPENAI_API_KEY": "✅ SET" if os.getenv('OPENAI_API_KEY') else "⚠️ NOT SET (optional)",
-        }
-        
-        # Database health check (only if DATABASE_URL is set and db_service is available)
-        db_health = {"status": "not_configured", "error": "DATABASE_URL not set"}
-        if os.getenv('DATABASE_URL') and db_service:
-            try:
-                db_health = db_service.health_check()
-            except Exception as e:
-                logger.error(f"Database health check error: {e}", exc_info=True)
-                db_health = {"status": "unhealthy", "error": "An internal error occurred while checking the database health."}
-        elif not db_service:
-            db_health = {"status": "service_unavailable", "error": "Database service failed to import"}
-        
-        # Overall status
-        overall_status = "healthy" if startup_success and db_health['status'] == 'healthy' else "unhealthy"
-        
-        # CORS debugging information
-        cors_info = {
-            "allowed_origins": ALLOWED_ORIGINS,
-            "request_origin": request.headers.get("origin") if request else None,
-            "request_method": request.method if request else None,
-            "user_agent": request.headers.get("user-agent") if request else None
-        }
-        
-        response = {
-            "status": overall_status,
-            "timestamp": datetime.utcnow().isoformat(),
-            "startup": {
-                "success": startup_success,
-                "errors": startup_errors
-            },
-            "environment": env_status,
-            "database": db_health,
-            "cors_debug": cors_info,
-            "version": "3.1.0-REFACTORED",
-            "architecture": "modular",
-            "debug_info": {
-                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-                "platform": sys.platform,
-                "railway_environment": os.getenv('RAILWAY_ENVIRONMENT', 'unknown'),
-                "railway_service": os.getenv('RAILWAY_SERVICE', 'unknown')
-            }
-        }
-        
-        # Add specific error guidance
-        if overall_status == "unhealthy":
-            response["troubleshooting"] = {
-                "startup_errors": startup_errors,
-                "common_issues": [
-                    "DATABASE_URL not set or incorrect format",
-                    "PostgreSQL service not running",
-                    "Using external URL instead of postgres.railway.internal",
-                    "Missing JWT_SECRET_KEY",
-                    "Network connectivity issues"
-                ],
-                "railway_specific": [
-                    "Check Railway PostgreSQL service status",
-                    "Verify environment variables are set in Railway dashboard", 
-                    "Use internal URL: postgres.railway.internal:5432",
-                    "Ensure both backend and database services are deployed",
-                    "Check Railway deployment logs for specific errors"
-                ],
-                "cors_specific": [
-                    "Verify frontend URL matches allowed origins",
-                    "Check if CORS preflight requests are being blocked",
-                    "Ensure OPTIONS method is allowed",
-                    "Verify security middleware allows CORS preflight"
-                ]
-            }
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"Health check error: {e}")
-        return {
-            "status": "unhealthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "error_type": "HealthCheckFailed",
-            "error_message": "An internal error occurred during the health check.",
-            "startup": {
-                "success": False,
-                "errors": ["Health check failed due to an internal error."]
-            }
-        }
+    """
+    Enhanced health check endpoint
+    Provides detailed status of the application and its dependencies.
+    """
+    # Get startup status from app state
+    startup_success = app.state.startup_success if hasattr(app.state, 'startup_success') else False
+    startup_errors = app.state.startup_errors if hasattr(app.state, 'startup_errors') else ["State not found"]
+    
+    response_data = {
+        "status": "healthy" if startup_success and db_service.health_check().get('status') == 'healthy' else "unhealthy",
+        "timestamp": datetime.now().isoformat(),
+        "database_status": db_service.health_check().get('status', 'error') if db_service else "uninitialized",
+        "startup_errors": startup_errors,
+        "api_version": "1.2.0",  # TRACER BULLET: Check for this version
+        "deployment_verification": "CORS_FIX_APPLIED_SUCCESSFULLY" # TRACER BULLET
+    }
+    
+    status_code = 200 if response_data["status"] == "healthy" else 503
+    
+    return JSONResponse(content=response_data, status_code=status_code)
 
 @app.get("/api/rate-limiter/health")
 async def rate_limiter_health():
