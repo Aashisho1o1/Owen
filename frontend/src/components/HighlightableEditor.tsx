@@ -539,18 +539,52 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             const highlightText = nodeValue.substring(startInNode, endInNode);
             const afterText = nodeValue.substring(endInNode);
             
-            // Create the voice inconsistency span
+            // Create the voice inconsistency span with INLINE STYLES for maximum specificity
             const inconsistencySpan = document.createElement('span');
             inconsistencySpan.className = 'voice-inconsistent';
             
-            // Add confidence-based class
+            // CRITICAL FIX: Apply inline styles directly to ensure visibility in TipTap
             const confidence = result.confidence_score;
+            let underlineColor = '#f59e0b'; // Default orange
+            
             if (confidence <= 0.4) {
-              inconsistencySpan.classList.add('high-confidence');
+              underlineColor = '#dc2626'; // Red for high confidence issues
             } else if (confidence <= 0.7) {
-              inconsistencySpan.classList.add('medium-confidence');
+              underlineColor = '#f59e0b'; // Orange for medium confidence
             } else {
-              inconsistencySpan.classList.add('low-confidence');
+              underlineColor = '#fbbf24'; // Yellow for low confidence
+            }
+            
+            // Apply jiggly underline with inline styles for guaranteed visibility
+            inconsistencySpan.style.cssText = `
+              position: relative !important;
+              background-image: repeating-linear-gradient(45deg, ${underlineColor} 0px, ${underlineColor} 2px, transparent 2px, transparent 4px) !important;
+              background-position: 0 100% !important;
+              background-size: 4px 2px !important;
+              background-repeat: repeat-x !important;
+              cursor: pointer !important;
+              animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important;
+              display: inline !important;
+              line-height: inherit !important;
+              font-family: inherit !important;
+              font-size: inherit !important;
+              color: inherit !important;
+            `;
+            
+            // Add CSS animation keyframes to document if not already present
+            if (!document.getElementById('voice-inconsistency-keyframes')) {
+              const style = document.createElement('style');
+              style.id = 'voice-inconsistency-keyframes';
+              style.textContent = `
+                @keyframes voice-inconsistency-wiggle {
+                  0% { background-position: 0 100%; }
+                  25% { background-position: 1px 100%; }
+                  50% { background-position: 2px 100%; }
+                  75% { background-position: 1px 100%; }
+                  100% { background-position: 0 100%; }
+                }
+              `;
+              document.head.appendChild(style);
             }
             
             // Add tooltip data
@@ -562,6 +596,19 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             inconsistencySpan.setAttribute('tabindex', '0');
             inconsistencySpan.setAttribute('aria-label', 
               `Voice inconsistency: ${result.explanation}`);
+            
+            // Add hover effect with inline styles for guaranteed visibility
+            inconsistencySpan.addEventListener('mouseenter', () => {
+              inconsistencySpan.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+              inconsistencySpan.style.borderRadius = '2px';
+              inconsistencySpan.style.animationDuration = '1s';
+            });
+            
+            inconsistencySpan.addEventListener('mouseleave', () => {
+              inconsistencySpan.style.backgroundColor = 'transparent';
+              inconsistencySpan.style.borderRadius = '0';
+              inconsistencySpan.style.animationDuration = '2s';
+            });
             
             inconsistencySpan.textContent = highlightText;
             
