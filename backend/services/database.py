@@ -80,15 +80,29 @@ class PostgreSQLService:
                 connect_timeout=self._connection_timeout
             )
             
-            # Test the pool
+            # RAILWAY FIX: More robust pool testing
             conn = None
             try:
                 conn = self.pool.getconn()
                 if conn:
+                    # Verify connection is actually usable
+                    if hasattr(conn, 'closed') and conn.closed:
+                        logger.error("Got closed connection during pool initialization")
+                        self.pool.putconn(conn, close=True)
+                        raise DatabaseError("Connection pool returned closed connection")
+                    
                     with conn.cursor() as cursor:
                         cursor.execute("SELECT 1")
-                        cursor.fetchone()
-                    self.pool.putconn(conn)
+                        result = cursor.fetchone()
+                        if not result:
+                            raise DatabaseError("Pool test query returned no result")
+                    
+                    # RAILWAY FIX: Only return to pool if connection is still valid
+                    if hasattr(conn, 'closed') and not conn.closed:
+                        self.pool.putconn(conn)
+                    else:
+                        logger.warning("Connection became closed during test, disposing")
+                        self.pool.putconn(conn, close=True)
                     conn = None
                     logger.info(f"Connection pool initialized successfully with {min_conn}-{max_conn} connections (Railway optimized)")
                 else:
@@ -96,15 +110,31 @@ class PostgreSQLService:
             except Exception as test_error:
                 if conn:
                     try:
-                        self.pool.putconn(conn)
-                    except:
-                        pass
+                        # RAILWAY FIX: Properly dispose of failed test connection
+                        if hasattr(conn, 'closed') and conn.closed:
+                            self.pool.putconn(conn, close=True)
+                        else:
+                            self.pool.putconn(conn)
+                    except Exception as cleanup_error:
+                        logger.warning(f"Failed to clean up test connection: {cleanup_error}")
                 logger.error(f"Connection pool test failed: {test_error}")
                 raise test_error
                 
         except Exception as e:
             logger.error(f"Failed to initialize connection pool: {e}")
             raise DatabaseError(f"Connection pool initialization failed: {e}")
+    
+    def _close_pool_safely(self):
+        """Safely close the connection pool to prevent resource leaks"""
+        if self.pool:
+            try:
+                logger.info("Closing existing connection pool...")
+                self.pool.closeall()
+                self.pool = None
+                logger.info("Connection pool closed successfully")
+            except Exception as e:
+                logger.warning(f"Error closing connection pool: {e}")
+                self.pool = None  # Force reset even if close failed
     
     def _ensure_pool_health(self):
         """Ensure connection pool is healthy, recreate if needed"""
@@ -118,21 +148,39 @@ class PostgreSQLService:
         try:
             conn = self.pool.getconn()
             if conn:
+                # RAILWAY FIX: Check if connection is closed before using it
+                if hasattr(conn, 'closed') and conn.closed:
+                    logger.warning("Got closed connection from pool during health check")
+                    self.pool.putconn(conn, close=True)
+                    conn = None
+                    raise DatabaseError("Connection was closed")
+                
                 with conn.cursor() as cursor:
                     cursor.execute("SELECT 1")
                     cursor.fetchone()
-                self.pool.putconn(conn)
+                
+                # RAILWAY FIX: Only return to pool if connection is still valid
+                if hasattr(conn, 'closed') and not conn.closed:
+                    self.pool.putconn(conn)
+                else:
+                    self.pool.putconn(conn, close=True)
                 conn = None
             else:
                 raise DatabaseError("Failed to get connection from pool")
         except Exception as e:
             if conn:
                 try:
-                    self.pool.putconn(conn)
-                except:
-                    pass
+                    # RAILWAY FIX: Always close invalid connections instead of returning to pool
+                    if hasattr(conn, 'closed') and conn.closed:
+                        self.pool.putconn(conn, close=True)
+                    else:
+                        self.pool.putconn(conn)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to clean up connection during health check: {cleanup_error}")
             logger.error(f"Connection pool health check failed: {e}")
             logger.info("Recreating connection pool...")
+            # RAILWAY FIX: Properly close old pool before creating new one
+            self._close_pool_safely()
             self._init_connection_pool()
     
     @contextmanager
@@ -195,9 +243,21 @@ class PostgreSQLService:
                 # CRITICAL: Always return connection to pool to prevent leaks
                 if conn:
                     try:
-                        self.pool.putconn(conn)
+                        # RAILWAY FIX: Check if connection is still valid before returning to pool
+                        if hasattr(conn, 'closed') and not conn.closed:
+                            self.pool.putconn(conn)
+                        else:
+                            # Connection is closed, close it properly instead of returning to pool
+                            logger.warning("Connection was closed, disposing instead of returning to pool")
+                            self.pool.putconn(conn, close=True)
                     except Exception as cleanup_error:
                         logger.error(f"Failed to return connection to pool: {cleanup_error}")
+                        # If returning to pool fails, try to close the connection directly
+                        try:
+                            if hasattr(conn, 'close'):
+                                conn.close()
+                        except:
+                            pass
                         # If putconn fails, try to close the connection directly
                         try:
                             conn.close()
