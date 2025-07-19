@@ -242,8 +242,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       async (err) => {
         const originalRequest = err.config;
 
-        // Prevent infinite loops
-        if (err.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/api/auth/refresh') {
+        // CRITICAL FIX: Don't attempt token refresh for login/register/refresh endpoints
+        const isAuthEndpoint = originalRequest.url && (
+          originalRequest.url.includes('/api/auth/login') ||
+          originalRequest.url.includes('/api/auth/register') ||
+          originalRequest.url.includes('/api/auth/refresh')
+        );
+
+        // Prevent infinite loops and skip auth endpoints
+        if (err.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           originalRequest._retry = true;
 
           console.log('🔄 Token expired, attempting refresh...');
@@ -362,27 +369,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     
     try {
+      console.log('🔐 STEP 1: Making login API request...');
       const response = await apiInstance.post('/api/auth/login', data);
-      console.log('✅ Login successful:', response.data);
+      console.log('🔐 STEP 2: ✅ Login API request successful:', response.data);
       
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
+      console.log('🔐 STEP 3: Storing tokens...');
       // Store tokens
       storeTokens({ access_token, refresh_token, token_type, expires_in });
+      console.log('🔐 STEP 3: ✅ Tokens stored successfully');
       
+      console.log('🔐 STEP 4: Setting user data...');
       // Set user data
       setUser(userProfile);
       setIsAuthenticated(true);
+      console.log('🔐 STEP 4: ✅ User data set successfully');
       
       logger.log('Login successful', { username: userProfile.username });
+      console.log('🔐 STEP 5: ✅ Login completed successfully');
       return true;
     } catch (err) {
-      console.error('❌ Login failed:', {
+      console.error('🔐 ❌ Login failed at step:', {
         error: err,
         status: err?.response?.status,
         statusText: err?.response?.statusText,
         data: err?.response?.data,
-        config: err?.config
+        config: err?.config,
+        url: err?.config?.url,
+        method: err?.config?.method
       });
       
       const errorMessage =
