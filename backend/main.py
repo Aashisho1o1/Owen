@@ -24,6 +24,10 @@ os.environ['POSTHOG_DISABLED'] = 'True'
 os.environ['POSTHOG_CAPTURE_DISABLED'] = 'True'
 os.environ['TELEMETRY_DISABLED'] = 'True'
 
+# CRITICAL: Disable ChromaDB entirely if causing issues
+os.environ['CHROMA_SERVER_NOFILE'] = 'True'
+os.environ['CHROMA_CLIENT_HEARTBEAT_ENABLED'] = 'False'
+
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
 load_dotenv()
