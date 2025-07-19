@@ -350,16 +350,19 @@ async def preflight_handler(path: str):
 @app.get("/test")
 async def test_get():
     """Test GET endpoint"""
+    from datetime import datetime
     return {"message": "GET works", "timestamp": datetime.now().isoformat()}
 
 @app.post("/test")
 async def test_post(data: dict = None):
     """Test POST endpoint"""
+    from datetime import datetime
     return {"message": "POST works", "data": data, "timestamp": datetime.now().isoformat()}
 
 @app.post("/api/character-voice/test")
 async def test_character_voice_path():
     """Test character voice path without authentication"""
+    from datetime import datetime
     return {"message": "Character voice path works", "timestamp": datetime.now().isoformat()}
 
 # Health endpoints
