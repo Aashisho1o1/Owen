@@ -28,11 +28,11 @@ except Exception as e:
 
 # CRITICAL FIX: Make CharacterVoiceService import resilient to database failures
 try:
-    from services.character_voice_service import CharacterVoiceService
+    from services.character_voice_service import SimpleCharacterVoiceService as CharacterVoiceService
     CHARACTER_VOICE_SERVICE_AVAILABLE = True
-    print("✅ CharacterVoiceService imported successfully")
+    print("✅ SimpleCharacterVoiceService imported successfully")
 except Exception as e:
-    print(f"⚠️ CharacterVoiceService import failed: {e}")
+    print(f"⚠️ SimpleCharacterVoiceService import failed: {e}")
     print("🔧 Character voice router will use fallback service")
     CHARACTER_VOICE_SERVICE_AVAILABLE = False
     
@@ -41,7 +41,7 @@ except Exception as e:
         def __init__(self):
             pass
         
-        async def analyze_voice_consistency(self, *args, **kwargs):
+        async def analyze_text_for_voice_consistency(self, *args, **kwargs):
             from fastapi import HTTPException
             raise HTTPException(status_code=503, detail="Voice analysis service unavailable - database connection required")
 from models.schemas import (
