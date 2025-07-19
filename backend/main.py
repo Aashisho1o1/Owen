@@ -346,7 +346,21 @@ async def preflight_handler(path: str):
     """Handle CORS preflight requests for all paths"""
     return {"message": "OK"}
 
+# Test endpoints for debugging
+@app.get("/test")
+async def test_get():
+    """Test GET endpoint"""
+    return {"message": "GET works", "timestamp": datetime.now().isoformat()}
 
+@app.post("/test")
+async def test_post(data: dict = None):
+    """Test POST endpoint"""
+    return {"message": "POST works", "data": data, "timestamp": datetime.now().isoformat()}
+
+@app.post("/api/character-voice/test")
+async def test_character_voice_path():
+    """Test character voice path without authentication"""
+    return {"message": "Character voice path works", "timestamp": datetime.now().isoformat()}
 
 # Health endpoints
 @app.get("/")
