@@ -90,9 +90,10 @@ class SimpleCharacterVoiceService:
         self.config = {
             'min_samples_for_profile': 1,  # Reduced from 3 to 1 for immediate analysis
             'max_profile_samples': 10,
-            'dialogue_min_length': 3,  # Reduced from 10 to 3 to match frontend
+            'dialogue_min_length': 10,  # Increased from 3 to 10 for better quality
             'context_window': 150,
-            'consistency_threshold': 0.7
+            'consistency_threshold': 0.7,
+            'max_segments_to_analyze': 20  # Limit to prevent overwhelming results
         }
         
         # Enhanced dialogue extraction patterns - Support both straight and curly quotes
@@ -114,6 +115,43 @@ class SimpleCharacterVoiceService:
         ]
         
         logger.info("Simple Character Voice Service initialized with Gemini")
+    
+    def _is_narrative_text(self, text: str) -> bool:
+        """Check if text is likely narrative rather than dialogue"""
+        if not text:
+            return True
+        
+        text_lower = text.lower().strip()
+        
+        # Common narrative indicators
+        narrative_patterns = [
+            # Action descriptions
+            r'\b(walked|ran|looked|turned|smiled|laughed|nodded|shook|moved|stepped|entered|left|sat|stood|opened|closed)\b',
+            # Descriptive text
+            r'\b(the|a|an)\s+\w+\s+(was|were|is|are)',
+            # Time/place indicators
+            r'\b(then|meanwhile|later|earlier|yesterday|tomorrow|here|there)\b',
+            # Very short fragments (likely parsing errors)
+            r'^\w{1,3}$',
+            # Common narrative phrases
+            r'\b(he said|she said|it was|there was|they were)\b'
+        ]
+        
+        # Check if text matches narrative patterns
+        import re
+        for pattern in narrative_patterns:
+            if re.search(pattern, text_lower):
+                return True
+        
+        # Check if text is very short and doesn't look like dialogue
+        if len(text.strip()) < 5:
+            return True
+        
+        # Check if text doesn't have dialogue punctuation
+        if not any(punct in text for punct in ['"', "'", "!", "?", ".", ","]):
+            return True
+        
+        return False
     
     async def analyze_text_for_voice_consistency(
         self, 
@@ -159,16 +197,35 @@ class SimpleCharacterVoiceService:
             
             # Analyze each dialogue segment using Gemini
             results = []
+            analyzed_count = 0
+            
+            # Sort segments by confidence and text length to prioritize better dialogue
+            dialogue_segments.sort(key=lambda s: (s.confidence, len(s.text)), reverse=True)
+            
             for i, segment in enumerate(dialogue_segments):
+                # Skip if we've analyzed enough segments
+                if analyzed_count >= self.config['max_segments_to_analyze']:
+                    logger.info(f"⏭️ Reached maximum segments limit ({self.config['max_segments_to_analyze']}), stopping analysis")
+                    break
+                
                 logger.info(f"🔍 Analyzing segment {i+1}/{len(dialogue_segments)}: '{segment.text[:50]}...' by {segment.speaker}")
                 
-                if segment.speaker and len(segment.text) >= self.config['dialogue_min_length']:
+                # Enhanced filtering for better quality analysis
+                should_analyze = (
+                    segment.speaker and 
+                    len(segment.text) >= self.config['dialogue_min_length'] and
+                    not self._is_narrative_text(segment.text) and
+                    segment.confidence >= 0.5  # Only analyze confident dialogue detection
+                )
+                
+                if should_analyze:
                     try:
                         result = await self._analyze_dialogue_with_gemini(
                             segment, character_profiles, user_id
                         )
                         if result:
                             results.append(result)
+                            analyzed_count += 1
                             logger.info(f"✅ Analysis complete for segment {i+1}: {result.character_name} - {'Consistent' if result.is_consistent else 'Inconsistent'}")
                         else:
                             logger.warning(f"❌ Analysis failed for segment {i+1}")
@@ -177,7 +234,9 @@ class SimpleCharacterVoiceService:
                         # Continue with other segments instead of failing completely
                         continue
                 else:
-                    logger.warning(f"⚠️ Skipping segment {i+1}: speaker='{segment.speaker}', length={len(segment.text)}, min_length={self.config['dialogue_min_length']}")
+                    logger.info(f"⚠️ Skipping segment {i+1}: speaker='{segment.speaker}', length={len(segment.text)}, min_length={self.config['dialogue_min_length']}, confidence={segment.confidence:.2f}")
+            
+            logger.info(f"📊 Analyzed {analyzed_count} out of {len(dialogue_segments)} total segments")
             
             # Update character profiles with new dialogue
             try:
@@ -482,21 +541,25 @@ class SimpleCharacterVoiceService:
             
             Context: {segment.context_before} [...] {segment.context_after}
             
-            Please analyze:
-            1. Is this dialogue consistent with the character's voice? (yes/no)
-            2. What is your confidence level? (0.0 to 1.0)
-            3. What makes it consistent or inconsistent?
-            4. If inconsistent, provide 2-3 specific suggestions to improve voice consistency.
+            ANALYSIS CRITERIA:
+            - Compare vocabulary choice, sentence structure, and tone
+            - Look for personality consistency in how they express ideas
+            - Consider speech patterns, formality level, and distinctive phrases
+            - Only flag as inconsistent if there's a clear voice mismatch
+            - Minor variations are normal and should be marked as consistent
             
-            Focus on: vocabulary choice, sentence structure, tone, personality traits, and speech patterns.
+            RESPONSE REQUIREMENTS:
+            - Only mark as inconsistent if there's a significant voice pattern change
+            - Confidence should reflect how certain you are about the inconsistency
+            - Provide specific examples from the text to support your analysis
             
             Respond in JSON format:
             {{
                 "is_consistent": boolean,
-                "confidence_score": float,
-                "similarity_score": float,
-                "explanation": "detailed explanation",
-                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+                "confidence_score": float (0.1-1.0),
+                "similarity_score": float (0.1-1.0),
+                "explanation": "specific explanation with examples from the text",
+                "suggestions": ["specific actionable suggestions"]
             }}
             """
             
@@ -575,28 +638,30 @@ class SimpleCharacterVoiceService:
         try:
             # Create a general dialogue quality analysis prompt
             prompt = f"""
-            Analyze this dialogue for general quality and effectiveness. Since we don't know the speaker, focus on overall dialogue quality.
+            Analyze this dialogue for quality and effectiveness. Focus on whether it sounds natural and engaging.
             
-            Dialogue to analyze:
-            "{segment.text}"
-            
+            Dialogue to analyze: "{segment.text}"
             Context: {segment.context_before} [...] {segment.context_after}
             
-            Please analyze:
-            1. Is this dialogue well-written and effective? (yes/no)
-            2. What is your confidence level? (0.0 to 1.0)
-            3. What makes this dialogue effective or ineffective?
-            4. Provide 2-3 specific suggestions to improve this dialogue.
+            ANALYSIS CRITERIA:
+            - Does the dialogue sound natural and believable?
+            - Is it clear what the speaker is trying to communicate?
+            - Does it advance the story or reveal character?
+            - Are there any awkward phrasings or unclear meanings?
             
-            Focus on: naturalness, clarity, engagement, and overall dialogue quality.
+            RESPONSE REQUIREMENTS:
+            - Only mark as poor quality if there are clear issues with the dialogue
+            - Most dialogue should be marked as effective unless there are obvious problems
+            - Focus on constructive feedback that improves the writing
+            - Confidence should be high (0.7+) for clear assessments
             
             Respond in JSON format:
             {{
                 "is_consistent": boolean,
-                "confidence_score": float,
-                "similarity_score": float,
-                "explanation": "detailed explanation of dialogue quality",
-                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+                "confidence_score": float (0.7-1.0),
+                "similarity_score": float (0.7-1.0),
+                "explanation": "specific feedback about dialogue quality",
+                "suggestions": ["specific ways to improve this dialogue"]
             }}
             """
             
@@ -673,35 +738,36 @@ class SimpleCharacterVoiceService:
         try:
             # Create a general dialogue quality analysis prompt
             prompt = f"""
-            Analyze this dialogue for character voice quality and consistency. This is the first time we're seeing this character, so focus on general dialogue quality.
+            Analyze this dialogue from a character named "{segment.speaker}". This is the first time we're analyzing this character's voice.
             
             Character: {segment.speaker}
-            
-            Dialogue to analyze:
-            "{segment.text}"
-            
+            Dialogue: "{segment.text}"
             Context: {segment.context_before} [...] {segment.context_after}
             
-            Please analyze:
-            1. Is this dialogue well-written and characteristic? (yes/no)
-            2. What is your confidence level? (0.0 to 1.0)
-            3. What makes this dialogue effective or ineffective?
-            4. Provide 2-3 specific suggestions to improve this dialogue.
+            ANALYSIS CRITERIA:
+            - Does this dialogue feel authentic for the character?
+            - Is the voice distinctive and well-developed?
+            - Does the dialogue reveal personality or advance the story?
+            - Are there any issues with naturalness or clarity?
             
-            Focus on: clarity, naturalness, character voice distinctiveness, and dialogue quality.
+            RESPONSE REQUIREMENTS:
+            - Focus on establishing a baseline for this character's voice
+            - Most first-time dialogue should be marked as good unless clearly problematic
+            - Provide constructive feedback to help develop the character's voice
+            - Confidence should reflect how distinctive/well-developed the voice is
             
             Respond in JSON format:
             {{
                 "is_consistent": boolean,
-                "confidence_score": float,
-                "similarity_score": float,
-                "explanation": "detailed explanation of dialogue quality",
-                "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+                "confidence_score": float (0.6-1.0),
+                "similarity_score": float (0.6-1.0),
+                "explanation": "assessment of character voice quality and distinctiveness",
+                "suggestions": ["ways to strengthen this character's voice"]
             }}
             """
             
             # Use Gemini 1.5 Flash for analysis with timeout protection
-            logger.info(f"🤖 Calling Gemini for first-time analysis: {segment.speaker}")
+            logger.info(f"�� Calling Gemini for first-time analysis: {segment.speaker}")
             import asyncio
             try:
                 response = await asyncio.wait_for(
