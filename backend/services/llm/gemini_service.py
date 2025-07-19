@@ -33,66 +33,26 @@ except Exception as e:
 
 
 class GeminiService(BaseLLMService):
-    """Google Gemini API service implementation."""
+    """Gemini service for generative AI - now uses 1.5 Pro"""
     
     def __init__(self):
-        """Initialize Gemini service with error handling."""
-        # Initialize base class with API key environment variable
-        super().__init__('GEMINI_API_KEY')
-        self.client = None
-        self.model = None
-        self.available_models = []
+        super().__init__("GEMINI_API_KEY")
         
-        # Only initialize if library is available
-        if GENAI_AVAILABLE:
-            self._initialize_client()
-        else:
-            logger.warning("⚠️ Gemini service not available - Google Generative AI library not imported")
-            self.available = False
-    
-    def _initialize_client(self):
-        """Initialize the Gemini client with robust error handling."""
-        try:
-            if not self.api_key:
-                logger.warning("⚠️ GEMINI_API_KEY not found in environment variables")
+        if self.available:
+            try:
+                # Configure the generative AI client with the API key
+                genai.configure(api_key=self.api_key)
+                
+                # Use Gemini 1.5 Pro model for enhanced contextual understanding
+                self.model = genai.GenerativeModel('gemini-1.5-pro-latest')
+                
+                logger.info("✅ Gemini service initialized successfully with gemini-1.5-pro-latest")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize Gemini service: {e}")
                 self.available = False
-                return
-                
-            # Configure the client
-            genai.configure(api_key=self.api_key)
-            
-            # Test available models in order of preference
-            # OPTIMIZED MODEL PREFERENCES - Fast, reliable models only
-            # Removed slow thinking models that cause timeouts
-            model_preferences = [
-                'gemini-1.5-flash-8b',  # Ultra-fast experimental model
-                'gemini-1.5-flash-latest',
-                'gemini-1.5-flash'
-            ]
-            
-            for model_name in model_preferences:
-                try:
-                    # Test model initialization
-                    test_model = genai.GenerativeModel(model_name)
-                    self.model = test_model
-                    self.available_models.append(model_name)
-                    logger.info(f"✅ Successfully initialized Gemini model: {model_name}")
-                    break
-                except Exception as e:
-                    logger.warning(f"⚠️ Failed to initialize {model_name}: {e}")
-                    continue
-            
-            if not self.model:
-                logger.error("❌ No Gemini models available")
-                return
-                
-            self.client = genai
-            logger.info(f"✅ Gemini service initialized with {len(self.available_models)} available models")
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize Gemini client: {e}")
-            self.client = None
-            self.model = None
+        else:
+            logger.warning("⚠️ Gemini API key not found. Service will be unavailable.")
     
     def is_available(self) -> bool:
         """Check if Gemini service is available."""
