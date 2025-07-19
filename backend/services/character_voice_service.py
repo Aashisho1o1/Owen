@@ -620,8 +620,9 @@ class SimpleCharacterVoiceService:
             }}
             """
             
-            # Use Gemini 1.5 Flash for analysis (cheaper and faster)
-            logger.info(f"🤖 Calling Gemini for voice analysis: {profile.character_name}")
+            # Use Gemini 2.0 Flash for enhanced analysis (faster and more accurate)
+            logger.info(f"🤖 Calling Gemini 2.0 Flash for voice analysis: {profile.character_name}")
+            logger.info(f"⏳ Processing dialogue with Gemini 2.0 - this may take 1-3 minutes for complex analysis...")
             
             # Add timeout protection at service level to prevent hanging
             import asyncio
@@ -632,33 +633,33 @@ class SimpleCharacterVoiceService:
                         max_tokens=400, 
                         temperature=0.3
                     ),
-                    timeout=180.0  # Increased to 3 minutes
+                    timeout=240.0  # Increased to 4 minutes for Gemini 2.0 Flash complex analysis
                 )
-                logger.info(f"🤖 Gemini response received for {profile.character_name}: {type(response)}")
+                logger.info(f"✅ Gemini 2.0 Flash response received for {profile.character_name}: {type(response)}")
             except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini analysis timed out after 15s for {profile.character_name}")
-                # Return a default "consistent" result instead of failing
+                logger.error(f"⏰ Gemini 2.0 Flash analysis timed out after 4 minutes for {profile.character_name}")
+                # Return a more realistic "needs review" result instead of failing
                 return VoiceConsistencyResult(
-                    is_consistent=True,
-                    confidence_score=0.5,
-                    similarity_score=0.5,
+                    is_consistent=False,  # Changed to False to indicate needs review
+                    confidence_score=0.3,  # Lower confidence to indicate uncertainty
+                    similarity_score=0.3,  # Lower similarity to indicate uncertainty
                     character_name=profile.character_name,
                     flagged_text=segment.text,
-                    explanation="Voice analysis timed out. Please try again with shorter text.",
-                    suggestions=["Try analyzing smaller text segments"],
+                    explanation="Voice analysis timed out. This dialogue needs manual review for voice consistency.",
+                    suggestions=["Try analyzing smaller text segments", "Review this dialogue manually for voice consistency"],
                     analysis_method='gemini_timeout_fallback'
                 )
             except Exception as e:
                 logger.error(f"❌ Gemini analysis failed for {profile.character_name}: {str(e)}")
-                # Return a default "consistent" result instead of failing
+                # Return a more realistic "needs review" result instead of failing
                 return VoiceConsistencyResult(
-                    is_consistent=True,
-                    confidence_score=0.5,
-                    similarity_score=0.5,
+                    is_consistent=False,  # Changed to False to indicate needs review
+                    confidence_score=0.2,  # Very low confidence to indicate error
+                    similarity_score=0.2,  # Very low similarity to indicate error
                     character_name=profile.character_name,
                     flagged_text=segment.text,
-                    explanation=f"Voice analysis failed: {str(e)[:100]}...",
-                    suggestions=["Try again later or check your internet connection"],
+                    explanation=f"Voice analysis failed: {str(e)[:100]}... This dialogue needs manual review.",
+                    suggestions=["Try again later or check your internet connection", "Review this dialogue manually for voice consistency"],
                     analysis_method='gemini_error_fallback'
                 )
             
@@ -676,13 +677,13 @@ class SimpleCharacterVoiceService:
 
                 result = VoiceConsistencyResult(
                     is_consistent=is_consistent,
-                    confidence_score=max(confidence, 0.7),  # enforce min 0.7 for display
-                    similarity_score=max(similarity, 0.7),
+                    confidence_score=confidence,  # Use actual confidence from Gemini 2.0
+                    similarity_score=similarity,  # Use actual similarity from Gemini 2.0
                     character_name=profile.character_name,
                     flagged_text=segment.text,
-                    explanation=response.get('explanation', 'Voice analysis completed'),
+                    explanation=response.get('explanation', 'Voice analysis completed by Gemini 2.0 Flash'),
                     suggestions=response.get('suggestions', []),
-                    analysis_method='gemini_voice_analysis'
+                    analysis_method='gemini_2_0_voice_analysis'
                 )
                 
                 logger.debug(f"Gemini analysis - Character: {profile.character_name}, "

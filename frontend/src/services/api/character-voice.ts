@@ -71,8 +71,11 @@ export interface VoiceAnalysisStats {
 export const analyzeVoiceConsistency = async (
   request: VoiceConsistencyRequest
 ): Promise<VoiceConsistencyResponse> => {
-    console.log('🧠 Starting voice analysis with Gemini AI...');
-    console.log('⏳ This may take 30-60 seconds for complex dialogue analysis');
+    console.log('🚀 Starting voice analysis with Gemini 2.0 Flash...');
+    console.log('📊 Analyzing text length:', request.text.length, 'characters');
+    console.log('⏳ Expected processing time: 1-4 minutes for complex dialogue analysis');
+    console.log('🧠 Gemini 2.0 Flash will analyze character voice consistency and dialogue patterns');
+    console.log('💡 Please wait - processing in progress...');
     
     // NEW: Add retry logic with better error messages
     const maxRetries = 2;
@@ -80,8 +83,10 @@ export const analyzeVoiceConsistency = async (
     while (attempts <= maxRetries) {
         try {
             console.log(`🚀 Voice analysis attempt ${attempts + 1}/${maxRetries + 1}`);
+            console.log('⏳ Sending request to Gemini 2.0 Flash...');
             const response = await apiClient.post<VoiceConsistencyResponse>('/api/character-voice/analyze', request);
             console.log('✅ Voice analysis completed successfully!');
+            console.log('📊 Results received:', response.data.results.length, 'dialogue segments analyzed');
             return response.data;
         } catch (error) {
             attempts++;
@@ -90,8 +95,8 @@ export const analyzeVoiceConsistency = async (
             if (attempts > maxRetries) {
                 // Provide specific error messages based on error type
                 if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-                    console.error('⏰ Voice analysis timed out - Gemini API is taking too long');
-                    throw new Error('Voice analysis timed out. Gemini AI is processing complex dialogue. Please try with shorter text or try again later.');
+                    console.error('⏰ Voice analysis timed out - Gemini 2.0 Flash is taking longer than expected');
+                    throw new Error('Voice analysis timed out. Gemini 2.0 Flash is processing complex dialogue. Please try with shorter text or try again later.');
                 } else if (error.response?.status === 500) {
                     console.error('🔧 Backend error during voice analysis:', error.response.data);
                     throw new Error('Voice analysis failed due to server error. Please try again in a moment.');
@@ -346,8 +351,9 @@ export const analyzeVoiceConsistencyDebounced = (
   debounceTimer = setTimeout(async () => {
     try {
       console.log('🚀 Sending voice analysis request to backend...');
-      console.log('🧠 Gemini AI will analyze character voice consistency');
-      console.log('⏳ Expected processing time: 30-60 seconds for complex dialogue');
+      console.log('🧠 Gemini 2.0 Flash will analyze character voice consistency');
+      console.log('⏳ Expected processing time: 1-4 minutes for complex dialogue');
+      console.log('💡 Please wait - analysis in progress...');
       console.log('📝 Request payload:', { 
         textLength: text.length, 
         textPreview: text.substring(0, 100) + '...',

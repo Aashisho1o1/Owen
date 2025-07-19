@@ -43,10 +43,10 @@ class GeminiService(BaseLLMService):
                 # Configure the generative AI client with the API key
                 genai.configure(api_key=self.api_key)
                 
-                # Use Gemini 1.5 Pro model for enhanced contextual understanding
-                self.model = genai.GenerativeModel('gemini-1.5-pro-latest')
+                # Use Gemini 2.0 Flash model for enhanced contextual understanding and faster processing
+                self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
                 
-                logger.info("✅ Gemini service initialized successfully with gemini-1.5-pro-latest")
+                logger.info("✅ Gemini service initialized successfully with gemini-2.0-flash-exp")
                 
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Gemini service: {e}")
@@ -99,10 +99,10 @@ class GeminiService(BaseLLMService):
         try:
             loop = asyncio.get_event_loop()
             
-            # Increased timeout for voice analysis
+            # Increased timeout for voice analysis - Gemini 2.0 Flash is faster but still needs time for complex analysis
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
-                timeout=45.0  # Increased from 8 to 45 seconds
+                timeout=120.0  # Increased to 2 minutes for complex voice analysis
             )
             
             if not response.text:
@@ -113,7 +113,7 @@ class GeminiService(BaseLLMService):
             return response.text
             
         except asyncio.TimeoutError:
-            logger.error("⏰ Gemini request timed out after 45 seconds")
+            logger.error("⏰ Gemini request timed out after 2 minutes")
             raise Exception("Gemini API timeout - please try with shorter text")
         except Exception as e:
             logger.error(f"❌ Gemini API error: {e}")

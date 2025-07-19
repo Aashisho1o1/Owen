@@ -34,8 +34,8 @@ const apiClient = axios.create({
   },
 });
 
-// Special timeout for voice analysis (Gemini can be slow)
-const VOICE_ANALYSIS_TIMEOUT = 180000; // 3 minutes for voice analysis
+// Special timeout for voice analysis (Gemini 2.0 Flash can be slow for complex analysis)
+const VOICE_ANALYSIS_TIMEOUT = 300000; // 5 minutes for voice analysis with buffer
 
 // Token refresh state management
 let isRefreshing = false;
@@ -116,8 +116,10 @@ apiClient.interceptors.request.use(
     
     // Special handling for voice analysis endpoints
     if (config.url?.includes('/character-voice/analyze')) {
-      console.log('🧠 Voice Analysis Request: Using extended timeout (60s)');
-      console.log('⏳ Processing with Gemini AI - this may take 30-60 seconds...');
+      console.log('🧠 Voice Analysis Request: Using extended timeout (5 minutes)');
+      console.log('🚀 Starting Gemini 2.0 Flash analysis...');
+      console.log('⏳ Processing with Gemini 2.0 - this may take 1-4 minutes for complex dialogue analysis...');
+      console.log('💡 Please wait - analyzing character voice consistency...');
       config.timeout = VOICE_ANALYSIS_TIMEOUT;
     }
     
