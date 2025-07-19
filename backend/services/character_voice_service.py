@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 
-from services.database import PostgreSQLService
+from services.database import get_db_service
 from services.llm.gemini_service import GeminiService
 from services.validation_service import SimpleInputValidator
 from services.security_logger import SecurityLogger, SecurityEventType, SecuritySeverity
@@ -83,8 +83,9 @@ class SimpleCharacterVoiceService:
     def __init__(self):
         try:
             print("🔧 Initializing CharacterVoiceService components...")
-            self.db = PostgreSQLService()
-            print("✅ Database service initialized")
+            # Use lazy database initialization to avoid import-time failures
+            self._db = None
+            print("✅ Database service will be initialized on first use")
             
             self.gemini_service = GeminiService()
             if not self.gemini_service.is_available():
@@ -104,6 +105,13 @@ class SimpleCharacterVoiceService:
             import traceback
             print(f"   Initialization error details: {traceback.format_exc()}")
             raise
+    
+    @property
+    def db(self):
+        """Lazy database service getter"""
+        if self._db is None:
+            self._db = get_db_service()
+        return self._db
         
         # Simple configuration
         self.config = {

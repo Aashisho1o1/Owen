@@ -594,5 +594,12 @@ class PostgreSQLService:
             logger.error(f"Failed to add user feedback: {e}")
             return False
 
-# Create global service instance
-db_service = PostgreSQLService() 
+# Global service instance - initialized lazily
+db_service = None
+
+def get_db_service():
+    """Get or create the database service instance"""
+    global db_service
+    if db_service is None:
+        db_service = PostgreSQLService()
+    return db_service 

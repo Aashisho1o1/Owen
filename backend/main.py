@@ -74,13 +74,13 @@ except Exception as e:
     sys.exit(1)
 
 try:
-    # Import our PostgreSQL services
-    from services.database import db_service
+    # Import our PostgreSQL services with lazy initialization
+    from services.database import get_db_service
     print("✅ Database service import successful")
 except Exception as e:
     print(f"❌ Database service import failed: {e}")
     # Continue without database for now
-    db_service = None
+    get_db_service = None
 
 # Import all routers with error handling
 routers_to_import = [
@@ -354,12 +354,17 @@ async def preflight_handler(path: str):
 async def root():
     """Root endpoint for Railway health checks"""
     try:
-        db_health = db_service.health_check()
+        if get_db_service:
+            db_health = get_db_service().health_check()
+            db_status = db_health['status']
+        else:
+            db_status = "unavailable"
+        
         return {
             "message": "DOG Writer - AI Writing Assistant MVP",
             "version": "3.1.0-REFACTORED",
             "status": "healthy",
-            "database": db_health['status'],
+            "database": db_status,
             "railway_deployment": "success",
             "architecture": "modular",
             "features": [
