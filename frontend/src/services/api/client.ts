@@ -8,13 +8,21 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 import { clearAuthTokens, getStoredTokens, refreshToken } from './auth';
 import { logger } from '../utils/logger';
 
-// Use VITE_API_URL from environment variables, with a fallback for local development
+// Use VITE_API_URL from environment variables - MUST be defined in .env file
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Validate environment variable is loaded
+if (!API_URL) {
+  console.error('❌ CRITICAL: VITE_API_URL is not defined in environment variables');
+  console.error('Please ensure your .env file contains VITE_API_URL=your_backend_url');
+  throw new Error('VITE_API_URL environment variable is required but not defined');
+}
 
 console.log('🌐 API Configuration:', {
   VITE_API_URL: import.meta.env.VITE_API_URL,
   API_URL,
-  NODE_ENV: import.meta.env.NODE_ENV
+  NODE_ENV: import.meta.env.NODE_ENV,
+  env_loaded: !!import.meta.env.VITE_API_URL
 });
 
 // Create axios instance with configuration

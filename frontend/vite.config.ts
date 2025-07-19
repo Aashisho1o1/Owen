@@ -53,11 +53,8 @@ export default defineConfig({
       }
     }
   },
-  // Ensure proper environment variable handling
-  define: {
-    // Explicitly define environment variables
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL)
-  },
+  // Environment variables are automatically loaded from .env files by Vite
+  // No need to explicitly define them here
   // Better error handling during development
   server: {
     port: 5174,

@@ -51,10 +51,15 @@ export interface UseChatReturn {
   fullResponse: string; 
 }
 
-// Configuration for the chat API
+// Configuration for the chat API - MUST be defined in .env file
+const chatApiUrl = import.meta.env.VITE_API_URL;
+if (!chatApiUrl) {
+  console.error('❌ CRITICAL: VITE_API_URL is not defined in useChat hook');
+  throw new Error('VITE_API_URL environment variable is required but not defined');
+}
+
 const CHAT_CONFIG = {
-  // Use VITE_API_URL from environment variables, with a fallback for local development
-  apiUrl: import.meta.env.VITE_API_URL,
+  apiUrl: chatApiUrl,
   endpoints: {
     chat: '/api/chat/stream',
     suggestions: '/api/chat/suggestions',

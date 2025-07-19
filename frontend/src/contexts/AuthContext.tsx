@@ -77,15 +77,23 @@ interface AuthContextType {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API Configuration
+// API Configuration - MUST be defined in .env file
 const rawApiUrl = import.meta.env.VITE_API_URL;
+
+// Validate environment variable is loaded
+if (!rawApiUrl) {
+  console.error('❌ CRITICAL: VITE_API_URL is not defined in AuthContext');
+  throw new Error('VITE_API_URL environment variable is required but not defined');
+}
+
 const API_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
 
 // Debug log to show which API URL is being used
-console.log('🌐 API Configuration:', { 
+console.log('🌐 AuthContext API Configuration:', { 
   VITE_API_URL: import.meta.env.VITE_API_URL,
   API_BASE_URL: API_URL,
-  mode: import.meta.env.MODE
+  mode: import.meta.env.MODE,
+  env_loaded: !!import.meta.env.VITE_API_URL
 });
 
 // Configure axios instance

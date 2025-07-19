@@ -44,8 +44,12 @@ class GrammarService {
   private readonly DEBOUNCE_MS = 1000;
 
   constructor() {
-    this.baseURL =
-      import.meta.env.VITE_API_URL;
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) {
+      console.error('❌ CRITICAL: VITE_API_URL is not defined in GrammarService');
+      throw new Error('VITE_API_URL environment variable is required but not defined');
+    }
+    this.baseURL = apiUrl;
   }
 
   /**
