@@ -375,6 +375,15 @@ export const analyzeVoiceConsistencyDebounced = (
         backendProcessingTime: response.data.processing_time_ms,
         frontendTotalTime: processingTime
       });
+      
+      // CRITICAL: Check if this is a real analysis or fallback
+      if (processingTime < 5000) { // Less than 5 seconds is suspicious for Gemini
+        console.warn('⚠️ SUSPICIOUS: Voice analysis completed very quickly (' + processingTime + 'ms)');
+        console.warn('💡 This might be a fallback response rather than real Gemini analysis');
+        console.warn('🔍 Check backend logs to verify if Gemini was actually called');
+      } else {
+        console.log('✅ Analysis timing looks realistic for Gemini processing (' + processingTime + 'ms)');
+      }
       console.log('📊 Full response data:', response.data);
       
       callback(response.data.results);
