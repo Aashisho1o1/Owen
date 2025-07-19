@@ -2,3 +2,41 @@
 @import "./styles/auth.css";
 @import "./styles/components.css";
 @import "./styles/enhanced-ui.css";
+
+/* Add CSS font smoothing for crisp text rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+/* Prevent text blur during transforms and animations */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* Specific fixes for editor and modal content */
+.highlightable-editor,
+.ProseMirror,
+.modal-content,
+.chat-container {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  will-change: auto;
+}
+
+/* Fix blurry text in transforms */
+.modal-overlay,
+.dropdown-content {
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+  transform: translateZ(0);
+}

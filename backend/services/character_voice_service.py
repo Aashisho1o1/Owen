@@ -99,19 +99,19 @@ class SimpleCharacterVoiceService:
         # Enhanced dialogue extraction patterns - Support both straight and curly quotes
         self.dialogue_patterns = [
             # Pattern 0: Basic quoted dialogue (FIXED - properly includes all quote types)
-            r'[""\'"]([^""\'"\n]{3,})[""\'"]',
+            r'[""\'"]([^""\'"\n]{10,})[""\'"]',
             
-            # Pattern 1: "Dialogue text," Speaker said (FIXED)
-            r'[""\'"]([^""\'"\n]{3,})[""\'"][,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            # Pattern 1: "Dialogue text," Speaker said (FIXED - better speaker capture)
+            r'[""\'"]([^""\'"\n]{10,})[""\'"][,.]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed)',
             
-            # Pattern 2: Speaker said, "Dialogue text" (FIXED)
-            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)[,.]?\s*[""\'"]([^""\'"\n]{3,})[""\'"]',
+            # Pattern 2: Speaker said, "Dialogue text" (FIXED - better speaker capture)
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed)[,.]?\s*[""\'"]([^""\'"\n]{10,})[""\'"]',
             
-            # Pattern 3: "Dialogue," he/she said (FIXED)
-            r'[""\'"]([^""\'"\n]{3,})[""\'"][,.]?\s*(he|she|it)\s+(?:said|asked|replied|whispered|shouted|murmured|declared|exclaimed|stated|mentioned|noted|observed|remarked|responded|answered|continued|added|interrupted|began|concluded|insisted|suggested|wondered|demanded|pleaded|begged|cried|laughed|sighed|muttered|growled|hissed|snapped|barked|roared|screamed|yelled|called|announced|proclaimed|revealed|admitted|confessed|explained|described|told|informed|warned|advised|reminded|promised|threatened|accused|blamed|criticized|praised|complimented|thanked|apologized|complained|protested|argued|debated|discussed|chatted|gossiped|joked|teased|flirted|comforted|consoled|encouraged|supported|agreed|disagreed|confirmed|denied|corrected|clarified|emphasized|stressed|repeated|echoed|quoted|paraphrased|summarized)',
+            # Pattern 3: "Dialogue," he/she said (FIXED - simpler pronouns only)
+            r'[""\'"]([^""\'"\n]{10,})[""\'"][,.]?\s*(he|she|it|they)\s+(?:said|asked|replied|whispered|shouted|murmured)',
             
             # Pattern 4: Simple "dialogue" with basic punctuation (FIXED)
-            r'[""\'"]([^""\'"\n]{3,})[.!?]?[""\'"]'
+            r'[""\'"]([^""\'"\n]{10,})[.!?]?[""\'"]'
         ]
         
         logger.info("Simple Character Voice Service initialized with Gemini")
@@ -152,6 +152,51 @@ class SimpleCharacterVoiceService:
             return True
         
         return False
+    
+    def _clean_character_name(self, name: str) -> str:
+        """Clean and validate character names"""
+        if not name:
+            return ""
+        
+        # Remove common parsing artifacts
+        name = name.strip()
+        
+        # Remove narrative text that got captured
+        narrative_indicators = [
+            'rolled their eyes but', 'looked at', 'turned to', 'walked to',
+            'sat down', 'stood up', 'moved toward', 'stepped back',
+            'nodded', 'shook', 'smiled', 'frowned', 'laughed', 'sighed'
+        ]
+        
+        for indicator in narrative_indicators:
+            if indicator in name.lower():
+                return ""
+        
+        # Only allow proper names (capitalized words)
+        words = name.split()
+        valid_words = []
+        
+        for word in words:
+            # Keep only capitalized words that look like names
+            if word and word[0].isupper() and word.isalpha() and len(word) > 1:
+                valid_words.append(word)
+            # Allow common pronouns
+            elif word.lower() in ['he', 'she', 'it', 'they']:
+                valid_words.append(word.title())
+        
+        # Join valid words
+        cleaned_name = ' '.join(valid_words)
+        
+        # Validate final name
+        if len(cleaned_name) < 2 or len(cleaned_name) > 50:
+            return ""
+        
+        # Don't allow names that are clearly not character names
+        invalid_names = ['The', 'A', 'An', 'This', 'That', 'These', 'Those']
+        if cleaned_name in invalid_names:
+            return ""
+        
+        return cleaned_name
     
     async def analyze_text_for_voice_consistency(
         self, 
@@ -318,6 +363,12 @@ class SimpleCharacterVoiceService:
                 # Skip if speaker is None or empty
                 if not speaker:
                     logger.debug(f"Skipping dialogue with no speaker: '{dialogue_text}'")
+                    continue
+                
+                # Clean and validate speaker name
+                speaker = self._clean_character_name(speaker)
+                if not speaker:
+                    logger.debug(f"Skipping dialogue with invalid speaker after cleaning: '{dialogue_text}'")
                     continue
                 
                 # Extract context
@@ -609,8 +660,8 @@ class SimpleCharacterVoiceService:
                 # Create result
                 result = VoiceConsistencyResult(
                     is_consistent=response.get('is_consistent', True),
-                    confidence_score=min(response.get('confidence_score', 0.8), 1.0),
-                    similarity_score=min(response.get('similarity_score', 0.8), 1.0),
+                    confidence_score=max(response.get('confidence_score', 0.8), 0.7),  # Minimum 0.7
+                    similarity_score=max(response.get('similarity_score', 0.8), 0.7),  # Minimum 0.7
                     character_name=profile.character_name,
                     flagged_text=segment.text,
                     explanation=response.get('explanation', 'Voice analysis completed'),
