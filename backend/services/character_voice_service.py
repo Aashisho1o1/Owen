@@ -214,8 +214,17 @@ class SimpleCharacterVoiceService:
             
             # Validate input - use validate_suggestion_text to avoid HTML escaping
             try:
-                text = self.validator.validate_suggestion_text(text, max_length=10000)
-                logger.info(f"✅ Text validation passed")
+                # CRITICAL: Strip HTML before processing to prevent corruption
+                import re
+                # Remove HTML tags properly
+                text_clean = re.sub(r'<[^>]+>', ' ', text)
+                # Decode HTML entities
+                text_clean = text_clean.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                # Normalize whitespace
+                text_clean = re.sub(r'\s+', ' ', text_clean).strip()
+                
+                text = self.validator.validate_suggestion_text(text_clean, max_length=10000)
+                logger.info(f"✅ Text validation passed - cleaned from {len(text)} to {len(text_clean)} characters")
             except Exception as e:
                 logger.error(f"❌ Text validation failed: {e}")
                 raise
@@ -580,7 +589,7 @@ class SimpleCharacterVoiceService:
             previous_dialogue = "\n".join([f'"{sample}"' for sample in profile.dialogue_samples[-5:]])
             
             prompt = f"""
-            Analyze if this new dialogue is consistent with the character's established voice pattern.
+            You are analyzing character voice consistency. Be CRITICAL and look for actual inconsistencies.
             
             Character: {profile.character_name}
             
@@ -590,25 +599,22 @@ class SimpleCharacterVoiceService:
             New dialogue to analyze:
             "{segment.text}"
             
-            Context: {segment.context_before} [...] {segment.context_after}
+            CRITICAL ANALYSIS - Look for these inconsistencies:
+            - Different vocabulary level (formal vs casual)
+            - Different sentence structure patterns  
+            - Different personality traits showing through speech
+            - Different regional/cultural speech patterns
+            - Different emotional expression styles
+            - Contradictory character voice elements
             
-            ANALYSIS CRITERIA:
-            - Compare vocabulary choice, sentence structure, and tone
-            - Look for personality consistency in how they express ideas
-            - Consider speech patterns, formality level, and distinctive phrases
-            - Only flag as inconsistent if there's a clear voice mismatch
-            - Minor variations are normal and should be marked as consistent
-            
-            RESPONSE REQUIREMENTS:
-            - Only mark as inconsistent if there's a significant voice pattern change
-            - Confidence should reflect how certain you are about the inconsistency
-            - Provide specific examples from the text to support your analysis
+            BE CRITICAL: Only mark as consistent if the voice truly matches the established pattern.
+            If there are ANY noticeable differences in how this character speaks, mark as inconsistent.
             
             Respond in JSON format:
             {{
                 "is_consistent": boolean,
-                "confidence_score": float (0.1-1.0),
-                "similarity_score": float (0.1-1.0),
+                "confidence_score": float (0.7-1.0),
+                "similarity_score": float (0.7-1.0),
                 "explanation": "specific explanation with examples from the text",
                 "suggestions": ["specific actionable suggestions"]
             }}
@@ -689,29 +695,27 @@ class SimpleCharacterVoiceService:
         try:
             # Create a general dialogue quality analysis prompt
             prompt = f"""
-            Analyze this dialogue for quality and effectiveness. Focus on whether it sounds natural and engaging.
+            You are analyzing dialogue quality. Be CRITICAL and identify real issues.
             
-            Dialogue to analyze: "{segment.text}"
-            Context: {segment.context_before} [...] {segment.context_after}
+            Character: {segment.speaker}
+            Dialogue: "{segment.text}"
             
-            ANALYSIS CRITERIA:
-            - Does the dialogue sound natural and believable?
-            - Is it clear what the speaker is trying to communicate?
-            - Does it advance the story or reveal character?
-            - Are there any awkward phrasings or unclear meanings?
+            CRITICAL ANALYSIS - Look for these problems:
+            - Unnatural or awkward phrasing
+            - Inconsistent character voice within this dialogue
+            - Poor word choices or unclear meaning
+            - Dialogue that doesn't sound like real speech
+            - Generic or bland character voice
             
-            RESPONSE REQUIREMENTS:
-            - Only mark as poor quality if there are clear issues with the dialogue
-            - Most dialogue should be marked as effective unless there are obvious problems
-            - Focus on constructive feedback that improves the writing
-            - Confidence should be high (0.7+) for clear assessments
+            BE CRITICAL: Mark as inconsistent (poor quality) if there are real issues.
+            Don't just mark everything as good - look for actual problems.
             
             Respond in JSON format:
             {{
                 "is_consistent": boolean,
                 "confidence_score": float (0.7-1.0),
                 "similarity_score": float (0.7-1.0),
-                "explanation": "specific feedback about dialogue quality",
+                "explanation": "specific assessment of what works or doesn't work",
                 "suggestions": ["specific ways to improve this dialogue"]
             }}
             """
@@ -789,31 +793,28 @@ class SimpleCharacterVoiceService:
         try:
             # Create a general dialogue quality analysis prompt
             prompt = f"""
-            Analyze this dialogue from a character named "{segment.speaker}". This is the first time we're analyzing this character's voice.
+            You are analyzing dialogue quality. Be CRITICAL and identify real issues.
             
             Character: {segment.speaker}
             Dialogue: "{segment.text}"
-            Context: {segment.context_before} [...] {segment.context_after}
             
-            ANALYSIS CRITERIA:
-            - Does this dialogue feel authentic for the character?
-            - Is the voice distinctive and well-developed?
-            - Does the dialogue reveal personality or advance the story?
-            - Are there any issues with naturalness or clarity?
+            CRITICAL ANALYSIS - Look for these problems:
+            - Unnatural or awkward phrasing
+            - Inconsistent character voice within this dialogue
+            - Poor word choices or unclear meaning
+            - Dialogue that doesn't sound like real speech
+            - Generic or bland character voice
             
-            RESPONSE REQUIREMENTS:
-            - Focus on establishing a baseline for this character's voice
-            - Most first-time dialogue should be marked as good unless clearly problematic
-            - Provide constructive feedback to help develop the character's voice
-            - Confidence should reflect how distinctive/well-developed the voice is
+            BE CRITICAL: Mark as inconsistent (poor quality) if there are real issues.
+            Don't just mark everything as good - look for actual problems.
             
             Respond in JSON format:
             {{
                 "is_consistent": boolean,
-                "confidence_score": float (0.6-1.0),
-                "similarity_score": float (0.6-1.0),
-                "explanation": "assessment of character voice quality and distinctiveness",
-                "suggestions": ["ways to strengthen this character's voice"]
+                "confidence_score": float (0.7-1.0),
+                "similarity_score": float (0.7-1.0),
+                "explanation": "specific assessment of what works or doesn't work",
+                "suggestions": ["specific ways to improve this dialogue"]
             }}
             """
             
