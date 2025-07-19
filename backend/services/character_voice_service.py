@@ -665,7 +665,7 @@ class SimpleCharacterVoiceService:
             if response and isinstance(response, dict):
                 # Create result
                 result = VoiceConsistencyResult(
-                    is_consistent=response.get('is_consistent', True),
+                    is_consistent=response.get('is_consistent', False),
                     confidence_score=max(response.get('confidence_score', 0.8), 0.7),  # Minimum 0.7
                     similarity_score=max(response.get('similarity_score', 0.8), 0.7),  # Minimum 0.7
                     character_name=profile.character_name,
@@ -760,7 +760,7 @@ class SimpleCharacterVoiceService:
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor
-                is_consistent = response.get('is_consistent', True)
+                is_consistent = response.get('is_consistent', False)
                 
                 result = VoiceConsistencyResult(
                     is_consistent=is_consistent,
@@ -858,7 +858,7 @@ class SimpleCharacterVoiceService:
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor
-                is_consistent = response.get('is_consistent', True)
+                is_consistent = response.get('is_consistent', False)
                 
                 result = VoiceConsistencyResult(
                     is_consistent=is_consistent,
