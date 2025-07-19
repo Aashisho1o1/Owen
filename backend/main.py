@@ -346,24 +346,8 @@ async def preflight_handler(path: str):
     """Handle CORS preflight requests for all paths"""
     return {"message": "OK"}
 
-# Test endpoints for debugging
-@app.get("/test")
-async def test_get():
-    """Test GET endpoint"""
-    from datetime import datetime
-    return {"message": "GET works", "timestamp": datetime.now().isoformat()}
-
-@app.post("/test")
-async def test_post(data: dict = None):
-    """Test POST endpoint"""
-    from datetime import datetime
-    return {"message": "POST works", "data": data, "timestamp": datetime.now().isoformat()}
-
-@app.post("/api/character-voice/test")
-async def test_character_voice_path():
-    """Test character voice path without authentication"""
-    from datetime import datetime
-    return {"message": "Character voice path works", "timestamp": datetime.now().isoformat()}
+# DEBUGGING: The character voice router is not being registered properly
+# The issue is likely in the router import chain - let's check dependencies
 
 # Health endpoints
 @app.get("/")

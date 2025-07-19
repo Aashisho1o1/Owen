@@ -11,7 +11,20 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from dependencies import get_current_user_id
+# CRITICAL FIX: Make dependencies import resilient to database failures
+try:
+    from dependencies import get_current_user_id
+    DEPENDENCIES_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ Dependencies import failed: {e}")
+    print("🔧 Character voice router will use fallback authentication")
+    DEPENDENCIES_AVAILABLE = False
+    
+    # Fallback dependency function
+    def get_current_user_id():
+        """Fallback authentication dependency"""
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Authentication service unavailable")
 from services.character_voice_service import CharacterVoiceService
 from models.schemas import (
     VoiceConsistencyRequest, VoiceConsistencyResponse, VoiceConsistencyResult,
