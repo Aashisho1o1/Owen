@@ -48,5 +48,4 @@ networkx==3.2.1
 spacy==3.7.2
 # Note: Run `python -m spacy download en_core_web_sm` after installation
 
-# Character voice consistency using Gemini (no heavy ML dependencies)
-# All character voice analysis is now handled by Gemini 1.5 Flash for simplicity and reliability
+# All character voice analysis is now handled by Gemini 2.5 Flash for simplicity and reliability

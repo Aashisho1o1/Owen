@@ -1,12 +1,12 @@
 /**
- * Character Voice Consistency API Service - Gemini Edition
+ * Character Voice Consistency API Service - Gemini 2.5 Flash Edition
  * 
- * Frontend service for character voice consistency detection using Gemini 1.5 Flash.
+ * Frontend service for character voice consistency detection using Gemini 2.5 Flash.
  * Integrates with the existing API client for authentication and error handling.
  * 
- * Gemini provides reliable character voice analysis through:
+ * Gemini 2.5 Flash provides reliable character voice analysis through:
  * - Natural language understanding for voice patterns
- * - Cost-effective analysis using Gemini 1.5 Flash
+ * - Cost-effective analysis
  * - Simple deployment with no complex ML dependencies
  * - Fast and accurate character voice consistency detection
  */

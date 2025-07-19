@@ -34,7 +34,7 @@ const apiClient = axios.create({
   },
 });
 
-// Special timeout for voice analysis (Gemini 2.0 Flash can be slow for complex analysis)
+// Special timeout for voice analysis (Gemini 2.5 Flash can be slow for complex analysis)
 const VOICE_ANALYSIS_TIMEOUT = 300000; // 5 minutes for voice analysis with buffer
 
 // Token refresh state management

@@ -46,7 +46,12 @@ class GeminiService(BaseLLMService):
                 # Use Gemini 2.5 Flash model for enhanced contextual understanding and faster processing
                 self.model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                logger.info("✅ Gemini service initialized successfully with gemini-2.5-flash")
+                # Set generation config for consistent responses
+                self.generation_config = genai.types.GenerationConfig(
+                    temperature=0.3
+                )
+                
+                logger.info("✅ Gemini service initialized successfully with gemini-2.5-flash and temperature=0.3")
                 
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Gemini service: {e}")
@@ -174,7 +179,10 @@ class GeminiService(BaseLLMService):
             
             # Increased timeout for voice analysis - Gemini 2.5 Flash is faster but still needs time for complex analysis
             response = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
+                loop.run_in_executor(None, lambda: self.model.generate_content(
+                    prompt,
+                    generation_config=self.generation_config
+                )),
                 timeout=300.0  # Increased to 5 minutes to match frontend expectations
             )
             

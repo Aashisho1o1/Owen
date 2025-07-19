@@ -1,15 +1,6 @@
 """
-Ultra-Simple Character Voice Consistency Service - Gemini Edition
-
-This service provides character voice consistency analysis using only Gemini 1.5 Flash.
-No complex ML dependencies, no TinyStyler, just pure Gemini-based analysis.
-
-Key Features:
-- Simple dialogue extraction using regex
-- Gemini-based character voice similarity analysis
-- Lightweight character profile storage
-- Fast deployment with minimal dependencies
-- Cost-effective using Gemini 1.5 Flash
+Ultra-Simple Character Voice Consistency Service - Gemini 2.5 Flash Edition
+This service provides character voice consistency analysis using only Gemini 2.5 Flash.
 """
 
 import re
@@ -76,7 +67,7 @@ class SimpleCharacterVoiceService:
     """
     Ultra-Simple Character Voice Consistency Service
     
-    Uses only Gemini 1.5 Flash for character voice analysis.
+    Uses only Gemini 2.5 Flash for character voice analysis.
     No complex ML dependencies, fast deployment, cost-effective.
     """
     
@@ -778,210 +769,130 @@ class SimpleCharacterVoiceService:
         segment: DialogueSegment, 
         user_id: int
     ) -> Optional[VoiceConsistencyResult]:
-        """Analyze dialogue quality when speaker is unknown"""
+        """Analyze dialogue for general quality when speaker is unknown"""
         try:
-            # Create a general dialogue quality analysis prompt
-            prompt = f"""
-            You are analyzing dialogue quality. Be CRITICAL and identify real issues.
-            
-            Character: {segment.speaker}
-            Dialogue: "{segment.text}"
-            
-            CRITICAL ANALYSIS - Look for these problems:
-            - Unnatural or awkward phrasing
-            - Inconsistent character voice within this dialogue
-            - Poor word choices or unclear meaning
-            - Dialogue that doesn't sound like real speech
-            - Generic or bland character voice
-            
-            BE CRITICAL: Mark as inconsistent (poor quality) if there are real issues.
-            Don't just mark everything as good - look for actual problems.
-            
-            Respond in JSON format:
-            {{
-                "is_consistent": boolean,
-                "confidence_score": float (0.7-1.0),
-                "similarity_score": float (0.7-1.0),
-                "explanation": "specific assessment of what works or doesn't work",
-                "suggestions": ["specific ways to improve this dialogue"]
-            }}
-            """
-            
-            # Use Gemini 1.5 Flash for analysis with timeout protection
+            # Use Gemini 2.5 Flash for analysis with timeout protection
             logger.info(f"🤖 Calling Gemini for quality analysis: Unknown Speaker")
-            import asyncio
-            try:
-                response = await asyncio.wait_for(
-                    self.gemini_service.generate_json_response(
-                        prompt, 
-                        max_tokens=400, 
-                        temperature=0.3
-                    ),
-                    timeout=180.0  # Increased to 3 minutes
-                )
-                logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
-            except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini quality analysis timed out after 4 minutes")
-                return VoiceConsistencyResult(
-                    is_consistent=False,
-                    confidence_score=0.3,
-                    similarity_score=0.3,
-                    character_name="Unknown Speaker",
-                    flagged_text=segment.text,
-                    explanation="Dialogue quality analysis timed out. This dialogue needs manual review.",
-                    suggestions=["Try analyzing smaller text segments", "Review this dialogue manually"],
-                    analysis_method='gemini_timeout_fallback'
-                )
-            except Exception as e:
-                logger.error(f"❌ Gemini quality analysis failed: {str(e)}")
-                return VoiceConsistencyResult(
-                    is_consistent=False,
-                    confidence_score=0.2,
-                    similarity_score=0.2,
-                    character_name="Unknown Speaker",
-                    flagged_text=segment.text,
-                    explanation=f"Dialogue quality analysis failed: {str(e)[:100]}... This dialogue needs manual review.",
-                    suggestions=["Try again later or check your internet connection", "Review this dialogue manually"],
-                    analysis_method='gemini_error_fallback'
-                )
             
-            if response and isinstance(response, dict):
-                # Create result - mark as inconsistent if dialogue quality is poor
-                # --- HEURISTIC FOR QUALITY ANALYSIS ---
-                raw_flag = response.get('is_consistent')
-                confidence = response.get('confidence_score', 0.0)
-                similarity = response.get('similarity_score', 0.0)
-                is_consistent = raw_flag if raw_flag is not None else False
-                if similarity < 0.75 or confidence < 0.7:
-                    is_consistent = False
-                # --------------------------------------
-
-                result = VoiceConsistencyResult(
-                    is_consistent=is_consistent,
-                    confidence_score=min(response.get('confidence_score', 0.6), 1.0),
-                    similarity_score=min(response.get('similarity_score', 0.6), 1.0),
-                    character_name="Unknown Speaker",
-                    flagged_text=segment.text,
-                    explanation=response.get('explanation', 'General dialogue quality analysis completed'),
-                    suggestions=response.get('suggestions', []),
-                    analysis_method='gemini_quality_analysis'
-                )
-                
-                logger.debug(f"Quality analysis - Unknown Speaker, "
-                           f"Quality: {result.is_consistent}, "
-                           f"Confidence: {result.confidence_score:.3f}")
-                
-                return result
+            prompt = self._get_gemini_quality_prompt(segment)
+            response = await asyncio.wait_for(
+                self.gemini_service.generate_json_response(
+                    prompt,
+                    max_tokens=500,
+                    temperature=0.4
+                ),
+                timeout=240.0 # 4 minute timeout for quality analysis
+            )
             
+            logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
+            if not response or not isinstance(response, dict):
+                return None
+            
+        except asyncio.TimeoutError:
+            logger.error(f"⏰ Gemini quality analysis timed out after 4 minutes")
+            return VoiceConsistencyResult(
+                is_consistent=False,
+                confidence_score=0.9,
+                similarity_score=0.0,
+                character_name=segment.speaker or "Unknown",
+                flagged_text=segment.text,
+                explanation="Dialogue quality analysis timed out. The AI is taking too long to respond.",
+                suggestions=["Try with a shorter piece of dialogue."],
+                analysis_method='gemini_timeout_fallback'
+            )
         except Exception as e:
-            logger.error(f"Error in dialogue quality analysis: {str(e)}")
+            logger.error(f"❌ Gemini quality analysis failed: {str(e)}")
+            return VoiceConsistencyResult(
+                is_consistent=False,
+                confidence_score=0.9,
+                similarity_score=0.0,
+                character_name=segment.speaker or "Unknown",
+                flagged_text=segment.text,
+                explanation=f"An error occurred during dialogue quality analysis: {str(e)}",
+                suggestions=["Please try again later."],
+                analysis_method='gemini_error_fallback'
+            )
+            
+        # Process response...
+        is_consistent = response.get('is_consistent', True) # Assume consistent if quality is good
+        explanation = response.get('explanation', 'General dialogue quality analysis.')
+        suggestions = response.get('suggestions', [])
         
-        return None
-    
+        return VoiceConsistencyResult(
+            is_consistent=is_consistent,
+            confidence_score=response.get('confidence_score', 0.8),
+            similarity_score=0.0,
+            character_name=segment.speaker,
+            flagged_text=segment.text,
+            explanation=explanation,
+            suggestions=suggestions,
+            analysis_method='gemini_quality_analysis'
+        )
+
     async def _analyze_dialogue_first_time(
         self, 
         segment: DialogueSegment, 
         user_id: int
     ) -> Optional[VoiceConsistencyResult]:
-        """Analyze dialogue for first-time character appearance"""
+        """Analyze dialogue for a character seen for the first time"""
         try:
-            # Create a general dialogue quality analysis prompt
-            prompt = f"""
-            You are analyzing dialogue quality. Be CRITICAL and identify real issues.
+            # Use Gemini 2.5 Flash for analysis with timeout protection
+            logger.info(f"🤖 Calling Gemini for first-time analysis: {segment.speaker}")
             
-            Character: {segment.speaker}
-            Dialogue: "{segment.text}"
+            prompt = self._get_gemini_first_time_prompt(segment)
+            response = await asyncio.wait_for(
+                self.gemini_service.generate_json_response(
+                    prompt,
+                    max_tokens=500,
+                    temperature=0.4
+                ),
+                timeout=240.0 # 4 minute timeout for first-time analysis
+            )
             
-            CRITICAL ANALYSIS - Look for these problems:
-            - Unnatural or awkward phrasing
-            - Inconsistent character voice within this dialogue
-            - Poor word choices or unclear meaning
-            - Dialogue that doesn't sound like real speech
-            - Generic or bland character voice
+            logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
+            if not response or not isinstance(response, dict):
+                return None
             
-            BE CRITICAL: Mark as inconsistent (poor quality) if there are real issues.
-            Don't just mark everything as good - look for actual problems.
-            
-            Respond in JSON format:
-            {{
-                "is_consistent": boolean,
-                "confidence_score": float (0.7-1.0),
-                "similarity_score": float (0.7-1.0),
-                "explanation": "specific assessment of what works or doesn't work",
-                "suggestions": ["specific ways to improve this dialogue"]
-            }}
-            """
-            
-            # Use Gemini 1.5 Flash for analysis with timeout protection
-            logger.info(f"�� Calling Gemini for first-time analysis: {segment.speaker}")
-            import asyncio
-            try:
-                response = await asyncio.wait_for(
-                    self.gemini_service.generate_json_response(
-                        prompt, 
-                        max_tokens=400, 
-                        temperature=0.3
-                    ),
-                    timeout=180.0  # Increased to 3 minutes
-                )
-                logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
-            except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini first-time analysis timed out after 4 minutes for {segment.speaker}")
-                return VoiceConsistencyResult(
-                    is_consistent=False,
-                    confidence_score=0.3,
-                    similarity_score=0.3,
-                    character_name=segment.speaker,
-                    flagged_text=segment.text,
-                    explanation="First-time dialogue analysis timed out. This dialogue needs manual review.",
-                    suggestions=["Try analyzing smaller text segments", "Review this dialogue manually"],
-                    analysis_method='gemini_timeout_fallback'
-                )
-            except Exception as e:
-                logger.error(f"❌ Gemini first-time analysis failed for {segment.speaker}: {str(e)}")
-                return VoiceConsistencyResult(
-                    is_consistent=False,
-                    confidence_score=0.2,
-                    similarity_score=0.2,
-                    character_name=segment.speaker,
-                    flagged_text=segment.text,
-                    explanation=f"First-time dialogue analysis failed: {str(e)[:100]}... This dialogue needs manual review.",
-                    suggestions=["Try again later or check your internet connection", "Review this dialogue manually"],
-                    analysis_method='gemini_error_fallback'
-                )
-            
-            if response and isinstance(response, dict):
-                # Create result - mark as inconsistent if dialogue quality is poor
-                # --- HEURISTIC FOR FIRST-TIME ANALYSIS ---
-                raw_flag = response.get('is_consistent')
-                confidence = response.get('confidence_score', 0.0)
-                similarity = response.get('similarity_score', 0.0)
-                is_consistent = raw_flag if raw_flag is not None else False
-                if similarity < 0.75 or confidence < 0.7:
-                    is_consistent = False
-                # -------------------------------------------
-
-                result = VoiceConsistencyResult(
-                    is_consistent=is_consistent,
-                    confidence_score=min(response.get('confidence_score', 0.7), 1.0),
-                    similarity_score=min(response.get('similarity_score', 0.7), 1.0),
-                    character_name=segment.speaker,
-                    flagged_text=segment.text,
-                    explanation=response.get('explanation', 'First-time character analysis completed'),
-                    suggestions=response.get('suggestions', []),
-                    analysis_method='gemini_first_time_analysis'
-                )
-                
-                logger.debug(f"First-time analysis - Character: {segment.speaker}, "
-                           f"Quality: {result.is_consistent}, "
-                           f"Confidence: {result.confidence_score:.3f}")
-                
-                return result
-            
+        except asyncio.TimeoutError:
+            logger.error(f"⏰ Gemini first-time analysis timed out after 4 minutes for {segment.speaker}")
+            return VoiceConsistencyResult(
+                is_consistent=False,
+                confidence_score=0.9,
+                similarity_score=0.0,
+                character_name=segment.speaker,
+                flagged_text=segment.text,
+                explanation="First-time character analysis timed out. The AI is taking too long to respond.",
+                suggestions=["Try with a shorter piece of dialogue."],
+                analysis_method='gemini_timeout_fallback'
+            )
         except Exception as e:
-            logger.error(f"Error in first-time dialogue analysis: {str(e)}")
+            logger.error(f"❌ Gemini first-time analysis failed for {segment.speaker}: {str(e)}")
+            return VoiceConsistencyResult(
+                is_consistent=False,
+                confidence_score=0.9,
+                similarity_score=0.0,
+                character_name=segment.speaker,
+                flagged_text=segment.text,
+                explanation=f"An error occurred during first-time analysis for {segment.speaker}: {str(e)}",
+                suggestions=["Please try again later."],
+                analysis_method='gemini_error_fallback'
+            )
+            
+        # Process response...
+        is_consistent = response.get('is_consistent', True) # First time is always "consistent"
+        explanation = response.get('explanation', f'Initial voice analysis for {segment.speaker}.')
+        suggestions = response.get('suggestions', [])
         
-        return None
+        return VoiceConsistencyResult(
+            is_consistent=is_consistent,
+            confidence_score=response.get('confidence_score', 0.8),
+            similarity_score=0.0,
+            character_name=segment.speaker,
+            flagged_text=segment.text,
+            explanation=explanation,
+            suggestions=suggestions,
+            analysis_method='gemini_first_time_analysis'
+        )
     
     async def _update_character_profiles(self, segments: List[DialogueSegment], user_id: int):
         """Update character profiles with new dialogue samples"""
