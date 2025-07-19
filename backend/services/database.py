@@ -69,8 +69,11 @@ class PostgreSQLService:
             # Connection pool settings - OPTIMIZED for Railway PostgreSQL limits
             # Railway PostgreSQL typically allows 22-100 connections total
             # We need to be very conservative to prevent exhaustion
-            min_conn = 1  # Reduced from 2 to 1
-            max_conn = 1  # Temporary for testing
+            # Railway usually allows ~20 connections for the whole service. Using a tiny pool (1) causes
+            # dead-locks when two concurrent queries are executed (e.g. auth + service logic).
+            # We use 1 idle connection and allow up to 5 concurrent short-lived ones.
+            min_conn = 1
+            max_conn = 5  # Conservative upper bound to stay well below Railway hard-limit
             
             self.pool = ThreadedConnectionPool(
                 minconn=min_conn,
@@ -207,8 +210,27 @@ class PostgreSQLService:
                 conn.set_session(autocommit=False, readonly=False)
                 conn.set_client_encoding('UTF8')
                 
+                # ---------- BEGIN critical section given to the caller ----------
                 yield conn
-                conn.commit()
+                # ---------- END critical section -------------------------------
+                # Commit any pending work performed by the caller
+                try:
+                    conn.commit()
+                except Exception as commit_err:
+                    logger.warning(f"Commit failed – attempting rollback: {commit_err}")
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                # Return the connection to the pool *exactly once* and mark as handled
+                try:
+                    if hasattr(conn, 'closed') and not conn.closed:
+                        self.pool.putconn(conn)
+                    else:
+                        # If connection became closed, dispose of it so the pool can open a fresh one
+                        self.pool.putconn(conn, close=True)
+                finally:
+                    conn = None
                 break  # Success, exit retry loop
                 
             except OperationalError as e:
@@ -243,13 +265,10 @@ class PostgreSQLService:
                 # CRITICAL: Always return connection to pool to prevent leaks
                 if conn:
                     try:
-                        # RAILWAY FIX: Check if connection is still valid before returning to pool
-                        if hasattr(conn, 'closed') and not conn.closed:
-                            self.pool.putconn(conn)
-                        else:
-                            # Connection is closed, close it properly instead of returning to pool
-                            logger.warning("Connection was closed, disposing instead of returning to pool")
+                        if hasattr(conn, 'closed') and conn.closed:
                             self.pool.putconn(conn, close=True)
+                        else:
+                            self.pool.putconn(conn)
                     except Exception as cleanup_error:
                         logger.error(f"Failed to return connection to pool: {cleanup_error}")
                         # If returning to pool fails, try to close the connection directly
