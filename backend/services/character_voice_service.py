@@ -81,10 +81,29 @@ class SimpleCharacterVoiceService:
     """
     
     def __init__(self):
-        self.db = PostgreSQLService()
-        self.gemini_service = GeminiService()
-        self.validator = SimpleInputValidator()
-        self.security_logger = SecurityLogger()
+        try:
+            print("🔧 Initializing CharacterVoiceService components...")
+            self.db = PostgreSQLService()
+            print("✅ Database service initialized")
+            
+            self.gemini_service = GeminiService()
+            if not self.gemini_service.is_available():
+                raise Exception("Gemini service is not available - check API key configuration")
+            print("✅ Gemini service initialized and available")
+            
+            self.validator = SimpleInputValidator()
+            print("✅ Input validator initialized")
+            
+            self.security_logger = SecurityLogger()
+            print("✅ Security logger initialized")
+            
+            print("✅ CharacterVoiceService initialization completed successfully")
+            
+        except Exception as e:
+            print(f"❌ CharacterVoiceService initialization failed: {e}")
+            import traceback
+            print(f"   Initialization error details: {traceback.format_exc()}")
+            raise
         
         # Simple configuration
         self.config = {
@@ -626,17 +645,19 @@ class SimpleCharacterVoiceService:
             # Add timeout protection at service level to prevent hanging
             import asyncio
             try:
+                logger.info(f"🚀 Calling Gemini generate_json_response for {segment.speaker}...")
                 response = await asyncio.wait_for(
                     self.gemini_service.generate_json_response(
                         prompt, 
                         max_tokens=400, 
                         temperature=0.3
                     ),
-                    timeout=240.0  # Increased to 4 minutes for Gemini 2.5 Flash complex analysis
+                    timeout=300.0  # Increased to 5 minutes to match frontend expectations
                 )
-                logger.info(f"✅ Gemini 2.5 Flash response received for {segment.speaker}: {type(response)}")
+                logger.info(f"✅ Gemini 2.5 Flash JSON response received for {segment.speaker}: {type(response)}")
+                logger.info(f"📊 Response keys: {list(response.keys()) if isinstance(response, dict) else 'Not a dict'}")
             except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini 2.5 Flash analysis timed out after 4 minutes for {segment.speaker}")
+                logger.error(f"⏰ Gemini 2.5 Flash analysis timed out after 5 minutes for {segment.speaker}")
                 # Return a more realistic "needs review" result instead of failing
                 return VoiceConsistencyResult(
                     is_consistent=False,  # Changed to False to indicate needs review
@@ -663,38 +684,86 @@ class SimpleCharacterVoiceService:
                 )
             
             if response and isinstance(response, dict):
-                # --- NEW HEURISTIC -------------------------------------------------
+                logger.info(f"📊 Processing Gemini response for {segment.speaker}")
+                
+                # --- ROBUST RESPONSE PROCESSING -------------------------------------------------
                 raw_flag = response.get('is_consistent')
                 confidence = response.get('confidence_score', 0.0)
                 similarity = response.get('similarity_score', 0.0)
-                # Default to False if Gemini omitted the flag
-                is_consistent = raw_flag if raw_flag is not None else False
-                # Treat low-confidence / low-similarity as inconsistent
+                explanation = response.get('explanation', 'Voice analysis completed by Gemini 2.5 Flash')
+                suggestions = response.get('suggestions', [])
+                
+                # Validate and sanitize the response data
+                if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
+                    logger.warning(f"Invalid confidence score: {confidence}, defaulting to 0.5")
+                    confidence = 0.5
+                
+                if not isinstance(similarity, (int, float)) or similarity < 0 or similarity > 1:
+                    logger.warning(f"Invalid similarity score: {similarity}, defaulting to 0.5")
+                    similarity = 0.5
+                
+                if not isinstance(suggestions, list):
+                    logger.warning(f"Invalid suggestions format: {type(suggestions)}, defaulting to empty list")
+                    suggestions = []
+                
+                # Default to False if Gemini omitted the flag or returned invalid value
+                is_consistent = raw_flag if isinstance(raw_flag, bool) else False
+                
+                # Treat low-confidence / low-similarity as inconsistent (quality heuristic)
                 if similarity < 0.75 or confidence < 0.7:
                     is_consistent = False
-                # ----------------------------------------------------------------
+                    logger.info(f"🔍 Marking as inconsistent due to low scores - confidence: {confidence:.3f}, similarity: {similarity:.3f}")
+                # ---------------------------------------------------------------------------------
 
                 result = VoiceConsistencyResult(
                     is_consistent=is_consistent,
-                    confidence_score=confidence,  # Use actual confidence from Gemini 2.0
-                    similarity_score=similarity,  # Use actual similarity from Gemini 2.0
+                    confidence_score=confidence,
+                    similarity_score=similarity,
                     character_name=profile.character_name if profile else segment.speaker,
                     flagged_text=segment.text,
-                    explanation=response.get('explanation', 'Voice analysis completed by Gemini 2.0 Flash'),
-                    suggestions=response.get('suggestions', []),
+                    explanation=explanation,
+                    suggestions=suggestions[:3],  # Limit to 3 suggestions for UI
                     analysis_method='gemini_2_5_voice_analysis'
                 )
                 
-                logger.debug(f"Gemini analysis - Character: {profile.character_name if profile else segment.speaker}, "
+                logger.info(f"✅ Gemini analysis complete - Character: {profile.character_name if profile else segment.speaker}, "
                            f"Consistent: {result.is_consistent}, "
-                           f"Confidence: {result.confidence_score:.3f}")
+                           f"Confidence: {result.confidence_score:.3f}, "
+                           f"Similarity: {result.similarity_score:.3f}")
                 
                 return result
+            else:
+                logger.error(f"❌ Invalid Gemini response format for {segment.speaker}: {type(response)}")
+                logger.error(f"   Response content: {str(response)[:200]}...")
+                
+                # Return a fallback result for invalid responses
+                return VoiceConsistencyResult(
+                    is_consistent=False,
+                    confidence_score=0.1,
+                    similarity_score=0.1,
+                    character_name=segment.speaker,
+                    flagged_text=segment.text,
+                    explanation="Voice analysis failed due to invalid AI response format. This dialogue needs manual review.",
+                    suggestions=["Try analyzing this text again", "Review this dialogue manually"],
+                    analysis_method='gemini_invalid_response_fallback'
+                )
             
         except Exception as e:
-            logger.error(f"Error in Gemini dialogue analysis: {str(e)}")
-        
-        return None
+            logger.error(f"❌ Unexpected error in Gemini dialogue analysis: {str(e)}")
+            import traceback
+            logger.error(f"   Error traceback: {traceback.format_exc()}")
+            
+            # Always return a result, never None
+            return VoiceConsistencyResult(
+                is_consistent=False,
+                confidence_score=0.1,
+                similarity_score=0.1,
+                character_name=segment.speaker,
+                flagged_text=segment.text,
+                explanation=f"Voice analysis encountered an unexpected error: {str(e)[:100]}... This dialogue needs manual review.",
+                suggestions=["Try analyzing this text again later", "Review this dialogue manually"],
+                analysis_method='gemini_unexpected_error_fallback'
+            )
     
     async def _analyze_dialogue_quality_only(
         self, 

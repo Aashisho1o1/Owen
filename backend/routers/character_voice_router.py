@@ -68,7 +68,15 @@ def get_character_voice_service():
     """Get character voice service instance with lazy initialization"""
     global character_voice_service
     if character_voice_service is None:
-        character_voice_service = CharacterVoiceService()
+        try:
+            print("🔧 Initializing CharacterVoiceService...")
+            character_voice_service = CharacterVoiceService()
+            print("✅ CharacterVoiceService initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize CharacterVoiceService: {e}")
+            import traceback
+            print(f"   Error details: {traceback.format_exc()}")
+            raise Exception(f"Character voice service initialization failed: {e}")
     return character_voice_service
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
@@ -170,17 +178,41 @@ async def analyze_voice_consistency(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in voice consistency analysis: {str(e)}")
+        logger.error(f"❌ Error in voice consistency analysis: {str(e)}")
+        logger.error(f"❌ Error Type: {type(e).__name__}")
+        import traceback
+        logger.error(f"❌ Error Traceback: {traceback.format_exc()}")
+        
+        # Log more detailed error context
         security_logger.log_security_event(
             SecurityEventType.SUSPICIOUS_ACTIVITY,
             SecuritySeverity.HIGH,
             user_id=effective_user_id,
             ip_address=client_ip,
-            details={"error": str(e), "endpoint": "analyze_voice_consistency"}
+            details={
+                "error": str(e), 
+                "error_type": type(e).__name__,
+                "endpoint": "analyze_voice_consistency",
+                "text_length": len(request.text),
+                "traceback": traceback.format_exc()
+            }
         )
+        
+        # Provide more specific error messages based on error type
+        if "timeout" in str(e).lower():
+            detail = "Voice analysis timed out. Please try with shorter text or try again later."
+        elif "gemini" in str(e).lower() or "api" in str(e).lower():
+            detail = "AI service temporarily unavailable. Please try again in a moment."
+        elif "database" in str(e).lower():
+            detail = "Database connection error. Please try again."
+        elif "initialization" in str(e).lower():
+            detail = "Voice analysis service is starting up. Please try again in a moment."
+        else:
+            detail = "Internal server error during voice analysis"
+            
         raise HTTPException(
             status_code=500,
-            detail="Internal server error during voice analysis"
+            detail=detail
         )
 
 

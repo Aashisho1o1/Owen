@@ -102,7 +102,7 @@ class GeminiService(BaseLLMService):
             # Increased timeout for voice analysis - Gemini 2.5 Flash is faster but still needs time for complex analysis
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
-                timeout=120.0  # Increased to 2 minutes for complex voice analysis
+                timeout=300.0  # Increased to 5 minutes to match frontend expectations
             )
             
             if not response.text:
@@ -113,7 +113,7 @@ class GeminiService(BaseLLMService):
             return response.text
             
         except asyncio.TimeoutError:
-            logger.error("⏰ Gemini 2.5 Flash request timed out after 2 minutes")
+            logger.error("⏰ Gemini 2.5 Flash request timed out after 5 minutes")
             raise Exception("Gemini 2.5 Flash API timeout - please try with shorter text")
         except Exception as e:
             logger.error(f"❌ Gemini API error: {e}")
