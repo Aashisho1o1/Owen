@@ -71,23 +71,43 @@ export interface VoiceAnalysisStats {
 export const analyzeVoiceConsistency = async (
   request: VoiceConsistencyRequest
 ): Promise<VoiceConsistencyResponse> => {
-    // NEW: Add retry logic
+    console.log('🧠 Starting voice analysis with Gemini AI...');
+    console.log('⏳ This may take 30-60 seconds for complex dialogue analysis');
+    
+    // NEW: Add retry logic with better error messages
     const maxRetries = 2;
     let attempts = 0;
     while (attempts <= maxRetries) {
         try {
+            console.log(`🚀 Voice analysis attempt ${attempts + 1}/${maxRetries + 1}`);
             const response = await apiClient.post<VoiceConsistencyResponse>('/api/character-voice/analyze', request);
+            console.log('✅ Voice analysis completed successfully!');
             return response.data;
         } catch (error) {
             attempts++;
+            console.log(`❌ Voice analysis attempt ${attempts} failed:`, error.message);
+            
             if (attempts > maxRetries) {
-                throw new Error('Voice analysis failed after retries. Please try again later.');
+                // Provide specific error messages based on error type
+                if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                    console.error('⏰ Voice analysis timed out - Gemini API is taking too long');
+                    throw new Error('Voice analysis timed out. Gemini AI is processing complex dialogue. Please try with shorter text or try again later.');
+                } else if (error.response?.status === 500) {
+                    console.error('🔧 Backend error during voice analysis:', error.response.data);
+                    throw new Error('Voice analysis failed due to server error. Please try again in a moment.');
+                } else {
+                    console.error('🌐 Network or API error during voice analysis');
+                    throw new Error('Voice analysis failed. Please check your connection and try again.');
+                }
             }
-            // Exponential backoff
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
+            
+            // Exponential backoff with progress message
+            const delay = Math.pow(2, attempts) * 1000;
+            console.log(`⏳ Retrying voice analysis in ${delay/1000} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
-    throw new Error('Voice analysis unavailable');
+    throw new Error('Voice analysis unavailable after multiple attempts');
 };
 
 /**
@@ -326,23 +346,28 @@ export const analyzeVoiceConsistencyDebounced = (
   debounceTimer = setTimeout(async () => {
     try {
       console.log('🚀 Sending voice analysis request to backend...');
+      console.log('🧠 Gemini AI will analyze character voice consistency');
+      console.log('⏳ Expected processing time: 30-60 seconds for complex dialogue');
       console.log('📝 Request payload:', { 
         textLength: text.length, 
         textPreview: text.substring(0, 100) + '...',
         endpoint: '/api/character-voice/analyze'
       });
       
+      const startTime = Date.now();
       const response = await apiClient.post<VoiceConsistencyResponse>('/api/character-voice/analyze', {
         text,
         document_id: undefined
       });
+      const processingTime = Date.now() - startTime;
       
       console.log('✅ Voice analysis response received:', {
         status: response.status,
         resultsCount: response.data.results.length,
         charactersAnalyzed: response.data.characters_analyzed,
         dialogueSegmentsFound: response.data.dialogue_segments_found,
-        processingTime: response.data.processing_time_ms
+        backendProcessingTime: response.data.processing_time_ms,
+        frontendTotalTime: processingTime
       });
       console.log('📊 Full response data:', response.data);
       
@@ -350,15 +375,24 @@ export const analyzeVoiceConsistencyDebounced = (
     } catch (error) {
       console.error('❌ Voice analysis error:', error);
       
-      // Enhanced error logging
+      // Enhanced error logging with specific handling
       if (error.response) {
         console.error('❌ Response error:', {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
         });
+        
+        if (error.response.status === 500) {
+          console.error('🔧 Server Error: Backend processing failed');
+          console.error('💡 This could be due to Gemini API issues or backend timeout');
+        }
       } else if (error.request) {
         console.error('❌ Request error (no response):', error.request);
+        console.error('🌐 Network issue: Request was made but no response received');
+      } else if (error.code === 'ECONNABORTED') {
+        console.error('⏰ Request timeout: Gemini AI processing took too long');
+        console.error('💡 Try with shorter text or wait and retry');
       } else {
         console.error('❌ Setup error:', error.message);
       }

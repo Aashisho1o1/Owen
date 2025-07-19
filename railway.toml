@@ -10,10 +10,7 @@ restartPolicyMaxRetries = 10
 [deploy.healthcheckPath]
 path = "/api/health"
 
-# DEBUGGING MODE - Use simple startup script with diagnostics
+# PRODUCTION MODE - Direct server startup
 [environments.production]
-startCommand = "cd backend && chmod +x start_simple.sh && ./start_simple.sh"
-buildCommand = "cd backend && pip install -r requirements.txt"
-
-# Remove development environment to prevent confusion
-# Railway should always use production configuration for deployment 
+startCommand = "cd backend && chmod +x start.sh && ./start.sh"
+buildCommand = "cd backend && pip install -r requirements.txt" 

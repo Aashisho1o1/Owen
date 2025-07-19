@@ -17,14 +17,17 @@ console.log('🌐 API Configuration:', {
   NODE_ENV: import.meta.env.NODE_ENV
 });
 
-// Create axios instance
+// Create axios instance with configuration
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 25000, // Reduced from 30000 to 25000 (25 seconds) to work with backend timeout
+  timeout: 30000, // Default 30 seconds
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Special timeout for voice analysis (Gemini can be slow)
+const VOICE_ANALYSIS_TIMEOUT = 60000; // 60 seconds for voice analysis
 
 // Token refresh state management
 let isRefreshing = false;
@@ -84,21 +87,25 @@ const refreshTokens = async (): Promise<string | null> => {
   }
 };
 
-// Request interceptor to add auth token
+// Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    const { accessToken, tokenType } = getStoredTokens();
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     
-    if (accessToken) {
-      config.headers.Authorization = `${tokenType} ${accessToken}`;
+    // Special handling for voice analysis endpoints
+    if (config.url?.includes('/character-voice/analyze')) {
+      console.log('🧠 Voice Analysis Request: Using extended timeout (60s)');
+      console.log('⏳ Processing with Gemini AI - this may take 30-60 seconds...');
+      config.timeout = VOICE_ANALYSIS_TIMEOUT;
     }
     
-    console.log('🚀 API Request:', config.method?.toUpperCase(), config.url);
+    const token = getStoredTokens().accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor to handle 401 errors with token refresh

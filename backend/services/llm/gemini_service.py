@@ -120,33 +120,44 @@ class GeminiService(BaseLLMService):
             'client_type': 'google.generativeai'
         }
     
-    async def generate_response(
-        self,
-        prompt: str,
-        max_tokens: int = 500,
-        temperature: float = 0.7,
-        **kwargs
-    ) -> str:
-        """Generate a response using Gemini with optimized fast models (2.0-flash-exp primary)."""
-        if not self.is_available():
-            raise LLMError("Gemini service not available")
+    async def generate_response(self, prompt: str, max_tokens: int = 500) -> str:
+        """Generate response using Gemini with optimized settings"""
+        if not self.available:
+            raise Exception("Gemini service not available")
+        
+        if not self.model:
+            raise Exception("Gemini model not initialized")
+        
+        # Truncate input to prevent timeouts
+        if len(prompt) > 1000:
+            logger.info(f"🔧 Truncating prompt from {len(prompt)} to 1000 characters")
+            prompt = prompt[:1000] + ' [TRUNCATED FOR PROCESSING SPEED]'
+        
+        logger.info(f"🧠 Gemini processing request (length: {len(prompt)} chars)")
+        logger.info("⏳ Expected processing time: 15-45 seconds")
         
         try:
-            # NEW: Truncate input to prevent timeouts with large text
-            if len(prompt) > 1000:
-                prompt = prompt[:1000] + " [TRUNCATED]"
-            loop = asyncio.get_running_loop()
+            loop = asyncio.get_event_loop()
+            
+            # Increased timeout for voice analysis
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
-                timeout=8.0  # REDUCED: Stricter timeout for faster failure
+                timeout=45.0  # Increased from 8 to 45 seconds
             )
+            
+            if not response.text:
+                logger.warning("⚠️ Gemini returned empty response")
+                raise Exception("Gemini returned empty response")
+            
+            logger.info(f"✅ Gemini response generated (length: {len(response.text)} chars)")
             return response.text
+            
         except asyncio.TimeoutError:
-            logger.warning("Gemini primary call timed out")
-            return "[TIMEOUT] Voice analysis took too long - please try shorter text"
+            logger.error("⏰ Gemini request timed out after 45 seconds")
+            raise Exception("Gemini API timeout - please try with shorter text")
         except Exception as e:
-            logger.error(f"Gemini generation failed: {e}")
-            raise
+            logger.error(f"❌ Gemini API error: {e}")
+            raise Exception(f"Gemini API error: {str(e)}")
             
         except Exception as e:
             current_model = self.available_models[0] if self.available_models else 'unknown'
@@ -157,7 +168,7 @@ class GeminiService(BaseLLMService):
                 "prompt_length": len(prompt), 
                 "model": current_model,
                 "max_tokens": max_tokens,
-                "temperature": temperature
+                "temperature": 0.7 # Default temperature for generation
             }
             context_str = str(context_info)
             
