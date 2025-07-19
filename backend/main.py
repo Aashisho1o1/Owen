@@ -294,28 +294,14 @@ logger.info(f"🔐 CORS: Production origins: {[o for o in ALLOWED_ORIGINS if 'lo
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,  # Required for authentication tokens
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "Authorization", 
-        "Content-Type", 
-        "X-Requested-With",
-        "Accept",
-        "Accept-Language", 
-        "Content-Language",
-        "Origin",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers",
-        # Security headers
-        "X-CSRF-Token",
-        "X-Requested-With"
-    ],
-    expose_headers=[
-        "X-Total-Count",
-        "X-Rate-Limit-Remaining", 
-        "X-Rate-Limit-Reset"
-    ],  # Only expose necessary headers for security
+    allow_origins=[origin for origin in ALLOWED_ORIGINS if origin],
+    allow_credentials=True,
+    # CRITICAL FIX: Add "POST", "PUT", and "DELETE" to allow all necessary API methods
+    # This was the root cause of the 405 Method Not Allowed error
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+    # Add a max_age to cache preflight responses for better performance
+    max_age=600 # Cache for 10 minutes
 )
 
 # Add security middleware AFTER CORS middleware (if available)
