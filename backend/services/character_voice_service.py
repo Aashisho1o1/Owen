@@ -1113,27 +1113,42 @@ class SimpleCharacterVoiceService:
     
     async def get_service_health(self) -> Dict[str, Any]:
         """Get service health status"""
+        logger.info("🩺 Performing full service health check...")
+        
+        # Test database connection
+        db_health = {"status": "unhealthy", "details": "Not checked"}
         try:
-            # Test database connection
-            db_healthy = self.db.health_check()['status'] == 'healthy'
-            
-            # Test Gemini service
-            gemini_healthy = self.gemini_service.is_available()
-            
-            # Service is healthy if both database and Gemini work
-            service_healthy = db_healthy and gemini_healthy
-            
-            return {
-                'status': 'healthy' if service_healthy else 'unhealthy',
-                'database': db_healthy,
-                'gemini_service': gemini_healthy,
-                'analysis_mode': 'gemini_only',
-                'config': self.config
-            }
-            
+            db_health = self.db.health_check()
+            logger.info(f"✅ Database health check completed: {db_health['status']}")
         except Exception as e:
-            logger.error(f"Error checking service health: {str(e)}")
-            return {'status': 'error'}
+            logger.error(f"❌ Database health check failed: {str(e)}")
+            db_health = {"status": "error", "details": str(e)}
+
+        # Test Gemini service connection and API key
+        gemini_health = {"status": "unhealthy", "details": "Not checked"}
+        try:
+            gemini_health = await self.gemini_service.check_health()
+            logger.info(f"✅ Gemini health check completed: {gemini_health['status']}")
+        except Exception as e:
+            logger.error(f"❌ Gemini health check failed: {str(e)}")
+            gemini_health = {"status": "error", "details": str(e)}
+
+        # Determine overall service health
+        is_healthy = db_health['status'] == 'healthy' and gemini_health['status'] == 'healthy'
+        overall_status = 'healthy' if is_healthy else 'unhealthy'
+        
+        logger.info(f"📊 Overall service health: {overall_status}")
+
+        return {
+            'status': overall_status,
+            'timestamp': datetime.utcnow().isoformat(),
+            'components': {
+                'database': db_health,
+                'gemini_service': gemini_health
+            },
+            'analysis_mode': 'gemini_only',
+            'configuration': self.config
+        }
 
 # Create alias for backward compatibility
 CharacterVoiceService = SimpleCharacterVoiceService 

@@ -54,6 +54,79 @@ class GeminiService(BaseLLMService):
         else:
             logger.warning("⚠️ Gemini API key not found. Service will be unavailable.")
     
+    async def check_health(self) -> Dict[str, Any]:
+        """Check the health of the Gemini service."""
+        if not GENAI_AVAILABLE:
+            return {
+                "status": "error",
+                "message": "Google Generative AI library not installed.",
+                "details": "Run 'pip install google-generativeai' to fix."
+            }
+        
+        if not self.api_key:
+            return {
+                "status": "error",
+                "message": "GEMINI_API_KEY is not configured.",
+                "details": "Set the GEMINI_API_KEY environment variable."
+            }
+        
+        if not self.model:
+            return {
+                "status": "error",
+                "message": "Gemini model not initialized.",
+                "details": "Initialization failed. Check logs for details."
+            }
+        
+        try:
+            # Use a very simple, non-controversial prompt for the health check
+            test_prompt = "What is the speed of light?"
+            
+            logger.info("🩺 Performing Gemini health check...")
+            
+            # Use a short timeout for the health check
+            loop = asyncio.get_event_loop()
+            response = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: self.model.generate_content(test_prompt)),
+                timeout=30.0  # 30-second timeout for health check
+            )
+            
+            if response and response.text:
+                logger.info("✅ Gemini health check successful")
+                return {
+                    "status": "healthy",
+                    "message": "Gemini service is responding correctly.",
+                    "details": {
+                        "model": "gemini-2.5-flash",
+                        "response_length": len(response.text)
+                    }
+                }
+            else:
+                logger.warning("⚠️ Gemini health check failed: Empty response received")
+                return {
+                    "status": "error",
+                    "message": "Gemini returned an empty response.",
+                    "details": "This may indicate a temporary API issue."
+                }
+        
+        except asyncio.TimeoutError:
+            logger.error("⏰ Gemini health check timed out after 30 seconds")
+            return {
+                "status": "error",
+                "message": "Gemini health check timed out.",
+                "details": "The API is not responding in a timely manner."
+            }
+        except Exception as e:
+            logger.error(f"❌ Gemini health check failed: {str(e)}")
+            import traceback
+            return {
+                "status": "error",
+                "message": f"Gemini API error: {str(e)}",
+                "details": {
+                    "error_type": type(e).__name__,
+                    "traceback": traceback.format_exc()
+                }
+            }
+    
     def is_available(self) -> bool:
         """Check if Gemini service is available."""
         return GENAI_AVAILABLE and self.available and self.client is not None and self.model is not None

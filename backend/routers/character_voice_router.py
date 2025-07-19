@@ -456,41 +456,28 @@ async def reset_all_character_profiles(
 @router.get("/health")
 async def character_voice_health():
     """
-    Health check for character voice consistency service
+    Health check for character voice consistency service.
     
-    Returns the current status of the voice analysis system including
-    database connectivity, AI model availability, and service configuration.
+    Returns a detailed status of all components, including the database and the Gemini LLM.
     """
+    logger.info("🩺 Received request for character voice health check...")
     try:
-        health_status = await get_character_voice_service().get_service_health()
+        service = get_character_voice_service()
+        health_status = await service.get_service_health()
         
         status_code = 200 if health_status['status'] == 'healthy' else 503
         
-        return JSONResponse(
-            status_code=status_code,
-            content={
-                "service": "character_voice_consistency",
-                "status": health_status['status'],
-                "timestamp": time.time(),
-                "details": health_status
-            }
-        )
+        logger.info(f"✅ Health check completed with status: {health_status['status']}")
+        return JSONResponse(status_code=status_code, content=health_status)
         
     except Exception as e:
-        logger.error(f"❌ Error checking character voice service health: {str(e)}")
-        logger.error(f"❌ Error Type: {type(e).__name__}")
-        import traceback
-        logger.error(f"❌ Health Check Traceback: {traceback.format_exc()}")
-        
+        logger.exception("❌ Unhandled exception during health check")
         return JSONResponse(
-            status_code=503,
+            status_code=500,
             content={
-                "service": "character_voice_consistency",
                 "status": "error",
-                "timestamp": time.time(),
-                "message": f"Service health check failed: {str(e)}",
-                "error_type": type(e).__name__,
-                "debug_info": traceback.format_exc() if logger.level <= 10 else None  # Only in debug mode
+                "message": "An unexpected error occurred during the health check.",
+                "details": str(e)
             }
         )
 
