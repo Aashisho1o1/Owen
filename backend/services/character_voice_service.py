@@ -663,11 +663,21 @@ class SimpleCharacterVoiceService:
                 )
             
             if response and isinstance(response, dict):
-                # Create result
+                # --- NEW HEURISTIC -------------------------------------------------
+                raw_flag = response.get('is_consistent')
+                confidence = response.get('confidence_score', 0.0)
+                similarity = response.get('similarity_score', 0.0)
+                # Default to False if Gemini omitted the flag
+                is_consistent = raw_flag if raw_flag is not None else False
+                # Treat low-confidence / low-similarity as inconsistent
+                if similarity < 0.75 or confidence < 0.7:
+                    is_consistent = False
+                # ----------------------------------------------------------------
+
                 result = VoiceConsistencyResult(
-                    is_consistent=response.get('is_consistent', False),
-                    confidence_score=max(response.get('confidence_score', 0.8), 0.7),  # Minimum 0.7
-                    similarity_score=max(response.get('similarity_score', 0.8), 0.7),  # Minimum 0.7
+                    is_consistent=is_consistent,
+                    confidence_score=max(confidence, 0.7),  # enforce min 0.7 for display
+                    similarity_score=max(similarity, 0.7),
                     character_name=profile.character_name,
                     flagged_text=segment.text,
                     explanation=response.get('explanation', 'Voice analysis completed'),
@@ -760,8 +770,15 @@ class SimpleCharacterVoiceService:
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor
-                is_consistent = response.get('is_consistent', False)
-                
+                # --- HEURISTIC FOR QUALITY ANALYSIS ---
+                raw_flag = response.get('is_consistent')
+                confidence = response.get('confidence_score', 0.0)
+                similarity = response.get('similarity_score', 0.0)
+                is_consistent = raw_flag if raw_flag is not None else False
+                if similarity < 0.75 or confidence < 0.7:
+                    is_consistent = False
+                # --------------------------------------
+
                 result = VoiceConsistencyResult(
                     is_consistent=is_consistent,
                     confidence_score=min(response.get('confidence_score', 0.6), 1.0),
@@ -858,8 +875,15 @@ class SimpleCharacterVoiceService:
             
             if response and isinstance(response, dict):
                 # Create result - mark as inconsistent if dialogue quality is poor
-                is_consistent = response.get('is_consistent', False)
-                
+                # --- HEURISTIC FOR FIRST-TIME ANALYSIS ---
+                raw_flag = response.get('is_consistent')
+                confidence = response.get('confidence_score', 0.0)
+                similarity = response.get('similarity_score', 0.0)
+                is_consistent = raw_flag if raw_flag is not None else False
+                if similarity < 0.75 or confidence < 0.7:
+                    is_consistent = False
+                # -------------------------------------------
+
                 result = VoiceConsistencyResult(
                     is_consistent=is_consistent,
                     confidence_score=min(response.get('confidence_score', 0.7), 1.0),
