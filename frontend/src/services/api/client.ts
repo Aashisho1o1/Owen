@@ -56,6 +56,8 @@ const refreshTokens = async (): Promise<string | null> => {
   }
 
   try {
+    console.log('🔄 Refreshing tokens with stored refresh token');
+    
     // Use a fresh axios instance to avoid interceptor loops
     const response = await axios.post(`${API_URL}/api/auth/refresh`, {
       refresh_token: refreshToken
@@ -67,21 +69,33 @@ const refreshTokens = async (): Promise<string | null> => {
 
     const { access_token, refresh_token: newRefreshToken, token_type, expires_in } = response.data;
     
-    // Store new tokens
+    console.log('✅ Token refresh successful, storing new tokens');
+    
+    // Store new tokens with CONSISTENT owen_ prefix
     localStorage.setItem('owen_access_token', access_token);
     localStorage.setItem('owen_refresh_token', newRefreshToken);
-    localStorage.setItem('token_type', token_type);
-    localStorage.setItem('expires_at', (Date.now() + expires_in * 1000).toString());
+    localStorage.setItem('owen_token_type', token_type);
+    localStorage.setItem('owen_token_expires', (Date.now() + expires_in * 1000).toString());
     
     return access_token;
   } catch (error) {
-    // Refresh failed, clear all tokens
-    localStorage.removeItem('owen_access_token');
-    localStorage.removeItem('owen_refresh_token');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('token_type');
-    localStorage.removeItem('expires_at');
+    console.error('❌ Token refresh failed:', error);
+    
+    // COMPREHENSIVE token cleanup - remove all possible token keys
+    const tokenKeys = [
+      'owen_access_token',
+      'owen_refresh_token', 
+      'owen_token_type',
+      'owen_token_expires',
+      // Legacy keys without prefix
+      'access_token',
+      'refresh_token',
+      'token_type',
+      'expires_at'
+    ];
+    
+    tokenKeys.forEach(key => localStorage.removeItem(key));
+    console.log('🧹 All tokens cleared after refresh failure');
     
     throw error;
   }
@@ -150,13 +164,21 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
         
-        // Clear all tokens
-        localStorage.removeItem('owen_access_token');
-        localStorage.removeItem('owen_refresh_token');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('token_type');
-        localStorage.removeItem('expires_at');
+        // COMPREHENSIVE token cleanup - same as refreshTokens function
+        const tokenKeys = [
+          'owen_access_token',
+          'owen_refresh_token', 
+          'owen_token_type',
+          'owen_token_expires',
+          // Legacy keys without prefix
+          'access_token',
+          'refresh_token',
+          'token_type',
+          'expires_at'
+        ];
+        
+        tokenKeys.forEach(key => localStorage.removeItem(key));
+        console.log('🧹 All tokens cleared after interceptor refresh failure');
         
         // Dispatch token expired event ONLY once
         window.dispatchEvent(new CustomEvent('auth:token-expired'));

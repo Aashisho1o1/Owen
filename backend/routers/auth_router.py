@@ -90,7 +90,7 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
             access_token=result['access_token'],
             refresh_token=result['refresh_token'],
             token_type=result['token_type'],
-            expires_in=1800,
+            expires_in=7200,  # 2 hours (120 minutes * 60 seconds) to match ACCESS_TOKEN_EXPIRE_MINUTES
             user={
                 "id": result['user']['id'],
                 "name": result['user']['name'],
@@ -129,7 +129,7 @@ async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> 
             access_token=result['access_token'],
             refresh_token=refresh_data.refresh_token,
             token_type=result['token_type'],
-            expires_in=1800,
+            expires_in=7200,  # 2 hours to match ACCESS_TOKEN_EXPIRE_MINUTES
             user={}
         )
     except AuthenticationError as e:

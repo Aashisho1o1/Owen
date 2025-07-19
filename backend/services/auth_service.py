@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # JWT Configuration with enhanced security validation
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 120  # Increased from 30 to 120 minutes (2 hours)
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # CRITICAL SECURITY: Validate JWT secret key on import
