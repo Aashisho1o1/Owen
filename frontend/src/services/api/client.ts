@@ -117,8 +117,8 @@ apiClient.interceptors.request.use(
     // Special handling for voice analysis endpoints
     if (config.url?.includes('/character-voice/analyze')) {
       console.log('🧠 Voice Analysis Request: Using extended timeout (5 minutes)');
-      console.log('🚀 Starting Gemini 2.0 Flash analysis...');
-      console.log('⏳ Processing with Gemini 2.0 - this may take 1-4 minutes for complex dialogue analysis...');
+      console.log('🚀 Starting Gemini 2.5 Flash analysis...');
+      console.log('⏳ Processing with Gemini 2.5 Flash - this may take 1-4 minutes for complex dialogue analysis...');
       console.log('💡 Please wait - analyzing character voice consistency...');
       config.timeout = VOICE_ANALYSIS_TIMEOUT;
     }

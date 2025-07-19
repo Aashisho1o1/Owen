@@ -43,10 +43,10 @@ class GeminiService(BaseLLMService):
                 # Configure the generative AI client with the API key
                 genai.configure(api_key=self.api_key)
                 
-                # Use Gemini 2.0 Flash model for enhanced contextual understanding and faster processing
-                self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                # Use Gemini 2.5 Flash model for enhanced contextual understanding and faster processing
+                self.model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                logger.info("✅ Gemini service initialized successfully with gemini-2.0-flash-exp")
+                logger.info("✅ Gemini service initialized successfully with gemini-2.5-flash")
                 
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Gemini service: {e}")
@@ -99,7 +99,7 @@ class GeminiService(BaseLLMService):
         try:
             loop = asyncio.get_event_loop()
             
-            # Increased timeout for voice analysis - Gemini 2.0 Flash is faster but still needs time for complex analysis
+            # Increased timeout for voice analysis - Gemini 2.5 Flash is faster but still needs time for complex analysis
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self.model.generate_content(prompt)),
                 timeout=120.0  # Increased to 2 minutes for complex voice analysis
@@ -113,8 +113,8 @@ class GeminiService(BaseLLMService):
             return response.text
             
         except asyncio.TimeoutError:
-            logger.error("⏰ Gemini request timed out after 2 minutes")
-            raise Exception("Gemini API timeout - please try with shorter text")
+            logger.error("⏰ Gemini 2.5 Flash request timed out after 2 minutes")
+            raise Exception("Gemini 2.5 Flash API timeout - please try with shorter text")
         except Exception as e:
             logger.error(f"❌ Gemini API error: {e}")
             raise Exception(f"Gemini API error: {str(e)}")

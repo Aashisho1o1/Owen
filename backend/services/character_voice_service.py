@@ -633,11 +633,11 @@ class SimpleCharacterVoiceService:
                         max_tokens=400, 
                         temperature=0.3
                     ),
-                    timeout=240.0  # Increased to 4 minutes for Gemini 2.0 Flash complex analysis
+                    timeout=240.0  # Increased to 4 minutes for Gemini 2.5 Flash complex analysis
                 )
-                logger.info(f"✅ Gemini 2.0 Flash response received for {profile.character_name}: {type(response)}")
+                logger.info(f"✅ Gemini 2.5 Flash response received for {profile.character_name}: {type(response)}")
             except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini 2.0 Flash analysis timed out after 4 minutes for {profile.character_name}")
+                logger.error(f"⏰ Gemini 2.5 Flash analysis timed out after 4 minutes for {profile.character_name}")
                 # Return a more realistic "needs review" result instead of failing
                 return VoiceConsistencyResult(
                     is_consistent=False,  # Changed to False to indicate needs review
@@ -683,7 +683,7 @@ class SimpleCharacterVoiceService:
                     flagged_text=segment.text,
                     explanation=response.get('explanation', 'Voice analysis completed by Gemini 2.0 Flash'),
                     suggestions=response.get('suggestions', []),
-                    analysis_method='gemini_2_0_voice_analysis'
+                    analysis_method='gemini_2_5_voice_analysis'
                 )
                 
                 logger.debug(f"Gemini analysis - Character: {profile.character_name}, "
@@ -745,27 +745,27 @@ class SimpleCharacterVoiceService:
                 )
                 logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
             except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini quality analysis timed out after 15s")
+                logger.error(f"⏰ Gemini quality analysis timed out after 4 minutes")
                 return VoiceConsistencyResult(
-                    is_consistent=True,
-                    confidence_score=0.5,
-                    similarity_score=0.5,
+                    is_consistent=False,
+                    confidence_score=0.3,
+                    similarity_score=0.3,
                     character_name="Unknown Speaker",
                     flagged_text=segment.text,
-                    explanation="Dialogue quality analysis timed out. Please try again with shorter text.",
-                    suggestions=["Try analyzing smaller text segments"],
+                    explanation="Dialogue quality analysis timed out. This dialogue needs manual review.",
+                    suggestions=["Try analyzing smaller text segments", "Review this dialogue manually"],
                     analysis_method='gemini_timeout_fallback'
                 )
             except Exception as e:
                 logger.error(f"❌ Gemini quality analysis failed: {str(e)}")
                 return VoiceConsistencyResult(
-                    is_consistent=True,
-                    confidence_score=0.5,
-                    similarity_score=0.5,
+                    is_consistent=False,
+                    confidence_score=0.2,
+                    similarity_score=0.2,
                     character_name="Unknown Speaker",
                     flagged_text=segment.text,
-                    explanation=f"Dialogue quality analysis failed: {str(e)[:100]}...",
-                    suggestions=["Try again later or check your internet connection"],
+                    explanation=f"Dialogue quality analysis failed: {str(e)[:100]}... This dialogue needs manual review.",
+                    suggestions=["Try again later or check your internet connection", "Review this dialogue manually"],
                     analysis_method='gemini_error_fallback'
                 )
             
@@ -850,27 +850,27 @@ class SimpleCharacterVoiceService:
                 )
                 logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
             except asyncio.TimeoutError:
-                logger.error(f"⏰ Gemini first-time analysis timed out after 15s for {segment.speaker}")
+                logger.error(f"⏰ Gemini first-time analysis timed out after 4 minutes for {segment.speaker}")
                 return VoiceConsistencyResult(
-                    is_consistent=True,
-                    confidence_score=0.5,
-                    similarity_score=0.5,
+                    is_consistent=False,
+                    confidence_score=0.3,
+                    similarity_score=0.3,
                     character_name=segment.speaker,
                     flagged_text=segment.text,
-                    explanation="First-time dialogue analysis timed out. Please try again with shorter text.",
-                    suggestions=["Try analyzing smaller text segments"],
+                    explanation="First-time dialogue analysis timed out. This dialogue needs manual review.",
+                    suggestions=["Try analyzing smaller text segments", "Review this dialogue manually"],
                     analysis_method='gemini_timeout_fallback'
                 )
             except Exception as e:
                 logger.error(f"❌ Gemini first-time analysis failed for {segment.speaker}: {str(e)}")
                 return VoiceConsistencyResult(
-                    is_consistent=True,
-                    confidence_score=0.5,
-                    similarity_score=0.5,
+                    is_consistent=False,
+                    confidence_score=0.2,
+                    similarity_score=0.2,
                     character_name=segment.speaker,
                     flagged_text=segment.text,
-                    explanation=f"First-time dialogue analysis failed: {str(e)[:100]}...",
-                    suggestions=["Try again later or check your internet connection"],
+                    explanation=f"First-time dialogue analysis failed: {str(e)[:100]}... This dialogue needs manual review.",
+                    suggestions=["Try again later or check your internet connection", "Review this dialogue manually"],
                     analysis_method='gemini_error_fallback'
                 )
             
