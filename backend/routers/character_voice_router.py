@@ -25,7 +25,25 @@ except Exception as e:
         """Fallback authentication dependency"""
         from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="Authentication service unavailable")
-from services.character_voice_service import CharacterVoiceService
+
+# CRITICAL FIX: Make CharacterVoiceService import resilient to database failures
+try:
+    from services.character_voice_service import CharacterVoiceService
+    CHARACTER_VOICE_SERVICE_AVAILABLE = True
+    print("✅ CharacterVoiceService imported successfully")
+except Exception as e:
+    print(f"⚠️ CharacterVoiceService import failed: {e}")
+    print("🔧 Character voice router will use fallback service")
+    CHARACTER_VOICE_SERVICE_AVAILABLE = False
+    
+    # Fallback CharacterVoiceService
+    class CharacterVoiceService:
+        def __init__(self):
+            pass
+        
+        async def analyze_voice_consistency(self, *args, **kwargs):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail="Voice analysis service unavailable - database connection required")
 from models.schemas import (
     VoiceConsistencyRequest, VoiceConsistencyResponse, VoiceConsistencyResult,
     CharacterVoiceProfilesResponse, CharacterVoiceProfile, DeleteCharacterProfileRequest
@@ -35,7 +53,11 @@ from services.security_logger import SecurityLogger, SecurityEventType, Security
 
 logger = logging.getLogger(__name__)
 
+print("✅ Character voice router module loaded successfully!")
+print(f"🔧 Service availability: Dependencies={DEPENDENCIES_AVAILABLE}, CharacterVoice={CHARACTER_VOICE_SERVICE_AVAILABLE}")
+
 router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
+print(f"✅ Character voice router created with prefix: {router.prefix}")
 
 # Initialize services
 character_voice_service = None  # Will be initialized lazily
