@@ -632,7 +632,7 @@ class SimpleCharacterVoiceService:
                         max_tokens=400, 
                         temperature=0.3
                     ),
-                    timeout=15.0  # 15 second timeout to prevent frontend timeout
+                    timeout=180.0  # Increased to 3 minutes
                 )
                 logger.info(f"🤖 Gemini response received for {profile.character_name}: {type(response)}")
             except asyncio.TimeoutError:
@@ -740,7 +740,7 @@ class SimpleCharacterVoiceService:
                         max_tokens=400, 
                         temperature=0.3
                     ),
-                    timeout=15.0  # 15 second timeout
+                    timeout=180.0  # Increased to 3 minutes
                 )
                 logger.info(f"🤖 Gemini response received for quality analysis: {type(response)}")
             except asyncio.TimeoutError:
@@ -845,7 +845,7 @@ class SimpleCharacterVoiceService:
                         max_tokens=400, 
                         temperature=0.3
                     ),
-                    timeout=15.0  # 15 second timeout
+                    timeout=180.0  # Increased to 3 minutes
                 )
                 logger.info(f"🤖 Gemini response received for first-time analysis: {type(response)}")
             except asyncio.TimeoutError:

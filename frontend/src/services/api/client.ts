@@ -27,7 +27,7 @@ const apiClient = axios.create({
 });
 
 // Special timeout for voice analysis (Gemini can be slow)
-const VOICE_ANALYSIS_TIMEOUT = 60000; // 60 seconds for voice analysis
+const VOICE_ANALYSIS_TIMEOUT = 180000; // 3 minutes for voice analysis
 
 // Token refresh state management
 let isRefreshing = false;
@@ -49,9 +49,9 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 const refreshTokens = async (): Promise<string | null> => {
-  const { refreshToken } = getStoredTokens();
+  const { refreshToken: storedRefreshToken } = getStoredTokens();
   
-  if (!refreshToken) {
+  if (!storedRefreshToken) {
     throw new Error('No refresh token available');
   }
 
@@ -60,7 +60,7 @@ const refreshTokens = async (): Promise<string | null> => {
     
     // Use a fresh axios instance to avoid interceptor loops
     const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-      refresh_token: refreshToken
+      refresh_token: storedRefreshToken
     }, {
       headers: {
         'Content-Type': 'application/json'
