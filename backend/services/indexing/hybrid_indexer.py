@@ -44,6 +44,12 @@ class HybridIndexer:
         # Track indexed documents
         self.indexed_documents = {}
         
+        # DEBUG: Log which Gemini model is being used by this service
+        model_name = "N/A"
+        if self.gemini_service and self.gemini_service.model:
+            model_name = self.gemini_service.model.model_name
+        logger.info(f"HybridIndexer initialized with Gemini model: {model_name}")
+        
         logger.info("HybridIndexer initialized with Gemini-powered entity extraction")
 
     async def index_document(self, 
