@@ -97,12 +97,20 @@ routers_to_import = [
 imported_routers = []
 for module_name, router_name in routers_to_import:
     try:
+        print(f"🔄 Importing {router_name} from {module_name}...")
         module = __import__(module_name, fromlist=[router_name])
         router = getattr(module, "router")
         imported_routers.append((router_name, router))
         print(f"✅ {router_name} imported successfully")
+        # DEBUG: Check if router has routes
+        if hasattr(router, 'routes'):
+            print(f"   Router has {len(router.routes)} routes defined")
+        else:
+            print(f"   ⚠️ Router has no routes attribute")
     except Exception as e:
         print(f"❌ {router_name} import failed: {e}")
+        import traceback
+        print(f"   Import error details: {traceback.format_exc()}")
         # Continue without this router
 
 try:
@@ -319,9 +327,18 @@ print(f"📚 Including {len(imported_routers)} routers...")
 for router_name, router in imported_routers:
     try:
         app.include_router(router)
-        print(f"✅ {router_name} router included")
+        print(f"✅ {router_name} router included successfully")
+        # DEBUG: Log the routes that were added
+        if hasattr(router, 'routes'):
+            route_info = []
+            for route in router.routes:
+                if hasattr(route, 'methods') and hasattr(route, 'path'):
+                    route_info.append(f"{list(route.methods)} {route.path}")
+            print(f"   Routes added: {route_info}")
     except Exception as e:
         print(f"❌ Failed to include {router_name} router: {e}")
+        import traceback
+        print(f"   Error details: {traceback.format_exc()}")
 
 # Explicit CORS preflight handler for all routes
 @app.options("/{path:path}")
