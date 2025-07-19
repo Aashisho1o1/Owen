@@ -14,6 +14,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { useEditorContext } from '../contexts/EditorContext';
 import { useChatContext } from '../contexts/ChatContext';
 import '../styles/highlightable-editor.css';
+import '../styles/voice-consistency-underlines.css';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -362,8 +363,11 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         if (hasContentToAnalyze && hasDialogueContent && isAuthenticated) {
           console.log('✅ Proceeding with voice analysis from editor update - all conditions met');
           analyzeVoiceConsistencyDebounced(newContent, (results) => {
-            console.log('📊 Voice analysis results from editor:', results);
-            setVoiceConsistencyResults(results);
+                      console.log('📊 Voice analysis results from editor:', results);
+          setVoiceConsistencyResults(results);
+          
+          // Apply voice inconsistency underlines to the editor
+          applyVoiceInconsistencyUnderlines(results);
           });
         } else {
           console.log('❌ Skipping voice analysis from editor - conditions not met:', {
@@ -473,6 +477,116 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       }, 100);
     },
   });
+
+  // Apply voice inconsistency underlines to the editor
+  const applyVoiceInconsistencyUnderlines = useCallback((results: VoiceConsistencyResult[]) => {
+    if (!editor) return;
+    
+    const editorElement = editor.view.dom;
+    
+    // Remove existing voice inconsistency highlights
+    const existingHighlights = editorElement.querySelectorAll('.voice-inconsistent');
+    existingHighlights.forEach(el => {
+      const parent = el.parentNode;
+      if (parent) {
+        const textNode = document.createTextNode(el.textContent || '');
+        parent.replaceChild(textNode, el);
+        parent.normalize();
+      }
+    });
+    
+    // Apply new underlines for inconsistent dialogue
+    const inconsistentResults = results.filter(result => !result.is_consistent);
+    
+    console.log('🎯 Applying voice inconsistency underlines:', {
+      totalResults: results.length,
+      inconsistentCount: inconsistentResults.length,
+      inconsistentTexts: inconsistentResults.map(r => r.flagged_text.substring(0, 50))
+    });
+    
+    inconsistentResults.forEach(result => {
+      const textToHighlight = result.flagged_text.trim();
+      if (!textToHighlight) return;
+      
+      // Get all text content and find the text to highlight
+      const allText = editorElement.textContent || '';
+      const textIndex = allText.indexOf(textToHighlight);
+      
+      if (textIndex >= 0) {
+        // Use tree walker to find and highlight the text
+        const walker = document.createTreeWalker(
+          editorElement,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        let currentOffset = 0;
+        const targetStartOffset = textIndex;
+        const targetEndOffset = textIndex + textToHighlight.length;
+        let textNode;
+        
+        while ((textNode = walker.nextNode())) {
+          const nodeValue = textNode.nodeValue || '';
+          const nodeLength = nodeValue.length;
+          
+          // Check if our target text spans this node
+          if (currentOffset <= targetStartOffset && (currentOffset + nodeLength) >= targetStartOffset) {
+            const startInNode = targetStartOffset - currentOffset;
+            const endInNode = Math.min(targetEndOffset - currentOffset, nodeLength);
+            
+            // Split the text node and wrap the target text
+            const beforeText = nodeValue.substring(0, startInNode);
+            const highlightText = nodeValue.substring(startInNode, endInNode);
+            const afterText = nodeValue.substring(endInNode);
+            
+            // Create the voice inconsistency span
+            const inconsistencySpan = document.createElement('span');
+            inconsistencySpan.className = 'voice-inconsistent';
+            
+            // Add confidence-based class
+            const confidence = result.confidence_score;
+            if (confidence <= 0.4) {
+              inconsistencySpan.classList.add('high-confidence');
+            } else if (confidence <= 0.7) {
+              inconsistencySpan.classList.add('medium-confidence');
+            } else {
+              inconsistencySpan.classList.add('low-confidence');
+            }
+            
+            // Add tooltip data
+            inconsistencySpan.setAttribute('data-voice-explanation', 
+              `${result.explanation} (Confidence: ${Math.round(confidence * 100)}%)`);
+            
+            // Add accessibility attributes
+            inconsistencySpan.setAttribute('role', 'button');
+            inconsistencySpan.setAttribute('tabindex', '0');
+            inconsistencySpan.setAttribute('aria-label', 
+              `Voice inconsistency: ${result.explanation}`);
+            
+            inconsistencySpan.textContent = highlightText;
+            
+            // Replace the text node with our highlighted version
+            const parent = textNode.parentNode;
+            if (parent) {
+              if (beforeText) {
+                parent.insertBefore(document.createTextNode(beforeText), textNode);
+              }
+              parent.insertBefore(inconsistencySpan, textNode);
+              if (afterText) {
+                parent.insertBefore(document.createTextNode(afterText), textNode);
+              }
+              parent.removeChild(textNode);
+              
+              console.log('✅ Applied voice inconsistency underline to:', highlightText.substring(0, 50));
+            }
+            break;
+          }
+          
+          currentOffset += nodeLength;
+        }
+      }
+    });
+  }, [editor]);
 
   // Handle active discussion highlighting from ChatContext using DOM manipulation
   useEffect(() => {
