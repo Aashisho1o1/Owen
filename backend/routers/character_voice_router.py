@@ -95,24 +95,30 @@ async def analyze_voice_consistency(
     Requires user authentication to maintain character profiles.
     """
     start_time = time.time()
+    client_ip = http_request.client.host
+    effective_user_id = user_id
+    
+    # ENHANCED: Add detailed logging at every step
+    logger.info(f"🎭 === VOICE ANALYSIS REQUEST START ===")
+    logger.info(f"👤 User ID: {effective_user_id}")
+    logger.info(f"🌐 Client IP: {client_ip}")
+    logger.info(f"📝 Text length: {len(request.text)} characters")
+    logger.info(f"📄 Document ID: {request.document_id}")
+    logger.info(f"📝 Text preview: {request.text[:200]}...")
     
     try:
-        # Use authenticated user ID
-        effective_user_id = user_id
-        
-        # Rate limiting
-        client_ip = http_request.client.host
+        # STEP 1: Rate limiting
+        logger.info(f"🚦 STEP 1: Checking rate limits...")
         if not rate_limiter.check_rate_limit(http_request, "character_voice_analysis"):
+            logger.warning(f"❌ Rate limit exceeded for user {effective_user_id}")
             raise HTTPException(
                 status_code=429,
                 detail="Rate limit exceeded. Please try again later."
             )
+        logger.info(f"✅ STEP 1: Rate limit check passed")
         
-        # Log analysis request
-        logger.info(f"🎭 Voice analysis request received from user {effective_user_id}")
-        logger.info(f"📝 Request details: text_length={len(request.text)}, document_id={request.document_id}")
-        logger.info(f"📝 Text preview: {request.text[:200]}...")
-        
+        # STEP 2: Security logging
+        logger.info(f"🔒 STEP 2: Logging security event...")
         security_logger.log_security_event(
             SecurityEventType.DOCUMENT_ACCESS,
             SecuritySeverity.LOW,
@@ -124,95 +130,140 @@ async def analyze_voice_consistency(
                 "document_id": request.document_id
             }
         )
+        logger.info(f"✅ STEP 2: Security event logged")
         
-        # Perform voice consistency analysis
-        logger.info(f"🔍 Calling voice consistency service...")
-        results = await get_character_voice_service().analyze_text_for_voice_consistency(
-            text=request.text,
-            user_id=effective_user_id,
-            document_id=request.document_id
-        )
+        # STEP 3: Get service instance
+        logger.info(f"🔧 STEP 3: Getting character voice service instance...")
+        try:
+            service = get_character_voice_service()
+            logger.info(f"✅ STEP 3: Service instance obtained successfully")
+        except Exception as e:
+            logger.error(f"❌ STEP 3: Failed to get service instance: {str(e)}")
+            logger.exception("Service initialization error:")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Voice analysis service unavailable: {str(e)}"
+            )
         
-        logger.info(f"📊 Service returned {len(results)} results")
+        # STEP 4: Call service method
+        logger.info(f"🔍 STEP 4: Calling voice consistency analysis...")
+        logger.info(f"🔍 Calling: service.analyze_text_for_voice_consistency(text={len(request.text)}chars, user_id={effective_user_id}, document_id={request.document_id})")
         
-        # Convert service results to API response format
+        try:
+            results = await service.analyze_text_for_voice_consistency(
+                text=request.text,
+                user_id=effective_user_id,
+                document_id=request.document_id
+            )
+            logger.info(f"✅ STEP 4: Service call completed successfully")
+            logger.info(f"📊 Service returned {len(results)} results")
+        except Exception as e:
+            logger.error(f"❌ STEP 4: Service call failed: {str(e)}")
+            logger.error(f"❌ Error type: {type(e).__name__}")
+            logger.exception("Service method error:")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Voice analysis failed: {str(e)}"
+            )
+        
+        # STEP 5: Convert results
+        logger.info(f"🔄 STEP 5: Converting service results to API format...")
         api_results = []
         characters_analyzed = set()
         
         for i, result in enumerate(results):
             logger.info(f"🔄 Converting result {i+1}: {result.character_name} - {'Consistent' if result.is_consistent else 'Inconsistent'}")
             
-            api_result = VoiceConsistencyResult(
-                is_consistent=result.is_consistent,
-                confidence_score=result.confidence_score,
-                similarity_score=result.similarity_score,
-                character_name=result.character_name,
-                flagged_text=result.flagged_text,
-                explanation=result.explanation,
-                suggestions=result.suggestions,
-                analysis_method=result.analysis_method
-            )
-            api_results.append(api_result)
-            characters_analyzed.add(result.character_name)
+            try:
+                api_result = VoiceConsistencyResult(
+                    is_consistent=result.is_consistent,
+                    confidence_score=result.confidence_score,
+                    similarity_score=result.similarity_score,
+                    character_name=result.character_name,
+                    flagged_text=result.flagged_text,
+                    explanation=result.explanation,
+                    suggestions=result.suggestions,
+                    analysis_method=result.analysis_method
+                )
+                api_results.append(api_result)
+                characters_analyzed.add(result.character_name)
+                logger.info(f"✅ Result {i+1} converted successfully")
+            except Exception as e:
+                logger.error(f"❌ Failed to convert result {i+1}: {str(e)}")
+                logger.exception("Result conversion error:")
+                # Continue with other results instead of failing
+                continue
         
-        # Calculate processing time
+        logger.info(f"✅ STEP 5: Result conversion completed")
+        
+        # STEP 6: Create response
+        logger.info(f"📦 STEP 6: Creating API response...")
         processing_time = int((time.time() - start_time) * 1000)
         
-        # Create response
-        response = VoiceConsistencyResponse(
-            results=api_results,
-            characters_analyzed=len(characters_analyzed),
-            dialogue_segments_found=len(results),
-            processing_time_ms=processing_time
-        )
+        try:
+            response = VoiceConsistencyResponse(
+                results=api_results,
+                characters_analyzed=len(characters_analyzed),
+                dialogue_segments_found=len(results),
+                processing_time_ms=processing_time
+            )
+            logger.info(f"✅ STEP 6: Response created successfully")
+        except Exception as e:
+            logger.error(f"❌ STEP 6: Failed to create response: {str(e)}")
+            logger.exception("Response creation error:")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create response: {str(e)}"
+            )
         
-        logger.info(f"📤 Sending response: {len(api_results)} results, {len(characters_analyzed)} characters, {processing_time}ms")
-        
-        # Log successful analysis
-        logger.info(f"Voice consistency analysis completed for user {effective_user_id}: "
-                   f"{len(results)} segments, {len(characters_analyzed)} characters, "
-                   f"{processing_time}ms")
+        # STEP 7: Final logging and return
+        logger.info(f"📤 STEP 7: Sending response...")
+        logger.info(f"📤 Response details: {len(api_results)} results, {len(characters_analyzed)} characters, {processing_time}ms")
+        logger.info(f"🎭 === VOICE ANALYSIS REQUEST COMPLETE ===")
         
         return response
         
-    except HTTPException:
+    except HTTPException as http_exc:
+        # Re-raise HTTP exceptions without modification
+        logger.error(f"❌ HTTP Exception: {http_exc.status_code} - {http_exc.detail}")
         raise
     except Exception as e:
-        logger.error(f"❌ Error in voice consistency analysis: {str(e)}")
+        # Catch any unexpected errors
+        logger.error(f"❌ === UNEXPECTED ERROR IN VOICE ANALYSIS ===")
+        logger.error(f"❌ Error: {str(e)}")
         logger.error(f"❌ Error Type: {type(e).__name__}")
+        logger.error(f"❌ Error Module: {getattr(type(e), '__module__', 'unknown')}")
+        
+        # Log full traceback
         import traceback
-        logger.error(f"❌ Error Traceback: {traceback.format_exc()}")
+        full_traceback = traceback.format_exc()
+        logger.error(f"❌ Full Traceback:\n{full_traceback}")
         
-        # Log more detailed error context
-        security_logger.log_security_event(
-            SecurityEventType.SUSPICIOUS_ACTIVITY,
-            SecuritySeverity.HIGH,
-            user_id=effective_user_id,
-            ip_address=client_ip,
-            details={
-                "error": str(e), 
-                "error_type": type(e).__name__,
-                "endpoint": "analyze_voice_consistency",
-                "text_length": len(request.text),
-                "traceback": traceback.format_exc()
-            }
-        )
+        # Log context information
+        logger.error(f"❌ Context: user_id={effective_user_id}, text_length={len(request.text) if request else 'unknown'}")
         
-        # Provide more specific error messages based on error type
-        if "timeout" in str(e).lower():
-            detail = "Voice analysis timed out. Please try with shorter text or try again later."
-        elif "gemini" in str(e).lower() or "api" in str(e).lower():
-            detail = "AI service temporarily unavailable. Please try again in a moment."
-        elif "database" in str(e).lower():
-            detail = "Database connection error. Please try again."
-        elif "initialization" in str(e).lower():
-            detail = "Voice analysis service is starting up. Please try again in a moment."
-        else:
-            detail = "Internal server error during voice analysis"
-            
+        # Log to security system
+        try:
+            security_logger.log_security_event(
+                SecurityEventType.SUSPICIOUS_ACTIVITY,
+                SecuritySeverity.HIGH,
+                user_id=effective_user_id,
+                ip_address=client_ip,
+                details={
+                    "error": str(e), 
+                    "error_type": type(e).__name__,
+                    "endpoint": "analyze_voice_consistency",
+                    "text_length": len(request.text) if request else 0,
+                    "traceback": full_traceback
+                }
+            )
+        except Exception as security_log_error:
+            logger.error(f"❌ Failed to log security event: {security_log_error}")
+        
+        # Return generic error to client
         raise HTTPException(
             status_code=500,
-            detail=detail
+            detail="Internal server error during voice analysis"
         )
 
 
