@@ -11,22 +11,43 @@ import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-# CRITICAL: Disable ChromaDB telemetry BEFORE any imports
-# This prevents Railway deployment crashes due to telemetry initialization errors
-os.environ['ANONYMIZED_TELEMETRY'] = 'False'
-os.environ['CHROMA_TELEMETRY'] = 'False'
-os.environ['CHROMA_TELEMETRY_ENABLED'] = 'False'
-os.environ['CHROMA_DISABLE_TELEMETRY'] = 'True'
-os.environ['CHROMA_ANONYMIZED_TELEMETRY'] = 'False'
+# Disable ChromaDB telemetry to prevent backend crashes on Railway
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
-# Additional environment variables to completely disable telemetry
-os.environ['POSTHOG_DISABLED'] = 'True'
-os.environ['POSTHOG_CAPTURE_DISABLED'] = 'True'
-os.environ['TELEMETRY_DISABLED'] = 'True'
-
-# CRITICAL: Disable ChromaDB entirely if causing issues
-os.environ['CHROMA_SERVER_NOFILE'] = 'True'
-os.environ['CHROMA_CLIENT_HEARTBEAT_ENABLED'] = 'False'
+# --- Centralized Logging Configuration ---
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "standard"
+        }
+    },
+    "loggers": {
+        "": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True
+        },
+        "chromadb.telemetry": {
+            "level": "CRITICAL",
+            "handlers": ["console"],
+            "propagate": False
+        },
+        "chromadb.telemetry.product.posthog": {
+            "level": "CRITICAL",
+            "handlers": ["console"],
+            "propagate": False
+        }
+    }
+}
 
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
