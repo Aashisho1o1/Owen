@@ -49,83 +49,39 @@ class PostgreSQLService:
         self.pool = None  # Lazy initialization
         self._connection_timeout = 30  # seconds
         self._retry_count = 3
-        self._retry_delay = 1  # seconds
+        self._retry_delay = 2  # Increased retry delay
         
         # Don't initialize connection pool here - do it lazily when first needed
-        logger.info("PostgreSQL service initialized (connection pool will be created when first needed)")
+        logger.info("PostgreSQL service initialized (connection pool will be created lazily)")
     
 
     
     def _init_connection_pool(self):
-        """Initialize PostgreSQL connection pool"""
+        """Initialize or re-initialize the connection pool."""
+        # Safely close any existing pool before creating a new one
+        if self.pool and not self.pool.closed:
+            logger.warning("Existing connection pool found. Closing before re-initializing.")
+            self.pool.closeall()
+
         try:
-            # Close existing pool if any
-            if self.pool:
-                try:
-                    self.pool.closeall()
-                except:
-                    pass
-            
-            # Connection pool settings - OPTIMIZED for Railway PostgreSQL limits
-            # Railway PostgreSQL typically allows 22-100 connections total
-            # We need to be very conservative to prevent exhaustion
-            # Railway usually allows ~20 connections for the whole service. Using a tiny pool (1) causes
-            # dead-locks when two concurrent queries are executed (e.g. auth + service logic).
-            # We use 1 idle connection and allow up to 5 concurrent short-lived ones.
-            min_conn = 1
-            max_conn = 5  # Conservative upper bound to stay well below Railway hard-limit
-            
+            # Optimized for Railway's hobby tier:
+            # - minconn=1: Keep one connection warm to reduce latency.
+            # - maxconn=5: A small pool to prevent overwhelming the DB's connection limit.
+            logger.info("Initializing connection pool (min=1, max=5)...")
             self.pool = ThreadedConnectionPool(
-                minconn=min_conn,
-                maxconn=max_conn,
+                minconn=1,
+                maxconn=5,
                 dsn=self.database_url,
-                cursor_factory=RealDictCursor,
-                connect_timeout=self._connection_timeout
+                cursor_factory=RealDictCursor
             )
-            
-            # RAILWAY FIX: More robust pool testing
-            conn = None
-            try:
-                conn = self.pool.getconn()
-                if conn:
-                    # Verify connection is actually usable
-                    if hasattr(conn, 'closed') and conn.closed:
-                        logger.error("Got closed connection during pool initialization")
-                        self.pool.putconn(conn, close=True)
-                        raise DatabaseError("Connection pool returned closed connection")
-                    
-                    with conn.cursor() as cursor:
-                        cursor.execute("SELECT 1")
-                        result = cursor.fetchone()
-                        if not result:
-                            raise DatabaseError("Pool test query returned no result")
-                    
-                    # RAILWAY FIX: Only return to pool if connection is still valid
-                    if hasattr(conn, 'closed') and not conn.closed:
-                        self.pool.putconn(conn)
-                    else:
-                        logger.warning("Connection became closed during test, disposing")
-                        self.pool.putconn(conn, close=True)
-                    conn = None
-                    logger.info(f"Connection pool initialized successfully with {min_conn}-{max_conn} connections (Railway optimized)")
-                else:
-                    raise DatabaseError("Failed to get connection from pool")
-            except Exception as test_error:
-                if conn:
-                    try:
-                        # RAILWAY FIX: Properly dispose of failed test connection
-                        if hasattr(conn, 'closed') and conn.closed:
-                            self.pool.putconn(conn, close=True)
-                        else:
-                            self.pool.putconn(conn)
-                    except Exception as cleanup_error:
-                        logger.warning(f"Failed to clean up test connection: {cleanup_error}")
-                logger.error(f"Connection pool test failed: {test_error}")
-                raise test_error
-                
-        except Exception as e:
-            logger.error(f"Failed to initialize connection pool: {e}")
-            raise DatabaseError(f"Connection pool initialization failed: {e}")
+            # Test the connection to ensure the pool is valid
+            conn = self.pool.getconn()
+            conn.close() # Close immediately, just a health check
+            logger.info("✅ Connection pool initialized and tested successfully.")
+        except OperationalError as e:
+            logger.critical(f"CRITICAL: Could not connect to database at {self.database_url}. Error: {e}")
+            self.pool = None
+            raise DatabaseError(f"Failed to initialize database connection pool: {e}")
     
     def _close_pool_safely(self):
         """Safely close the connection pool to prevent resource leaks"""
@@ -188,100 +144,42 @@ class PostgreSQLService:
     
     @contextmanager
     def get_connection(self):
-        """Get database connection with health checks and retry logic"""
-        conn = None
-        attempt = 0
+        """
+        Provides a database connection from the pool.
+        This is the most critical method for preventing connection leaks.
+        It uses a context manager to GUARANTEE that the connection is
+        returned to the pool, even if errors occur.
+        """
+        if self.pool is None:
+            logger.info("Connection pool does not exist. Initializing now.")
+            self._init_connection_pool()
         
-        while attempt < self._retry_count:
-            try:
-                # Ensure pool is healthy
-                self._ensure_pool_health()
-                
-                # Get connection from pool
-                conn = self.pool.getconn()
-                
-                # Test connection health
-                if conn.closed:
-                    logger.warning("Got closed connection from pool, getting new one...")
-                    self.pool.putconn(conn, close=True)
-                    conn = self.pool.getconn()
-                
-                # Set connection properties for reliability
-                conn.set_session(autocommit=False, readonly=False)
-                conn.set_client_encoding('UTF8')
-                
-                # ---------- BEGIN critical section given to the caller ----------
-                yield conn
-                # ---------- END critical section -------------------------------
-                # Commit any pending work performed by the caller
-                try:
-                    conn.commit()
-                except Exception as commit_err:
-                    logger.warning(f"Commit failed – attempting rollback: {commit_err}")
-                    try:
-                        conn.rollback()
-                    except Exception:
-                        pass
-                # Return the connection to the pool *exactly once* and mark as handled
-                try:
-                    if hasattr(conn, 'closed') and not conn.closed:
-                        self.pool.putconn(conn)
-                    else:
-                        # If connection became closed, dispose of it so the pool can open a fresh one
-                        self.pool.putconn(conn, close=True)
-                finally:
-                    conn = None
-                break  # Success, exit retry loop
-                
-            except OperationalError as e:
-                attempt += 1
-                if conn:
-                    try:
-                        conn.rollback()
-                    except:
-                        pass
-                
-                logger.error(f"Database operational error (attempt {attempt}/{self._retry_count}): {e}")
-                
-                if attempt < self._retry_count:
-                    time.sleep(self._retry_delay * attempt)
-                    # Try to refresh the connection
-                    if conn:
-                        self.pool.putconn(conn, close=True)
-                        conn = None
-                else:
-                    raise DatabaseError(f"Database operation failed after {self._retry_count} attempts: {e}")
-                    
-            except Exception as e:
-                if conn:
-                    try:
-                        conn.rollback()
-                    except:
-                        pass
-                logger.error(f"Database error: {e}")
-                raise DatabaseError(f"Database operation failed: {e}")
-                
-            finally:
-                # CRITICAL: Always return connection to pool to prevent leaks
-                if conn:
-                    try:
-                        if hasattr(conn, 'closed') and conn.closed:
-                            self.pool.putconn(conn, close=True)
-                        else:
-                            self.pool.putconn(conn)
-                    except Exception as cleanup_error:
-                        logger.error(f"Failed to return connection to pool: {cleanup_error}")
-                        # If returning to pool fails, try to close the connection directly
-                        try:
-                            if hasattr(conn, 'close'):
-                                conn.close()
-                        except:
-                            pass
-                        # If putconn fails, try to close the connection directly
-                        try:
-                            conn.close()
-                        except:
-                            pass
+        if self.pool is None:
+            raise DatabaseError("Database connection pool is unavailable.")
+
+        conn = None
+        try:
+            # Get a connection from the pool
+            conn = self.pool.getconn()
+            yield conn # Hand over control to the calling method
+            conn.commit()
+        except OperationalError as e:
+            logger.error(f"Database OperationalError: {e}. Rolling back transaction.")
+            if conn:
+                conn.rollback()
+            # This could be a transient network issue. We'll let the caller retry.
+            raise DatabaseError(f"A database network error occurred: {e}")
+        except Exception as e:
+            logger.error(f"An unexpected database error occurred: {e}. Rolling back.")
+            if conn:
+                conn.rollback()
+            # Re-raise the exception to be handled by the caller
+            raise DatabaseError(f"An unexpected database error occurred: {e}")
+        finally:
+            # THIS BLOCK IS GUARANTEED TO RUN.
+            # It ensures the connection is always returned to the pool.
+            if conn:
+                self.pool.putconn(conn)
     
     def execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
         """Execute database query with enhanced error handling and retry logic"""
