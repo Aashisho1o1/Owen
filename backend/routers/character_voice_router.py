@@ -426,14 +426,20 @@ async def character_voice_health():
         )
         
     except Exception as e:
-        logger.error(f"Error checking character voice service health: {str(e)}")
+        logger.error(f"❌ Error checking character voice service health: {str(e)}")
+        logger.error(f"❌ Error Type: {type(e).__name__}")
+        import traceback
+        logger.error(f"❌ Health Check Traceback: {traceback.format_exc()}")
+        
         return JSONResponse(
             status_code=503,
             content={
                 "service": "character_voice_consistency",
                 "status": "error",
                 "timestamp": time.time(),
-                "message": "An internal error occurred while checking service health."
+                "message": f"Service health check failed: {str(e)}",
+                "error_type": type(e).__name__,
+                "debug_info": traceback.format_exc() if logger.level <= 10 else None  # Only in debug mode
             }
         )
 
