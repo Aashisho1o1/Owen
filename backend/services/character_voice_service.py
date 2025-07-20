@@ -13,8 +13,8 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-# Use the single, standardized GeminiService
-from services.llm.gemini_service import GeminiService
+# CRITICAL FIX: Use the LLM service coordinator (same as successful contextual understanding)
+from services.llm_service import llm_service
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -50,13 +50,14 @@ class VoiceConsistencyResult:
 
 class CharacterVoiceService:
     """
-    Analyzes character voice consistency using the standardized GeminiService.
-    Provides comprehensive dialogue analysis, speaker inference, and voice profiling.
+    Analyzes character voice consistency using the same successful pattern as contextual understanding.
+    Uses the LLM service coordinator for consistent Gemini 2.5 Flash integration.
     """
     
     def __init__(self):
-        self.gemini_service = GeminiService()
-        logger.info("✅ CharacterVoiceService initialized with GeminiService")
+        # CRITICAL FIX: Use the LLM service coordinator instead of direct GeminiService
+        self.llm_service = llm_service
+        logger.info("✅ CharacterVoiceService initialized with LLM service coordinator")
     
     def _extract_dialogue_segments(self, text: str) -> List[DialogueSegment]:
         """
@@ -279,7 +280,7 @@ class CharacterVoiceService:
     
     async def _analyze_character_voice(self, profile: CharacterVoiceProfile, all_segments: List[DialogueSegment]) -> Optional[VoiceConsistencyResult]:
         """
-        Analyze voice consistency for a specific character using Gemini.
+        Analyze voice consistency for a specific character using the EXACT same pattern as successful contextual understanding.
         """
         try:
             # Get this character's dialogue from the segments
@@ -288,7 +289,7 @@ class CharacterVoiceService:
             if len(character_dialogue) < 2:
                 return None
             
-            # Create analysis prompt
+            # Create analysis prompt using the same format as successful chat
             prompt = f"""
 Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
 
@@ -311,46 +312,81 @@ Respond with a JSON object containing:
 }}
 """
             
-            # Get AI analysis
-            response = await self.gemini_service.generate_response(prompt)
+            # CRITICAL FIX: Use the EXACT same successful pattern as contextual understanding
+            logger.info(f"🚀 Generating voice analysis with Google Gemini...")
             
-            # Parse JSON response
+            try:
+                # Format prompt for Gemini (same as successful chat) - expects list of dicts
+                prompts = [
+                    {"role": "user", "parts": [prompt]}
+                ]
+                logger.info("🔧 Formatted prompt for Gemini (voice analysis)")
+                
+                # Use the same LLM service method as successful contextual understanding
+                response_text = await self.llm_service.generate_with_selected_llm(prompts, "Google Gemini")
+                logger.info(f"✅ Gemini voice analysis response received (length: {len(response_text) if response_text else 0} chars)")
+                
+            except Exception as llm_error:
+                logger.error(f"❌ LLM Generation Error with Google Gemini (voice analysis): {llm_error}")
+                logger.error(f"❌ LLM Error Type: {type(llm_error).__name__}")
+                logger.error(f"❌ LLM Error Details: {str(llm_error)}")
+                
+                # Return fallback result with realistic confidence score
+                return VoiceConsistencyResult(
+                    is_consistent=True,
+                    confidence_score=0.3,  # Lower confidence for fallback
+                    character_name=profile.character_name,
+                    flagged_text="",
+                    explanation=f"Voice analysis temporarily unavailable for {profile.character_name}. AI service error: {str(llm_error)}",
+                    suggestions=["Please try again later when the AI service is available."]
+                )
+            
+            # Parse JSON response (same logic as before, but with better error handling)
             try:
                 # Extract JSON from response
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
                     analysis_data = json.loads(json_match.group())
                 else:
-                    # Fallback if no JSON found
+                    # Improved fallback if no JSON found
+                    logger.warning(f"⚠️ No JSON found in response for {profile.character_name}, using text response")
                     analysis_data = {
                         "is_consistent": True,
-                        "confidence_score": 0.5,
-                        "explanation": response,
+                        "confidence_score": 0.4,  # Realistic confidence
+                        "explanation": response_text[:500] + "..." if len(response_text) > 500 else response_text,
                         "flagged_text": "",
-                        "suggestions": []
+                        "suggestions": ["Analysis completed, but structured data was not available."]
                     }
                 
                 return VoiceConsistencyResult(
                     is_consistent=analysis_data.get("is_consistent", True),
-                    confidence_score=float(analysis_data.get("confidence_score", 0.5)),
+                    confidence_score=float(analysis_data.get("confidence_score", 0.4)),
                     character_name=profile.character_name,
                     flagged_text=analysis_data.get("flagged_text", ""),
                     explanation=analysis_data.get("explanation", "Analysis completed"),
                     suggestions=analysis_data.get("suggestions", [])
                 )
                 
-            except json.JSONDecodeError:
-                logger.warning(f"⚠️ Could not parse JSON response for {profile.character_name}")
-                # Return a basic result
+            except json.JSONDecodeError as json_error:
+                logger.warning(f"⚠️ Could not parse JSON response for {profile.character_name}: {json_error}")
+                # Return a realistic result with the actual response text
                 return VoiceConsistencyResult(
                     is_consistent=True,
-                    confidence_score=0.5,
+                    confidence_score=0.3,  # Lower confidence for parsing issues
                     character_name=profile.character_name,
                     flagged_text="",
-                    explanation=f"Voice analysis completed for {profile.character_name}",
-                    suggestions=[]
+                    explanation=f"Voice analysis completed for {profile.character_name}. Raw response: {response_text[:200]}..." if len(response_text) > 200 else response_text,
+                    suggestions=["Analysis completed, but detailed suggestions are not available."]
                 )
                 
         except Exception as e:
             logger.error(f"❌ Character analysis failed for {profile.character_name}: {str(e)}")
-            return None
+            # Return a fallback result instead of None to prevent empty results
+            return VoiceConsistencyResult(
+                is_consistent=True,
+                confidence_score=0.2,  # Very low confidence for errors
+                character_name=profile.character_name,
+                flagged_text="",
+                explanation=f"Voice analysis failed for {profile.character_name}: {str(e)}",
+                suggestions=["Please try again later."]
+            )

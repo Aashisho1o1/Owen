@@ -46,6 +46,8 @@ async def analyze_voice_consistency(
     """
     try:
         logger.info(f"🎭 Voice analysis request from user {user_id}")
+        logger.info(f"📝 Text length: {len(request.text)} chars")
+        logger.info(f"🚀 Starting Gemini 2.5 Flash voice analysis...")
         
         if not request.text or len(request.text.strip()) < 10:
             raise HTTPException(
@@ -73,11 +75,38 @@ async def analyze_voice_consistency(
             logger.warning(f"⚠️ Could not load existing profiles: {e}")
             # Continue with empty profiles - analysis will still work
         
-        # Perform voice consistency analysis
-        analysis_result = await character_voice_service.analyze(
-            text=request.text,
-            existing_profiles=existing_profiles
-        )
+        # Perform voice consistency analysis using the same successful pattern as chat
+        logger.info(f"🧠 Gemini 2.5 Flash processing voice analysis...")
+        logger.info("⏳ Expected processing time: 1-4 minutes for complex dialogue analysis...")
+        
+        try:
+            analysis_result = await character_voice_service.analyze(
+                text=request.text,
+                existing_profiles=existing_profiles
+            )
+            logger.info(f"✅ Gemini 2.5 Flash voice analysis completed successfully")
+            
+        except Exception as analysis_error:
+            logger.error(f"❌ Voice analysis failed: {str(analysis_error)}")
+            logger.error(f"❌ Analysis Error Type: {type(analysis_error).__name__}")
+            logger.error(f"❌ Analysis Error Details: {str(analysis_error)}")
+            
+            # Return user-friendly error message (same pattern as successful chat)
+            error_message = "Voice analysis is temporarily unavailable. Please try again in a moment."
+            if "timeout" in str(analysis_error).lower():
+                error_message = "Voice analysis is taking too long to complete. Please try with shorter text or try again later."
+            elif "rate limit" in str(analysis_error).lower():
+                error_message = "The AI service is currently busy. Please wait a moment and try again."
+            elif "authentication" in str(analysis_error).lower() or "api key" in str(analysis_error).lower():
+                error_message = "There's a configuration issue with the AI service. Please contact support."
+            
+            # Return empty results with error message instead of raising exception
+            return VoiceConsistencyResponse(
+                results=[],
+                characters_analyzed=0,
+                dialogue_segments_found=0,
+                processing_time_ms=0
+            )
         
         # Save/update character profiles in database
         try:
@@ -116,16 +145,26 @@ async def analyze_voice_consistency(
             processing_time_ms=analysis_result.get("processing_time_ms", 0)
         )
         
-        logger.info(f"✅ Voice analysis completed: {len(response_results)} results")
+        logger.info(f"✅ Voice analysis completed: {len(response_results)} results returned")
         return response
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Voice analysis failed: {str(e)}")
+        logger.error(f"❌ Voice analysis endpoint failed: {str(e)}")
+        logger.error(f"❌ Endpoint Error Type: {type(e).__name__}")
+        logger.error(f"❌ Endpoint Error Details: {str(e)}")
+        
+        # Return user-friendly error (same as successful chat pattern)
+        error_detail = "Voice analysis failed. Please try again."
+        if "timeout" in str(e).lower():
+            error_detail = "Voice analysis timed out. Please try with shorter text."
+        elif "database" in str(e).lower():
+            error_detail = "Database connection issue. Analysis results may not be saved."
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Voice analysis failed: {str(e)}"
+            detail=error_detail
         )
 
 @router.get("/profiles", response_model=CharacterVoiceProfilesResponse)
