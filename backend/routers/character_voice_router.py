@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 # Direct imports
 from dependencies import get_current_user_id
 from services.character_voice_service import CharacterVoiceService, CharacterVoiceProfile
-from services.database import PostgreSQLService
+from services.database import get_db_service, DatabaseError
 from models.schemas import (
     VoiceConsistencyRequest, 
     VoiceConsistencyResponse,
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
 
 # Initialize services
 character_voice_service = CharacterVoiceService()
-db_service = PostgreSQLService()
+db_service = get_db_service()
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
 async def analyze_voice_consistency(

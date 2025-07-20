@@ -15,7 +15,7 @@ from models.schemas import (
 
 # Import services
 from services.auth_service import auth_service, AuthenticationError
-from services.database import db_service, DatabaseError
+from services.database import get_db_service, DatabaseError
 
 # Import production rate limiter
 from services.rate_limiter import check_rate_limit
@@ -33,6 +33,9 @@ router = APIRouter(
     prefix="/api/auth",
     tags=["authentication"],
 )
+
+# Initialize database service
+db_service = get_db_service()
 
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, request: Request) -> TokenResponse:

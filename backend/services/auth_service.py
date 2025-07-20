@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from email_validator import validate_email, EmailNotValidError
 
-from .database import db_service, DatabaseError
+from .database import get_db_service, DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class AuthService:
     """
     
     def __init__(self):
-        self.db = db_service
+        self.db = get_db_service()
         logger.info("Auth service initialized with PostgreSQL")
     
     def _hash_password(self, password: str) -> str:
