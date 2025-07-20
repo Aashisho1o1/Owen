@@ -731,7 +731,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         attributeFilter: ['style', 'class']
       });
       
-      console.log('🔍 Voice inconsistency mutation observer set up');
+      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops'); return;
     };
     
     // Function to re-apply voice inconsistency styles

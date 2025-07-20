@@ -412,7 +412,7 @@ class CharacterVoiceService:
             # INTELLIGENT APPROACH: Let the LLM validate character names later
             # For now, just return the first potential name we find
             # The LLM will filter out non-character names in the next phase
-            potential_names = [name for name in all_names if len(name) > 1]  # Basic filter for single letters
+            potential_names = [name for name in all_names if len(name) > 1 and name.lower() not in {'come', 'as', 'suddenly', 'best', 'aye', 'well', 'dude', 'sir', 'said', 'asked', 'replied', 'then', 'now', 'here', 'there', 'when', 'where', 'what', 'who', 'how', 'why'}]  # Basic filter for single letters
             if potential_names:
                 speaker = potential_names[0]
                 logger.debug(f"🎭 Potential speaker '{speaker}' from context (will be validated by LLM)")
