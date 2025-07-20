@@ -192,43 +192,8 @@ async def lifespan(app: FastAPI):
             else:
                 logger.info(f"✅ {var_name}: Configured")
         
-        # Only try database operations if DATABASE_URL is set
-        if os.getenv('DATABASE_URL'):
-            try:
-                # Test database connection before initializing schema
-                logger.info("🔍 Testing database connectivity...")
-                health = db_service.health_check()
-                if health['status'] != 'healthy':
-                    error_msg = f"❌ DATABASE HEALTH CHECK FAILED: {health.get('error', 'Unknown error')}"
-                    logger.error(error_msg)
-                    logger.error("💡 DEBUGGING TIPS:")
-                    logger.error("   1. Check if Railway PostgreSQL service is running")
-                    logger.error("   2. Verify DATABASE_URL uses 'postgres.railway.internal:5432'")
-                    logger.error("   3. Ensure DATABASE_URL has correct credentials")
-                    logger.error("   4. Check if DATABASE_URL env var is actually set in Railway")
-                    startup_errors.append(error_msg)
-                    startup_success = False
-                else:
-                    logger.info("✅ Database connectivity confirmed")
-                    
-                    # Initialize database schema
-                    logger.info("📊 Initializing database schema...")
-                    db_service.init_database()
-                    logger.info("✅ Database schema initialized successfully")
-                    
-                    # Final health check
-                    final_health = db_service.health_check()
-                    logger.info(f"✅ Final health check: {final_health['status']}")
-                    logger.info(f"📊 Database stats: {final_health.get('total_users', 0)} users, {final_health.get('total_documents', 0)} documents")
-            except Exception as db_error:
-                error_msg = f"❌ DATABASE INITIALIZATION FAILED: {type(db_error).__name__}: {db_error}"
-                logger.error(error_msg)
-                startup_errors.append(error_msg)
-                startup_success = False
-        else:
-            logger.warning("⚠️ DATABASE_URL not set - database operations will fail")
-            startup_errors.append("DATABASE_URL not configured")
-            startup_success = False
+        # The database will be initialized lazily on the first request.
+        # No need to initialize it here.
         
         if startup_success:
             logger.info("🎉 DOG Writer MVP backend started successfully!")
@@ -257,8 +222,9 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Shutting down database connections...")
         try:
             # Ensure we're in the right context for database cleanup
-            if hasattr(db_service, 'close'):
-                db_service.close()
+            db = get_db_service()
+            if db and hasattr(db, 'close'):
+                db.close()
                 logger.info("✅ Database connections closed cleanly")
         except Exception as e:
             logger.error(f"⚠️ Error during shutdown: {e}")
@@ -399,10 +365,17 @@ async def health_check(request: Request = None):
     startup_success = app.state.startup_success if hasattr(app.state, 'startup_success') else False
     startup_errors = app.state.startup_errors if hasattr(app.state, 'startup_errors') else ["State not found"]
     
+    db_status = "uninitialized"
+    if get_db_service:
+        try:
+            db_status = get_db_service().health_check().get('status', 'error')
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+
     response_data = {
-        "status": "healthy" if startup_success and db_service.health_check().get('status') == 'healthy' else "unhealthy",
+        "status": "healthy" if startup_success and db_status == 'healthy' else "unhealthy",
         "timestamp": datetime.now().isoformat(),
-        "database_status": db_service.health_check().get('status', 'error') if db_service else "uninitialized",
+        "database_status": db_status,
         "startup_errors": startup_errors,
         "api_version": "1.2.0",  # TRACER BULLET: Check for this version
         "deployment_verification": "CORS_FIX_APPLIED_SUCCESSFULLY" # TRACER BULLET
