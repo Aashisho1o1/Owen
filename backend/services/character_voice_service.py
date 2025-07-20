@@ -217,6 +217,25 @@ class CharacterVoiceService:
                 logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
                 text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"
             
+            # CRITICAL FIX: Remove HTML tags since TipTap editor sends HTML-formatted content
+            # The dialogue extraction patterns expect plain text, not HTML
+            import html
+            
+            # First, unescape HTML entities
+            text = html.unescape(text)
+            
+            # Remove HTML tags using regex (simple but effective for our use case)
+            html_tag_pattern = re.compile(r'<[^>]+>')
+            plain_text = html_tag_pattern.sub('', text)
+            
+            # Clean up extra whitespace that might result from tag removal
+            plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+            
+            logger.info(f"🧹 Cleaned HTML tags from text: {len(text)} chars -> {len(plain_text)} chars plain text")
+            
+            # Use the cleaned plain text for dialogue extraction
+            text = plain_text
+            
             # Extract dialogue segments
             segments = self._extract_dialogue_segments(text)
             
