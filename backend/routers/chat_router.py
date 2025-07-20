@@ -20,7 +20,7 @@ from models.schemas import (
 )
 from services.llm_service import LLMService
 from services.database import db_service
-from services.character_voice_service import SimpleCharacterVoiceService as CharacterVoiceService
+from services.character_voice_service import CharacterVoiceService
 
 # Import centralized authentication dependency
 from dependencies import get_current_user_id
