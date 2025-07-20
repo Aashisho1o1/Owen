@@ -413,19 +413,26 @@ Character names to validate: {potential_characters}"""
                         text[:2000]  # Send first 2000 chars as context
                     )
                     
-                    # Filter profiles to only include validated characters
-                    validated_profiles = {
-                        name: profile for name, profile in current_profiles.items() 
-                        if name in validated_character_names
-                    }
-                    
-                    logger.info(f"✅ SERVICE STEP 3 COMPLETE: LLM validated {len(validated_profiles)} real characters from {len(current_profiles)} potential names")
-                    logger.info(f"   Validated characters: {list(validated_profiles.keys())}")
-                    logger.info(f"   Filtered out: {[name for name in current_profiles.keys() if name not in validated_character_names]}")
-                    
-                    current_profiles = validated_profiles
-                else:
-                    logger.info(f"✅ SERVICE STEP 3 COMPLETE: No potential characters found")
+                    # CRITICAL FIX: Only filter when LLM validation actually succeeded
+                    # This makes validation "best-effort" instead of strict
+                    if validated_character_names and len(validated_character_names) > 0:
+                        # LLM validation succeeded - use validated list
+                        validated_profiles = {
+                            name: profile for name, profile in current_profiles.items() 
+                            if name in validated_character_names
+                        }
+                        
+                        logger.info(f"✅ SERVICE STEP 3 COMPLETE: LLM validated {len(validated_profiles)} real characters from {len(current_profiles)} potential names")
+                        logger.info(f"   Validated characters: {list(validated_profiles.keys())}")
+                        logger.info(f"   Filtered out: {[name for name in current_profiles.keys() if name not in validated_character_names]}")
+                        
+                        current_profiles = validated_profiles
+                    else:
+                        # LLM validation failed or returned empty - use all heuristic characters
+                        logger.warning(f"⚠️ LLM validation failed or returned zero characters")
+                        logger.info(f"➡️ FALLBACK: Using all {len(current_profiles)} heuristically detected characters")
+                        logger.info(f"   Fallback characters: {list(current_profiles.keys())}")
+                        # current_profiles remains unchanged - we keep all heuristic characters
                 
                 for char_name, profile in current_profiles.items():
                     logger.debug(f"   Final profile: {char_name} - {len(profile.dialogue_samples)} samples")
