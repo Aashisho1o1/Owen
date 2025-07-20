@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
 
 # Initialize services
-        character_voice_service = CharacterVoiceService()
+character_voice_service = CharacterVoiceService()
 db_service = get_db_service()
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
@@ -114,7 +114,7 @@ async def analyze_voice_consistency(
             results = analysis_result.get("results", [])
             logger.info(f"✅ STEP 3 COMPLETE: Analysis returned {len(results)} results")
             logger.info(f"📊 Results summary:")
-        for i, result in enumerate(results):
+            for i, result in enumerate(results):
                 logger.info(f"   Result {i+1}: {result.character_name} - Consistent: {result.is_consistent} (Confidence: {result.confidence_score})")
                 
         except Exception as analysis_error:

@@ -416,7 +416,7 @@ class CharacterVoiceService:
             if potential_names:
                 speaker = potential_names[0]
                 logger.debug(f"🎭 Potential speaker '{speaker}' from context (will be validated by LLM)")
-                    return speaker
+                return speaker
         
         # Default to "Unknown" if no speaker can be inferred
         logger.debug("🎭 Could not infer speaker, using 'Unknown'")
