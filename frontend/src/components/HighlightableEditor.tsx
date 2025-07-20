@@ -115,6 +115,17 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
   
+  // Add observer to maintain voice inconsistency styles
+  const voiceInconsistencyObserver = useRef<MutationObserver | null>(null);
+  
+  // Store applied voice inconsistencies to re-apply them when TipTap removes them
+  const appliedInconsistencies = useRef<Array<{
+    text: string;
+    character: string;
+    confidence: number;
+    explanation: string;
+  }>>([]);
+  
   // Fallback text selection handler for DOM-based selection detection
   const fallbackTextSelection = useCallback((selectedText: string) => {
     console.log('📍 Fallback text selection handler called:', { selectedText });
@@ -359,6 +370,14 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     const inconsistentResults = results.filter(result => 
       !result.is_consistent && result.flagged_text && result.flagged_text.trim().length > 0
     );
+    
+    // Store inconsistencies for re-application by mutation observer
+    appliedInconsistencies.current = inconsistentResults.map(result => ({
+      text: result.flagged_text.trim(),
+      character: result.character_name,
+      confidence: result.confidence_score,
+      explanation: result.explanation
+    }));
     
     console.log('🎯 Applying voice inconsistency underlines:', {
       totalResults: results.length,
@@ -654,6 +673,171 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   useEffect(() => {
     let isMounted = true; // MEMORY LEAK FIX: Track component mount state
     
+    // Set up mutation observer to maintain voice inconsistency styles
+    const setupVoiceInconsistencyObserver = () => {
+      if (!editor || !editor.view.dom) return;
+      
+      const editorElement = editor.view.dom;
+      
+      // Clean up existing observer
+      if (voiceInconsistencyObserver.current) {
+        voiceInconsistencyObserver.current.disconnect();
+      }
+      
+      // Create new mutation observer
+      voiceInconsistencyObserver.current = new MutationObserver((mutations) => {
+        if (!isMounted || appliedInconsistencies.current.length === 0) return;
+        
+        // Check if any voice inconsistent elements were removed
+        let needsReapplication = false;
+        
+        mutations.forEach(mutation => {
+          // Check if any nodes were removed that contained voice inconsistent elements
+          mutation.removedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (element.querySelector?.('.voice-inconsistent') || element.classList?.contains('voice-inconsistent')) {
+                needsReapplication = true;
+              }
+            }
+          });
+          
+          // Check if existing voice inconsistent elements lost their styling
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            const target = mutation.target as Element;
+            if (target.classList?.contains('voice-inconsistent')) {
+              const computedStyle = window.getComputedStyle(target);
+              if (!computedStyle.animation.includes('voice-inconsistency-wiggle')) {
+                needsReapplication = true;
+              }
+            }
+          }
+        });
+        
+        // Re-apply voice inconsistency styles if needed
+        if (needsReapplication) {
+          console.log('🔄 TipTap removed voice inconsistency styles, re-applying...');
+          setTimeout(() => {
+            reapplyVoiceInconsistencyStyles();
+          }, 100); // Small delay to let TipTap finish its updates
+        }
+      });
+      
+      // Start observing
+      voiceInconsistencyObserver.current.observe(editorElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+      
+      console.log('🔍 Voice inconsistency mutation observer set up');
+    };
+    
+    // Function to re-apply voice inconsistency styles
+    const reapplyVoiceInconsistencyStyles = () => {
+      if (!editor || !isMounted || appliedInconsistencies.current.length === 0) return;
+      
+      const editorElement = editor.view.dom;
+      const editorPlainText = editor.getText();
+      
+      appliedInconsistencies.current.forEach(inconsistency => {
+        // Check if this inconsistency is already properly styled
+        const existingElements = editorElement.querySelectorAll('.voice-inconsistent');
+        let alreadyApplied = false;
+        
+        existingElements.forEach(el => {
+          if (el.textContent?.includes(inconsistency.text.substring(0, 20))) {
+            const computedStyle = window.getComputedStyle(el);
+            if (computedStyle.animation.includes('voice-inconsistency-wiggle')) {
+              alreadyApplied = true;
+            }
+          }
+        });
+        
+        if (alreadyApplied) return;
+        
+        // Find and re-apply styling to this inconsistency
+        const textIndex = editorPlainText.indexOf(inconsistency.text);
+        if (textIndex >= 0) {
+          // Use the same highlighting logic as the main function
+          const walker = document.createTreeWalker(
+            editorElement,
+            NodeFilter.SHOW_TEXT,
+            null
+          );
+          
+          let currentOffset = 0;
+          const targetStartOffset = textIndex;
+          const targetEndOffset = textIndex + inconsistency.text.length;
+          let textNode;
+          
+          while ((textNode = walker.nextNode())) {
+            const nodeValue = textNode.nodeValue || '';
+            const nodeLength = nodeValue.length;
+            
+            if (currentOffset <= targetStartOffset && (currentOffset + nodeLength) >= targetStartOffset) {
+              const startInNode = targetStartOffset - currentOffset;
+              const endInNode = Math.min(targetEndOffset - currentOffset, nodeLength);
+              
+              const beforeText = nodeValue.substring(0, startInNode);
+              const highlightText = nodeValue.substring(startInNode, endInNode);
+              const afterText = nodeValue.substring(endInNode);
+              
+              // Create the span with all the styling
+              const inconsistencySpan = document.createElement('span');
+              inconsistencySpan.className = 'voice-inconsistent';
+              
+              const confidence = inconsistency.confidence;
+              const underlineColor = confidence <= 0.4 ? '#dc2626' : confidence <= 0.7 ? '#f59e0b' : '#fbbf24';
+              
+              const inlineStyles = [
+                `position: relative !important`,
+                `display: inline !important`,
+                `cursor: pointer !important`,
+                `background-image: repeating-linear-gradient(45deg, ${underlineColor} 0px, ${underlineColor} 2px, transparent 2px, transparent 4px) !important`,
+                `background-position: 0 100% !important`,
+                `background-size: 4px 2px !important`,
+                `background-repeat: repeat-x !important`,
+                `animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important`
+              ];
+              
+              inconsistencySpan.style.cssText = inlineStyles.join('; ');
+              inconsistencySpan.textContent = highlightText;
+              
+              // Add data attributes
+              inconsistencySpan.setAttribute('data-voice-explanation', inconsistency.explanation);
+              inconsistencySpan.setAttribute('data-confidence', confidence.toString());
+              inconsistencySpan.setAttribute('data-character', inconsistency.character);
+              
+              // Replace the text node
+              const parent = textNode.parentNode;
+              if (parent) {
+                if (beforeText) {
+                  parent.insertBefore(document.createTextNode(beforeText), textNode);
+                }
+                parent.insertBefore(inconsistencySpan, textNode);
+                if (afterText) {
+                  parent.insertBefore(document.createTextNode(afterText), textNode);
+                }
+                parent.removeChild(textNode);
+                
+                console.log('🔄 Re-applied voice inconsistency style for:', highlightText.substring(0, 30));
+              }
+              break;
+            }
+            
+            currentOffset += nodeLength;
+          }
+        }
+      });
+    };
+    
+    // Set up observer when editor is ready
+    if (editor) {
+      setupVoiceInconsistencyObserver();
+    }
+    
     const handleActiveDiscussionHighlight = (event: CustomEvent) => {
       if (!editor || !isMounted) return; // MEMORY LEAK FIX: Check if component is still mounted
 
@@ -821,6 +1005,13 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     
     return () => {
       isMounted = false; // MEMORY LEAK FIX: Mark component as unmounted
+      
+      // Clean up voice inconsistency observer
+      if (voiceInconsistencyObserver.current) {
+        voiceInconsistencyObserver.current.disconnect();
+        voiceInconsistencyObserver.current = null;
+      }
+      
       window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
     };
   }, [editor]);
