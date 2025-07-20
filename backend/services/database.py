@@ -635,6 +635,159 @@ class PostgreSQLService:
             logger.error(f"Failed to add user feedback: {e}")
             return False
 
+    # Character Voice Profile Management Methods
+    
+    async def get_character_profiles(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get all character profiles for a user"""
+        try:
+            logger.info(f"📚 Fetching character profiles for user {user_id}")
+            
+            profiles = self.execute_query(
+                """SELECT character_id, character_name, user_id, dialogue_samples, 
+                          voice_characteristics, sample_count, last_updated, created_at
+                   FROM character_voice_profiles 
+                   WHERE user_id = %s 
+                   ORDER BY last_updated DESC""",
+                (user_id,),
+                fetch='all'
+            )
+            
+            logger.info(f"✅ Found {len(profiles)} character profiles for user {user_id}")
+            return profiles or []
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get character profiles for user {user_id}: {e}")
+            return []
+    
+    async def get_character_profile(self, user_id: int, character_name: str) -> Optional[Dict[str, Any]]:
+        """Get a specific character profile"""
+        try:
+            logger.info(f"📚 Fetching profile for character '{character_name}' (user {user_id})")
+            
+            profile = self.execute_query(
+                """SELECT character_id, character_name, user_id, dialogue_samples, 
+                          voice_characteristics, sample_count, last_updated, created_at
+                   FROM character_voice_profiles 
+                   WHERE user_id = %s AND character_name = %s""",
+                (user_id, character_name),
+                fetch='one'
+            )
+            
+            if profile:
+                logger.info(f"✅ Found profile for character '{character_name}'")
+            else:
+                logger.info(f"ℹ️ No profile found for character '{character_name}'")
+                
+            return profile
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get profile for character '{character_name}': {e}")
+            return None
+    
+    async def upsert_character_profile(self, user_id: int, character_name: str, 
+                                     dialogue_samples: List[str], 
+                                     voice_traits: Dict[str, Any]) -> bool:
+        """Insert or update a character profile"""
+        try:
+            import hashlib
+            
+            # Generate character_id as MD5 hash of user_id + character_name
+            character_id = hashlib.md5(f"{user_id}_{character_name}".encode()).hexdigest()[:16]
+            
+            logger.info(f"💾 Upserting profile for character '{character_name}' (user {user_id})")
+            logger.debug(f"   Character ID: {character_id}")
+            logger.debug(f"   Dialogue samples: {len(dialogue_samples)}")
+            logger.debug(f"   Voice traits keys: {list(voice_traits.keys())}")
+            
+            # Use PostgreSQL UPSERT (INSERT ... ON CONFLICT DO UPDATE)
+            self.execute_query(
+                """INSERT INTO character_voice_profiles 
+                   (character_id, character_name, user_id, dialogue_samples, 
+                    voice_characteristics, sample_count, last_updated, created_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (character_id) DO UPDATE SET
+                       dialogue_samples = EXCLUDED.dialogue_samples,
+                       voice_characteristics = EXCLUDED.voice_characteristics,
+                       sample_count = EXCLUDED.sample_count,
+                       last_updated = EXCLUDED.last_updated""",
+                (character_id, character_name, user_id, dialogue_samples, 
+                 voice_traits, len(dialogue_samples), datetime.utcnow(), datetime.utcnow())
+            )
+            
+            logger.info(f"✅ Successfully upserted profile for character '{character_name}'")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to upsert profile for character '{character_name}': {e}")
+            logger.exception("Full traceback:")
+            return False
+    
+    async def update_character_profile(self, user_id: int, character_name: str,
+                                     dialogue_samples: List[str] = None,
+                                     voice_traits: Dict[str, Any] = None) -> bool:
+        """Update specific fields of a character profile"""
+        try:
+            logger.info(f"📝 Updating profile for character '{character_name}' (user {user_id})")
+            
+            # Build dynamic update query based on provided parameters
+            update_fields = []
+            params = []
+            
+            if dialogue_samples is not None:
+                update_fields.append("dialogue_samples = %s")
+                params.append(dialogue_samples)
+                update_fields.append("sample_count = %s")
+                params.append(len(dialogue_samples))
+                logger.debug(f"   Updating dialogue samples: {len(dialogue_samples)} samples")
+            
+            if voice_traits is not None:
+                update_fields.append("voice_characteristics = %s")
+                params.append(voice_traits)
+                logger.debug(f"   Updating voice traits: {list(voice_traits.keys())}")
+            
+            if not update_fields:
+                logger.warning(f"⚠️ No fields to update for character '{character_name}'")
+                return True  # Nothing to update is not an error
+            
+            # Always update the timestamp
+            update_fields.append("last_updated = %s")
+            params.append(datetime.utcnow())
+            
+            # Add WHERE clause parameters
+            params.extend([user_id, character_name])
+            
+            query = f"""UPDATE character_voice_profiles 
+                       SET {', '.join(update_fields)}
+                       WHERE user_id = %s AND character_name = %s"""
+            
+            result = self.execute_query(query, tuple(params))
+            
+            logger.info(f"✅ Successfully updated profile for character '{character_name}'")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to update profile for character '{character_name}': {e}")
+            logger.exception("Full traceback:")
+            return False
+    
+    async def delete_character_profile(self, user_id: int, character_name: str) -> bool:
+        """Delete a character profile"""
+        try:
+            logger.info(f"🗑️ Deleting profile for character '{character_name}' (user {user_id})")
+            
+            self.execute_query(
+                """DELETE FROM character_voice_profiles 
+                   WHERE user_id = %s AND character_name = %s""",
+                (user_id, character_name)
+            )
+            
+            logger.info(f"✅ Successfully deleted profile for character '{character_name}'")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to delete profile for character '{character_name}': {e}")
+            return False
+
 # Global service instance - initialized lazily
 db_service = None
 

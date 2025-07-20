@@ -140,24 +140,39 @@ async def analyze_voice_consistency(
         updated_count = 0
         try:
             if db_service.is_available() and results:
+                logger.info(f"💾 Saving {len(results)} character profiles to database")
+                
                 for result in results:
                     if result.character_name and result.character_name.strip():
                         try:
-                            await db_service.update_character_profile(
+                            # Prepare dialogue samples and voice traits
+                            dialogue_samples = [result.flagged_text] if result.flagged_text else []
+                            voice_traits = {
+                                "consistency_score": result.confidence_score,
+                                "is_consistent": result.is_consistent,
+                                "last_analysis": datetime.now().isoformat(),
+                                "analysis_method": result.analysis_method if hasattr(result, 'analysis_method') else "llm_validated",
+                                "suggestions": result.suggestions[:3] if result.suggestions else []  # Store top 3 suggestions
+                            }
+                            
+                            # Use upsert to handle both insert and update cases
+                            success = await db_service.upsert_character_profile(
                                 user_id=user_id,
                                 character_name=result.character_name,
-                                dialogue_samples=[result.flagged_text] if result.flagged_text else [],
-                                voice_traits={
-                                    "consistency_score": result.confidence_score,
-                                    "last_analysis": datetime.now().isoformat()
-                                }
+                                dialogue_samples=dialogue_samples,
+                                voice_traits=voice_traits
                             )
-                            updated_count += 1
-                            logger.debug(f"   Updated profile for: {result.character_name}")
-                        except Exception as profile_error:
-                            logger.warning(f"⚠️ Could not update profile for {result.character_name}: {profile_error}")
                             
-                logger.info(f"✅ STEP 4 COMPLETE: Updated {updated_count} character profiles")
+                            if success:
+                                updated_count += 1
+                                logger.debug(f"   ✅ Saved profile for: {result.character_name}")
+                            else:
+                                logger.warning(f"   ⚠️ Failed to save profile for: {result.character_name}")
+                                
+                        except Exception as profile_error:
+                            logger.warning(f"   ❌ Profile save error for {result.character_name}: {profile_error}")
+                            
+                logger.info(f"✅ STEP 4 COMPLETE: Successfully saved {updated_count}/{len(results)} character profiles")
             else:
                 logger.info(f"⚠️ STEP 4 SKIPPED: Database unavailable or no results to save")
                 

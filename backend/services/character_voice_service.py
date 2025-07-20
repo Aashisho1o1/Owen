@@ -172,17 +172,87 @@ class CharacterVoiceService:
         # Prefer names from after context, then before
         all_names = names_after + names_before
         if all_names:
-            # Filter out common words that aren't names
-            common_words = {'The', 'She', 'He', 'They', 'It', 'This', 'That', 'But', 'And', 'Or'}
-            potential_names = [name for name in all_names if name not in common_words]
+            # INTELLIGENT APPROACH: Let the LLM validate character names later
+            # For now, just return the first potential name we find
+            # The LLM will filter out non-character names in the next phase
+            potential_names = [name for name in all_names if len(name) > 1]  # Basic filter for single letters
             if potential_names:
                 speaker = potential_names[0]
-                logger.debug(f"🎭 Inferred speaker '{speaker}' from context names")
+                logger.debug(f"🎭 Potential speaker '{speaker}' from context (will be validated by LLM)")
                 return speaker
         
         # Default to "Unknown" if no speaker can be inferred
         logger.debug("🎭 Could not infer speaker, using 'Unknown'")
         return "Unknown"
+    
+    async def _validate_character_names_with_llm(self, potential_characters: List[str], text_sample: str) -> List[str]:
+        """
+        Use LLM to validate which potential names are actually character names.
+        This is much more accurate than word filtering.
+        """
+        if not potential_characters:
+            return []
+        
+        logger.info(f"🤖 Using LLM to validate {len(potential_characters)} potential character names")
+        logger.debug(f"   Potential names: {potential_characters}")
+        
+        try:
+            # Create a focused prompt for character name validation
+            prompt = f"""You are analyzing a text excerpt to identify actual character names (people who speak dialogue) versus other capitalized words.
+
+TEXT SAMPLE (first 1000 chars):
+{text_sample[:1000]}
+
+POTENTIAL NAMES FOUND: {', '.join(potential_characters)}
+
+Your task: Determine which of these are actual CHARACTER NAMES (people who speak or are referenced as characters) versus other capitalized words (places, things, titles, etc.).
+
+CRITICAL: Respond with ONLY a valid JSON array of character names. No other text.
+
+Example response format:
+["Alice", "Bob", "Dr. Smith"]
+
+If no actual character names are found, respond with:
+[]
+
+Character names to validate: {potential_characters}"""
+
+            logger.debug(f"🤖 Sending character validation prompt to LLM...")
+            response_text = await llm_service.generate_with_selected_llm(prompt, "Google Gemini")
+            logger.debug(f"🤖 LLM character validation response: {response_text[:200]}...")
+            
+            # Parse the JSON response
+            try:
+                # Clean the response to extract just the JSON array
+                response_text = response_text.strip()
+                
+                # Look for JSON array pattern
+                json_match = re.search(r'\[([^\]]*)\]', response_text)
+                if json_match:
+                    json_text = json_match.group(0)
+                    validated_characters = json.loads(json_text)
+                    
+                    # Ensure all items are strings and filter out empty ones
+                    validated_characters = [str(name).strip() for name in validated_characters if str(name).strip()]
+                    
+                    logger.info(f"✅ LLM validated {len(validated_characters)} character names: {validated_characters}")
+                    return validated_characters
+                else:
+                    logger.warning("⚠️ No JSON array found in LLM response")
+                    return []
+                    
+            except json.JSONDecodeError as e:
+                logger.warning(f"⚠️ Failed to parse LLM character validation response: {e}")
+                logger.debug(f"   Raw response: {response_text}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"❌ Character name validation failed: {e}")
+            # Fallback: return names that look like character names (basic heuristics)
+            fallback_characters = [name for name in potential_characters 
+                                 if len(name) >= 2 and name.isalpha() and name[0].isupper()]
+            logger.info(f"➡️ Using fallback character validation: {fallback_characters}")
+            return fallback_characters
     
     def _build_character_profiles(self, segments: List[DialogueSegment]) -> Dict[str, CharacterVoiceProfile]:
         """
@@ -291,10 +361,33 @@ class CharacterVoiceService:
             # Build character profiles from current text
             try:
                 current_profiles = self._build_character_profiles(segments)
-                logger.info(f"✅ SERVICE STEP 3 COMPLETE: Built profiles for {len(current_profiles)} characters")
+                logger.info(f"📊 Initial profile building found {len(current_profiles)} potential characters")
+                
+                # INTELLIGENT APPROACH: Use LLM to validate which are actual character names
+                potential_character_names = list(current_profiles.keys())
+                if potential_character_names:
+                    logger.info(f"🤖 SERVICE STEP 3a: LLM validation of character names...")
+                    validated_character_names = await self._validate_character_names_with_llm(
+                        potential_character_names, 
+                        text[:2000]  # Send first 2000 chars as context
+                    )
+                    
+                    # Filter profiles to only include validated characters
+                    validated_profiles = {
+                        name: profile for name, profile in current_profiles.items() 
+                        if name in validated_character_names
+                    }
+                    
+                    logger.info(f"✅ SERVICE STEP 3 COMPLETE: LLM validated {len(validated_profiles)} real characters from {len(current_profiles)} potential names")
+                    logger.info(f"   Validated characters: {list(validated_profiles.keys())}")
+                    logger.info(f"   Filtered out: {[name for name in current_profiles.keys() if name not in validated_character_names]}")
+                    
+                    current_profiles = validated_profiles
+                else:
+                    logger.info(f"✅ SERVICE STEP 3 COMPLETE: No potential characters found")
                 
                 for char_name, profile in current_profiles.items():
-                    logger.debug(f"   Profile: {char_name} - {len(profile.dialogue_samples)} samples")
+                    logger.debug(f"   Final profile: {char_name} - {len(profile.dialogue_samples)} samples")
                     
             except Exception as profile_error:
                 logger.error(f"❌ SERVICE STEP 3 FAILED: Profile building error: {profile_error}")
