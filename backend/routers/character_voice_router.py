@@ -272,7 +272,7 @@ async def health_check():
         service_status = {
             "character_voice_service": "available" if character_voice_service else "unavailable",
             "database_service": "available" if db_service and db_service.is_available() else "unavailable",
-            "gemini_service": "available" if character_voice_service.gemini_service.available else "unavailable"
+            "llm_service": "available" if character_voice_service and hasattr(character_voice_service, 'llm_service') and character_voice_service.llm_service else "unavailable"
         }
         
         all_healthy = all(status == "available" for status in service_status.values())
