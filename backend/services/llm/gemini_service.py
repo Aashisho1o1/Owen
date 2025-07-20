@@ -134,7 +134,7 @@ class GeminiService(BaseLLMService):
     
     def is_available(self) -> bool:
         """Check if Gemini service is available."""
-        return GENAI_AVAILABLE and self.available and self.client is not None and self.model is not None
+        return GENAI_AVAILABLE and self.available and self.model is not None
     
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the current model."""
