@@ -16,6 +16,9 @@ from datetime import datetime
 # CRITICAL FIX: Use the LLM service coordinator (same as successful contextual understanding)
 from services.llm_service import llm_service
 
+# Import the proper schema models
+from models.schemas import VoiceConsistencyResult
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -37,16 +40,6 @@ class CharacterVoiceProfile:
     voice_traits: Dict[str, Any]
     last_updated: str
     sample_count: int
-
-@dataclass
-class VoiceConsistencyResult:
-    """Result of voice consistency analysis."""
-    is_consistent: bool
-    confidence_score: float
-    character_name: str
-    flagged_text: str
-    explanation: str
-    suggestions: List[str]
 
 class CharacterVoiceService:
     """
@@ -339,10 +332,12 @@ RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
                 return VoiceConsistencyResult(
                     is_consistent=True,
                     confidence_score=0.3,  # Lower confidence for fallback
+                    similarity_score=0.0,  # No embedding analysis in fallback
                     character_name=profile.character_name,
                     flagged_text="",
                     explanation=f"Voice analysis temporarily unavailable for {profile.character_name}. AI service error: {str(llm_error)}",
-                    suggestions=["Please try again later when the AI service is available."]
+                    suggestions=["Please try again later when the AI service is available."],
+                    analysis_method="llm_validated"
                 )
             
             # Parse JSON response with improved error handling and multiple extraction methods
@@ -392,10 +387,12 @@ RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
                 return VoiceConsistencyResult(
                     is_consistent=analysis_data.get("is_consistent", True),
                     confidence_score=float(analysis_data.get("confidence_score", 0.4)),
+                    similarity_score=0.8,  # Default similarity score for LLM analysis
                     character_name=profile.character_name,
                     flagged_text=analysis_data.get("flagged_text", ""),
                     explanation=analysis_data.get("explanation", "Analysis completed"),
-                    suggestions=analysis_data.get("suggestions", [])
+                    suggestions=analysis_data.get("suggestions", []),
+                    analysis_method="llm_validated"
                 )
                 
             except json.JSONDecodeError as json_error:
@@ -404,20 +401,24 @@ RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
                 return VoiceConsistencyResult(
                     is_consistent=True,
                     confidence_score=0.3,  # Lower confidence for parsing issues
+                    similarity_score=0.5,  # Moderate similarity for parsing issues
                     character_name=profile.character_name,
                     flagged_text="",
                     explanation=f"Voice analysis completed for {profile.character_name}. Raw response: {response_text[:200]}..." if len(response_text) > 200 else response_text,
-                    suggestions=["Analysis completed, but detailed suggestions are not available."]
+                    suggestions=["Analysis completed, but detailed suggestions are not available."],
+                    analysis_method="llm_validated"
                 )
-                
+            
         except Exception as e:
             logger.error(f"❌ Character analysis failed for {profile.character_name}: {str(e)}")
             # Return a fallback result instead of None to prevent empty results
             return VoiceConsistencyResult(
                 is_consistent=True,
                 confidence_score=0.2,  # Very low confidence for errors
+                similarity_score=0.0,  # No similarity analysis for errors
                 character_name=profile.character_name,
                 flagged_text="",
                 explanation=f"Voice analysis failed for {profile.character_name}: {str(e)}",
-                suggestions=["Please try again later."]
+                suggestions=["Please try again later."],
+                analysis_method="llm_validated"
             )
