@@ -33,11 +33,11 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.rate_limit_storage: Dict[str, list] = {}
         self.blocked_ips: Set[str] = set()
         
-        # Security configuration
-        self.rate_limit_requests = 100  # requests per minute
+        # Security configuration - Updated for development/testing
+        self.rate_limit_requests = 300  # Increased from 100 to 300 requests per minute
         self.rate_limit_window = 60     # seconds
-        self.block_threshold = 300      # requests before IP block
-        self.max_request_size = 10 * 1024 * 1024  # 10MB
+        self.block_threshold = 500      # Increased from 300 to 500 requests before IP block
+        self.max_request_size = 10 * 1024 * 1024
         
         # Enhanced security headers configuration (2025 OWASP standards)
         self.security_headers = {
@@ -307,6 +307,19 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.rate_limit_storage.clear()
         self.blocked_ips.clear()
         logger.info("Security middleware data cleared")
+
+    def clear_ip_rate_limit(self, ip: str) -> bool:
+        """Clear rate limiting data for a specific IP address"""
+        cleared = False
+        if ip in self.rate_limit_storage:
+            del self.rate_limit_storage[ip]
+            cleared = True
+        if ip in self.blocked_ips:
+            self.blocked_ips.remove(ip)
+            cleared = True
+        if cleared:
+            logger.info(f"Rate limiting data cleared for IP: {ip}")
+        return cleared
 
 
 # Utility function to create security middleware

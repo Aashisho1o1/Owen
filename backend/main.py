@@ -283,9 +283,11 @@ app.add_middleware(
 
 # Add security middleware AFTER CORS middleware (if available)
 if SecurityMiddleware:
+    security_middleware = SecurityMiddleware(app)
     app.add_middleware(SecurityMiddleware)
     print("✅ Security middleware added")
 else:
+    security_middleware = None
     print("⚠️ Security middleware not available - continuing without it")
 
 # Include all modular routers that were successfully imported
@@ -354,6 +356,35 @@ async def root():
             "features": [],
             "error": "An internal error occurred while processing the request."
         }
+
+@app.post("/admin/clear-rate-limits")
+async def clear_rate_limits():
+    """Admin endpoint to clear all rate limiting data"""
+    try:
+        if security_middleware:
+            security_middleware.clear_rate_limits()
+            return {"message": "Rate limiting data cleared successfully"}
+        else:
+            return {"message": "Security middleware not available"}
+    except Exception as e:
+        logger.error(f"Failed to clear rate limits: {e}")
+        return {"error": "Failed to clear rate limits"}
+
+@app.post("/admin/clear-ip-rate-limit/{ip}")
+async def clear_ip_rate_limit(ip: str):
+    """Admin endpoint to clear rate limiting data for a specific IP"""
+    try:
+        if security_middleware:
+            cleared = security_middleware.clear_ip_rate_limit(ip)
+            if cleared:
+                return {"message": f"Rate limiting data cleared for IP: {ip}"}
+            else:
+                return {"message": f"No rate limiting data found for IP: {ip}"}
+        else:
+            return {"message": "Security middleware not available"}
+    except Exception as e:
+        logger.error(f"Failed to clear rate limit for IP {ip}: {e}")
+        return {"error": f"Failed to clear rate limit for IP {ip}"}
 
 @app.get("/api/health")
 async def health_check(request: Request = None):
