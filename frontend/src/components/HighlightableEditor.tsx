@@ -22,6 +22,7 @@ import {
   analyzeVoiceConsistency, 
   VoiceConsistencyResult 
 } from '../services/api/character-voice';
+import { VoiceInconsistencyMark } from '../extensions/VoiceInconsistencyMark';
 
 interface HighlightableEditorProps {
   content?: string;
@@ -228,6 +229,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit,
+      VoiceInconsistencyMark,
     ],
     content: contentProp || '',
     onUpdate: async ({ editor }) => {
@@ -341,172 +343,152 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     },
   });
 
-  // Apply voice inconsistency underlines using TipTap's transaction system
+  // Apply voice inconsistency underlines using TipTap's native Mark system - COMPLETELY REWRITTEN
   const applyVoiceInconsistencyUnderlines = (results: VoiceConsistencyResult[]) => {
-    if (!editor || !editor.view.dom) {
+    if (!editor) {
       console.warn('❌ Editor not available for voice inconsistency highlighting');
       return;
     }
 
-    console.log('🎯 Applying voice inconsistency underlines:', {
+    console.log('🎯 Applying voice inconsistency underlines using PROPER TipTap Mark system:', {
       totalResults: results.length,
       inconsistentCount: results.filter(r => !r.is_consistent).length,
-      inconsistentTexts: results.filter(r => !r.is_consistent).map(r => r.flagged_text.substring(0, 50))
+      inconsistentTexts: results.filter(r => !r.is_consistent).map(r => r.flagged_text?.substring(0, 50) || 'N/A')
     });
 
-    // Clear existing underlines first
-    const editorElement = editor.view.dom;
-    const existingUnderlines = editorElement.querySelectorAll('.voice-inconsistent, [data-voice-underline="true"]');
-    existingUnderlines.forEach(el => {
-      const parent = el.parentNode;
-      if (parent) {
-        parent.insertBefore(document.createTextNode(el.textContent || ''), el);
-        parent.removeChild(el);
-      }
-    });
+    // Clear all existing voice inconsistency marks first
+    editor.commands.unsetVoiceInconsistency();
 
     let appliedCount = 0;
+    const inconsistentResults = results.filter(result => !result.is_consistent && result.flagged_text);
 
-    // Utility: sanitize text for matching
-    const normalizeText = (input: string): string => {
-      return input
-        .replace(/[“”"'`]/g, '')          // remove quotes
-        .replace(/\s+/g, ' ')             // collapse whitespace
-        .trim()
-        .toLowerCase();
-    };
-
-    // Generate candidate strings to search for
-    const getSearchCandidates = (raw: string): string[] => {
-      const clean = normalizeText(raw);
-      const candidates = new Set<string>();
-      if (!clean) return [];
-      candidates.add(clean);
-
-      // If it's long, also try shorter prefixes
-      if (clean.length > 60) candidates.add(clean.slice(0, 60));
-      if (clean.length > 40) candidates.add(clean.slice(0, 40));
-      if (clean.length > 20) candidates.add(clean.slice(0, 20));
-
-      // Try first sentence before punctuation
-      const firstSentence = clean.split(/[.!?]/)[0];
-      if (firstSentence && firstSentence.length > 5) candidates.add(firstSentence);
-
-      return Array.from(candidates);
-    };
-
-    // SIMPLIFIED APPROACH: Use CSS-only styling with direct DOM manipulation
-    // But apply it in a way that TipTap is less likely to remove
-    results.filter(result => !result.is_consistent).forEach(result => {
-      const candidates = getSearchCandidates(result.flagged_text || '');
-      if (candidates.length === 0) {
-        console.warn('⚠️ Empty or invalid flagged text for character:', result.character_name);
+    // Process each inconsistent result using proper TipTap document traversal
+    inconsistentResults.forEach(result => {
+      const textToFind = result.flagged_text?.trim();
+      if (!textToFind || textToFind.length < 5) {
+        console.warn('⚠️ Skipping invalid flagged text for character:', result.character_name);
         return;
       }
 
-      // Find the earliest occurrence among candidates
-      const docTextNorm = normalizeText(editor.getText());
-      let matchStart = -1;
-      let matchLen = 0;
-      for (const cand of candidates) {
-        const idx = docTextNorm.indexOf(cand);
-        if (idx !== -1) {
-          matchStart = idx;
-          matchLen = cand.length;
-          break;
-        }
-      }
+      // CORRECT APPROACH: Use TipTap's document traversal to find text
+      const doc = editor.state.doc;
+      let found = false;
 
-      if (matchStart === -1) {
-        console.warn('❌ Could not find text to highlight for', result.character_name, '– tried candidates:', candidates.slice(0,3));
-        return;
-      }
-
-      // Use tree walker to find and style the text
-      const walker = document.createTreeWalker(
-        editorElement,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-
-      let currentOffset = 0;
-      let textNode: Node | null;
-
-      while ((textNode = walker.nextNode())) {
-        const nodeValue = textNode.nodeValue || '';
-        const nodeLength = nodeValue.length;
-
-        if (currentOffset + nodeLength < matchStart) {
-          currentOffset += nodeLength;
-          continue;
-        }
-
-        if (currentOffset <= matchStart && (currentOffset + nodeLength) >= matchStart) {
-          const startInNode = matchStart - currentOffset;
-          const endInNode = Math.min(startInNode + matchLen, nodeLength);
-
-          const beforeText = nodeValue.substring(0, startInNode);
-          const highlightText = nodeValue.substring(startInNode, endInNode);
-          const afterText = nodeValue.substring(endInNode);
-
-          const span = document.createElement('span');
-          span.className = 'voice-inconsistent';
-          const confidence = result.confidence_score;
-          const level = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
-          span.classList.add(`${level}-confidence`);
-          span.setAttribute('data-voice-underline', 'true');
-          span.setAttribute('data-confidence-level', level);
-          span.textContent = highlightText;
-
-          const parent = textNode.parentNode;
-          if (parent) {
-            if (beforeText) parent.insertBefore(document.createTextNode(beforeText), textNode);
-            parent.insertBefore(span, textNode);
-            if (afterText) parent.insertBefore(document.createTextNode(afterText), textNode);
-            parent.removeChild(textNode);
-            appliedCount++;
+      // Traverse the document using TipTap's node structure
+      doc.descendants((node, pos) => {
+        if (found) return false; // Stop if we already found a match
+        
+        if (node.isText && node.text) {
+          const nodeText = node.text.toLowerCase();
+          const searchText = textToFind.toLowerCase();
+          
+          // Try exact match first
+          let matchIndex = nodeText.indexOf(searchText);
+          
+          // If no exact match, try partial matching
+          if (matchIndex === -1 && searchText.length > 20) {
+            const shortSearch = searchText.substring(0, 20);
+            matchIndex = nodeText.indexOf(shortSearch);
           }
-          break;
+          
+          if (matchIndex !== -1) {
+            // Calculate actual document positions
+            const from = pos + matchIndex;
+            const to = Math.min(pos + matchIndex + searchText.length, pos + node.text.length);
+            
+            // Validate positions
+            if (from >= 0 && to > from && to <= doc.content.size) {
+              const confidence = result.confidence_score;
+              const confidenceLevel = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
+
+              try {
+                // Apply mark using TipTap's transaction system - PROPER WAY
+                const tr = editor.state.tr;
+                tr.addMark(
+                  from,
+                  to,
+                  editor.schema.marks.voiceInconsistency.create({
+                    character: result.character_name,
+                    confidence: confidence,
+                    explanation: result.explanation,
+                    confidenceLevel: confidenceLevel
+                  })
+                );
+                
+                // Dispatch the transaction
+                editor.view.dispatch(tr);
+                
+                appliedCount++;
+                found = true;
+                
+                console.log('✅ Applied TipTap voice inconsistency mark using PROPER method:', {
+                  character: result.character_name,
+                  confidence: confidence,
+                  confidenceLevel,
+                  from,
+                  to,
+                  nodeText: node.text.substring(matchIndex, matchIndex + 30)
+                });
+              } catch (error) {
+                console.error('❌ Failed to apply mark:', error);
+              }
+            } else {
+              console.warn('❌ Invalid position range:', { from, to, docSize: doc.content.size });
+            }
+          }
         }
-        currentOffset += nodeLength;
+        
+        return !found; // Continue traversal if not found
+      });
+
+      if (!found) {
+        console.warn('❌ Could not find text in document for character:', result.character_name, 'text:', textToFind.substring(0, 30));
       }
     });
 
-    console.log(`🎯 Applied ${appliedCount} voice inconsistency underlines`);
+    console.log(`🎯 Applied ${appliedCount} voice inconsistency marks using PROPER TipTap system`);
 
-    // Verify the underlines were applied and are visible
+    // Verify the marks were applied - IMPROVED verification
     setTimeout(() => {
-      const appliedUnderlines = editorElement.querySelectorAll('.voice-inconsistent, [data-voice-underline="true"]');
+      const editorElement = editor.view.dom;
+      const appliedUnderlines = editorElement.querySelectorAll('.voice-inconsistent, [data-voice-inconsistency="true"]');
       console.log(`🎯 FINAL COUNT: Applied ${appliedUnderlines.length} voice inconsistency underlines (expected: ${appliedCount})`);
+      
+      // Also check TipTap's internal state
+      const marksInDoc: Array<{pos: number, character: string, text?: string}> = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (node.marks) {
+          node.marks.forEach(mark => {
+            if (mark.type.name === 'voiceInconsistency') {
+              marksInDoc.push({
+                pos,
+                character: mark.attrs.character,
+                text: node.text?.substring(0, 20)
+              });
+            }
+          });
+        }
+      });
+      
+      console.log(`🔍 TipTap internal marks count: ${marksInDoc.length}`, marksInDoc);
       
       appliedUnderlines.forEach((el, index) => {
         const computedStyle = window.getComputedStyle(el);
-        console.log(`🧪 Underline ${index + 1}:`, {
+        console.log(`🧪 DOM Underline ${index + 1}:`, {
           text: el.textContent?.substring(0, 30),
           hasUnderline: computedStyle.textDecorationLine.includes('underline'),
           borderBottom: computedStyle.borderBottomWidth !== '0px',
           className: el.className,
+          dataAttributes: Array.from(el.attributes).filter(attr => attr.name.startsWith('data-')).map(attr => `${attr.name}="${attr.value}"`),
           visible: computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden'
         });
       });
-    }, 200);
+    }, 500);
   };
 
   // Handle active discussion highlighting from ChatContext using DOM manipulation
   useEffect(() => {
     let isMounted = true; // MEMORY LEAK FIX: Track component mount state
-    
-    // Set up mutation observer to maintain voice inconsistency styles
-    const setupVoiceInconsistencyObserver = () => {
-      // 🚫 DISABLED: Voice inconsistency mutation observer to prevent infinite loops
-      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops');
-      return;
-    };
-    
-    // Set up observer when editor is ready
-    if (editor) {
-      setupVoiceInconsistencyObserver();
-    }
     
     const handleActiveDiscussionHighlight = (event: CustomEvent) => {
       if (!editor || !isMounted) return; // MEMORY LEAK FIX: Check if component is still mounted
