@@ -508,46 +508,25 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
               
               // AGGRESSIVE INLINE STYLING - Force visibility with maximum specificity
               const confidence = result.confidence_score;
-              let underlineColor = '#f59e0b'; // Default orange
               
+              // Add confidence-based CSS classes for styling
               if (confidence <= 0.4) {
-                underlineColor = '#dc2626'; // Red for high confidence issues
                 inconsistencySpan.classList.add('high-confidence');
               } else if (confidence <= 0.7) {
-                underlineColor = '#f59e0b'; // Orange for medium confidence
                 inconsistencySpan.classList.add('medium-confidence');
               } else {
-                underlineColor = '#fbbf24'; // Yellow for low confidence
                 inconsistencySpan.classList.add('low-confidence');
               }
               
-              // CRITICAL FIX: Use border-bottom instead of background-image for TipTap compatibility
-              // TipTap removes background-image styles, so we use multiple fallback methods
-              const inlineStyles = [
-                `position: relative !important`,
-                `display: inline !important`,
-                `cursor: pointer !important`,
-                // PRIMARY: Use border-bottom as most reliable method
-                `border-bottom: 2px solid ${underlineColor} !important`,
-                // SECONDARY: Use text-decoration as backup
-                `text-decoration: underline !important`,
-                `text-decoration-color: ${underlineColor} !important`,
-                `text-decoration-style: wavy !important`,
-                // TERTIARY: Use box-shadow as third fallback
-                `box-shadow: inset 0 -2px 0 0 ${underlineColor} !important`,
-                // Keep other properties
-                `line-height: inherit !important`,
-                `font-family: inherit !important`,
-                `font-size: inherit !important`,
-                `color: inherit !important`,
-                `margin: 0 !important`,
-                `padding: 0 !important`
-              ];
+              // ✅ CRITICAL FIX: TipTap-Compatible CSS-Only Approach
+              // TipTap preserves CSS classes and data attributes but removes inline styles
+              // The CSS in voice-consistency-underlines.css will handle all styling
               
-              inconsistencySpan.style.cssText = inlineStyles.join('; ');
-              
-              // ENHANCED: Add a custom CSS class that TipTap won't remove
+              // NO inline styles - let CSS handle everything through classes and data attributes
               inconsistencySpan.setAttribute('data-voice-underline', 'true');
+              inconsistencySpan.setAttribute('data-confidence-level', 
+                confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low'
+              );
               
               // FORCE animation keyframes to be available by injecting them if needed
               if (!document.querySelector('#voice-inconsistency-keyframes')) {
