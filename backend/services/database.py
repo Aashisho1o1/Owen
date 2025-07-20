@@ -91,7 +91,7 @@ class PostgreSQLService:
                 self.pool.closeall()
                 self.pool = None
                 logger.info("Connection pool closed successfully")
-            except Exception as e:
+        except Exception as e:
                 logger.warning(f"Error closing connection pool: {e}")
                 self.pool = None  # Force reset even if close failed
     
@@ -120,7 +120,7 @@ class PostgreSQLService:
                 
                 # RAILWAY FIX: Only return to pool if connection is still valid
                 if hasattr(conn, 'closed') and not conn.closed:
-                    self.pool.putconn(conn)
+                self.pool.putconn(conn)
                 else:
                     self.pool.putconn(conn, close=True)
                 conn = None
@@ -133,7 +133,7 @@ class PostgreSQLService:
                     if hasattr(conn, 'closed') and conn.closed:
                         self.pool.putconn(conn, close=True)
                     else:
-                        self.pool.putconn(conn)
+                    self.pool.putconn(conn)
                 except Exception as cleanup_error:
                     logger.warning(f"Failed to clean up connection during health check: {cleanup_error}")
             logger.error(f"Connection pool health check failed: {e}")
@@ -158,28 +158,28 @@ class PostgreSQLService:
             raise DatabaseError("Database connection pool is unavailable.")
 
         conn = None
-        try:
+            try:
             # Get a connection from the pool
-            conn = self.pool.getconn()
+                conn = self.pool.getconn()
             yield conn # Hand over control to the calling method
-            conn.commit()
-        except OperationalError as e:
+                conn.commit()
+            except OperationalError as e:
             logger.error(f"Database OperationalError: {e}. Rolling back transaction.")
-            if conn:
-                conn.rollback()
+                if conn:
+                        conn.rollback()
             # This could be a transient network issue. We'll let the caller retry.
             raise DatabaseError(f"A database network error occurred: {e}")
-        except Exception as e:
+            except Exception as e:
             logger.error(f"An unexpected database error occurred: {e}. Rolling back.")
-            if conn:
-                conn.rollback()
+                if conn:
+                        conn.rollback()
             # Re-raise the exception to be handled by the caller
             raise DatabaseError(f"An unexpected database error occurred: {e}")
-        finally:
+            finally:
             # THIS BLOCK IS GUARANTEED TO RUN.
             # It ensures the connection is always returned to the pool.
-            if conn:
-                self.pool.putconn(conn)
+                if conn:
+                        self.pool.putconn(conn)
     
     def execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
         """Execute database query with enhanced error handling and retry logic"""
@@ -795,5 +795,5 @@ def get_db_service():
     """Get or create the database service instance"""
     global db_service
     if db_service is None:
-        db_service = PostgreSQLService()
+db_service = PostgreSQLService() 
     return db_service 

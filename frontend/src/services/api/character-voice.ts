@@ -86,16 +86,85 @@ export const analyzeVoiceConsistency = async (
 
     console.log("🎭 Starting voice consistency analysis...");
     
+    // DEBUG: Log detailed request information
+    console.log("📊 Voice Analysis Request Details:", {
+      textLength: text.length,
+      textPreview: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+      hasHTML: text.includes('<') && text.includes('>'),
+      dialogueFound: hasDialogue(text),
+      timestamp: new Date().toISOString()
+    });
+    
     const requestData: VoiceConsistencyRequest = { text };
+    
+    // DEBUG: Log the exact payload being sent
+    console.log("📤 Sending voice analysis request:", {
+      payload: requestData,
+      payloadSize: JSON.stringify(requestData).length,
+      endpoint: '/api/character-voice/analyze'
+    });
+    
     const response = await apiClient.post<VoiceConsistencyResponse>(
       '/api/character-voice/analyze',
       requestData
     );
     
+    // DEBUG: Log successful response details
+    console.log("📥 Voice analysis response received:", {
+      status: response.status,
+      statusText: response.statusText,
+      dataKeys: Object.keys(response.data),
+      charactersAnalyzed: response.data.characters_analyzed,
+      dialogueSegments: response.data.dialogue_segments_found,
+      resultsCount: response.data.results.length,
+      processingTime: response.data.processing_time_ms
+    });
+    
+    // DEBUG: Log each result for detailed inspection
+    if (response.data.results.length > 0) {
+      console.log("🎯 Voice analysis results breakdown:");
+      response.data.results.forEach((result, index) => {
+        console.log(`  Result ${index + 1}:`, {
+          character: result.character_name,
+          isConsistent: result.is_consistent,
+          confidence: result.confidence_score,
+          flaggedTextPreview: result.flagged_text.substring(0, 50) + '...',
+          explanation: result.explanation
+        });
+      });
+    }
+    
     console.log(`✅ Voice analysis completed: ${response.data.characters_analyzed} characters analyzed`);
     return response.data;
   } catch (error) {
-    console.error("❌ Voice analysis failed:", error);
+    // DEBUG: Enhanced error logging with full details
+    console.error("❌ Voice analysis failed with detailed error info:");
+    console.error("🔍 Error Type:", error.constructor.name);
+    console.error("🔍 Error Message:", error.message);
+    
+    if (error.response) {
+      console.error("🔍 Response Status:", error.response.status);
+      console.error("🔍 Response Status Text:", error.response.statusText);
+      console.error("🔍 Response Headers:", error.response.headers);
+      console.error("🔍 Response Data:", error.response.data);
+      
+      // Try to extract more specific error information
+      if (error.response.data) {
+        console.error("🔍 Backend Error Details:", {
+          detail: error.response.data.detail,
+          error: error.response.data.error,
+          message: error.response.data.message,
+          traceback: error.response.data.traceback,
+          timestamp: error.response.data.timestamp
+        });
+      }
+    } else if (error.request) {
+      console.error("🔍 Request Error (no response received):", error.request);
+    } else {
+      console.error("🔍 Setup Error:", error.message);
+    }
+    
+    console.error("🔍 Full Error Object:", error);
     throw error;
   }
 };

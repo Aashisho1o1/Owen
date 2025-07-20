@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
 
 # Initialize services
-character_voice_service = CharacterVoiceService()
+        character_voice_service = CharacterVoiceService()
 db_service = get_db_service()
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
@@ -114,7 +114,7 @@ async def analyze_voice_consistency(
             results = analysis_result.get("results", [])
             logger.info(f"✅ STEP 3 COMPLETE: Analysis returned {len(results)} results")
             logger.info(f"📊 Results summary:")
-            for i, result in enumerate(results):
+        for i, result in enumerate(results):
                 logger.info(f"   Result {i+1}: {result.character_name} - Consistent: {result.is_consistent} (Confidence: {result.confidence_score})")
                 
         except Exception as analysis_error:
@@ -236,7 +236,7 @@ async def get_character_profiles(
         if db_service.is_available():
             profiles_data = await db_service.get_character_profiles(user_id)
             
-            for profile_data in profiles_data:
+        for profile_data in profiles_data:
                 profiles.append({
                     "character_id": profile_data['character_id'],
                     "character_name": profile_data['character_name'],
@@ -269,11 +269,11 @@ async def delete_character_profile(
         
         if db_service.is_available():
             success = await db_service.delete_character_profile(user_id, character_name)
-            if not success:
-                raise HTTPException(
+        if not success:
+            raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Character profile '{character_name}' not found"
-                )
+                detail=f"Character profile '{character_name}' not found"
+            )
         
         logger.info(f"✅ Deleted character profile '{character_name}'")
         return {"success": True, "message": f"Character profile '{character_name}' deleted successfully"}
@@ -305,7 +305,7 @@ async def update_character_profile(
                 character_name=character_name,
                 dialogue_samples=profile_data.get('dialogue_samples', []),
                 voice_traits=profile_data.get('voice_traits', {})
-            )
+        )
         
         logger.info(f"✅ Updated character profile '{character_name}'")
         return {"success": True, "message": f"Character profile '{character_name}' updated successfully"}

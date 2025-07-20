@@ -27,24 +27,90 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-@dataclass
-class DialogueSegment:
-    """Represents a single piece of dialogue with context."""
-    text: str
-    speaker: str
-    position: int
-    context_before: str
-    context_after: str
-
-@dataclass
-class CharacterVoiceProfile:
-    """Character voice profile with dialogue samples and traits."""
-    character_id: str
-    character_name: str
-    dialogue_samples: List[str]
-    voice_traits: Dict[str, Any]
-    last_updated: str
-    sample_count: int
+# Add this comprehensive stopwords list at the top of the file, after imports
+# Comprehensive English stopwords and common non-character words
+# Based on NLTK stopwords + common places, titles, and non-character entities
+COMMON_NON_CHARACTER_WORDS = {
+    # Core NLTK stopwords
+    'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 
+    'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 
+    'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
+    'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 
+    'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 
+    'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 
+    'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 
+    'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 
+    'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 
+    'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 
+    'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'can', 'will', 
+    'just', 'don', 'should', 'now',
+    
+    # Common titles and honorifics
+    'mr', 'mrs', 'ms', 'miss', 'dr', 'prof', 'professor', 'sir', 'madam', 'lord', 'lady',
+    'king', 'queen', 'prince', 'princess', 'duke', 'duchess', 'count', 'countess', 'baron',
+    'captain', 'major', 'colonel', 'general', 'admiral', 'sergeant', 'lieutenant',
+    
+    # Common places and locations (that might be capitalized)
+    'north', 'south', 'east', 'west', 'city', 'town', 'village', 'country', 'state', 
+    'province', 'region', 'area', 'place', 'street', 'road', 'avenue', 'lane', 'drive',
+    'house', 'home', 'building', 'hall', 'castle', 'palace', 'church', 'cathedral',
+    'school', 'university', 'college', 'hospital', 'hotel', 'restaurant', 'shop', 'store',
+    'market', 'square', 'park', 'garden', 'forest', 'mountain', 'hill', 'river', 'lake',
+    'sea', 'ocean', 'island', 'bridge', 'tower', 'gate', 'wall', 'door', 'window', 'room',
+    
+    # Common objects and concepts
+    'thing', 'something', 'anything', 'nothing', 'everything', 'someone', 'anyone', 'everyone',
+    'time', 'day', 'night', 'morning', 'afternoon', 'evening', 'week', 'month', 'year',
+    'moment', 'hour', 'minute', 'second', 'today', 'tomorrow', 'yesterday', 'now', 'then',
+    'way', 'manner', 'method', 'means', 'reason', 'cause', 'effect', 'result', 'end',
+    'beginning', 'start', 'finish', 'part', 'whole', 'piece', 'bit', 'lot', 'much', 'many',
+    'little', 'few', 'several', 'some', 'all', 'none', 'both', 'either', 'neither',
+    
+    # Numbers and quantities (written out)
+    'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+    'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 
+    'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy',
+    'eighty', 'ninety', 'hundred', 'thousand', 'million', 'billion', 'first', 'second',
+    'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
+    
+    # Common adjectives that might be capitalized
+    'good', 'bad', 'great', 'small', 'large', 'big', 'little', 'old', 'new', 'young',
+    'long', 'short', 'high', 'low', 'right', 'left', 'next', 'last', 'first', 'final',
+    'early', 'late', 'quick', 'slow', 'fast', 'easy', 'hard', 'difficult', 'simple',
+    'complex', 'clear', 'dark', 'light', 'heavy', 'empty', 'full', 'open', 'closed',
+    
+    # Common verbs in past tense (might appear capitalized at sentence start)
+    'said', 'told', 'asked', 'answered', 'replied', 'spoke', 'talked', 'whispered',
+    'shouted', 'cried', 'laughed', 'smiled', 'looked', 'saw', 'watched', 'heard',
+    'listened', 'felt', 'touched', 'held', 'took', 'gave', 'put', 'placed', 'moved',
+    'walked', 'ran', 'came', 'went', 'left', 'arrived', 'stayed', 'lived', 'died',
+    'worked', 'played', 'thought', 'knew', 'understood', 'remembered', 'forgot',
+    
+    # Common exclamations and interjections
+    'oh', 'ah', 'eh', 'um', 'hmm', 'yes', 'no', 'okay', 'ok', 'well', 'so', 'but',
+    'however', 'therefore', 'thus', 'hence', 'indeed', 'certainly', 'surely', 'perhaps',
+    'maybe', 'probably', 'definitely', 'absolutely', 'exactly', 'quite', 'rather',
+    'really', 'truly', 'actually', 'basically', 'generally', 'usually', 'often',
+    'sometimes', 'never', 'always', 'almost', 'nearly', 'hardly', 'barely',
+    
+    # Days and months (commonly capitalized)
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+    'september', 'october', 'november', 'december',
+    
+    # Common abstract concepts
+    'life', 'death', 'love', 'hate', 'fear', 'hope', 'dream', 'wish', 'desire',
+    'need', 'want', 'like', 'dislike', 'feeling', 'emotion', 'thought', 'idea',
+    'plan', 'goal', 'purpose', 'meaning', 'sense', 'understanding', 'knowledge',
+    'wisdom', 'truth', 'lie', 'fact', 'fiction', 'story', 'tale', 'news', 'information',
+    'data', 'detail', 'point', 'question', 'answer', 'problem', 'solution', 'issue',
+    'matter', 'subject', 'topic', 'theme', 'message', 'word', 'sentence', 'paragraph',
+    'chapter', 'book', 'page', 'line', 'text', 'writing', 'reading', 'speaking',
+    'listening', 'learning', 'teaching', 'studying', 'working', 'playing', 'resting',
+    'sleeping', 'eating', 'drinking', 'walking', 'running', 'sitting', 'standing',
+    'lying', 'falling', 'rising', 'growing', 'changing', 'becoming', 'remaining',
+    'continuing', 'stopping', 'starting', 'ending', 'beginning', 'happening', 'occurring'
+}
 
 class CharacterVoiceService:
     """
@@ -65,6 +131,154 @@ class CharacterVoiceService:
         except Exception as e:
             logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
             raise
+    
+    def _is_likely_character_name(self, name: str) -> bool:
+        """
+        Pre-filter to determine if a name is likely to be a character name.
+        Uses comprehensive stopwords and common non-character word filtering.
+        This is a fast pre-filter before LLM validation.
+        """
+        if not name or len(name) < 2:
+            return False
+        
+        # Convert to lowercase for checking
+        name_lower = name.lower()
+        
+        # Filter out common non-character words
+        if name_lower in COMMON_NON_CHARACTER_WORDS:
+            logger.debug(f"🚫 Filtered out common word: {name}")
+            return False
+        
+        # Must start with capital letter (proper noun)
+        if not name[0].isupper():
+            return False
+        
+        # Must be alphabetic (no numbers or special characters)
+        if not name.isalpha():
+            return False
+        
+        # Filter out single letters (except I and A which are already in stopwords)
+        if len(name) == 1:
+            return False
+        
+        # Filter out very long words (likely not names)
+        if len(name) > 20:
+            logger.debug(f"🚫 Filtered out overly long word: {name}")
+            return False
+        
+        # Filter out words that are all uppercase (likely acronyms or abbreviations)
+        if name.isupper() and len(name) > 1:
+            logger.debug(f"🚫 Filtered out acronym: {name}")
+            return False
+        
+        # Basic pattern check - should look like a name (Title case)
+        if not (name[0].isupper() and name[1:].islower()):
+            logger.debug(f"🚫 Filtered out non-title-case word: {name}")
+            return False
+        
+        logger.debug(f"✅ Potential character name passed pre-filter: {name}")
+        return True
+
+@dataclass
+class DialogueSegment:
+    """Represents a single piece of dialogue with context."""
+    text: str
+    speaker: str
+    position: int
+    context_before: str
+    context_after: str
+
+@dataclass
+class CharacterVoiceProfile:
+    """Character voice profile with dialogue samples and traits."""
+    character_id: str
+    character_name: str
+    dialogue_samples: List[str]
+    voice_traits: Dict[str, Any]
+    last_updated: str
+    sample_count: int
+
+    def __init__(self, character_id: str, character_name: str, dialogue_samples: List[str], voice_traits: Dict[str, Any], last_updated: str, sample_count: int):
+        self.character_id = character_id
+        self.character_name = character_name
+        self.dialogue_samples = dialogue_samples
+        self.voice_traits = voice_traits
+        self.last_updated = last_updated
+        self.sample_count = sample_count
+
+    def to_dict(self):
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]):
+        return cls(**data)
+
+class CharacterVoiceService:
+    """
+    Analyzes character voice consistency using the same successful pattern as contextual understanding.
+    Uses the LLM service coordinator for consistent Gemini 2.5 Flash integration.
+    """
+    
+    def __init__(self):
+        logger.info("🎭 CharacterVoiceService: Initializing service...")
+        try:
+            # Test LLM service availability
+            if hasattr(llm_service, 'generate_with_selected_llm'):
+                logger.info("✅ CharacterVoiceService: LLM service coordinator available")
+            else:
+                logger.error("❌ CharacterVoiceService: LLM service coordinator missing generate_with_selected_llm method")
+            
+            logger.info("✅ CharacterVoiceService: Service initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
+            raise
+    
+    def _is_likely_character_name(self, name: str) -> bool:
+        """
+        Pre-filter to determine if a name is likely to be a character name.
+        Uses comprehensive stopwords and common non-character word filtering.
+        This is a fast pre-filter before LLM validation.
+        """
+        if not name or len(name) < 2:
+            return False
+        
+        # Convert to lowercase for checking
+        name_lower = name.lower()
+        
+        # Filter out common non-character words
+        if name_lower in COMMON_NON_CHARACTER_WORDS:
+            logger.debug(f"🚫 Filtered out common word: {name}")
+            return False
+        
+        # Must start with capital letter (proper noun)
+        if not name[0].isupper():
+            return False
+        
+        # Must be alphabetic (no numbers or special characters)
+        if not name.isalpha():
+            return False
+        
+        # Filter out single letters (except I and A which are already in stopwords)
+        if len(name) == 1:
+            return False
+        
+        # Filter out very long words (likely not names)
+        if len(name) > 20:
+            logger.debug(f"🚫 Filtered out overly long word: {name}")
+            return False
+        
+        # Filter out words that are all uppercase (likely acronyms or abbreviations)
+        if name.isupper() and len(name) > 1:
+            logger.debug(f"🚫 Filtered out acronym: {name}")
+            return False
+        
+        # Basic pattern check - should look like a name (Title case)
+        if not (name[0].isupper() and name[1:].islower()):
+            logger.debug(f"🚫 Filtered out non-title-case word: {name}")
+            return False
+        
+        logger.debug(f"✅ Potential character name passed pre-filter: {name}")
+        return True
     
     def _extract_dialogue_segments(self, text: str) -> List[DialogueSegment]:
         """
@@ -202,7 +416,7 @@ class CharacterVoiceService:
             if potential_names:
                 speaker = potential_names[0]
                 logger.debug(f"🎭 Potential speaker '{speaker}' from context (will be validated by LLM)")
-                return speaker
+                    return speaker
         
         # Default to "Unknown" if no speaker can be inferred
         logger.debug("🎭 Could not infer speaker, using 'Unknown'")

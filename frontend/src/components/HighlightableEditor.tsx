@@ -364,24 +364,22 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       inconsistentTexts: inconsistentResults.map(r => r.flagged_text.substring(0, 50))
     });
     
-    // DEBUG: Test if CSS is loaded by creating a test element
+    // DEBUG: Force CSS to load by creating and testing a temporary element
     const testElement = document.createElement('span');
     testElement.className = 'voice-inconsistent';
     testElement.textContent = 'TEST';
     testElement.style.position = 'fixed';
-    testElement.style.top = '10px';
-    testElement.style.left = '10px';
-    testElement.style.zIndex = '9999';
-    testElement.style.background = 'yellow';
+    testElement.style.top = '-1000px'; // Hide it off-screen
+    testElement.style.left = '-1000px';
     document.body.appendChild(testElement);
     
+    // Force a style recalculation
     setTimeout(() => {
       const computedStyle = window.getComputedStyle(testElement);
-      console.log('🧪 CSS Test Element Computed Styles:', {
+      console.log('🧪 CSS Test - Animation loaded:', {
         animation: computedStyle.animation,
         backgroundImage: computedStyle.backgroundImage,
-        backgroundPosition: computedStyle.backgroundPosition,
-        backgroundSize: computedStyle.backgroundSize
+        hasAnimation: computedStyle.animation.includes('voice-inconsistency-wiggle')
       });
       document.body.removeChild(testElement);
     }, 100);
@@ -421,52 +419,73 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             const highlightText = nodeValue.substring(startInNode, endInNode);
             const afterText = nodeValue.substring(endInNode);
             
-            // Create the voice inconsistency span with INLINE STYLES for maximum specificity
+            // CRITICAL FIX: Create the span with MAXIMUM CSS specificity and inline styles
             const inconsistencySpan = document.createElement('span');
             inconsistencySpan.className = 'voice-inconsistent';
             
-            // CRITICAL FIX: Apply inline styles directly to ensure visibility in TipTap
+            // AGGRESSIVE INLINE STYLING - Force visibility with maximum specificity
             const confidence = result.confidence_score;
             let underlineColor = '#f59e0b'; // Default orange
             
             if (confidence <= 0.4) {
               underlineColor = '#dc2626'; // Red for high confidence issues
-            } else if (confidence <= 0.7) {
-              underlineColor = '#f59e0b'; // Orange for medium confidence
-            } else {
-              underlineColor = '#fbbf24'; // Yellow for low confidence
-            }
-            
-            // CRITICAL FIX: Use CSS classes for animations and inline styles only for colors
-            // Add confidence-based class for proper CSS cascade
-            if (confidence <= 0.4) {
               inconsistencySpan.classList.add('high-confidence');
             } else if (confidence <= 0.7) {
+              underlineColor = '#f59e0b'; // Orange for medium confidence
               inconsistencySpan.classList.add('medium-confidence');
             } else {
+              underlineColor = '#fbbf24'; // Yellow for low confidence
               inconsistencySpan.classList.add('low-confidence');
             }
             
-            // Apply minimal inline styles - let CSS handle animations
-            inconsistencySpan.style.cssText = `
-              background-image: repeating-linear-gradient(45deg, ${underlineColor} 0px, ${underlineColor} 2px, transparent 2px, transparent 4px) !important;
-              cursor: pointer !important;
-              display: inline !important;
-              position: relative !important;
-            `;
+            // NUCLEAR OPTION: Apply ALL styles inline with maximum importance
+            const inlineStyles = [
+              `position: relative !important`,
+              `display: inline !important`,
+              `cursor: pointer !important`,
+              `background-image: repeating-linear-gradient(45deg, ${underlineColor} 0px, ${underlineColor} 2px, transparent 2px, transparent 4px) !important`,
+              `background-position: 0 100% !important`,
+              `background-size: 4px 2px !important`,
+              `background-repeat: repeat-x !important`,
+              `animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important`,
+              `line-height: inherit !important`,
+              `font-family: inherit !important`,
+              `font-size: inherit !important`,
+              `color: inherit !important`,
+              `text-decoration: none !important`,
+              `border: none !important`,
+              `outline: none !important`,
+              `margin: 0 !important`,
+              `padding: 0 !important`
+            ];
             
-            // Force CSS class application by setting important properties via style
-            // This ensures TipTap doesn't override our styles
-            inconsistencySpan.style.setProperty('background-position', '0 100%', 'important');
-            inconsistencySpan.style.setProperty('background-size', '4px 2px', 'important');
-            inconsistencySpan.style.setProperty('background-repeat', 'repeat-x', 'important');
+            inconsistencySpan.style.cssText = inlineStyles.join('; ');
             
-            // CRITICAL FIX: Force the animation to apply by setting it directly
-            inconsistencySpan.style.animation = 'voice-inconsistency-wiggle 2s ease-in-out infinite !important';
+            // FORCE animation keyframes to be available by injecting them if needed
+            if (!document.querySelector('#voice-inconsistency-keyframes')) {
+              const styleSheet = document.createElement('style');
+              styleSheet.id = 'voice-inconsistency-keyframes';
+              styleSheet.textContent = `
+                @keyframes voice-inconsistency-wiggle {
+                  0% { background-position: 0 100% !important; }
+                  25% { background-position: 1px 100% !important; }
+                  50% { background-position: 2px 100% !important; }
+                  75% { background-position: 1px 100% !important; }
+                  100% { background-position: 0 100% !important; }
+                }
+                .voice-inconsistent {
+                  animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important;
+                }
+              `;
+              document.head.appendChild(styleSheet);
+              console.log('💉 Injected voice inconsistency keyframes directly into DOM');
+            }
             
-            // Add tooltip data
+            // Add data attributes for debugging
             inconsistencySpan.setAttribute('data-voice-explanation', 
               `${result.explanation} (Confidence: ${Math.round(confidence * 100)}%)`);
+            inconsistencySpan.setAttribute('data-confidence', confidence.toString());
+            inconsistencySpan.setAttribute('data-character', result.character_name);
             
             // Add accessibility attributes
             inconsistencySpan.setAttribute('role', 'button');
@@ -474,17 +493,31 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             inconsistencySpan.setAttribute('aria-label', 
               `Voice inconsistency: ${result.explanation}`);
             
-            // Add hover effect with inline styles for guaranteed visibility
+            // ENHANCED hover effects with immediate style application
             inconsistencySpan.addEventListener('mouseenter', () => {
-              inconsistencySpan.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
-              inconsistencySpan.style.borderRadius = '2px';
-              inconsistencySpan.style.animationDuration = '1s';
+              inconsistencySpan.style.setProperty('background-color', 'rgba(245, 158, 11, 0.1)', 'important');
+              inconsistencySpan.style.setProperty('border-radius', '2px', 'important');
+              inconsistencySpan.style.setProperty('animation-duration', '1s', 'important');
+              inconsistencySpan.style.setProperty('transform', 'scale(1.02)', 'important');
+              console.log('🖱️ Hover entered on voice inconsistency:', highlightText.substring(0, 30));
             });
             
             inconsistencySpan.addEventListener('mouseleave', () => {
-              inconsistencySpan.style.backgroundColor = 'transparent';
-              inconsistencySpan.style.borderRadius = '0';
-              inconsistencySpan.style.animationDuration = '2s';
+              inconsistencySpan.style.setProperty('background-color', 'transparent', 'important');
+              inconsistencySpan.style.setProperty('border-radius', '0', 'important');
+              inconsistencySpan.style.setProperty('animation-duration', '2s', 'important');
+              inconsistencySpan.style.setProperty('transform', 'scale(1)', 'important');
+            });
+            
+            // Add click handler for debugging
+            inconsistencySpan.addEventListener('click', (e) => {
+              e.preventDefault();
+              console.log('🖱️ Voice inconsistency clicked:', {
+                text: highlightText,
+                character: result.character_name,
+                confidence: result.confidence_score,
+                explanation: result.explanation
+              });
             });
             
             inconsistencySpan.textContent = highlightText;
@@ -501,10 +534,23 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
               }
               parent.removeChild(textNode);
               
-              console.log('✅ Applied voice inconsistency underline to:', highlightText.substring(0, 50));
-              console.log('🎨 Element classes:', inconsistencySpan.className);
-              console.log('🎨 Element styles:', inconsistencySpan.style.cssText);
-              console.log('🎨 Animation style:', inconsistencySpan.style.animation);
+              console.log('✅ Applied ENHANCED voice inconsistency underline:', {
+                text: highlightText.substring(0, 50),
+                character: result.character_name,
+                confidence: result.confidence_score,
+                hasAnimation: inconsistencySpan.style.animation.includes('wiggle'),
+                computedAnimation: window.getComputedStyle(inconsistencySpan).animation
+              });
+              
+              // FORCE a style recalculation to ensure animation starts
+              setTimeout(() => {
+                const computedStyle = window.getComputedStyle(inconsistencySpan);
+                console.log('🎭 Post-application animation check:', {
+                  animation: computedStyle.animation,
+                  backgroundImage: computedStyle.backgroundImage,
+                  isAnimating: computedStyle.animation.includes('voice-inconsistency-wiggle')
+                });
+              }, 100);
             }
             break;
           }
@@ -513,6 +559,23 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         }
       }
     });
+    
+    // FINAL DEBUG: Count applied underlines
+    setTimeout(() => {
+      const appliedUnderlines = editorElement.querySelectorAll('.voice-inconsistent');
+      console.log(`🎯 FINAL COUNT: Applied ${appliedUnderlines.length} voice inconsistency underlines`);
+      
+      // Test each applied underline
+      appliedUnderlines.forEach((el, index) => {
+        const computedStyle = window.getComputedStyle(el);
+        console.log(`🧪 Underline ${index + 1}:`, {
+          text: el.textContent?.substring(0, 30),
+          hasAnimation: computedStyle.animation.includes('voice-inconsistency-wiggle'),
+          backgroundImage: computedStyle.backgroundImage !== 'none',
+          className: el.className
+        });
+      });
+    }, 200);
   }, [editor]);
 
   // Handle active discussion highlighting from ChatContext using DOM manipulation
