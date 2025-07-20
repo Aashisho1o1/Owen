@@ -211,6 +211,12 @@ class CharacterVoiceService:
         try:
             logger.info(f"🔍 Starting voice analysis for text ({len(text)} chars)")
             
+            # CRITICAL FIX: Limit text length to prevent API timeouts and errors
+            MAX_TEXT_LENGTH = 10000  # 10,000 characters should be manageable
+            if len(text) > MAX_TEXT_LENGTH:
+                logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
+                text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"
+            
             # Extract dialogue segments
             segments = self._extract_dialogue_segments(text)
             
@@ -242,12 +248,21 @@ class CharacterVoiceService:
             for character_name, profile in current_profiles.items():
                 if len(profile.dialogue_samples) < 2:
                     # Need at least 2 samples for consistency analysis
+                    logger.info(f"⚠️ Skipping {character_name} - insufficient dialogue samples ({len(profile.dialogue_samples)})")
                     continue
                 
                 # Analyze this character's voice consistency
-                character_result = await self._analyze_character_voice(profile, segments)
-                if character_result:
-                    results.append(character_result)
+                try:
+                    character_result = await self._analyze_character_voice(profile, segments)
+                    if character_result:
+                        results.append(character_result)
+                        logger.info(f"✅ Analysis complete for {character_name}")
+                    else:
+                        logger.warning(f"⚠️ No result returned for {character_name}")
+                except Exception as char_error:
+                    logger.error(f"❌ Character analysis failed for {character_name}: {str(char_error)}")
+                    # Continue with other characters instead of failing completely
+                    continue
             
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             
@@ -262,6 +277,7 @@ class CharacterVoiceService:
             
         except Exception as e:
             logger.error(f"❌ Voice analysis failed: {str(e)}")
+            logger.error(f"❌ Error type: {type(e).__name__}")
             # Return empty results instead of raising exception
             return {
                 "results": [],
@@ -276,11 +292,22 @@ class CharacterVoiceService:
         Analyze voice consistency for a specific character using the EXACT same pattern as successful contextual understanding.
         """
         try:
+            logger.info(f"🎭 Starting voice analysis for character: {profile.character_name}")
+            
             # Get this character's dialogue from the segments
             character_dialogue = [seg.text for seg in all_segments if seg.speaker == profile.character_name]
             
             if len(character_dialogue) < 2:
+                logger.warning(f"⚠️ Insufficient dialogue for {profile.character_name}: {len(character_dialogue)} samples")
                 return None
+            
+            logger.info(f"📝 Analyzing {len(character_dialogue)} dialogue samples for {profile.character_name}")
+            
+            # CRITICAL FIX: Limit dialogue samples to prevent overly long prompts
+            MAX_SAMPLES = 10  # Limit to 10 samples max
+            if len(character_dialogue) > MAX_SAMPLES:
+                logger.info(f"🔧 Limiting dialogue samples from {len(character_dialogue)} to {MAX_SAMPLES} for {profile.character_name}")
+                character_dialogue = character_dialogue[:MAX_SAMPLES]
             
             # Create analysis prompt with EXPLICIT JSON formatting requirements for Gemini 2.5 Flash
             prompt = f"""You are an expert character voice consistency analyzer. Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
@@ -310,19 +337,23 @@ Rules:
 RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
             
             # CRITICAL FIX: Use the EXACT same successful pattern as contextual understanding
-            logger.info(f"🚀 Generating voice analysis with Google Gemini...")
+            logger.info(f"🚀 Generating voice analysis with Google Gemini for {profile.character_name}...")
             
             try:
                 # CRITICAL FIX: Use string prompt format instead of Gemini-specific format
                 # The LLM service coordinator expects either string or standard conversation format
-                logger.info("🔧 Using string prompt format for LLM service coordinator")
+                logger.info(f"🔧 Using string prompt format for LLM service coordinator (prompt length: {len(prompt)} chars)")
                 
                 # Use the same LLM service method as successful contextual understanding
                 response_text = await self.llm_service.generate_with_selected_llm(prompt, "Google Gemini")
-                logger.info(f"✅ Gemini voice analysis response received (length: {len(response_text) if response_text else 0} chars)")
+                logger.info(f"✅ Gemini voice analysis response received for {profile.character_name} (length: {len(response_text) if response_text else 0} chars)")
+                
+                if not response_text or len(response_text.strip()) == 0:
+                    logger.error(f"❌ Empty response from Gemini for {profile.character_name}")
+                    raise Exception("Empty response from LLM service")
                 
             except Exception as llm_error:
-                logger.error(f"❌ LLM Generation Error with Google Gemini (voice analysis): {llm_error}")
+                logger.error(f"❌ LLM Generation Error with Google Gemini for {profile.character_name}: {llm_error}")
                 logger.error(f"❌ LLM Error Type: {type(llm_error).__name__}")
                 logger.error(f"❌ LLM Error Details: {str(llm_error)}")
                 
