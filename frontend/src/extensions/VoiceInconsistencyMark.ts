@@ -124,7 +124,7 @@ export const VoiceInconsistencyMark = Mark.create<VoiceInconsistencyOptions>({
         {
           'data-voice-inconsistency': 'true',
           'data-voice-underline': 'true',
-          class: `voice-inconsistent ${HTMLAttributes['data-confidence-level']}-confidence`,
+          class: `voice-inconsistent ${HTMLAttributes.confidenceLevel || 'medium'}-confidence`,
         }
       ),
       0,
