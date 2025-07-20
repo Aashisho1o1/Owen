@@ -788,12 +788,25 @@ class PostgreSQLService:
             logger.error(f"❌ Failed to delete profile for character '{character_name}': {e}")
             return False
 
-# Global service instance - initialized lazily
-db_service = None
+# Global service instance - initialized lazily to prevent import-time failures
+_db_service = None
 
 def get_db_service():
     """Get or create the database service instance"""
-    global db_service
-    if db_service is None:
-        db_service = PostgreSQLService() 
-    return db_service 
+    global _db_service
+    if _db_service is None:
+        _db_service = PostgreSQLService() 
+    return _db_service
+
+# Create a property-like access for direct imports
+# This allows "from services.database import db_service" to work
+# but delays initialization until first access
+class DatabaseServiceProxy:
+    def __getattr__(self, name):
+        return getattr(get_db_service(), name)
+    
+    def __call__(self, *args, **kwargs):
+        return get_db_service()(*args, **kwargs)
+
+# This allows direct import without immediate initialization
+db_service = DatabaseServiceProxy() 
