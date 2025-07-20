@@ -118,14 +118,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Add observer to maintain voice inconsistency styles
   const voiceInconsistencyObserver = useRef<MutationObserver | null>(null);
   
-  // Store applied voice inconsistencies to re-apply them when TipTap removes them
-  const appliedInconsistencies = useRef<Array<{
-    text: string;
-    character: string;
-    confidence: number;
-    explanation: string;
-  }>>([]);
-  
   // Fallback text selection handler for DOM-based selection detection
   const fallbackTextSelection = useCallback((selectedText: string) => {
     console.log('📍 Fallback text selection handler called:', { selectedText });
@@ -349,309 +341,124 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     },
   });
 
-  // Apply voice inconsistency underlines to the editor
-  const applyVoiceInconsistencyUnderlines = useCallback((results: VoiceConsistencyResult[]) => {
-    if (!editor) return;
-    
-    const editorElement = editor.view.dom;
-    
-    // Remove existing voice inconsistency highlights
-    const existingHighlights = editorElement.querySelectorAll('.voice-inconsistent');
-    existingHighlights.forEach(el => {
-      const parent = el.parentNode;
-      if (parent) {
-        const textNode = document.createTextNode(el.textContent || '');
-        parent.replaceChild(textNode, el);
-        parent.normalize();
-      }
-    });
-    
-    // Apply new underlines for inconsistent dialogue
-    const inconsistentResults = results.filter(result => 
-      !result.is_consistent && result.flagged_text && result.flagged_text.trim().length > 0
-    );
-    
-    // Store inconsistencies for re-application by mutation observer
-    appliedInconsistencies.current = inconsistentResults.map(result => ({
-      text: result.flagged_text.trim(),
-      character: result.character_name,
-      confidence: result.confidence_score,
-      explanation: result.explanation
-    }));
-    
+  // Apply voice inconsistency underlines using TipTap's transaction system
+  const applyVoiceInconsistencyUnderlines = (results: VoiceConsistencyResult[]) => {
+    if (!editor || !editor.view.dom) {
+      console.warn('❌ Editor not available for voice inconsistency highlighting');
+      return;
+    }
+
     console.log('🎯 Applying voice inconsistency underlines:', {
       totalResults: results.length,
-      inconsistentCount: inconsistentResults.length,
-      inconsistentTexts: inconsistentResults.map(r => r.flagged_text.substring(0, 50))
+      inconsistentCount: results.filter(r => !r.is_consistent).length,
+      inconsistentTexts: results.filter(r => !r.is_consistent).map(r => r.flagged_text.substring(0, 50))
     });
-    
-    // Get the plain text content of the editor
-    const editorPlainText = editor.getText();
-    
-    // DEBUG: Force CSS to load by creating and testing a temporary element
-    const testElement = document.createElement('span');
-    testElement.className = 'voice-inconsistent';
-    testElement.textContent = 'TEST';
-    testElement.style.position = 'fixed';
-    testElement.style.top = '-1000px'; // Hide it off-screen
-    testElement.style.left = '-1000px';
-    document.body.appendChild(testElement);
-    
-    // Force a style recalculation
-    setTimeout(() => {
-      const computedStyle = window.getComputedStyle(testElement);
-      console.log('🧪 CSS Test - Animation loaded:', {
-        animation: computedStyle.animation,
-        backgroundImage: computedStyle.backgroundImage,
-        hasAnimation: computedStyle.animation.includes('voice-inconsistency-wiggle')
-      });
-      document.body.removeChild(testElement);
-    }, 100);
+
+    // Clear existing underlines first
+    const editorElement = editor.view.dom;
+    const existingUnderlines = editorElement.querySelectorAll('.voice-inconsistent, [data-voice-underline="true"]');
+    existingUnderlines.forEach(el => {
+      const parent = el.parentNode;
+      if (parent) {
+        parent.insertBefore(document.createTextNode(el.textContent || ''), el);
+        parent.removeChild(el);
+      }
+    });
 
     let appliedCount = 0;
-    
-    inconsistentResults.forEach(result => {
-      let textToHighlight = result.flagged_text.trim();
-      if (!textToHighlight) return;
+
+    // SIMPLIFIED APPROACH: Use CSS-only styling with direct DOM manipulation
+    // But apply it in a way that TipTap is less likely to remove
+    results.filter(result => !result.is_consistent).forEach(result => {
+      const textToHighlight = result.flagged_text;
       
-      // IMPROVED: Handle various text formats and find the best match
-      const searchTexts: string[] = [];
-      
-      // If the flagged text contains "vs." it might be a comparison, extract the parts
-      if (textToHighlight.includes(' vs. ')) {
-        const parts = textToHighlight.split(' vs. ');
-        searchTexts.push(...parts.map(part => part.replace(/^['"]|['"]$/g, '').trim()));
+      if (!textToHighlight || textToHighlight.trim().length === 0) {
+        console.warn('⚠️ Empty flagged text for character:', result.character_name);
+        return;
       }
-      // If it's truncated (ends with incomplete word), try to find a partial match
-      else if (textToHighlight.length >= 40 && !textToHighlight.endsWith('.') && !textToHighlight.endsWith('"') && !textToHighlight.endsWith("'")) {
-        // Likely truncated, use the first 30 characters for partial matching
-        const partialText = textToHighlight.substring(0, 30);
-        searchTexts.push(partialText);
-        searchTexts.push(textToHighlight); // Also try the full text
-      } else {
-        searchTexts.push(textToHighlight);
+
+      // Find the text in the editor's plain text
+      const docText = editor.getText();
+      const startPos = docText.indexOf(textToHighlight);
+      
+      if (startPos === -1) {
+        console.warn('❌ Could not find text to highlight:', textToHighlight.substring(0, 50), 'in editor content');
+        return;
       }
-      
-      // Try to find any of the search texts in the editor
-      let foundMatch = false;
-      
-      for (const searchText of searchTexts) {
-        if (searchText.length < 5) continue; // Skip very short texts
+
+      // Use tree walker to find and style the text
+      const walker = document.createTreeWalker(
+        editorElement,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+
+      let currentOffset = 0;
+      let textNode;
+
+      while ((textNode = walker.nextNode())) {
+        const nodeValue = textNode.nodeValue || '';
+        const nodeLength = nodeValue.length;
         
-        // Try exact match first
-        let textIndex = editorPlainText.indexOf(searchText);
-        
-        // If exact match fails, try fuzzy matching for dialogue
-        if (textIndex === -1 && searchText.includes('"')) {
-          // Extract dialogue without quotes
-          const dialogueOnly = searchText.replace(/["""'']/g, '').trim();
-          if (dialogueOnly.length > 5) {
-            textIndex = editorPlainText.indexOf(dialogueOnly);
-            if (textIndex !== -1) {
-              textToHighlight = dialogueOnly; // Use the found text
-            }
-          }
-        }
-        
-        // If still no match, try partial matching (first 20 characters)
-        if (textIndex === -1 && searchText.length > 20) {
-          const partialSearch = searchText.substring(0, 20);
-          textIndex = editorPlainText.indexOf(partialSearch);
-          if (textIndex !== -1) {
-            // Find the end of the sentence or dialogue
-            let endIndex = textIndex + partialSearch.length;
-            const remainingText = editorPlainText.substring(endIndex);
-            const sentenceEnd = remainingText.search(/[.!?]["']?\s/);
-            if (sentenceEnd !== -1) {
-              endIndex += sentenceEnd + 1;
-              textToHighlight = editorPlainText.substring(textIndex, endIndex).trim();
-            } else {
-              textToHighlight = partialSearch;
-            }
-          }
-        }
-        
-        console.log('🔍 Searching for:', searchText, '| Found at index:', textIndex);
-        
-        if (textIndex >= 0) {
-          foundMatch = true;
+        if (currentOffset <= startPos && (currentOffset + nodeLength) >= startPos) {
+          const startInNode = startPos - currentOffset;
+          const endInNode = Math.min(startPos + textToHighlight.length - currentOffset, nodeLength);
           
-          // Use tree walker to find and highlight the text
-          const walker = document.createTreeWalker(
-            editorElement,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
+          const beforeText = nodeValue.substring(0, startInNode);
+          const highlightText = nodeValue.substring(startInNode, endInNode);
+          const afterText = nodeValue.substring(endInNode);
+
+          // Create span with CSS classes only (no inline styles)
+          const span = document.createElement('span');
+          span.className = 'voice-inconsistent';
           
-          let currentOffset = 0;
-          const targetStartOffset = textIndex;
-          const targetEndOffset = textIndex + textToHighlight.length;
-          let textNode;
+          const confidence = result.confidence_score;
+          const confidenceLevel = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
+          span.classList.add(`${confidenceLevel}-confidence`);
           
-          while ((textNode = walker.nextNode())) {
-            const nodeValue = textNode.nodeValue || '';
-            const nodeLength = nodeValue.length;
-            
-            // Check if our target text spans this node
-            if (currentOffset <= targetStartOffset && (currentOffset + nodeLength) >= targetStartOffset) {
-              const startInNode = targetStartOffset - currentOffset;
-              const endInNode = Math.min(targetEndOffset - currentOffset, nodeLength);
-              
-              // Split the text node and wrap the target text
-              const beforeText = nodeValue.substring(0, startInNode);
-              const highlightText = nodeValue.substring(startInNode, endInNode);
-              const afterText = nodeValue.substring(endInNode);
-              
-              // CRITICAL FIX: Create the span with MAXIMUM CSS specificity and inline styles
-              const inconsistencySpan = document.createElement('span');
-              inconsistencySpan.className = 'voice-inconsistent';
-              
-              // AGGRESSIVE INLINE STYLING - Force visibility with maximum specificity
-              const confidence = result.confidence_score;
-              
-              // Add confidence-based CSS classes for styling
-              if (confidence <= 0.4) {
-                inconsistencySpan.classList.add('high-confidence');
-              } else if (confidence <= 0.7) {
-                inconsistencySpan.classList.add('medium-confidence');
-              } else {
-                inconsistencySpan.classList.add('low-confidence');
-              }
-              
-              // ✅ CRITICAL FIX: TipTap-Compatible CSS-Only Approach
-              // TipTap preserves CSS classes and data attributes but removes inline styles
-              // The CSS in voice-consistency-underlines.css will handle all styling
-              
-              // NO inline styles - let CSS handle everything through classes and data attributes
-              inconsistencySpan.setAttribute('data-voice-underline', 'true');
-              inconsistencySpan.setAttribute('data-confidence-level', 
-                confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low'
-              );
-              
-              // FORCE animation keyframes to be available by injecting them if needed
-              if (!document.querySelector('#voice-inconsistency-keyframes')) {
-                const styleSheet = document.createElement('style');
-                styleSheet.id = 'voice-inconsistency-keyframes';
-                styleSheet.textContent = `
-                  @keyframes voice-inconsistency-wiggle {
-                    0% { background-position: 0 100% !important; }
-                    25% { background-position: 1px 100% !important; }
-                    50% { background-position: 2px 100% !important; }
-                    75% { background-position: 1px 100% !important; }
-                    100% { background-position: 0 100% !important; }
-                  }
-                  .voice-inconsistent {
-                    animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important;
-                  }
-                `;
-                document.head.appendChild(styleSheet);
-                console.log('💉 Injected voice inconsistency keyframes directly into DOM');
-              }
-              
-              // Add data attributes for debugging
-              inconsistencySpan.setAttribute('data-voice-explanation', 
-                `${result.explanation} (Confidence: ${Math.round(confidence * 100)}%)`);
-              inconsistencySpan.setAttribute('data-confidence', confidence.toString());
-              inconsistencySpan.setAttribute('data-character', result.character_name);
-              
-              // Add accessibility attributes
-              inconsistencySpan.setAttribute('role', 'button');
-              inconsistencySpan.setAttribute('tabindex', '0');
-              inconsistencySpan.setAttribute('aria-label', 
-                `Voice inconsistency: ${result.explanation}`);
-              
-              // ENHANCED hover effects with immediate style application
-              inconsistencySpan.addEventListener('mouseenter', () => {
-                inconsistencySpan.style.setProperty('background-color', 'rgba(245, 158, 11, 0.1)', 'important');
-                inconsistencySpan.style.setProperty('border-radius', '2px', 'important');
-                inconsistencySpan.style.setProperty('animation-duration', '1s', 'important');
-                inconsistencySpan.style.setProperty('transform', 'scale(1.02)', 'important');
-                console.log('🖱️ Hover entered on voice inconsistency:', highlightText.substring(0, 30));
-              });
-              
-              inconsistencySpan.addEventListener('mouseleave', () => {
-                inconsistencySpan.style.setProperty('background-color', 'transparent', 'important');
-                inconsistencySpan.style.setProperty('border-radius', '0', 'important');
-                inconsistencySpan.style.setProperty('animation-duration', '2s', 'important');
-                inconsistencySpan.style.setProperty('transform', 'scale(1)', 'important');
-              });
-              
-              // Add click handler for debugging
-              inconsistencySpan.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('🖱️ Voice inconsistency clicked:', {
-                  text: highlightText,
-                  character: result.character_name,
-                  confidence: result.confidence_score,
-                  explanation: result.explanation
-                });
-              });
-              
-              inconsistencySpan.textContent = highlightText;
-              
-              // Replace the text node with our highlighted version
-              const parent = textNode.parentNode;
-              if (parent) {
-                if (beforeText) {
-                  parent.insertBefore(document.createTextNode(beforeText), textNode);
-                }
-                parent.insertBefore(inconsistencySpan, textNode);
-                if (afterText) {
-                  parent.insertBefore(document.createTextNode(afterText), textNode);
-                }
-                parent.removeChild(textNode);
-                
-                appliedCount++;
-                
-                console.log('✅ Applied ENHANCED voice inconsistency underline:', {
-                  text: highlightText.substring(0, 50),
-                  character: result.character_name,
-                  confidence: result.confidence_score,
-                  hasAnimation: inconsistencySpan.style.animation.includes('wiggle'),
-                  computedAnimation: window.getComputedStyle(inconsistencySpan).animation
-                });
-                
-                // FORCE a style recalculation to ensure animation starts
-                setTimeout(() => {
-                  const computedStyle = window.getComputedStyle(inconsistencySpan);
-                  console.log('🎭 Post-application animation check:', {
-                    animation: computedStyle.animation,
-                    backgroundImage: computedStyle.backgroundImage,
-                    isAnimating: computedStyle.animation.includes('voice-inconsistency-wiggle')
-                  });
-                }, 100);
-              }
-              break;
+          // Add data attributes for CSS targeting
+          span.setAttribute('data-voice-underline', 'true');
+          span.setAttribute('data-confidence-level', confidenceLevel);
+          span.textContent = highlightText;
+
+          // Replace the text node
+          const parent = textNode.parentNode;
+          if (parent) {
+            if (beforeText) {
+              parent.insertBefore(document.createTextNode(beforeText), textNode);
             }
-            
-            currentOffset += nodeLength;
+            parent.insertBefore(span, textNode);
+            if (afterText) {
+              parent.insertBefore(document.createTextNode(afterText), textNode);
+            }
+            parent.removeChild(textNode);
+            appliedCount++;
           }
-          break; // Found a match, stop searching
+          break;
         }
-      }
-      
-      if (!foundMatch) {
-        console.warn('❌ Could not find text to highlight:', textToHighlight, 'in editor content');
+        currentOffset += nodeLength;
       }
     });
-    
-    // FINAL DEBUG: Count applied underlines
+
+    console.log(`🎯 Applied ${appliedCount} voice inconsistency underlines`);
+
+    // Verify the underlines were applied and are visible
     setTimeout(() => {
-      const appliedUnderlines = editorElement.querySelectorAll('.voice-inconsistent');
+      const appliedUnderlines = editorElement.querySelectorAll('.voice-inconsistent, [data-voice-underline="true"]');
       console.log(`🎯 FINAL COUNT: Applied ${appliedUnderlines.length} voice inconsistency underlines (expected: ${appliedCount})`);
       
-      // Test each applied underline
       appliedUnderlines.forEach((el, index) => {
         const computedStyle = window.getComputedStyle(el);
         console.log(`🧪 Underline ${index + 1}:`, {
           text: el.textContent?.substring(0, 30),
-          hasAnimation: computedStyle.animation.includes('voice-inconsistency-wiggle'),
-          backgroundImage: computedStyle.backgroundImage !== 'none',
-          className: el.className
+          hasUnderline: computedStyle.textDecorationLine.includes('underline'),
+          borderBottom: computedStyle.borderBottomWidth !== '0px',
+          className: el.className,
+          visible: computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden'
         });
       });
     }, 200);
-  }, [editor]);
+  };
 
   // Handle active discussion highlighting from ChatContext using DOM manipulation
   useEffect(() => {
@@ -659,164 +466,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     
     // Set up mutation observer to maintain voice inconsistency styles
     const setupVoiceInconsistencyObserver = () => {
-      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops'); 
-      return; // EARLY EXIT: Disable the entire observer setup
-      
-      // DISABLED CODE BELOW - This entire block is now unreachable
-      if (!editor || !editor.view.dom) return;
-      
-      const editorElement = editor.view.dom;
-      
-      // Clean up existing observer
-      if (voiceInconsistencyObserver.current) {
-        voiceInconsistencyObserver.current.disconnect();
-      }
-      
-      // Create new mutation observer
-      voiceInconsistencyObserver.current = new MutationObserver((mutations) => {
-        if (!isMounted || appliedInconsistencies.current.length === 0) return;
-        
-        // Check if any voice inconsistent elements were removed
-        let needsReapplication = false;
-        
-        mutations.forEach(mutation => {
-          // Check if any nodes were removed that contained voice inconsistent elements
-          mutation.removedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const element = node as Element;
-              if (element.querySelector?.('.voice-inconsistent') || element.classList?.contains('voice-inconsistent')) {
-                needsReapplication = true;
-              }
-            }
-          });
-          
-          // Check if existing voice inconsistent elements lost their styling
-          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-            const target = mutation.target as Element;
-            if (target.classList?.contains('voice-inconsistent')) {
-              const computedStyle = window.getComputedStyle(target);
-              if (!computedStyle.animation.includes('voice-inconsistency-wiggle')) {
-                needsReapplication = true;
-              }
-            }
-          }
-        });
-        
-        // Re-apply voice inconsistency styles if needed
-        if (needsReapplication) {
-          console.log('🔄 TipTap removed voice inconsistency styles, re-applying...');
-          setTimeout(() => {
-            reapplyVoiceInconsistencyStyles();
-          }, 100); // Small delay to let TipTap finish its updates
-        }
-      });
-      
-      // Start observing
-      voiceInconsistencyObserver.current.observe(editorElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class']
-      });
-    };
-    
-    // Function to re-apply voice inconsistency styles
-    const reapplyVoiceInconsistencyStyles = () => {
-      if (!editor || !isMounted || appliedInconsistencies.current.length === 0) return;
-      
-      const editorElement = editor.view.dom;
-      const editorPlainText = editor.getText();
-      
-      appliedInconsistencies.current.forEach(inconsistency => {
-        // Check if this inconsistency is already properly styled
-        const existingElements = editorElement.querySelectorAll('.voice-inconsistent');
-        let alreadyApplied = false;
-        
-        existingElements.forEach(el => {
-          if (el.textContent?.includes(inconsistency.text.substring(0, 20))) {
-            const computedStyle = window.getComputedStyle(el);
-            if (computedStyle.animation.includes('voice-inconsistency-wiggle')) {
-              alreadyApplied = true;
-            }
-          }
-        });
-        
-        if (alreadyApplied) return;
-        
-        // Find and re-apply styling to this inconsistency
-        const textIndex = editorPlainText.indexOf(inconsistency.text);
-        if (textIndex >= 0) {
-          // Use the same highlighting logic as the main function
-          const walker = document.createTreeWalker(
-            editorElement,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
-          
-          let currentOffset = 0;
-          const targetStartOffset = textIndex;
-          const targetEndOffset = textIndex + inconsistency.text.length;
-          let textNode;
-          
-          while ((textNode = walker.nextNode())) {
-            const nodeValue = textNode.nodeValue || '';
-            const nodeLength = nodeValue.length;
-            
-            if (currentOffset <= targetStartOffset && (currentOffset + nodeLength) >= targetStartOffset) {
-              const startInNode = targetStartOffset - currentOffset;
-              const endInNode = Math.min(targetEndOffset - currentOffset, nodeLength);
-              
-              const beforeText = nodeValue.substring(0, startInNode);
-              const highlightText = nodeValue.substring(startInNode, endInNode);
-              const afterText = nodeValue.substring(endInNode);
-              
-              // Create the span with all the styling
-              const inconsistencySpan = document.createElement('span');
-              inconsistencySpan.className = 'voice-inconsistent';
-              
-              const confidence = inconsistency.confidence;
-              const underlineColor = confidence <= 0.4 ? '#dc2626' : confidence <= 0.7 ? '#f59e0b' : '#fbbf24';
-              
-              const inlineStyles = [
-                `position: relative !important`,
-                `display: inline !important`,
-                `cursor: pointer !important`,
-                `background-image: repeating-linear-gradient(45deg, ${underlineColor} 0px, ${underlineColor} 2px, transparent 2px, transparent 4px) !important`,
-                `background-position: 0 100% !important`,
-                `background-size: 4px 2px !important`,
-                `background-repeat: repeat-x !important`,
-                `animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important`
-              ];
-              
-              inconsistencySpan.style.cssText = inlineStyles.join('; ');
-              inconsistencySpan.textContent = highlightText;
-              
-              // Add data attributes
-              inconsistencySpan.setAttribute('data-voice-explanation', inconsistency.explanation);
-              inconsistencySpan.setAttribute('data-confidence', confidence.toString());
-              inconsistencySpan.setAttribute('data-character', inconsistency.character);
-              
-              // Replace the text node
-              const parent = textNode.parentNode;
-              if (parent) {
-                if (beforeText) {
-                  parent.insertBefore(document.createTextNode(beforeText), textNode);
-                }
-                parent.insertBefore(inconsistencySpan, textNode);
-                if (afterText) {
-                  parent.insertBefore(document.createTextNode(afterText), textNode);
-                }
-                parent.removeChild(textNode);
-                
-                console.log('🔄 Re-applied voice inconsistency style for:', highlightText.substring(0, 30));
-              }
-              break;
-            }
-            
-            currentOffset += nodeLength;
-          }
-        }
-      });
+      // 🚫 DISABLED: Voice inconsistency mutation observer to prevent infinite loops
+      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops');
+      return;
     };
     
     // Set up observer when editor is ready
