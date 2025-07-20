@@ -521,33 +521,28 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
                 inconsistencySpan.classList.add('low-confidence');
               }
               
-              // CRITICAL FIX: Use border-bottom instead of background-image for TipTap compatibility
-              // TipTap removes background-image styles, so we use multiple fallback methods
+              // NUCLEAR OPTION: Apply ALL styles inline with maximum importance
               const inlineStyles = [
                 `position: relative !important`,
                 `display: inline !important`,
                 `cursor: pointer !important`,
-                // PRIMARY: Use border-bottom as most reliable method
-                `border-bottom: 2px solid ${underlineColor} !important`,
-                // SECONDARY: Use text-decoration as backup
-                `text-decoration: underline !important`,
-                `text-decoration-color: ${underlineColor} !important`,
-                `text-decoration-style: wavy !important`,
-                // TERTIARY: Use box-shadow as third fallback
-                `box-shadow: inset 0 -2px 0 0 ${underlineColor} !important`,
-                // Keep other properties
+                `background-image: repeating-linear-gradient(45deg, ${underlineColor} 0px, ${underlineColor} 2px, transparent 2px, transparent 4px) !important`,
+                `background-position: 0 100% !important`,
+                `background-size: 4px 2px !important`,
+                `background-repeat: repeat-x !important`,
+                `animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important`,
                 `line-height: inherit !important`,
                 `font-family: inherit !important`,
                 `font-size: inherit !important`,
                 `color: inherit !important`,
+                `text-decoration: none !important`,
+                `border: none !important`,
+                `outline: none !important`,
                 `margin: 0 !important`,
                 `padding: 0 !important`
               ];
               
               inconsistencySpan.style.cssText = inlineStyles.join('; ');
-              
-              // ENHANCED: Add a custom CSS class that TipTap won't remove
-              inconsistencySpan.setAttribute('data-voice-underline', 'true');
               
               // FORCE animation keyframes to be available by injecting them if needed
               if (!document.querySelector('#voice-inconsistency-keyframes')) {
@@ -680,10 +675,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     
     // Set up mutation observer to maintain voice inconsistency styles
     const setupVoiceInconsistencyObserver = () => {
-      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops'); 
-      return; // EARLY EXIT: Disable the entire observer setup
-      
-      // DISABLED CODE BELOW - This entire block is now unreachable
       if (!editor || !editor.view.dom) return;
       
       const editorElement = editor.view.dom;
@@ -739,6 +730,8 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         attributes: true,
         attributeFilter: ['style', 'class']
       });
+      
+      console.log('🔍 Voice inconsistency mutation observer set up');
     };
     
     // Function to re-apply voice inconsistency styles

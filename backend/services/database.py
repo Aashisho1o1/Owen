@@ -699,19 +699,26 @@ class PostgreSQLService:
             logger.debug(f"   Dialogue samples: {len(dialogue_samples)}")
             logger.debug(f"   Voice traits keys: {list(voice_traits.keys())}")
             
+            # CRITICAL FIX: Convert Python objects to JSON for PostgreSQL compatibility
+            import json
+            dialogue_samples_json = json.dumps(dialogue_samples) if dialogue_samples else '[]'
+            voice_traits_json = json.dumps(voice_traits) if voice_traits else '{}'
+            
+            logger.debug(f"   Converting to JSON - Dialogue samples: {len(dialogue_samples_json)} chars, Voice traits: {len(voice_traits_json)} chars")
+            
             # Use PostgreSQL UPSERT (INSERT ... ON CONFLICT DO UPDATE)
             self.execute_query(
                 """INSERT INTO character_voice_profiles 
                    (character_id, character_name, user_id, dialogue_samples, 
                     voice_characteristics, sample_count, last_updated, created_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
                    ON CONFLICT (character_id) DO UPDATE SET
                        dialogue_samples = EXCLUDED.dialogue_samples,
                        voice_characteristics = EXCLUDED.voice_characteristics,
                        sample_count = EXCLUDED.sample_count,
                        last_updated = EXCLUDED.last_updated""",
-                (character_id, character_name, user_id, dialogue_samples, 
-                 voice_traits, len(dialogue_samples), datetime.utcnow(), datetime.utcnow())
+                (character_id, character_name, user_id, dialogue_samples_json, 
+                 voice_traits_json, len(dialogue_samples), datetime.utcnow(), datetime.utcnow())
             )
             
             logger.info(f"✅ Successfully upserted profile for character '{character_name}'")
