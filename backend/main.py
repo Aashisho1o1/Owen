@@ -291,23 +291,13 @@ if SecurityMiddleware:
 else:
     print("⚠️ Security middleware not available - continuing without it")
 
-# Include all modular routers that were successfully imported
-print(f"📚 Including {len(imported_routers)} routers...")
+# Include all imported routers
 for router_name, router in imported_routers:
     try:
         app.include_router(router)
-        print(f"✅ {router_name} router included successfully")
-        # DEBUG: Log the routes that were added
-        if hasattr(router, 'routes'):
-            route_info = []
-            for route in router.routes:
-                if hasattr(route, 'methods') and hasattr(route, 'path'):
-                    route_info.append(f"{list(route.methods)} {route.path}")
-            print(f"   Routes added: {route_info}")
+        print(f"✅ {router_name} included successfully")
     except Exception as e:
-        print(f"❌ Failed to include {router_name} router: {e}")
-        import traceback
-        print(f"   Error details: {traceback.format_exc()}")
+        print(f"❌ Failed to include {router_name}: {e}")
 
 # Explicit CORS preflight handler for all routes
 @app.options("/{path:path}")
