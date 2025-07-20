@@ -848,13 +848,30 @@ Respond with ONLY the JSON object."""
                 
                 # If we successfully parsed JSON, validate it has required fields
                 if analysis_data and isinstance(analysis_data, dict):
-                    # Ensure all required fields exist with defaults
+                    # CRITICAL FIX: Ensure all required fields exist with proper type validation
+                    
+                    # Handle flagged_text - convert list to string if needed
+                    flagged_text = analysis_data.get("flagged_text", "")
+                    if isinstance(flagged_text, list):
+                        # If it's a list, join the elements or take the first one
+                        if flagged_text:
+                            flagged_text = str(flagged_text[0]) if len(flagged_text) == 1 else " | ".join(str(item) for item in flagged_text)
+                        else:
+                            flagged_text = ""
+                    elif not isinstance(flagged_text, str):
+                        flagged_text = str(flagged_text) if flagged_text is not None else ""
+                    
+                    # Handle suggestions - ensure it's always a list
+                    suggestions = analysis_data.get("suggestions", ["Analysis completed successfully"])
+                    if not isinstance(suggestions, list):
+                        suggestions = [str(suggestions)] if suggestions else ["Analysis completed successfully"]
+                    
                     analysis_data = {
                         "is_consistent": analysis_data.get("is_consistent", True),
                         "confidence_score": float(analysis_data.get("confidence_score", 0.5)),
                         "explanation": analysis_data.get("explanation", f"Voice analysis completed for {profile.character_name}"),
-                        "flagged_text": analysis_data.get("flagged_text", ""),
-                        "suggestions": analysis_data.get("suggestions", ["Analysis completed successfully"])
+                        "flagged_text": flagged_text,
+                        "suggestions": suggestions
                     }
                 else:
                     # Improved fallback if no valid JSON found
