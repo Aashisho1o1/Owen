@@ -9,6 +9,7 @@ import re
 import json
 import logging
 import hashlib
+import html
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -19,7 +20,11 @@ from services.llm_service import llm_service
 # Import the proper schema models
 from models.schemas import VoiceConsistencyResult
 
-# Configure logging
+# Configure logging with more detailed formatting
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -48,9 +53,18 @@ class CharacterVoiceService:
     """
     
     def __init__(self):
-        # CRITICAL FIX: Use the LLM service coordinator instead of direct GeminiService
-        self.llm_service = llm_service
-        logger.info("✅ CharacterVoiceService initialized with LLM service coordinator")
+        logger.info("🎭 CharacterVoiceService: Initializing service...")
+        try:
+            # Test LLM service availability
+            if hasattr(llm_service, 'generate_with_selected_llm'):
+                logger.info("✅ CharacterVoiceService: LLM service coordinator available")
+            else:
+                logger.error("❌ CharacterVoiceService: LLM service coordinator missing generate_with_selected_llm method")
+            
+            logger.info("✅ CharacterVoiceService: Service initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
+            raise
     
     def _extract_dialogue_segments(self, text: str) -> List[DialogueSegment]:
         """
@@ -208,39 +222,64 @@ class CharacterVoiceService:
         Returns:
             Dictionary containing analysis results
         """
+        analysis_start_time = datetime.now()
+        
         try:
-            logger.info(f"🔍 Starting voice analysis for text ({len(text)} chars)")
+            logger.info(f"🔍 === SERVICE ANALYSIS START ===")
+            logger.info(f"📊 Input Analysis:")
+            logger.info(f"   - Text length: {len(text)} chars")
+            logger.info(f"   - Text preview: {text[:100]}{'...' if len(text) > 100 else ''}")
+            logger.info(f"   - Has HTML tags: {bool(re.search(r'<[^>]+>', text))}")
+            logger.info(f"   - Existing profiles: {len(existing_profiles) if existing_profiles else 0}")
             
+            logger.info(f"🚀 SERVICE STEP 1: Text preprocessing...")
             # CRITICAL FIX: Limit text length to prevent API timeouts and errors
             MAX_TEXT_LENGTH = 10000  # 10,000 characters should be manageable
             if len(text) > MAX_TEXT_LENGTH:
                 logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
                 text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"
             
+            logger.info(f"🧹 Removing HTML tags and entities...")
             # CRITICAL FIX: Remove HTML tags since TipTap editor sends HTML-formatted content
             # The dialogue extraction patterns expect plain text, not HTML
-            import html
             
             # First, unescape HTML entities
+            original_length = len(text)
             text = html.unescape(text)
+            logger.debug(f"   HTML entities unescaped: {original_length} -> {len(text)} chars")
             
             # Remove HTML tags using regex (simple but effective for our use case)
             html_tag_pattern = re.compile(r'<[^>]+>')
             plain_text = html_tag_pattern.sub('', text)
+            logger.debug(f"   HTML tags removed: {len(text)} -> {len(plain_text)} chars")
             
             # Clean up extra whitespace that might result from tag removal
             plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+            logger.debug(f"   Whitespace cleaned: {len(plain_text)} chars final")
             
-            logger.info(f"🧹 Cleaned HTML tags from text: {len(text)} chars -> {len(plain_text)} chars plain text")
+            logger.info(f"✅ SERVICE STEP 1 COMPLETE: Text cleaned from {original_length} to {len(plain_text)} chars")
             
             # Use the cleaned plain text for dialogue extraction
             text = plain_text
             
+            logger.info(f"🚀 SERVICE STEP 2: Extracting dialogue segments...")
             # Extract dialogue segments
-            segments = self._extract_dialogue_segments(text)
+            try:
+                segments = self._extract_dialogue_segments(text)
+                logger.info(f"✅ SERVICE STEP 2 COMPLETE: Found {len(segments)} dialogue segments")
+                
+                if segments:
+                    logger.info(f"📝 Dialogue segments preview:")
+                    for i, segment in enumerate(segments[:3]):  # Show first 3 segments
+                        logger.info(f"   Segment {i+1}: Speaker='{segment.speaker}', Text='{segment.text[:50]}{'...' if len(segment.text) > 50 else ''}'")
+                        
+            except Exception as segment_error:
+                logger.error(f"❌ SERVICE STEP 2 FAILED: Dialogue extraction error: {segment_error}")
+                logger.exception("Dialogue extraction traceback:")
+                raise
             
             if not segments:
-                logger.warning("⚠️ No dialogue found in text")
+                logger.warning("⚠️ No dialogue found in text - returning empty results")
                 return {
                     "results": [],
                     "characters_analyzed": 0,
@@ -248,56 +287,94 @@ class CharacterVoiceService:
                     "processing_time_ms": 0
                 }
             
+            logger.info(f"🚀 SERVICE STEP 3: Building character profiles...")
             # Build character profiles from current text
-            current_profiles = self._build_character_profiles(segments)
+            try:
+                current_profiles = self._build_character_profiles(segments)
+                logger.info(f"✅ SERVICE STEP 3 COMPLETE: Built profiles for {len(current_profiles)} characters")
+                
+                for char_name, profile in current_profiles.items():
+                    logger.debug(f"   Profile: {char_name} - {len(profile.dialogue_samples)} samples")
+                    
+            except Exception as profile_error:
+                logger.error(f"❌ SERVICE STEP 3 FAILED: Profile building error: {profile_error}")
+                logger.exception("Profile building traceback:")
+                raise
             
+            logger.info(f"🚀 SERVICE STEP 4: Merging with existing profiles...")
             # Merge with existing profiles if provided
+            merged_count = 0
             if existing_profiles:
                 for char_name, existing_profile in existing_profiles.items():
                     if char_name in current_profiles:
+                        logger.debug(f"   Merging profile for: {char_name}")
                         # Merge dialogue samples (keep recent ones)
                         all_samples = existing_profile.dialogue_samples + current_profiles[char_name].dialogue_samples
                         current_profiles[char_name].dialogue_samples = all_samples[-20:]  # Keep last 20 samples
                         current_profiles[char_name].voice_traits = existing_profile.voice_traits
+                        merged_count += 1
+                        
+            logger.info(f"✅ SERVICE STEP 4 COMPLETE: Merged {merged_count} existing profiles")
             
+            logger.info(f"🚀 SERVICE STEP 5: Performing AI analysis for each character...")
             # Perform AI analysis for each character
             results = []
             start_time = datetime.now()
             
+            character_count = 0
             for character_name, profile in current_profiles.items():
-                if len(profile.dialogue_samples) < 2:
-                    # Need at least 2 samples for consistency analysis
-                    logger.info(f"⚠️ Skipping {character_name} - insufficient dialogue samples ({len(profile.dialogue_samples)})")
-                    continue
+                character_count += 1
+                logger.info(f"🧠 Analyzing character {character_count}/{len(current_profiles)}: {character_name}")
                 
-                # Analyze this character's voice consistency
                 try:
-                    character_result = await self._analyze_character_voice(profile, segments)
-                    if character_result:
-                        results.append(character_result)
-                        logger.info(f"✅ Analysis complete for {character_name}")
+                    logger.debug(f"   Calling _analyze_character_voice for {character_name}...")
+                    result = await self._analyze_character_voice(profile, segments)
+                    
+                    if result:
+                        results.append(result)
+                        logger.info(f"   ✅ Analysis complete for {character_name}: Consistent={result.is_consistent}, Confidence={result.confidence_score}")
                     else:
-                        logger.warning(f"⚠️ No result returned for {character_name}")
+                        logger.warning(f"   ⚠️ No result returned for {character_name}")
+                        
                 except Exception as char_error:
-                    logger.error(f"❌ Character analysis failed for {character_name}: {str(char_error)}")
+                    logger.error(f"   ❌ Analysis failed for {character_name}: {char_error}")
+                    logger.exception(f"Character analysis traceback for {character_name}:")
                     # Continue with other characters instead of failing completely
                     continue
             
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
+            total_processing_time = (datetime.now() - analysis_start_time).total_seconds() * 1000
             
-            logger.info(f"✅ Voice analysis complete: {len(results)} characters analyzed")
+            logger.info(f"✅ SERVICE STEP 5 COMPLETE: {len(results)} characters analyzed")
+            logger.info(f"📊 Analysis Results Summary:")
+            logger.info(f"   - Characters analyzed: {len(results)}")
+            logger.info(f"   - Dialogue segments found: {len(segments)}")
+            logger.info(f"   - AI processing time: {int(processing_time)}ms")
+            logger.info(f"   - Total processing time: {int(total_processing_time)}ms")
+            
+            # Log each result for debugging
+            for i, result in enumerate(results):
+                logger.debug(f"   Result {i+1}: {result.character_name} - Consistent: {result.is_consistent}, Confidence: {result.confidence_score}")
+            
+            logger.info(f"✅ === SERVICE ANALYSIS COMPLETE ===")
             
             return {
                 "results": results,
                 "characters_analyzed": len(results),
                 "dialogue_segments_found": len(segments),
-                "processing_time_ms": int(processing_time)
+                "processing_time_ms": int(total_processing_time)
             }
             
         except Exception as e:
-            logger.error(f"❌ Voice analysis failed: {str(e)}")
-            logger.error(f"❌ Error type: {type(e).__name__}")
-            # Return empty results instead of raising exception
+            logger.error(f"❌ === SERVICE ANALYSIS FAILED ===")
+            logger.error(f"🔍 Error Details:")
+            logger.error(f"   - Error type: {type(e).__name__}")
+            logger.error(f"   - Error message: {str(e)}")
+            logger.error(f"   - Error occurred at: {datetime.now()}")
+            logger.exception("Full service error traceback:")
+            
+            # Return empty results instead of raising exception to prevent 500 errors
+            logger.info(f"➡️ Returning empty results to prevent 500 error")
             return {
                 "results": [],
                 "characters_analyzed": 0,
@@ -310,17 +387,27 @@ class CharacterVoiceService:
         """
         Analyze voice consistency for a specific character using the EXACT same pattern as successful contextual understanding.
         """
+        char_analysis_start = datetime.now()
+        
         try:
-            logger.info(f"🎭 Starting voice analysis for character: {profile.character_name}")
+            logger.info(f"🎭 === CHARACTER ANALYSIS START: {profile.character_name} ===")
+            logger.info(f"📊 Character Analysis Input:")
+            logger.info(f"   - Character name: {profile.character_name}")
+            logger.info(f"   - Total segments available: {len(all_segments)}")
+            logger.info(f"   - Profile dialogue samples: {len(profile.dialogue_samples)}")
             
             # Get this character's dialogue from the segments
             character_dialogue = [seg.text for seg in all_segments if seg.speaker == profile.character_name]
+            logger.info(f"   - Character's dialogue found: {len(character_dialogue)} samples")
             
             if len(character_dialogue) < 2:
-                logger.warning(f"⚠️ Insufficient dialogue for {profile.character_name}: {len(character_dialogue)} samples")
+                logger.warning(f"⚠️ Insufficient dialogue for {profile.character_name}: {len(character_dialogue)} samples (need at least 2)")
+                logger.info(f"   Available speakers in segments: {list(set(seg.speaker for seg in all_segments))}")
                 return None
             
-            logger.info(f"📝 Analyzing {len(character_dialogue)} dialogue samples for {profile.character_name}")
+            logger.info(f"📝 Dialogue samples for {profile.character_name}:")
+            for i, sample in enumerate(character_dialogue[:3]):  # Show first 3 samples
+                logger.info(f"   Sample {i+1}: '{sample[:100]}{'...' if len(sample) > 100 else ''}'")
             
             # CRITICAL FIX: Limit dialogue samples to prevent overly long prompts
             MAX_SAMPLES = 10  # Limit to 10 samples max
@@ -328,6 +415,7 @@ class CharacterVoiceService:
                 logger.info(f"🔧 Limiting dialogue samples from {len(character_dialogue)} to {MAX_SAMPLES} for {profile.character_name}")
                 character_dialogue = character_dialogue[:MAX_SAMPLES]
             
+            logger.info(f"🚀 CHARACTER STEP 1: Building analysis prompt...")
             # Create analysis prompt with EXPLICIT JSON formatting requirements for Gemini 2.5 Flash
             prompt = f"""You are an expert character voice consistency analyzer. Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
 
@@ -341,49 +429,46 @@ Analyze the character's voice consistency and respond with this EXACT JSON forma
 {{
     "is_consistent": true,
     "confidence_score": 0.85,
-    "explanation": "Detailed analysis of voice consistency patterns",
-    "flagged_text": "Any specific inconsistent dialogue (empty string if all consistent)",
-    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
+    "explanation": "The character maintains consistent voice patterns across all samples.",
+    "flagged_text": "Any specific inconsistent dialogue here",
+    "suggestions": ["Suggestion 1", "Suggestion 2"]
 }}
 
-Rules:
-- is_consistent: true if voice is consistent, false if inconsistencies found
-- confidence_score: number between 0.0 and 1.0 (higher = more confident)
-- explanation: detailed analysis of speaking patterns, tone, vocabulary consistency
-- flagged_text: exact dialogue text that seems inconsistent (empty string if none)
-- suggestions: array of specific improvement suggestions
+Focus on:
+1. Speech patterns and vocabulary consistency
+2. Tone and formality level consistency  
+3. Character-specific phrases or expressions
+4. Overall voice authenticity
 
-RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
+Respond with ONLY the JSON object."""
             
-            # CRITICAL FIX: Use the EXACT same successful pattern as contextual understanding
-            logger.info(f"🚀 Generating voice analysis with Google Gemini for {profile.character_name}...")
+            logger.info(f"✅ CHARACTER STEP 1 COMPLETE: Prompt built ({len(prompt)} chars)")
+            logger.debug(f"   Prompt preview: {prompt[:200]}...")
             
+            logger.info(f"🚀 CHARACTER STEP 2: Calling LLM service...")
+            logger.info(f"   Using LLM provider: Google Gemini")
+            logger.info(f"   Expected response time: 10-60 seconds")
+            
+            # CRITICAL FIX: Use the LLM service coordinator (same as successful contextual understanding)
             try:
-                # CRITICAL FIX: Use string prompt format instead of Gemini-specific format
-                # The LLM service coordinator expects either string or standard conversation format
-                logger.info(f"🔧 Using string prompt format for LLM service coordinator (prompt length: {len(prompt)} chars)")
-                
-                # Use the same LLM service method as successful contextual understanding
-                response_text = await self.llm_service.generate_with_selected_llm(prompt, "Google Gemini")
-                logger.info(f"✅ Gemini voice analysis response received for {profile.character_name} (length: {len(response_text) if response_text else 0} chars)")
-                
-                if not response_text or len(response_text.strip()) == 0:
-                    logger.error(f"❌ Empty response from Gemini for {profile.character_name}")
-                    raise Exception("Empty response from LLM service")
+                logger.debug(f"   Making LLM call with prompt length: {len(prompt)}")
+                response_text = await llm_service.generate_with_selected_llm(prompt, "Google Gemini")
+                logger.info(f"✅ CHARACTER STEP 2 COMPLETE: LLM response received")
+                logger.info(f"   Response length: {len(response_text)} chars")
+                logger.debug(f"   Response preview: {response_text[:200]}...")
                 
             except Exception as llm_error:
-                logger.error(f"❌ LLM Generation Error with Google Gemini for {profile.character_name}: {llm_error}")
-                logger.error(f"❌ LLM Error Type: {type(llm_error).__name__}")
-                logger.error(f"❌ LLM Error Details: {str(llm_error)}")
+                logger.error(f"❌ CHARACTER STEP 2 FAILED: LLM call error for {profile.character_name}: {llm_error}")
+                logger.exception("LLM call traceback:")
                 
-                # Return fallback result with realistic confidence score
+                # Return a fallback result instead of failing
                 return VoiceConsistencyResult(
                     is_consistent=True,
-                    confidence_score=0.3,  # Lower confidence for fallback
-                    similarity_score=0.0,  # No embedding analysis in fallback
+                    confidence_score=0.3,
+                    similarity_score=0.5,
                     character_name=profile.character_name,
                     flagged_text="",
-                    explanation=f"Voice analysis temporarily unavailable for {profile.character_name}. AI service error: {str(llm_error)}",
+                    explanation=f"Analysis unavailable due to AI service error: {str(llm_error)}",
                     suggestions=["Please try again later when the AI service is available."],
                     analysis_method="llm_validated"
                 )

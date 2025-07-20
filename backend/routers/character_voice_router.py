@@ -8,6 +8,8 @@ import logging
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from datetime import datetime
+import re
 
 # Direct imports
 from dependencies import get_current_user_id
@@ -44,23 +46,38 @@ async def analyze_voice_consistency(
     4. Updates character profiles in database
     5. Returns detailed analysis results
     """
+    start_time = datetime.now()
+    
     try:
-        logger.info(f"🎭 Voice analysis request from user {user_id}")
-        logger.info(f"📝 Text length: {len(request.text)} chars")
-        logger.info(f"🚀 Starting Gemini 2.5 Flash voice analysis...")
+        logger.info(f"🎭 === VOICE ANALYSIS REQUEST START ===")
+        logger.info(f"🔍 Request Details:")
+        logger.info(f"   - User ID: {user_id}")
+        logger.info(f"   - Text length: {len(request.text)} chars")
+        logger.info(f"   - Text preview: {request.text[:200]}{'...' if len(request.text) > 200 else ''}")
+        logger.info(f"   - Has HTML tags: {bool(re.search(r'<[^>]+>', request.text))}")
+        logger.info(f"   - Timestamp: {start_time}")
         
+        logger.info(f"🚀 STEP 1: Input validation...")
         if not request.text or len(request.text.strip()) < 10:
+            logger.error(f"❌ STEP 1 FAILED: Text too short ({len(request.text.strip())} chars)")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Text must be at least 10 characters long"
             )
+        logger.info(f"✅ STEP 1 COMPLETE: Input validation passed")
         
+        logger.info(f"🚀 STEP 2: Loading existing character profiles...")
         # Load existing character profiles from database
         existing_profiles = {}
         try:
+            logger.info(f"🔍 Checking database service availability...")
             if db_service.is_available():
+                logger.info(f"✅ Database service available, loading profiles...")
                 profiles_data = await db_service.get_character_profiles(user_id)
-                for profile_data in profiles_data:
+                logger.info(f"📊 Retrieved {len(profiles_data)} profiles from database")
+                
+                for i, profile_data in enumerate(profiles_data):
+                    logger.debug(f"   Processing profile {i+1}: {profile_data.get('character_name', 'Unknown')}")
                     profile = CharacterVoiceProfile(
                         character_id=profile_data['character_id'],
                         character_name=profile_data['character_name'],
@@ -70,82 +87,105 @@ async def analyze_voice_consistency(
                         sample_count=profile_data.get('sample_count', 0)
                     )
                     existing_profiles[profile.character_name] = profile
-                logger.info(f"📚 Loaded {len(existing_profiles)} existing character profiles")
+                    
+                logger.info(f"✅ STEP 2 COMPLETE: Loaded {len(existing_profiles)} existing character profiles")
+            else:
+                logger.warning(f"⚠️ Database service not available, continuing without existing profiles")
+                logger.info(f"✅ STEP 2 COMPLETE: No existing profiles loaded (DB unavailable)")
         except Exception as e:
-            logger.warning(f"⚠️ Could not load existing profiles: {e}")
+            logger.error(f"❌ STEP 2 ERROR: Could not load existing profiles: {e}")
+            logger.exception("Full traceback:")
             # Continue with empty profiles - analysis will still work
+            logger.info(f"➡️ STEP 2 RECOVERY: Continuing with empty profiles")
         
-        # Perform voice consistency analysis using the same successful pattern as chat
-        logger.info(f"🧠 Gemini 2.5 Flash processing voice analysis...")
+        logger.info(f"🚀 STEP 3: Starting voice consistency analysis...")
+        logger.info(f"🧠 Using Gemini 2.5 Flash for analysis...")
         logger.info("⏳ Expected processing time: 1-4 minutes for complex dialogue analysis...")
         
         try:
+            # Call the character voice service
+            logger.info(f"📞 Calling character_voice_service.analyze...")
             analysis_result = await character_voice_service.analyze(
-                text=request.text,
-                existing_profiles=existing_profiles
+                request.text, 
+                existing_profiles
             )
-            logger.info(f"✅ Gemini 2.5 Flash voice analysis completed successfully")
             
+            # Extract results from the analysis result
+            results = analysis_result.get("results", [])
+            logger.info(f"✅ STEP 3 COMPLETE: Analysis returned {len(results)} results")
+            logger.info(f"📊 Results summary:")
+            for i, result in enumerate(results):
+                logger.info(f"   Result {i+1}: {result.character_name} - Consistent: {result.is_consistent} (Confidence: {result.confidence_score})")
+                
         except Exception as analysis_error:
-            logger.error(f"❌ Voice analysis failed: {str(analysis_error)}")
-            logger.error(f"❌ Analysis Error Type: {type(analysis_error).__name__}")
-            logger.error(f"❌ Analysis Error Details: {str(analysis_error)}")
+            logger.error(f"❌ STEP 3 FAILED: Voice analysis error: {analysis_error}")
+            logger.exception("Full analysis error traceback:")
             
-            # Return user-friendly error message (same pattern as successful chat)
-            error_message = "Voice analysis is temporarily unavailable. Please try again in a moment."
+            # Return a more specific error message
+            error_detail = f"Voice analysis failed during processing. Error: {str(analysis_error)}"
             if "timeout" in str(analysis_error).lower():
-                error_message = "Voice analysis is taking too long to complete. Please try with shorter text or try again later."
-            elif "rate limit" in str(analysis_error).lower():
-                error_message = "The AI service is currently busy. Please wait a moment and try again."
-            elif "authentication" in str(analysis_error).lower() or "api key" in str(analysis_error).lower():
-                error_message = "There's a configuration issue with the AI service. Please contact support."
+                error_detail = "Voice analysis timed out. Please try with shorter text or try again later."
+            elif "api" in str(analysis_error).lower():
+                error_detail = "AI service temporarily unavailable. Please try again in a few moments."
+            elif "json" in str(analysis_error).lower():
+                error_detail = "AI response parsing error. Please try again."
             
-            # Return empty results with error message instead of raising exception
-            return VoiceConsistencyResponse(
-                results=[],
-                characters_analyzed=0,
-                dialogue_segments_found=0,
-                processing_time_ms=0
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_detail
             )
         
-        # Save/update character profiles in database
+        logger.info(f"🚀 STEP 4: Updating character profiles in database...")
+        # Update character profiles in database
+        updated_count = 0
         try:
-            if db_service.is_available() and analysis_result.get("results"):
-                for result in analysis_result["results"]:
-                    await db_service.upsert_character_profile(
-                        user_id=user_id,
-                        character_name=result.character_name,
-                        dialogue_samples=[],  # Will be populated by the service
-                        voice_traits={
-                            "consistency_score": result.confidence_score,
-                            "last_analysis": result.explanation
-                        }
-                    )
-                logger.info(f"💾 Updated character profiles in database")
-        except Exception as e:
-            logger.warning(f"⚠️ Could not save profiles to database: {e}")
-            # Continue - analysis results are still valid
+            if db_service.is_available() and results:
+                for result in results:
+                    if result.character_name and result.character_name.strip():
+                        try:
+                            await db_service.update_character_profile(
+                                user_id=user_id,
+                                character_name=result.character_name,
+                                dialogue_samples=[result.flagged_text] if result.flagged_text else [],
+                                voice_traits={
+                                    "consistency_score": result.confidence_score,
+                                    "last_analysis": datetime.now().isoformat()
+                                }
+                            )
+                            updated_count += 1
+                            logger.debug(f"   Updated profile for: {result.character_name}")
+                        except Exception as profile_error:
+                            logger.warning(f"⚠️ Could not update profile for {result.character_name}: {profile_error}")
+                            
+                logger.info(f"✅ STEP 4 COMPLETE: Updated {updated_count} character profiles")
+            else:
+                logger.info(f"⚠️ STEP 4 SKIPPED: Database unavailable or no results to save")
+                
+        except Exception as db_error:
+            logger.error(f"❌ STEP 4 ERROR: Database update failed: {db_error}")
+            logger.exception("Database error traceback:")
+            # Don't fail the entire request for database issues
+            logger.info(f"➡️ STEP 4 RECOVERY: Continuing without database updates")
         
-        # Convert results to response format
-        response_results = []
-        for result in analysis_result.get("results", []):
-            response_results.append({
-                "is_consistent": result.is_consistent,
-                "confidence_score": result.confidence_score,
-                "character_name": result.character_name,
-                "flagged_text": result.flagged_text,
-                "explanation": result.explanation,
-                "suggestions": result.suggestions
-            })
+        # Calculate processing time
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
         
+        logger.info(f"🚀 STEP 5: Preparing response...")
+        # Prepare response
         response = VoiceConsistencyResponse(
-            results=response_results,
-            characters_analyzed=analysis_result.get("characters_analyzed", 0),
-            dialogue_segments_found=analysis_result.get("dialogue_segments_found", 0),
-            processing_time_ms=analysis_result.get("processing_time_ms", 0)
+            results=results,
+            characters_analyzed=len(set(r.character_name for r in results if r.character_name)),
+            dialogue_segments_found=len(results),
+            processing_time_ms=int(processing_time)
         )
         
-        logger.info(f"✅ Voice analysis completed: {len(response_results)} results returned")
+        logger.info(f"✅ === VOICE ANALYSIS COMPLETE ===")
+        logger.info(f"📊 Final Summary:")
+        logger.info(f"   - Characters analyzed: {response.characters_analyzed}")
+        logger.info(f"   - Dialogue segments: {response.dialogue_segments_found}")
+        logger.info(f"   - Processing time: {response.processing_time_ms}ms")
+        logger.info(f"   - Results count: {len(response.results)}")
+        
         return response
         
     except HTTPException:
