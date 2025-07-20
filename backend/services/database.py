@@ -556,6 +556,23 @@ class PostgreSQLService:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+    def is_available(self) -> bool:
+        """Check if the database service is available and healthy"""
+        try:
+            if not self.database_url:
+                return False
+            
+            # Initialize pool if needed
+            if not self.pool:
+                self._init_connection_pool()
+            
+            # Quick health check
+            result = self.execute_query("SELECT 1", fetch='one')
+            return result is not None
+        except Exception as e:
+            logger.warning(f"Database availability check failed: {e}")
+            return False
+
     # === USER PREFERENCES METHODS (Essential for MVP) ===
 
     def get_user_preferences(self, user_id: int) -> Optional[Dict[str, Any]]:
