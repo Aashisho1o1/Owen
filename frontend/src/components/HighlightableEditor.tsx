@@ -675,6 +675,10 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     
     // Set up mutation observer to maintain voice inconsistency styles
     const setupVoiceInconsistencyObserver = () => {
+      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops'); 
+      return; // EARLY EXIT: Disable the entire observer setup
+      
+      // DISABLED CODE BELOW - This entire block is now unreachable
       if (!editor || !editor.view.dom) return;
       
       const editorElement = editor.view.dom;
@@ -730,8 +734,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         attributes: true,
         attributeFilter: ['style', 'class']
       });
-      
-      console.log('🚫 Voice inconsistency mutation observer DISABLED to prevent infinite loops'); return;
     };
     
     // Function to re-apply voice inconsistency styles
