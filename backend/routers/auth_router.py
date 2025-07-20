@@ -34,13 +34,15 @@ router = APIRouter(
     tags=["authentication"],
 )
 
-# Initialize database service
-db_service = get_db_service()
+# Remove module-level db_service initialization - it will be initialized per request
 
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, request: Request) -> TokenResponse:
     """Register a new user account"""
     try:
+        # Initialize database service
+        db_service = get_db_service()
+        
         # Apply strict rate limiting for registration to prevent abuse
         await check_rate_limit(request, "auth")
         
@@ -83,6 +85,9 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
     try:
         print("🔐 STEP 1: Login endpoint called")
         print(f"🔐 STEP 1a: Email: {login_data.email}")
+        
+        # Initialize database service
+        db_service = get_db_service()
         
         # Apply strict rate limiting for login to prevent brute force attacks
         print("🔐 STEP 2: Checking rate limit...")

@@ -23,26 +23,28 @@ JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120  # Increased from 30 to 120 minutes (2 hours)
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-# CRITICAL SECURITY: Validate JWT secret key on import
-if not JWT_SECRET_KEY:
-    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY environment variable is not set!")
-    logger.critical("This is a critical security vulnerability that MUST be fixed before deployment")
-    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
-    raise ValueError("JWT_SECRET_KEY must be configured for secure authentication")
+def _validate_jwt_configuration():
+    """Validate JWT configuration at runtime, not import time"""
+    # CRITICAL SECURITY: Validate JWT secret key when service is used
+    if not JWT_SECRET_KEY:
+        logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY environment variable is not set!")
+        logger.critical("This is a critical security vulnerability that MUST be fixed before deployment")
+        logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+        raise ValueError("JWT_SECRET_KEY must be configured for secure authentication")
 
-if len(JWT_SECRET_KEY) < 32:
-    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is too short!")
-    logger.critical(f"Current length: {len(JWT_SECRET_KEY)} characters, minimum required: 32")
-    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
-    raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
+    if len(JWT_SECRET_KEY) < 32:
+        logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is too short!")
+        logger.critical(f"Current length: {len(JWT_SECRET_KEY)} characters, minimum required: 32")
+        logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+        raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
 
-# Validate JWT secret is not a common weak key
-WEAK_KEYS = ['secret', 'key', 'jwt_secret', 'your_secret_key', 'changeme', 'password', '123456']
-if JWT_SECRET_KEY.lower() in WEAK_KEYS:
-    logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is using a common weak value!")
-    logger.critical("This creates a critical security vulnerability")
-    logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
-    raise ValueError("JWT_SECRET_KEY must not use common weak values")
+    # Validate JWT secret is not a common weak key
+    WEAK_KEYS = ['secret', 'key', 'jwt_secret', 'your_secret_key', 'changeme', 'password', '123456']
+    if JWT_SECRET_KEY.lower() in WEAK_KEYS:
+        logger.critical("🚨 SECURITY CRITICAL: JWT_SECRET_KEY is using a common weak value!")
+        logger.critical("This creates a critical security vulnerability")
+        logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
+        raise ValueError("JWT_SECRET_KEY must not use common weak values")
 
 logger.info("✅ JWT_SECRET_KEY security validation passed")
 
@@ -57,6 +59,9 @@ class AuthService:
     """
     
     def __init__(self):
+        # Validate JWT configuration when service is initialized
+        _validate_jwt_configuration()
+        
         self.db = get_db_service()
         logger.info("Auth service initialized with PostgreSQL")
     
@@ -474,5 +479,25 @@ class AuthService:
         except Exception as e:
             logger.error(f"Error revoking tokens for user {user_id}: {e}")
 
-# Global auth service instance
-auth_service = AuthService()
+# Global auth service instance - lazy initialization
+_auth_service_instance = None
+
+def get_auth_service() -> AuthService:
+    """Get the auth service instance (lazy initialization)"""
+    global _auth_service_instance
+    if _auth_service_instance is None:
+        _auth_service_instance = AuthService()
+    return _auth_service_instance
+
+# Backward compatibility - this will be initialized on first access
+@property
+def auth_service():
+    """Backward compatibility property"""
+    return get_auth_service()
+
+# Create a module-level object that behaves like the old auth_service
+class AuthServiceProxy:
+    def __getattr__(self, name):
+        return getattr(get_auth_service(), name)
+
+auth_service = AuthServiceProxy()
