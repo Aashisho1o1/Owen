@@ -71,6 +71,9 @@ class CharacterVoiceService:
         Extract dialogue segments from text with context.
         Handles various dialogue formats and quotation styles.
         """
+        logger.info(f"🔍 Starting dialogue extraction from {len(text)} chars of text")
+        logger.debug(f"   Text sample: {text[:500]}{'...' if len(text) > 500 else ''}")
+        
         segments = []
         
         # Multiple dialogue patterns to handle different writing styles
@@ -85,16 +88,32 @@ class CharacterVoiceService:
             r'([^.!?]*[.!?])[^a-zA-Z]*"([^"]+)"',
         ]
         
-        for pattern in patterns:
+        logger.info(f"🔍 Testing {len(patterns)} dialogue patterns...")
+        
+        for i, pattern in enumerate(patterns):
+            pattern_name = [
+                'Standard quotes',
+                'Single quotes', 
+                'Em-dash dialogue',
+                'Dialogue tags'
+            ][i]
+            
+            logger.debug(f"   Testing pattern {i+1}: {pattern_name}")
             matches = re.finditer(pattern, text, re.MULTILINE | re.DOTALL)
+            pattern_matches = 0
+            
             for match in matches:
+                pattern_matches += 1
                 start_pos = match.start()
                 end_pos = match.end()
                 
                 # Extract dialogue text (first capture group for most patterns)
                 dialogue_text = match.group(1).strip()
                 if not dialogue_text:
+                    logger.debug(f"     Match {pattern_matches}: Empty dialogue text, skipping")
                     continue
+                
+                logger.debug(f"     Match {pattern_matches}: Found dialogue: '{dialogue_text[:50]}{'...' if len(dialogue_text) > 50 else ''}'")
                 
                 # Get context before and after
                 context_start = max(0, start_pos - 100)
@@ -108,6 +127,8 @@ class CharacterVoiceService:
                     dialogue_text, context_before, context_after
                 )
                 
+                logger.debug(f"     Match {pattern_matches}: Inferred speaker: '{speaker}'")
+                
                 segment = DialogueSegment(
                     text=dialogue_text,
                     speaker=speaker,
@@ -116,6 +137,8 @@ class CharacterVoiceService:
                     context_after=context_after
                 )
                 segments.append(segment)
+                
+            logger.info(f"   Pattern {i+1} ({pattern_name}): Found {pattern_matches} matches")
         
         # Remove duplicates and sort by position
         unique_segments = []
@@ -318,14 +341,32 @@ Character names to validate: {potential_characters}"""
             text = html.unescape(text)
             logger.debug(f"   HTML entities unescaped: {original_length} -> {len(text)} chars")
             
-            # Remove HTML tags using regex (simple but effective for our use case)
+            # ENHANCED HTML PROCESSING: Convert HTML structure to preserve dialogue formatting
+            # Convert block elements to line breaks to maintain dialogue structure
+            text = re.sub(r'<(?:p|div|br)[^>]*>', '\n', text, flags=re.IGNORECASE)
+            text = re.sub(r'</(?:p|div)>', '\n', text, flags=re.IGNORECASE)
+            
+            # Remove all remaining HTML tags using regex (simple but effective for our use case)
             html_tag_pattern = re.compile(r'<[^>]+>')
             plain_text = html_tag_pattern.sub('', text)
             logger.debug(f"   HTML tags removed: {len(text)} -> {len(plain_text)} chars")
             
-            # Clean up extra whitespace that might result from tag removal
-            plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+            # ENHANCED WHITESPACE CLEANING: Preserve paragraph breaks for dialogue structure
+            # Convert multiple newlines to double newlines (paragraph breaks)
+            plain_text = re.sub(r'\n\s*\n', '\n\n', plain_text)
+            # Convert multiple spaces to single spaces
+            plain_text = re.sub(r'[ \t]+', ' ', plain_text)
+            # Clean up leading/trailing whitespace on each line
+            plain_text = '\n'.join(line.strip() for line in plain_text.split('\n'))
+            # Remove excessive empty lines (more than 2 consecutive)
+            plain_text = re.sub(r'\n{3,}', '\n\n', plain_text)
+            plain_text = plain_text.strip()
+            
             logger.debug(f"   Whitespace cleaned: {len(plain_text)} chars final")
+            logger.info(f"📝 Text processing result:")
+            logger.info(f"   - Original: {original_length} chars")
+            logger.info(f"   - Final: {len(plain_text)} chars")
+            logger.info(f"   - Sample: {plain_text[:300]}{'...' if len(plain_text) > 300 else ''}")
             
             logger.info(f"✅ SERVICE STEP 1 COMPLETE: Text cleaned from {original_length} to {len(plain_text)} chars")
             
