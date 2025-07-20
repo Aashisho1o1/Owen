@@ -284,7 +284,7 @@ export const WritingWorkspace: React.FC = () => {
         <div className="editor-section">
           <div className="editor-container">
             <HighlightableEditor
-              content={documentManager.pendingContent}
+              content={editorContent}
               onChange={setEditorContent}
             />
             
