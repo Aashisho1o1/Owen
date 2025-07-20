@@ -367,22 +367,58 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
 
     let appliedCount = 0;
 
+    // Utility: sanitize text for matching
+    const normalizeText = (input: string): string => {
+      return input
+        .replace(/[“”"'`]/g, '')          // remove quotes
+        .replace(/\s+/g, ' ')             // collapse whitespace
+        .trim()
+        .toLowerCase();
+    };
+
+    // Generate candidate strings to search for
+    const getSearchCandidates = (raw: string): string[] => {
+      const clean = normalizeText(raw);
+      const candidates = new Set<string>();
+      if (!clean) return [];
+      candidates.add(clean);
+
+      // If it's long, also try shorter prefixes
+      if (clean.length > 60) candidates.add(clean.slice(0, 60));
+      if (clean.length > 40) candidates.add(clean.slice(0, 40));
+      if (clean.length > 20) candidates.add(clean.slice(0, 20));
+
+      // Try first sentence before punctuation
+      const firstSentence = clean.split(/[.!?]/)[0];
+      if (firstSentence && firstSentence.length > 5) candidates.add(firstSentence);
+
+      return Array.from(candidates);
+    };
+
     // SIMPLIFIED APPROACH: Use CSS-only styling with direct DOM manipulation
     // But apply it in a way that TipTap is less likely to remove
     results.filter(result => !result.is_consistent).forEach(result => {
-      const textToHighlight = result.flagged_text;
-      
-      if (!textToHighlight || textToHighlight.trim().length === 0) {
-        console.warn('⚠️ Empty flagged text for character:', result.character_name);
+      const candidates = getSearchCandidates(result.flagged_text || '');
+      if (candidates.length === 0) {
+        console.warn('⚠️ Empty or invalid flagged text for character:', result.character_name);
         return;
       }
 
-      // Find the text in the editor's plain text
-      const docText = editor.getText();
-      const startPos = docText.indexOf(textToHighlight);
-      
-      if (startPos === -1) {
-        console.warn('❌ Could not find text to highlight:', textToHighlight.substring(0, 50), 'in editor content');
+      // Find the earliest occurrence among candidates
+      const docTextNorm = normalizeText(editor.getText());
+      let matchStart = -1;
+      let matchLen = 0;
+      for (const cand of candidates) {
+        const idx = docTextNorm.indexOf(cand);
+        if (idx !== -1) {
+          matchStart = idx;
+          matchLen = cand.length;
+          break;
+        }
+      }
+
+      if (matchStart === -1) {
+        console.warn('❌ Could not find text to highlight for', result.character_name, '– tried candidates:', candidates.slice(0,3));
         return;
       }
 
@@ -394,43 +430,39 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       );
 
       let currentOffset = 0;
-      let textNode;
+      let textNode: Node | null;
 
       while ((textNode = walker.nextNode())) {
         const nodeValue = textNode.nodeValue || '';
         const nodeLength = nodeValue.length;
-        
-        if (currentOffset <= startPos && (currentOffset + nodeLength) >= startPos) {
-          const startInNode = startPos - currentOffset;
-          const endInNode = Math.min(startPos + textToHighlight.length - currentOffset, nodeLength);
-          
+
+        if (currentOffset + nodeLength < matchStart) {
+          currentOffset += nodeLength;
+          continue;
+        }
+
+        if (currentOffset <= matchStart && (currentOffset + nodeLength) >= matchStart) {
+          const startInNode = matchStart - currentOffset;
+          const endInNode = Math.min(startInNode + matchLen, nodeLength);
+
           const beforeText = nodeValue.substring(0, startInNode);
           const highlightText = nodeValue.substring(startInNode, endInNode);
           const afterText = nodeValue.substring(endInNode);
 
-          // Create span with CSS classes only (no inline styles)
           const span = document.createElement('span');
           span.className = 'voice-inconsistent';
-          
           const confidence = result.confidence_score;
-          const confidenceLevel = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
-          span.classList.add(`${confidenceLevel}-confidence`);
-          
-          // Add data attributes for CSS targeting
+          const level = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
+          span.classList.add(`${level}-confidence`);
           span.setAttribute('data-voice-underline', 'true');
-          span.setAttribute('data-confidence-level', confidenceLevel);
+          span.setAttribute('data-confidence-level', level);
           span.textContent = highlightText;
 
-          // Replace the text node
           const parent = textNode.parentNode;
           if (parent) {
-            if (beforeText) {
-              parent.insertBefore(document.createTextNode(beforeText), textNode);
-            }
+            if (beforeText) parent.insertBefore(document.createTextNode(beforeText), textNode);
             parent.insertBefore(span, textNode);
-            if (afterText) {
-              parent.insertBefore(document.createTextNode(afterText), textNode);
-            }
+            if (afterText) parent.insertBefore(document.createTextNode(afterText), textNode);
             parent.removeChild(textNode);
             appliedCount++;
           }
