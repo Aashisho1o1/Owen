@@ -18,8 +18,7 @@ import '../styles/voice-consistency-underlines.css';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  analyzeVoiceConsistencyDebounced, 
-  hasDialogue,
+  analyzeVoiceConsistency, 
   VoiceConsistencyResult 
 } from '../services/api/character-voice';
 
@@ -115,275 +114,28 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
   
-  // DEBUG: Manual voice analysis test function
-  const testVoiceAnalysisManually = useCallback(() => {
-    console.log('🧪 MANUAL VOICE ANALYSIS TEST STARTED');
-    const testText = `
-    Sample Story Excerpt: "Echoes in the Old Mill" 
-    The old mill creaked under the weight of forgotten years, its wooden beams groaning like weary bones. 
-    Alex stood at the entrance, flashlight in hand, peering into the darkness that seemed to swallow the light whole. 
-    "This place has history," Alex murmured, voice barely above a whisper. 
-    "Built in 1892, abandoned after the flood of '47. Local records say three families lived here before the disaster struck. The Millers, the Johnsons, and the Carters—all lost everything when the river claimed the mill." 
-    The beam of the flashlight danced across weathered walls, revealing faded photographs still clinging to their frames. 
-    A child's laughter seemed to echo from somewhere deep within, though Alex knew it was just the wind playing tricks through the broken windows. 
-    "Proceed with caution—the structure may be unstable."
-    `;
-    
-    const hasDialogueContent = hasDialogue(testText);
-    console.log('🧪 Manual test conditions:', {
-      textLength: testText.length,
-      hasDialogueContent,
-      isAuthenticated,
-      shouldProceed: hasDialogueContent && isAuthenticated
-    });
-    
-    if (hasDialogueContent && isAuthenticated) {
-      console.log('🧪 Calling analyzeVoiceConsistencyDebounced manually...');
-      analyzeVoiceConsistencyDebounced(testText, (results) => {
-        console.log('🧪 Manual test results:', results);
-        setVoiceConsistencyResults(results);
-      });
-    } else {
-      console.log('🧪 Manual test skipped - conditions not met');
-    }
-  }, [isAuthenticated]);
-  
-  // DEBUG: Expose manual test function to window for console access
-  useEffect(() => {
-    (window as unknown as Record<string, unknown>).testVoiceAnalysisManually = testVoiceAnalysisManually;
-    return () => {
-      delete (window as unknown as Record<string, unknown>).testVoiceAnalysisManually;
-    };
-  }, [testVoiceAnalysisManually]);
-  
-  // REMOVED: Redundant useEffect-based voice consistency analysis
-  // This was causing conflicts with the TipTap onUpdate analysis
-  // Now we only use the TipTap onUpdate handler for real-time analysis
-
-  // ENHANCED: Track content changes separately for better debugging
-  useEffect(() => {
-    console.log('📊 Content flow tracking:', {
-      timestamp: new Date().toISOString(),
-      contentProp: {
-        exists: !!contentProp,
-        length: contentProp?.length || 0,
-        preview: contentProp?.substring(0, 50) || 'No content',
-        type: typeof contentProp
-      },
-      context: {
-        exists: !!contextContent,
-        length: contextContent?.length || 0,
-        preview: contextContent?.substring(0, 50) || 'No context content'
-      },
-      props: {
-        exists: !!content,
-        length: content?.length || 0,
-        preview: content?.substring(0, 50) || 'No props content'
-      },
-      auth: {
-        isAuthenticated,
-        hasUser: !!isAuthenticated
-      }
-    });
-    
-    // ADDITIONAL DEBUG: Test voice analysis conditions right here
-    if (contentProp && contentProp.length > 50) {
-      const hasDialogueContent = hasDialogue(contentProp);
-      console.log('🔍 IMMEDIATE VOICE ANALYSIS TEST:', {
-        contentLength: contentProp.length,
-        hasDialogueContent,
-        isAuthenticated,
-        shouldTriggerAnalysis: hasDialogueContent && isAuthenticated,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }, [contentProp, contextContent, content, isAuthenticated]);
-
-  // Fallback text selection detection using DOM selection
-  const fallbackTextSelection = useCallback((selectedText: string) => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    
-    if (editorRef.current) {
-      const editorRect = editorRef.current.getBoundingClientRect();
-      
-      let top = rect.bottom - editorRect.top + 8;
-      let left = rect.left + rect.width / 2 - editorRect.left;
-      
-      const editorWidth = editorRect.width;
-      const editorHeight = editorRect.height;
-      
-      if (isChatVisible) {
-        const maxLeft = editorWidth * 0.6 - 80;
-        left = Math.min(left, maxLeft);
-      }
-      
-      left = Math.max(80, Math.min(left, editorWidth - 80));
-      top = Math.max(10, Math.min(top, editorHeight - 50));
-      
-      setSelection({
-        top,
-        left,
-        text: selectedText,
-      });
-      
-      console.log('✅ Text selection detected via fallback DOM method:', {
-        text: selectedText.substring(0, 50) + '...',
-        position: { top, left }
-      });
-    }
-  }, [isChatVisible]);
-
-  // Handle text selection for floating AI button
-  const handleTextSelection = useCallback((selectedText: string, editorView: { state: { selection: { from: number; to: number } }; coordsAtPos: (pos: number) => { top: number; bottom: number; left: number; right: number } }) => {
-    console.log('🎯 handleTextSelection called with:', selectedText);
-    
-    if (!selectedText || selectedText.length < 3) {
-      setSelection(null);
-      return;
-    }
-    
-    // Get selection coordinates from the editor view
-    const { from, to } = editorView.state.selection;
-    const startCoords = editorView.coordsAtPos(from);
-    const endCoords = editorView.coordsAtPos(to);
-    
-    console.log('📐 Selection coordinates:', { startCoords, endCoords });
-    
-    // Since we're using position: fixed, we need viewport coordinates
-    // The coordsAtPos already returns viewport coordinates
-    const viewportTop = endCoords.bottom + 10; // Position below selection
-    const viewportLeft = (startCoords.left + endCoords.right) / 2; // Center horizontally
-    
-    // Get viewport dimensions
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
-    // Ensure button stays within viewport bounds
-    const buttonWidth = 100; // Approximate button width
-    const buttonHeight = 40; // Approximate button height
-    
-    let finalTop = viewportTop;
-    let finalLeft = viewportLeft;
-    
-    // Vertical bounds check
-    if (finalTop + buttonHeight > viewportHeight) {
-      // Position above selection if too close to bottom
-      finalTop = startCoords.top - buttonHeight - 10;
-    }
-    
-    // Horizontal bounds check
-    if (finalLeft - buttonWidth/2 < 0) {
-      finalLeft = buttonWidth/2 + 10;
-    } else if (finalLeft + buttonWidth/2 > viewportWidth) {
-      finalLeft = viewportWidth - buttonWidth/2 - 10;
-    }
-    
-    console.log('🎯 Final button position:', { 
-      finalTop, 
-      finalLeft,
-      viewportHeight,
-      viewportWidth
-    });
-    
-    setSelection({
-      text: selectedText,
-      top: finalTop,
-      left: finalLeft
-    });
-  }, []);
-
-  // Handle AI interaction with selected text
-  const handleAskAI = useCallback(() => {
-    if (!selection) return;
-
-    console.log('🤖 Asking AI about selected text:', selection.text);
-    console.log('🔧 Setting highlighted text in context:', selection.text);
-
-    // Apply visual highlighting through ChatContext
-    handleTextHighlighted(selection.text);
-    
-    // Update highlighted text in context (for chat display)
-    setHighlightedText(selection.text);
-    
-    // Open chat with the selected text
-    openChatWithText(selection.text);
-    
-    // Clear selection
-    setSelection(null);
-    
-    console.log('✅ Text highlighting completed');
-  }, [selection, handleTextHighlighted, setHighlightedText, openChatWithText]);
-
   const editor = useEditor({
     extensions: [
       StarterKit,
     ],
     content: contentProp || '',
-    onUpdate: ({ editor }) => {
+    onUpdate: async ({ editor }) => {
       const newContent = editor.getHTML();
-      console.log('🔧 HighlightableEditor onUpdate:', {
-        newContentLength: newContent.length,
-        newContentPreview: newContent.substring(0, 100) + '...',
-        onChangePropType: typeof onChangeProp,
-        hasOnChangeProp: !!onChangeProp,
-        timestamp: new Date().toISOString()
-      });
       onChangeProp(newContent);
       
-      // IMMEDIATE DEBUG: Check authentication state right now
-      console.log('🔍 AUTH STATE CHECK IN onUpdate:', {
-        isAuthenticated,
-        hasContent: !!newContent,
-        contentLength: newContent.length,
-        timestamp: new Date().toISOString()
-      });
-      
-      // CRITICAL FIX: Immediately trigger voice consistency analysis when editor content changes
-      // This ensures we analyze the actual content from the editor, not just props
-      setTimeout(() => {
-        const hasContentToAnalyze = newContent && newContent.trim().length > 50;
-        const hasDialogueContent = hasContentToAnalyze && hasDialogue(newContent);
-        
-        console.log('🎯 Voice consistency effect (editor onUpdate):', {
-          hasContent: !!newContent,
-          hasContentToAnalyze,
-          contentLength: newContent?.length || 0,
-          contentPreview: newContent?.substring(0, 100) || 'No content',
-          hasDialogueContent,
-          isAuthenticated,
-          timestamp: new Date().toISOString(),
-          source: 'TipTap onUpdate'
-        });
-        
-        // Only run voice analysis for authenticated users
-        if (hasContentToAnalyze && hasDialogueContent && isAuthenticated) {
-          console.log('✅ Proceeding with voice analysis from editor update - all conditions met');
-          analyzeVoiceConsistencyDebounced(newContent, (results) => {
-                      console.log('📊 Voice analysis results from editor:', results);
-          setVoiceConsistencyResults(results);
-          
-          // Apply voice inconsistency underlines to the editor
-          applyVoiceInconsistencyUnderlines(results);
-          });
-        } else {
-          console.log('❌ Skipping voice analysis from editor - conditions not met:', {
-            hasContent: !!newContent,
-            hasContentToAnalyze,
-            hasDialogueContent,
-            isAuthenticated,
-            reason: !hasContentToAnalyze 
-              ? 'Insufficient content (need >50 chars)' 
-              : !hasDialogueContent 
-                ? 'No dialogue detected'
-                : 'User not authenticated'
-          });
+      // Only run voice analysis for authenticated users with sufficient content
+      if (isAuthenticated && newContent && newContent.trim().length > 50) {
+        try {
+          const response = await analyzeVoiceConsistency(newContent);
+          setVoiceConsistencyResults(response.results);
+          applyVoiceInconsistencyUnderlines(response.results);
+        } catch (error) {
+          console.error("Error during voice consistency analysis:", error);
           setVoiceConsistencyResults([]);
         }
-      }, 50); // Very small delay to ensure state is updated
+      } else {
+        setVoiceConsistencyResults([]);
+      }
     },
     // ADDED: Handle text selection updates for floating AI button with debouncing
     onSelectionUpdate: (() => {

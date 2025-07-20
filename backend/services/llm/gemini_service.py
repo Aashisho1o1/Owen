@@ -33,7 +33,7 @@ except Exception as e:
 
 
 class GeminiService(BaseLLMService):
-    """Gemini service for generative AI - now uses 1.5 Pro"""
+    """Gemini service for generative AI - standardized to 2.5 Flash"""
     
     def __init__(self):
         super().__init__("GEMINI_API_KEY")
