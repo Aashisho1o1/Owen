@@ -28,7 +28,7 @@ import './WritingWorkspace.css';
 export const WritingWorkspace: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Add authLoading
   const { isChatVisible, toggleChat } = useChatContext();
-  const { setEditorContent, documentManager } = useEditorContext();
+  const { editorContent, setEditorContent, documentManager } = useEditorContext();
   const {
     createDocument,
     updateTitle,
