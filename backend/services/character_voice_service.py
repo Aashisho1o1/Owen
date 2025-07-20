@@ -313,14 +313,12 @@ RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
             logger.info(f"🚀 Generating voice analysis with Google Gemini...")
             
             try:
-                # Format prompt for Gemini (same as successful chat) - expects list of dicts
-                prompts = [
-                    {"role": "user", "parts": [prompt]}
-                ]
-                logger.info("🔧 Formatted prompt for Gemini (voice analysis)")
+                # CRITICAL FIX: Use string prompt format instead of Gemini-specific format
+                # The LLM service coordinator expects either string or standard conversation format
+                logger.info("🔧 Using string prompt format for LLM service coordinator")
                 
                 # Use the same LLM service method as successful contextual understanding
-                response_text = await self.llm_service.generate_with_selected_llm(prompts, "Google Gemini")
+                response_text = await self.llm_service.generate_with_selected_llm(prompt, "Google Gemini")
                 logger.info(f"✅ Gemini voice analysis response received (length: {len(response_text) if response_text else 0} chars)")
                 
             except Exception as llm_error:
