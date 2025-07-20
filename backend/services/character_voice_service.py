@@ -289,28 +289,32 @@ class CharacterVoiceService:
             if len(character_dialogue) < 2:
                 return None
             
-            # Create analysis prompt using the same format as successful chat
-            prompt = f"""
-Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
+            # Create analysis prompt with EXPLICIT JSON formatting requirements for Gemini 2.5 Flash
+            prompt = f"""You are an expert character voice consistency analyzer. Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
 
 Character Dialogue Samples:
 {chr(10).join(f'"{sample}"' for sample in character_dialogue)}
 
-Please analyze:
-1. Voice consistency across all samples
-2. Speaking patterns, tone, vocabulary
-3. Any inconsistencies or character voice breaks
-4. Specific suggestions for improvement
+CRITICAL: You MUST respond with ONLY a valid JSON object. No other text before or after the JSON.
 
-Respond with a JSON object containing:
+Analyze the character's voice consistency and respond with this EXACT JSON format:
+
 {{
-    "is_consistent": boolean,
-    "confidence_score": number (0-1),
-    "explanation": "detailed explanation of the analysis",
-    "flagged_text": "specific text that seems inconsistent (if any)",
-    "suggestions": ["specific suggestion 1", "specific suggestion 2"]
+    "is_consistent": true,
+    "confidence_score": 0.85,
+    "explanation": "Detailed analysis of voice consistency patterns",
+    "flagged_text": "Any specific inconsistent dialogue (empty string if all consistent)",
+    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
 }}
-"""
+
+Rules:
+- is_consistent: true if voice is consistent, false if inconsistencies found
+- confidence_score: number between 0.0 and 1.0 (higher = more confident)
+- explanation: detailed analysis of speaking patterns, tone, vocabulary consistency
+- flagged_text: exact dialogue text that seems inconsistent (empty string if none)
+- suggestions: array of specific improvement suggestions
+
+RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT."""
             
             # CRITICAL FIX: Use the EXACT same successful pattern as contextual understanding
             logger.info(f"🚀 Generating voice analysis with Google Gemini...")
@@ -341,21 +345,48 @@ Respond with a JSON object containing:
                     suggestions=["Please try again later when the AI service is available."]
                 )
             
-            # Parse JSON response (same logic as before, but with better error handling)
+            # Parse JSON response with improved error handling and multiple extraction methods
             try:
-                # Extract JSON from response
-                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-                if json_match:
-                    analysis_data = json.loads(json_match.group())
-                else:
-                    # Improved fallback if no JSON found
-                    logger.warning(f"⚠️ No JSON found in response for {profile.character_name}, using text response")
+                analysis_data = None
+                
+                # Method 1: Try to parse the entire response as JSON first (best case)
+                try:
+                    analysis_data = json.loads(response_text.strip())
+                    logger.info(f"✅ Successfully parsed complete response as JSON for {profile.character_name}")
+                except json.JSONDecodeError:
+                    # Method 2: Extract JSON object using regex (fallback)
+                    json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            analysis_data = json.loads(json_match.group())
+                            logger.info(f"✅ Successfully extracted JSON from response for {profile.character_name}")
+                        except json.JSONDecodeError:
+                            logger.warning(f"⚠️ Extracted text is not valid JSON for {profile.character_name}")
+                
+                # If we successfully parsed JSON, validate it has required fields
+                if analysis_data and isinstance(analysis_data, dict):
+                    # Ensure all required fields exist with defaults
                     analysis_data = {
-                        "is_consistent": True,
-                        "confidence_score": 0.4,  # Realistic confidence
-                        "explanation": response_text[:500] + "..." if len(response_text) > 500 else response_text,
+                        "is_consistent": analysis_data.get("is_consistent", True),
+                        "confidence_score": float(analysis_data.get("confidence_score", 0.5)),
+                        "explanation": analysis_data.get("explanation", f"Voice analysis completed for {profile.character_name}"),
+                        "flagged_text": analysis_data.get("flagged_text", ""),
+                        "suggestions": analysis_data.get("suggestions", ["Analysis completed successfully"])
+                    }
+                else:
+                    # Improved fallback if no valid JSON found
+                    logger.warning(f"⚠️ No valid JSON found in response for {profile.character_name}, creating fallback response")
+                    
+                    # Try to extract useful information from text response
+                    is_consistent = "inconsistent" not in response_text.lower() and "problem" not in response_text.lower()
+                    confidence = 0.6 if "consistent" in response_text.lower() else 0.4
+                    
+                    analysis_data = {
+                        "is_consistent": is_consistent,
+                        "confidence_score": confidence,
+                        "explanation": response_text[:400] + "..." if len(response_text) > 400 else response_text,
                         "flagged_text": "",
-                        "suggestions": ["Analysis completed, but structured data was not available."]
+                        "suggestions": ["Voice analysis completed. Please review the explanation for details."]
                     }
                 
                 return VoiceConsistencyResult(
