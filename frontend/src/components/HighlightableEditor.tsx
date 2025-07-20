@@ -10,6 +10,7 @@
 
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { EditorView } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { useEditorContext } from '../contexts/EditorContext';
 import { useChatContext } from '../contexts/ChatContext';
@@ -113,6 +114,113 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
+  
+  // Fallback text selection handler for DOM-based selection detection
+  const fallbackTextSelection = useCallback((selectedText: string) => {
+    console.log('📍 Fallback text selection handler called:', { selectedText });
+    
+    if (!selectedText || selectedText.length < 3) {
+      setSelection(null);
+      return;
+    }
+    
+    // Get the current selection position for floating button placement
+    const domSelection = window.getSelection();
+    if (domSelection && domSelection.rangeCount > 0) {
+      const range = domSelection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      setSelection({
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX,
+        text: selectedText
+      });
+      
+      console.log('✅ Fallback selection set:', { 
+        text: selectedText.substring(0, 50), 
+        position: { top: rect.bottom + window.scrollY + 5, left: rect.left + window.scrollX }
+      });
+    }
+  }, []);
+  
+  // Main text selection handler (used by TipTap events)
+  const handleTextSelection = useCallback((selectedText: string, editorView?: EditorView) => {
+    console.log('🎯 Main text selection handler called:', { selectedText });
+    
+    if (!selectedText || selectedText.length < 3) {
+      setSelection(null);
+      return;
+    }
+    
+    // Try to get position from editor view first, then fall back to DOM selection
+    let position = { top: 0, left: 0 };
+    
+    if (editorView) {
+      try {
+        const { from, to } = editorView.state.selection;
+        const start = editorView.coordsAtPos(from);
+        const end = editorView.coordsAtPos(to);
+        
+        position = {
+          top: end.bottom + 5,
+          left: start.left
+        };
+      } catch (error) {
+        console.warn('Could not get position from editor view:', error);
+        // Fall back to DOM selection
+        const domSelection = window.getSelection();
+        if (domSelection && domSelection.rangeCount > 0) {
+          const range = domSelection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          position = {
+            top: rect.bottom + window.scrollY + 5,
+            left: rect.left + window.scrollX
+          };
+        }
+      }
+    } else {
+      // Use DOM selection as fallback
+      const domSelection = window.getSelection();
+      if (domSelection && domSelection.rangeCount > 0) {
+        const range = domSelection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        position = {
+          top: rect.bottom + window.scrollY + 5,
+          left: rect.left + window.scrollX
+        };
+      }
+    }
+    
+    setSelection({
+      top: position.top,
+      left: position.left,
+      text: selectedText
+    });
+    
+    console.log('✅ Main selection set:', { 
+      text: selectedText.substring(0, 50), 
+      position 
+    });
+  }, []);
+  
+  // Handle Ask AI button click
+  const handleAskAI = useCallback(() => {
+    if (!selection) return;
+    
+    console.log('🤖 Ask AI clicked with selection:', selection.text.substring(0, 50));
+    
+    // Set highlighted text in chat context
+    setHighlightedText(selection.text);
+    handleTextHighlighted(selection.text);
+    
+    // Open chat if not visible
+    if (!isChatVisible) {
+      openChatWithText(selection.text);
+    }
+    
+    // Clear the selection after handling
+    setSelection(null);
+  }, [selection, setHighlightedText, handleTextHighlighted, isChatVisible, openChatWithText]);
   
   const editor = useEditor({
     extensions: [
