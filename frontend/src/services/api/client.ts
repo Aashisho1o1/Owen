@@ -44,6 +44,13 @@ let failedQueue: Array<{
   reject: (error: any) => void;
 }> = [];
 
+// FIXED: Simple request deduplication to prevent duplicate API calls
+const pendingRequests = new Map<string, Promise<any>>();
+
+const createRequestKey = (config: any): string => {
+  return `${config.method}:${config.url}:${JSON.stringify(config.data || {})}`;
+};
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
@@ -114,6 +121,16 @@ apiClient.interceptors.request.use(
   (config) => {
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     
+    // FIXED: Simple request deduplication for GET requests
+    if (config.method?.toLowerCase() === 'get') {
+      const requestKey = createRequestKey(config);
+      if (pendingRequests.has(requestKey)) {
+        console.log(`🔄 Request deduplication: ${config.url} already pending`);
+        // Return the existing promise instead of making a new request
+        return pendingRequests.get(requestKey)!.then(() => config);
+      }
+    }
+    
     // Special handling for voice analysis endpoints
     if (config.url?.includes('/character-voice/analyze')) {
       console.log('🧠 Voice Analysis Request: Using extended timeout (5 minutes)');
@@ -135,6 +152,11 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle 401 errors with token refresh
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    // FIXED: Clean up request deduplication cache
+    if (response.config.method?.toLowerCase() === 'get') {
+      const requestKey = createRequestKey(response.config);
+      pendingRequests.delete(requestKey);
+    }
     return response;
   },
   async (error) => {

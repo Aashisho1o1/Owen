@@ -1,5 +1,5 @@
 """
-Character Voice Consistency Service - Complete Implementation
+Character Voice Consistency Service - Refactored Implementation
 
 This service provides comprehensive character voice consistency analysis using the standardized GeminiService.
 It includes dialogue extraction, speaker inference, character profiles, and voice analysis.
@@ -27,11 +27,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Add this comprehensive stopwords list at the top of the file, after imports
-# Comprehensive English stopwords and common non-character words
-# Based on NLTK stopwords + common places, titles, and non-character entities
+# Optimized stopwords list - reduced from the original massive set for better performance
 COMMON_NON_CHARACTER_WORDS = {
-    # Core NLTK stopwords
+    # Core stopwords (most essential ones)
     'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 
     'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 
     'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
@@ -50,7 +48,7 @@ COMMON_NON_CHARACTER_WORDS = {
     'king', 'queen', 'prince', 'princess', 'duke', 'duchess', 'count', 'countess', 'baron',
     'captain', 'major', 'colonel', 'general', 'admiral', 'sergeant', 'lieutenant',
     
-    # Common places and locations (that might be capitalized)
+    # Common places and locations
     'north', 'south', 'east', 'west', 'city', 'town', 'village', 'country', 'state', 
     'province', 'region', 'area', 'place', 'street', 'road', 'avenue', 'lane', 'drive',
     'house', 'home', 'building', 'hall', 'castle', 'palace', 'church', 'cathedral',
@@ -58,7 +56,7 @@ COMMON_NON_CHARACTER_WORDS = {
     'market', 'square', 'park', 'garden', 'forest', 'mountain', 'hill', 'river', 'lake',
     'sea', 'ocean', 'island', 'bridge', 'tower', 'gate', 'wall', 'door', 'window', 'room',
     
-    # Common objects and concepts
+    # Common objects and time-related words
     'thing', 'something', 'anything', 'nothing', 'everything', 'someone', 'anyone', 'everyone',
     'time', 'day', 'night', 'morning', 'afternoon', 'evening', 'week', 'month', 'year',
     'moment', 'hour', 'minute', 'second', 'today', 'tomorrow', 'yesterday', 'now', 'then',
@@ -66,118 +64,38 @@ COMMON_NON_CHARACTER_WORDS = {
     'beginning', 'start', 'finish', 'part', 'whole', 'piece', 'bit', 'lot', 'much', 'many',
     'little', 'few', 'several', 'some', 'all', 'none', 'both', 'either', 'neither',
     
-    # Numbers and quantities (written out)
+    # Numbers (written out)
     'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
     'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 
     'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy',
     'eighty', 'ninety', 'hundred', 'thousand', 'million', 'billion', 'first', 'second',
     'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
     
-    # Common adjectives that might be capitalized
+    # Common adjectives
     'good', 'bad', 'great', 'small', 'large', 'big', 'little', 'old', 'new', 'young',
     'long', 'short', 'high', 'low', 'right', 'left', 'next', 'last', 'first', 'final',
     'early', 'late', 'quick', 'slow', 'fast', 'easy', 'hard', 'difficult', 'simple',
     'complex', 'clear', 'dark', 'light', 'heavy', 'empty', 'full', 'open', 'closed',
     
-    # Common verbs in past tense (might appear capitalized at sentence start)
+    # Common dialogue verbs
     'said', 'told', 'asked', 'answered', 'replied', 'spoke', 'talked', 'whispered',
     'shouted', 'cried', 'laughed', 'smiled', 'looked', 'saw', 'watched', 'heard',
     'listened', 'felt', 'touched', 'held', 'took', 'gave', 'put', 'placed', 'moved',
     'walked', 'ran', 'came', 'went', 'left', 'arrived', 'stayed', 'lived', 'died',
     'worked', 'played', 'thought', 'knew', 'understood', 'remembered', 'forgot',
     
-    # Common exclamations and interjections
+    # Common interjections
     'oh', 'ah', 'eh', 'um', 'hmm', 'yes', 'no', 'okay', 'ok', 'well', 'so', 'but',
     'however', 'therefore', 'thus', 'hence', 'indeed', 'certainly', 'surely', 'perhaps',
     'maybe', 'probably', 'definitely', 'absolutely', 'exactly', 'quite', 'rather',
     'really', 'truly', 'actually', 'basically', 'generally', 'usually', 'often',
     'sometimes', 'never', 'always', 'almost', 'nearly', 'hardly', 'barely',
     
-    # Days and months (commonly capitalized)
+    # Days and months
     'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
     'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
-    'september', 'october', 'november', 'december',
-    
-    # Common abstract concepts
-    'life', 'death', 'love', 'hate', 'fear', 'hope', 'dream', 'wish', 'desire',
-    'need', 'want', 'like', 'dislike', 'feeling', 'emotion', 'thought', 'idea',
-    'plan', 'goal', 'purpose', 'meaning', 'sense', 'understanding', 'knowledge',
-    'wisdom', 'truth', 'lie', 'fact', 'fiction', 'story', 'tale', 'news', 'information',
-    'data', 'detail', 'point', 'question', 'answer', 'problem', 'solution', 'issue',
-    'matter', 'subject', 'topic', 'theme', 'message', 'word', 'sentence', 'paragraph',
-    'chapter', 'book', 'page', 'line', 'text', 'writing', 'reading', 'speaking',
-    'listening', 'learning', 'teaching', 'studying', 'working', 'playing', 'resting',
-    'sleeping', 'eating', 'drinking', 'walking', 'running', 'sitting', 'standing',
-    'lying', 'falling', 'rising', 'growing', 'changing', 'becoming', 'remaining',
-    'continuing', 'stopping', 'starting', 'ending', 'beginning', 'happening', 'occurring'
+    'september', 'october', 'november', 'december'
 }
-
-class CharacterVoiceService:
-    """
-    Analyzes character voice consistency using the same successful pattern as contextual understanding.
-    Uses the LLM service coordinator for consistent Gemini 2.5 Flash integration.
-    """
-    
-    def __init__(self):
-        logger.info("🎭 CharacterVoiceService: Initializing service...")
-        try:
-            # Test LLM service availability
-            if hasattr(llm_service, 'generate_with_selected_llm'):
-                logger.info("✅ CharacterVoiceService: LLM service coordinator available")
-            else:
-                logger.error("❌ CharacterVoiceService: LLM service coordinator missing generate_with_selected_llm method")
-            
-            logger.info("✅ CharacterVoiceService: Service initialized successfully")
-        except Exception as e:
-            logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
-            raise
-    
-    def _is_likely_character_name(self, name: str) -> bool:
-        """
-        Pre-filter to determine if a name is likely to be a character name.
-        Uses comprehensive stopwords and common non-character word filtering.
-        This is a fast pre-filter before LLM validation.
-        """
-        if not name or len(name) < 2:
-            return False
-        
-        # Convert to lowercase for checking
-        name_lower = name.lower()
-        
-        # Filter out common non-character words
-        if name_lower in COMMON_NON_CHARACTER_WORDS:
-            logger.debug(f"🚫 Filtered out common word: {name}")
-            return False
-        
-        # Must start with capital letter (proper noun)
-        if not name[0].isupper():
-            return False
-        
-        # Must be alphabetic (no numbers or special characters)
-        if not name.isalpha():
-            return False
-        
-        # Filter out single letters (except I and A which are already in stopwords)
-        if len(name) == 1:
-            return False
-        
-        # Filter out very long words (likely not names)
-        if len(name) > 20:
-            logger.debug(f"🚫 Filtered out overly long word: {name}")
-            return False
-        
-        # Filter out words that are all uppercase (likely acronyms or abbreviations)
-        if name.isupper() and len(name) > 1:
-            logger.debug(f"🚫 Filtered out acronym: {name}")
-            return False
-        
-        # Basic pattern check - should look like a name (Title case)
-        if not (name[0].isupper() and name[1:].islower()):
-            logger.debug(f"🚫 Filtered out non-title-case word: {name}")
-            return False
-        
-        logger.debug(f"✅ Potential character name passed pre-filter: {name}")
-        return True
 
 @dataclass
 class DialogueSegment:
@@ -197,14 +115,6 @@ class CharacterVoiceProfile:
     voice_traits: Dict[str, Any]
     last_updated: str
     sample_count: int
-
-    def __init__(self, character_id: str, character_name: str, dialogue_samples: List[str], voice_traits: Dict[str, Any], last_updated: str, sample_count: int):
-        self.character_id = character_id
-        self.character_name = character_name
-        self.dialogue_samples = dialogue_samples
-        self.voice_traits = voice_traits
-        self.last_updated = last_updated
-        self.sample_count = sample_count
 
     def to_dict(self):
         return asdict(self)
@@ -236,7 +146,7 @@ class CharacterVoiceService:
     def _is_likely_character_name(self, name: str) -> bool:
         """
         Pre-filter to determine if a name is likely to be a character name.
-        Uses comprehensive stopwords and common non-character word filtering.
+        Uses optimized stopwords filtering for better performance.
         This is a fast pre-filter before LLM validation.
         """
         if not name or len(name) < 2:
@@ -258,7 +168,7 @@ class CharacterVoiceService:
         if not name.isalpha():
             return False
         
-        # Filter out single letters (except I and A which are already in stopwords)
+        # Filter out single letters
         if len(name) == 1:
             return False
         
@@ -267,7 +177,7 @@ class CharacterVoiceService:
             logger.debug(f"🚫 Filtered out overly long word: {name}")
             return False
         
-        # Filter out words that are all uppercase (likely acronyms or abbreviations)
+        # Filter out words that are all uppercase (likely acronyms)
         if name.isupper() and len(name) > 1:
             logger.debug(f"🚫 Filtered out acronym: {name}")
             return False
@@ -409,10 +319,11 @@ class CharacterVoiceService:
         # Prefer names from after context, then before
         all_names = names_after + names_before
         if all_names:
-            # INTELLIGENT APPROACH: Let the LLM validate character names later
-            # For now, just return the first potential name we find
-            # The LLM will filter out non-character names in the next phase
-            potential_names = [name for name in all_names if len(name) > 1 and name.lower() not in {'come', 'as', 'suddenly', 'best', 'aye', 'well', 'dude', 'sir', 'said', 'asked', 'replied', 'then', 'now', 'here', 'there', 'when', 'where', 'what', 'who', 'how', 'why'}]  # Basic filter for single letters
+            # Use basic filtering for common non-character words
+            potential_names = [name for name in all_names if len(name) > 1 and name.lower() not in {
+                'come', 'as', 'suddenly', 'best', 'aye', 'well', 'dude', 'sir', 'said', 'asked', 
+                'replied', 'then', 'now', 'here', 'there', 'when', 'where', 'what', 'who', 'how', 'why'
+            }]
             if potential_names:
                 speaker = potential_names[0]
                 logger.debug(f"🎭 Potential speaker '{speaker}' from context (will be validated by LLM)")
@@ -540,39 +451,31 @@ Character names to validate: {potential_characters}"""
             logger.info(f"   - Existing profiles: {len(existing_profiles) if existing_profiles else 0}")
             
             logger.info(f"🚀 SERVICE STEP 1: Text preprocessing...")
-            # CRITICAL FIX: Limit text length to prevent API timeouts and errors
-            MAX_TEXT_LENGTH = 10000  # 10,000 characters should be manageable
+            # Limit text length to prevent API timeouts
+            MAX_TEXT_LENGTH = 10000
             if len(text) > MAX_TEXT_LENGTH:
                 logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
                 text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"
             
             logger.info(f"🧹 Removing HTML tags and entities...")
-            # CRITICAL FIX: Remove HTML tags since TipTap editor sends HTML-formatted content
-            # The dialogue extraction patterns expect plain text, not HTML
-            
-            # First, unescape HTML entities
+            # Remove HTML tags since TipTap editor sends HTML-formatted content
             original_length = len(text)
             text = html.unescape(text)
             logger.debug(f"   HTML entities unescaped: {original_length} -> {len(text)} chars")
             
-            # ENHANCED HTML PROCESSING: Convert HTML structure to preserve dialogue formatting
-            # Convert block elements to line breaks to maintain dialogue structure
+            # Convert HTML structure to preserve dialogue formatting
             text = re.sub(r'<(?:p|div|br)[^>]*>', '\n', text, flags=re.IGNORECASE)
             text = re.sub(r'</(?:p|div)>', '\n', text, flags=re.IGNORECASE)
             
-            # Remove all remaining HTML tags using regex (simple but effective for our use case)
+            # Remove all remaining HTML tags
             html_tag_pattern = re.compile(r'<[^>]+>')
             plain_text = html_tag_pattern.sub('', text)
             logger.debug(f"   HTML tags removed: {len(text)} -> {len(plain_text)} chars")
             
-            # ENHANCED WHITESPACE CLEANING: Preserve paragraph breaks for dialogue structure
-            # Convert multiple newlines to double newlines (paragraph breaks)
+            # Clean whitespace while preserving dialogue structure
             plain_text = re.sub(r'\n\s*\n', '\n\n', plain_text)
-            # Convert multiple spaces to single spaces
             plain_text = re.sub(r'[ \t]+', ' ', plain_text)
-            # Clean up leading/trailing whitespace on each line
             plain_text = '\n'.join(line.strip() for line in plain_text.split('\n'))
-            # Remove excessive empty lines (more than 2 consecutive)
             plain_text = re.sub(r'\n{3,}', '\n\n', plain_text)
             plain_text = plain_text.strip()
             
@@ -584,18 +487,16 @@ Character names to validate: {potential_characters}"""
             
             logger.info(f"✅ SERVICE STEP 1 COMPLETE: Text cleaned from {original_length} to {len(plain_text)} chars")
             
-            # Use the cleaned plain text for dialogue extraction
             text = plain_text
             
             logger.info(f"🚀 SERVICE STEP 2: Extracting dialogue segments...")
-            # Extract dialogue segments
             try:
                 segments = self._extract_dialogue_segments(text)
                 logger.info(f"✅ SERVICE STEP 2 COMPLETE: Found {len(segments)} dialogue segments")
                 
                 if segments:
                     logger.info(f"📝 Dialogue segments preview:")
-                    for i, segment in enumerate(segments[:3]):  # Show first 3 segments
+                    for i, segment in enumerate(segments[:3]):
                         logger.info(f"   Segment {i+1}: Speaker='{segment.speaker}', Text='{segment.text[:50]}{'...' if len(segment.text) > 50 else ''}'")
                         
             except Exception as segment_error:
@@ -613,24 +514,21 @@ Character names to validate: {potential_characters}"""
                 }
             
             logger.info(f"🚀 SERVICE STEP 3: Building character profiles...")
-            # Build character profiles from current text
             try:
                 current_profiles = self._build_character_profiles(segments)
                 logger.info(f"📊 Initial profile building found {len(current_profiles)} potential characters")
                 
-                # INTELLIGENT APPROACH: Use LLM to validate which are actual character names
+                # Use LLM to validate character names
                 potential_character_names = list(current_profiles.keys())
                 if potential_character_names:
                     logger.info(f"🤖 SERVICE STEP 3a: LLM validation of character names...")
                     validated_character_names = await self._validate_character_names_with_llm(
                         potential_character_names, 
-                        text[:2000]  # Send first 2000 chars as context
+                        text[:2000]
                     )
                     
-                    # CRITICAL FIX: Only filter when LLM validation actually succeeded
-                    # This makes validation "best-effort" instead of strict
+                    # Only filter when LLM validation actually succeeded
                     if validated_character_names and len(validated_character_names) > 0:
-                        # LLM validation succeeded - use validated list
                         validated_profiles = {
                             name: profile for name, profile in current_profiles.items() 
                             if name in validated_character_names
@@ -642,11 +540,9 @@ Character names to validate: {potential_characters}"""
                         
                         current_profiles = validated_profiles
                     else:
-                        # LLM validation failed or returned empty - use all heuristic characters
                         logger.warning(f"⚠️ LLM validation failed or returned zero characters")
                         logger.info(f"➡️ FALLBACK: Using all {len(current_profiles)} heuristically detected characters")
                         logger.info(f"   Fallback characters: {list(current_profiles.keys())}")
-                        # current_profiles remains unchanged - we keep all heuristic characters
                 
                 for char_name, profile in current_profiles.items():
                     logger.debug(f"   Final profile: {char_name} - {len(profile.dialogue_samples)} samples")
@@ -657,7 +553,6 @@ Character names to validate: {potential_characters}"""
                 raise
             
             logger.info(f"🚀 SERVICE STEP 4: Merging with existing profiles...")
-            # Merge with existing profiles if provided
             merged_count = 0
             if existing_profiles:
                 for char_name, existing_profile in existing_profiles.items():
@@ -672,7 +567,6 @@ Character names to validate: {potential_characters}"""
             logger.info(f"✅ SERVICE STEP 4 COMPLETE: Merged {merged_count} existing profiles")
             
             logger.info(f"🚀 SERVICE STEP 5: Performing AI analysis for each character...")
-            # Perform AI analysis for each character
             results = []
             start_time = datetime.now()
             
@@ -694,7 +588,6 @@ Character names to validate: {potential_characters}"""
                 except Exception as char_error:
                     logger.error(f"   ❌ Analysis failed for {character_name}: {char_error}")
                     logger.exception(f"Character analysis traceback for {character_name}:")
-                    # Continue with other characters instead of failing completely
                     continue
             
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
@@ -707,7 +600,6 @@ Character names to validate: {potential_characters}"""
             logger.info(f"   - AI processing time: {int(processing_time)}ms")
             logger.info(f"   - Total processing time: {int(total_processing_time)}ms")
             
-            # Log each result for debugging
             for i, result in enumerate(results):
                 logger.debug(f"   Result {i+1}: {result.character_name} - Consistent: {result.is_consistent}, Confidence: {result.confidence_score}")
             
@@ -740,7 +632,7 @@ Character names to validate: {potential_characters}"""
     
     async def _analyze_character_voice(self, profile: CharacterVoiceProfile, all_segments: List[DialogueSegment]) -> Optional[VoiceConsistencyResult]:
         """
-        Analyze voice consistency for a specific character using the EXACT same pattern as successful contextual understanding.
+        Analyze voice consistency for a specific character using LLM analysis.
         """
         char_analysis_start = datetime.now()
         
@@ -761,17 +653,17 @@ Character names to validate: {potential_characters}"""
                 return None
             
             logger.info(f"📝 Dialogue samples for {profile.character_name}:")
-            for i, sample in enumerate(character_dialogue[:3]):  # Show first 3 samples
+            for i, sample in enumerate(character_dialogue[:3]):
                 logger.info(f"   Sample {i+1}: '{sample[:100]}{'...' if len(sample) > 100 else ''}'")
             
-            # CRITICAL FIX: Limit dialogue samples to prevent overly long prompts
-            MAX_SAMPLES = 10  # Limit to 10 samples max
+            # Limit dialogue samples to prevent overly long prompts
+            MAX_SAMPLES = 10
             if len(character_dialogue) > MAX_SAMPLES:
                 logger.info(f"🔧 Limiting dialogue samples from {len(character_dialogue)} to {MAX_SAMPLES} for {profile.character_name}")
                 character_dialogue = character_dialogue[:MAX_SAMPLES]
             
             logger.info(f"🚀 CHARACTER STEP 1: Building analysis prompt...")
-            # Create analysis prompt with EXPLICIT JSON formatting requirements for Gemini 2.5 Flash
+            # Create analysis prompt with explicit JSON formatting requirements
             prompt = f"""You are an expert character voice consistency analyzer. Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
 
 Character Dialogue Samples:
@@ -804,7 +696,6 @@ Respond with ONLY the JSON object."""
             logger.info(f"   Using LLM provider: Google Gemini")
             logger.info(f"   Expected response time: 10-60 seconds")
             
-            # CRITICAL FIX: Use the LLM service coordinator (same as successful contextual understanding)
             try:
                 logger.debug(f"   Making LLM call with prompt length: {len(prompt)}")
                 response_text = await llm_service.generate_with_selected_llm(prompt, "Google Gemini")
@@ -828,16 +719,16 @@ Respond with ONLY the JSON object."""
                     analysis_method="llm_validated"
                 )
             
-            # Parse JSON response with improved error handling and multiple extraction methods
+            # Parse JSON response with improved error handling
             try:
                 analysis_data = None
                 
-                # Method 1: Try to parse the entire response as JSON first (best case)
+                # Try to parse the entire response as JSON first
                 try:
                     analysis_data = json.loads(response_text.strip())
                     logger.info(f"✅ Successfully parsed complete response as JSON for {profile.character_name}")
                 except json.JSONDecodeError:
-                    # Method 2: Extract JSON object using regex (fallback)
+                    # Extract JSON object using regex (fallback)
                     json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_text, re.DOTALL)
                     if json_match:
                         try:
@@ -848,12 +739,9 @@ Respond with ONLY the JSON object."""
                 
                 # If we successfully parsed JSON, validate it has required fields
                 if analysis_data and isinstance(analysis_data, dict):
-                    # CRITICAL FIX: Ensure all required fields exist with proper type validation
-                    
                     # Handle flagged_text - convert list to string if needed
                     flagged_text = analysis_data.get("flagged_text", "")
                     if isinstance(flagged_text, list):
-                        # If it's a list, join the elements or take the first one
                         if flagged_text:
                             flagged_text = str(flagged_text[0]) if len(flagged_text) == 1 else " | ".join(str(item) for item in flagged_text)
                         else:
@@ -874,7 +762,7 @@ Respond with ONLY the JSON object."""
                         "suggestions": suggestions
                     }
                 else:
-                    # Improved fallback if no valid JSON found
+                    # Fallback if no valid JSON found
                     logger.warning(f"⚠️ No valid JSON found in response for {profile.character_name}, creating fallback response")
                     
                     # Try to extract useful information from text response

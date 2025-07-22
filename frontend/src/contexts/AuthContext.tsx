@@ -290,37 +290,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [refreshToken, getStoredTokens]);
 
-  // Initialize authentication state
+  // Initialize authentication state - FIXED: Remove problematic dependencies
   useEffect(() => {
+    let isInitialized = false;
+    
     const initializeAuth = async () => {
+      if (isInitialized) return; // Prevent multiple initializations
+      isInitialized = true;
+      
       console.log('🚀 Initializing authentication...');
       setIsLoading(true);
       
-      // TEMPORARY FIX: Clear potentially corrupted tokens to prevent refresh loops
-      const tokens = getStoredTokens();
-      if (tokens) {
-        console.log('🔍 Found stored tokens, validating...');
-        
-        // Try to get user profile to verify token validity
-        const success = await loadUserProfile();
-        if (!success) {
-          console.log('⚠️ Token validation failed, clearing all tokens to prevent loops');
+      try {
+        const tokens = getStoredTokens();
+        if (tokens) {
+          console.log('🔍 Found stored tokens, validating...');
+          
+          // Try to get user profile to verify token validity
+          const success = await loadUserProfile();
+          if (!success) {
+            console.log('⚠️ Token validation failed, clearing all tokens');
             clearTokens();
-          setUser(null);
-          setIsAuthenticated(false);
+            setUser(null);
+            setIsAuthenticated(false);
+          } else {
+            console.log('✅ Token validation successful');
+          }
         } else {
-          console.log('✅ Token validation successful');
+          console.log('ℹ️ No stored tokens found');
         }
-      } else {
-        console.log('ℹ️ No stored tokens found');
+      } catch (error) {
+        console.error('❌ Auth initialization error:', error);
+        clearTokens();
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+        console.log('✅ Authentication initialization complete');
       }
-      
-      setIsLoading(false);
-      console.log('✅ Authentication initialization complete');
     };
 
     initializeAuth();
-  }, [getStoredTokens, loadUserProfile, clearTokens]);
+  }, []); // FIXED: Empty dependency array - runs only once
 
   // Add token expiration listener
   useEffect(() => {

@@ -39,6 +39,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.block_threshold = 500      # Increased from 300 to 500 requests before IP block
         self.max_request_size = 10 * 1024 * 1024
         
+        # FIXED: Add burst allowance for legitimate users (initial page load)
+        self.burst_allowance = 10       # Allow 10 requests in first 10 seconds
+        self.burst_window = 10          # 10 seconds burst window
+        
         # Enhanced security headers configuration (2025 OWASP standards)
         self.security_headers = {
             # Core Content Security
@@ -189,7 +193,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             return False
     
     def _check_rate_limit(self, client_ip: str) -> bool:
-        """Check and update rate limiting for client IP"""
+        """Check and update rate limiting for client IP with burst allowance"""
         current_time = time.time()
         
         # Initialize IP tracking if not exists
@@ -201,7 +205,15 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         requests[:] = [req_time for req_time in requests 
                       if current_time - req_time < self.rate_limit_window]
         
-        # Check if within rate limit
+        # FIXED: Check burst allowance first (for initial page loads)
+        recent_requests = [req_time for req_time in requests 
+                          if current_time - req_time < self.burst_window]
+        
+        if len(recent_requests) >= self.burst_allowance:
+            logger.warning(f"Burst limit exceeded for IP: {client_ip} ({len(recent_requests)} requests in {self.burst_window}s)")
+            return False
+        
+        # Check if within overall rate limit
         if len(requests) >= self.rate_limit_requests:
             # Check if should block IP
             if len(requests) >= self.block_threshold:

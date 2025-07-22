@@ -146,6 +146,10 @@ export const useDocuments = (): UseDocumentsReturn => {
     };
   }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument]);
 
+  // FIXED: Add request deduplication to prevent duplicate API calls
+  const fetchInProgress = useRef(false);
+  const lastUserId = useRef<string | null>(null);
+
   // Fetch initial data (documents and folders)
   const fetchAllData = useCallback(async () => {
     if (!user) {
@@ -161,8 +165,24 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
       return;
     }
+
+    // FIXED: Prevent duplicate requests for same user
+    const currentUserId = user.user_id;
+    if (fetchInProgress.current) {
+      console.log('🔄 useDocuments: Request already in progress, skipping');
+      return;
+    }
+
+    if (lastUserId.current === currentUserId && state.documents.length > 0) {
+      console.log('📊 useDocuments: Data already loaded for current user');
+      return;
+    }
+
+    fetchInProgress.current = true;
+    lastUserId.current = currentUserId;
     
     setState(prev => ({ ...prev, isLoading: true }));
+    
     try {
       const [docsResponse, foldersResponse] = await Promise.all([
         api.getDocuments(),
@@ -189,15 +209,34 @@ export const useDocuments = (): UseDocumentsReturn => {
         message: apiError.response?.data?.detail || apiError.message,
         stack: apiError.stack,
       });
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: apiError.response?.data?.detail || apiError.message || 'Failed to load documents.',
-        documents: [],
-        folders: []
-      }));
+      
+      // FIXED: Handle rate limiting gracefully
+      if (apiError.message?.includes('429') || apiError.message?.includes('rate limit') || apiError.message?.includes('too many requests')) {
+        console.log('⏱️ useDocuments: Rate limited, will retry in 5 seconds');
+        setState(prev => ({
+          ...prev,
+          error: 'Too many requests. Retrying in 5 seconds...',
+          isLoading: false
+        }));
+        
+        // Retry after 5 seconds
+        setTimeout(() => {
+          fetchInProgress.current = false;
+          fetchAllData();
+        }, 5000);
+      } else {
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: apiError.response?.data?.detail || apiError.message || 'Failed to load documents.',
+          documents: [],
+          folders: []
+        }));
+      }
+    } finally {
+      fetchInProgress.current = false;
     }
-  }, [user]);
+  }, [user, state.documents.length]);
 
   useEffect(() => {
     fetchAllData();
