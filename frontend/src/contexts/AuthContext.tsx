@@ -122,14 +122,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const accessToken = localStorage.getItem('owen_access_token');
       const refreshToken = localStorage.getItem('owen_refresh_token');
       const tokenType = localStorage.getItem('owen_token_type') || 'bearer';
-      const expiresIn = localStorage.getItem('owen_expires_in');
+      const expiresAt = localStorage.getItem('owen_token_expires');
 
       if (accessToken && refreshToken) {
         return {
           access_token: accessToken,
           refresh_token: refreshToken,
           token_type: tokenType,
-          expires_in: expiresIn ? parseInt(expiresIn) : 0,
+          expires_in: expiresAt ? Math.max(0, Math.floor((parseInt(expiresAt) - Date.now()) / 1000)) : 0,
         };
       }
       return null;
@@ -144,7 +144,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('owen_access_token', tokens.access_token);
       localStorage.setItem('owen_refresh_token', tokens.refresh_token);
       localStorage.setItem('owen_token_type', tokens.token_type);
-      localStorage.setItem('owen_expires_in', tokens.expires_in.toString());
+      localStorage.setItem('owen_token_expires', (Date.now() + tokens.expires_in * 1000).toString());
       
       // Set axios default auth header
       apiInstance.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
@@ -155,10 +155,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearTokens = useCallback(() => {
     try {
+      // Clear current tokens
       localStorage.removeItem('owen_access_token');
       localStorage.removeItem('owen_refresh_token');
       localStorage.removeItem('owen_token_type');
-      localStorage.removeItem('owen_expires_in');
+      localStorage.removeItem('owen_token_expires');
+      
+      // Clear any legacy tokens
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('token_type');
+      localStorage.removeItem('expires_at');
+      localStorage.removeItem('owen_expires_in'); // Remove old key format
+      
       delete apiInstance.defaults.headers.common['Authorization'];
     } catch (err) {
       logger.error('Error clearing tokens:', err);
@@ -353,10 +362,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Clear tokens without making API call since tokens are already invalid
       localStorage.removeItem('owen_access_token');
       localStorage.removeItem('owen_refresh_token');
+      localStorage.removeItem('owen_token_type');
+      localStorage.removeItem('owen_token_expires');
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('token_type');
       localStorage.removeItem('expires_at');
+      localStorage.removeItem('owen_expires_in'); // Remove old key format
       
       // Reset expiration handling flag after a short delay
       setTimeout(() => {
