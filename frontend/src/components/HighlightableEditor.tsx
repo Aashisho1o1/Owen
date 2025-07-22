@@ -398,7 +398,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             
             // Validate positions
             if (from >= 0 && to > from && to <= doc.content.size) {
-              const confidence = result.confidence_score;
+            const confidence = result.confidence_score;
               const confidenceLevel = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
 
               try {
