@@ -51,6 +51,30 @@ const createRequestKey = (config: any): string => {
   return `${config.method}:${config.url}:${JSON.stringify(config.data || {})}`;
 };
 
+// NEW: Clean up stale requests to prevent browser state accumulation
+const cleanupStaleRequests = () => {
+  const staleThreshold = 60000; // 1 minute
+  const now = Date.now();
+  
+  for (const [key, promise] of pendingRequests.entries()) {
+    // Check if promise is still pending by checking its state
+    Promise.race([promise, Promise.resolve('__timeout__')])
+      .then((result) => {
+        if (result === '__timeout__' || now - (promise as any)._timestamp > staleThreshold) {
+          pendingRequests.delete(key);
+          console.log(`🧹 Cleaned up stale request: ${key}`);
+        }
+      })
+      .catch(() => {
+        // Promise already rejected, clean it up
+        pendingRequests.delete(key);
+      });
+  }
+};
+
+// Clean up stale requests every 30 seconds
+setInterval(cleanupStaleRequests, 30000);
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
@@ -121,23 +145,34 @@ apiClient.interceptors.request.use(
   (config) => {
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     
-    // FIXED: Simple request deduplication for GET requests
-    if (config.method?.toLowerCase() === 'get') {
+    // FIXED: Only apply deduplication to GET requests and exclude voice analysis
+    if (config.method?.toLowerCase() === 'get' && !config.url?.includes('/character-voice/')) {
       const requestKey = createRequestKey(config);
       if (pendingRequests.has(requestKey)) {
         console.log(`🔄 Request deduplication: ${config.url} already pending`);
         // Return the existing promise instead of making a new request
         return pendingRequests.get(requestKey)!.then(() => config);
       }
+      
+      // Create a new promise with timestamp for cleanup
+      const requestPromise = Promise.resolve(config);
+      (requestPromise as any)._timestamp = Date.now();
+      pendingRequests.set(requestKey, requestPromise);
     }
     
-    // Special handling for voice analysis endpoints
+    // Special handling for voice analysis endpoints - ALWAYS bypass deduplication
     if (config.url?.includes('/character-voice/analyze')) {
       console.log('🧠 Voice Analysis Request: Using extended timeout (5 minutes)');
       console.log('🚀 Starting Gemini 2.5 Flash analysis...');
       console.log('⏳ Processing with Gemini 2.5 Flash - this may take 1-4 minutes for complex dialogue analysis...');
       console.log('💡 Please wait - analyzing character voice consistency...');
       config.timeout = VOICE_ANALYSIS_TIMEOUT;
+      
+      // Ensure fresh headers for voice analysis
+      config.headers = { 
+        ...config.headers,
+        'X-Fresh-Request': Date.now().toString()
+      };
     }
     
     const token = getStoredTokens().accessToken;
@@ -147,6 +182,26 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Response interceptor to clean up completed requests
+apiClient.interceptors.response.use(
+  (response) => {
+    // Clean up completed request from pending map
+    if (response.config.method?.toLowerCase() === 'get' && !response.config.url?.includes('/character-voice/')) {
+      const requestKey = createRequestKey(response.config);
+      pendingRequests.delete(requestKey);
+    }
+    return response;
+  },
+  (error) => {
+    // Clean up failed request from pending map
+    if (error.config?.method?.toLowerCase() === 'get' && !error.config?.url?.includes('/character-voice/')) {
+      const requestKey = createRequestKey(error.config);
+      pendingRequests.delete(requestKey);
+    }
+    return Promise.reject(error);
+  }
 );
 
 // Response interceptor to handle 401 errors with token refresh
