@@ -341,12 +341,30 @@ CRITICAL: Respond with ONLY the JSON array. No other text."""
                 logger.info(f"🔧 Truncating text from {len(text)} to {self.max_text_length} chars for cost optimization")
                 text = text[:self.max_text_length] + "\n\n[Text truncated for cost optimization]"
             
-            # OPTIMIZATION 2: Smart text preprocessing
-            # Remove HTML and clean whitespace efficiently
+            # OPTIMIZATION 2: Smart text preprocessing (FIXED: Robust HTML parsing)
+            # Convert HTML structure to preserve dialogue formatting (like the working old service)
+            original_length = len(text)
             text = html.unescape(text)
-            text = re.sub(r'<[^>]+>', '', text)  # Remove HTML tags
-            text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
+            logger.debug(f"   HTML entities unescaped: {original_length} -> {len(text)} chars")
             
+            # Convert structural HTML tags to newlines to preserve text structure
+            text = re.sub(r'<(?:p|div|br)[^>]*>', '\n', text, flags=re.IGNORECASE)
+            text = re.sub(r'</(?:p|div)>', '\n', text, flags=re.IGNORECASE)
+            
+            # Remove all remaining HTML tags (inline tags, etc.)
+            html_tag_pattern = re.compile(r'<[^>]+>')
+            text = html_tag_pattern.sub('', text)
+            
+            # Clean whitespace while preserving dialogue structure
+            text = re.sub(r'\n\s*\n', '\n\n', text)  # Normalize paragraph breaks
+            text = re.sub(r'[ \t]+', ' ', text)  # Normalize spaces and tabs
+            text = '\n'.join(line.strip() for line in text.split('\n'))  # Trim each line
+            text = re.sub(r'\n{3,}', '\n\n', text)  # Max 2 consecutive newlines
+            text = text.strip()
+            
+            logger.debug(f"   Text preprocessing: {original_length} -> {len(text)} chars")
+            logger.debug(f"   Preprocessed sample: {text[:200]}{'...' if len(text) > 200 else ''}")
+
             logger.info(f"🚀 STEP 1: Extract dialogue segments...")
             segments = self._extract_dialogue_segments(text)
             logger.info(f"✅ STEP 1 COMPLETE: Found {len(segments)} dialogue segments")
