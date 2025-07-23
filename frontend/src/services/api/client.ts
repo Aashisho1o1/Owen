@@ -175,9 +175,18 @@ apiClient.interceptors.request.use(
       };
     }
     
-    const token = getStoredTokens().accessToken;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const storedTokens = getStoredTokens();
+    if (storedTokens.accessToken) {
+      // Check if token is expired before making the request
+      if (storedTokens.expiresAt && Date.now() >= storedTokens.expiresAt) {
+        console.log('⏰ Token expired before request, should refresh');
+        // Note: We don't refresh here to avoid blocking the request interceptor
+        // The response interceptor will handle the 401/403 and refresh
+      }
+      config.headers.Authorization = `Bearer ${storedTokens.accessToken}`;
+    } else {
+      // DEBUG: Log when no token is available
+      console.log('⚠️ No access token available for request:', config.url);
     }
     return config;
   },
@@ -200,6 +209,18 @@ apiClient.interceptors.response.use(
       const requestKey = createRequestKey(error.config);
       pendingRequests.delete(requestKey);
     }
+    
+    // ENHANCED: Log the specific error for debugging
+    if (error.response) {
+      console.error(`❌ API Error ${error.response.status}:`, {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -217,8 +238,20 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Handle 401 errors with token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle 401 AND 403 errors with token refresh
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+      // CRITICAL: Don't attempt token refresh for auth endpoints to prevent infinite loops
+      const isAuthEndpoint = originalRequest.url && (
+        originalRequest.url.includes('/api/auth/login') ||
+        originalRequest.url.includes('/api/auth/register') ||
+        originalRequest.url.includes('/api/auth/refresh')
+      );
+
+      if (isAuthEndpoint) {
+        console.log(`🚫 Skipping token refresh for auth endpoint: ${originalRequest.url}`);
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
@@ -235,7 +268,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log('🔄 Attempting token refresh...');
+        console.log(`🔄 Attempting token refresh for ${error.response?.status === 403 ? '403 Forbidden' : '401 Unauthorized'}...`);
         const newToken = await refreshTokens();
         
         processQueue(null, newToken);
@@ -243,6 +276,7 @@ apiClient.interceptors.response.use(
         
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        console.log('✅ Token refreshed, retrying original request');
         return apiClient(originalRequest);
         
       } catch (refreshError) {
