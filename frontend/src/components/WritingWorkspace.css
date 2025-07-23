@@ -956,9 +956,19 @@ body.light-theme .highlightable-editor,
 /* CLEAN MINIMAL FIX: Remove constraints that limit chat input width */
 .enhanced-chat-input {
   margin: 0 !important;          /* remove default margin-top: 16px */
-  padding: 6px !important;       /* reduce from 12px to 6px for more usable width */
+  padding: 4px !important;       /* reduce from 12px to 4px for more usable width */
   width: 100% !important;        /* ensure full width usage */
   box-sizing: border-box !important; /* proper box sizing */
+}
+
+/* HIGH-SPECIFICITY OVERRIDE: Target the actual textarea element losing width to padding */
+.enhanced-chat-input .chat-textarea,
+.chat-section .chat-textarea,
+.chat-panel-container .chat-textarea {
+  padding: 8px 12px !important;  /* override var(--space-3) var(--space-4) from chat-panel.css */
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
 }
 
 /* Hide mode indicator to save vertical space */
