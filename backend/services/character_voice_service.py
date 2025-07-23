@@ -202,6 +202,9 @@ class CharacterVoiceService:
         
         # IMPROVED: More robust dialogue patterns that handle modern writing styles
         patterns = [
+            # FIXED: Bold markdown dialogue format: **Speaker:** "dialogue"
+            r'\*\*([A-Z][a-zA-Z]*)\*\*:\s*"([^"]{2,})"',
+            
             # Basic quoted dialogue: "Hello" (most common)
             r'"([^"]{2,})"',
             # Single quoted dialogue: 'Hello'
@@ -221,6 +224,7 @@ class CharacterVoiceService:
         
         for i, pattern in enumerate(patterns):
             pattern_name = [
+                'Bold markdown dialogue',  # **Speaker:** "dialogue"
                 'Basic quoted dialogue',
                 'Single quoted dialogue', 
                 'Em-dash dialogue',
@@ -237,8 +241,19 @@ class CharacterVoiceService:
                 start_pos = match.start()
                 end_pos = match.end()
                 
-                # Extract dialogue text (first capture group)
-                dialogue_text = match.group(1).strip()
+                # FIXED: Handle both single-group and two-group patterns
+                if len(match.groups()) == 2:
+                    # Two groups: speaker and dialogue (e.g., **Speaker:** "dialogue")
+                    speaker = match.group(1).strip()
+                    dialogue_text = match.group(2).strip()
+                elif len(match.groups()) == 1:
+                    # One group: just dialogue (infer speaker from context)
+                    dialogue_text = match.group(1).strip()
+                    speaker = None  # Will be inferred later
+                else:
+                    # Skip patterns with unexpected group count
+                    logger.debug(f"     Match {pattern_matches}: Unexpected group count {len(match.groups())}, skipping")
+                    continue
                 
                 # Skip very short or empty dialogue
                 if not dialogue_text or len(dialogue_text) < 3:
@@ -262,12 +277,13 @@ class CharacterVoiceService:
                 context_before = text[context_start:start_pos].strip()
                 context_after = text[end_pos:context_end].strip()
                 
-                # Infer speaker from context with improved logic
-                speaker = self._infer_speaker_from_context(
-                    dialogue_text, context_before, context_after
-                )
+                # Use extracted speaker or infer from context
+                if not speaker:
+                    speaker = self._infer_speaker_from_context(
+                        dialogue_text, context_before, context_after
+                    )
                 
-                logger.debug(f"     Match {pattern_matches}: Inferred speaker: '{speaker}'")
+                logger.debug(f"     Match {pattern_matches}: Speaker: '{speaker}'")
                 
                 segment = DialogueSegment(
                     text=dialogue_text,
