@@ -953,12 +953,15 @@ body.light-theme .highlightable-editor,
 
 /* ============= CHAT INPUT WIDTH OPTIMIZATIONS ============= */
 
-/* MINIMAL FIX: Just remove margins and hide mode indicator for more space */
-.chat-mode-indicator {
-  display: none !important;      /* hide to save vertical space */
+/* CLEAN MINIMAL FIX: Remove constraints that limit chat input width */
+.enhanced-chat-input {
+  margin: 0 !important;          /* remove default margin-top: 16px */
+  padding: 6px !important;       /* reduce from 12px to 6px for more usable width */
+  width: 100% !important;        /* ensure full width usage */
+  box-sizing: border-box !important; /* proper box sizing */
 }
 
-.enhanced-chat-input {
-  margin: 0 !important;          /* remove default margins for full width */
-  width: 100% !important;        /* use full available width */
+/* Hide mode indicator to save vertical space */
+.chat-mode-indicator {
+  display: none !important;
 } 
