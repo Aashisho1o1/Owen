@@ -33,14 +33,33 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const [message, setMessage] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-resize textarea
-  useEffect(() => {
+  
+  // Function to recalculate textarea size
+  const recalculateTextareaSize = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 120;
+      const newHeight = Math.min(scrollHeight, maxHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
+      textareaRef.current.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
     }
+  };
+
+  // Auto-resize textarea with improved height calculation
+  useEffect(() => {
+    recalculateTextareaSize();
   }, [message]);
+  
+  // Handle window resize for responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      setTimeout(recalculateTextareaSize, 100); // Small delay to ensure layout has settled
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
