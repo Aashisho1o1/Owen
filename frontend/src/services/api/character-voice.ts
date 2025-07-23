@@ -51,15 +51,20 @@ let analysisTimeout: NodeJS.Timeout | null = null;
  * Check if text contains dialogue worth analyzing
  */
 export const hasDialogue = (text: string): boolean => {
-  // Check for common dialogue patterns
+  // IMPROVED: More inclusive dialogue detection patterns that match backend
   const dialoguePatterns = [
-    /"[^"]+"/g,           // Standard quotes
-    /'[^']+'/g,           // Single quotes
-    /—[^—\n]+/g,          // Em-dash dialogue
-    /said|asked|replied|whispered|shouted|exclaimed/i  // Dialogue tags
+    /"[^"]{2,}"/g,                    // Basic quoted dialogue (matches backend)
+    /'[^']{2,}'/g,                    // Single quoted dialogue  
+    /—[^—\n]{2,}/g,                   // Em-dash dialogue
+    /"[^"]{2,},"?\s*[a-zA-Z]/g,       // Dialogue with attribution
+    /[A-Z][^.!?]*\s*"[^"]{2,}"/g      // Speaker tag dialogue
   ];
   
-  return dialoguePatterns.some(pattern => pattern.test(text));
+  // Return true if any pattern matches
+  return dialoguePatterns.some(pattern => {
+    const matches = text.match(pattern);
+    return matches && matches.length > 0;
+  });
 };
 
 /**

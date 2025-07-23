@@ -200,26 +200,32 @@ class CharacterVoiceService:
         
         segments = []
         
-        # Multiple dialogue patterns to handle different writing styles
+        # IMPROVED: More robust dialogue patterns that handle modern writing styles
         patterns = [
-            # Standard quotes: "Hello," she said.
-            r'"([^"]+)"[^a-zA-Z]*([^.!?]*[.!?])?',
-            # Single quotes: 'Hello,' she said.
-            r"'([^']+)'[^a-zA-Z]*([^.!?]*[.!?])?",
-            # Em-dash dialogue: —Hello, she said.
-            r'—([^—\n]+)',
-            # Dialogue tags: She said, "Hello"
-            r'([^.!?]*[.!?])[^a-zA-Z]*"([^"]+)"',
+            # Basic quoted dialogue: "Hello" (most common)
+            r'"([^"]{2,})"',
+            # Single quoted dialogue: 'Hello'
+            r"'([^']{2,})'",
+            # Em-dash dialogue: —Hello
+            r'—([^—\n]{2,})',
+            # Dialogue with attribution: "Hello," she said.
+            r'"([^"]{2,}),"?\s*[a-zA-Z][^.!?]*[.!?]',
+            # Dialogue with speaker tags: She said, "Hello"
+            r'[A-Z][^.!?]*[.!?]?\s*"([^"]{2,})"',
         ]
         
-        logger.info(f"🔍 Testing {len(patterns)} dialogue patterns...")
+        logger.info(f"🔍 Testing {len(patterns)} improved dialogue patterns...")
+        
+        # Track found segments to avoid duplicates
+        found_segments = set()
         
         for i, pattern in enumerate(patterns):
             pattern_name = [
-                'Standard quotes',
-                'Single quotes', 
+                'Basic quoted dialogue',
+                'Single quoted dialogue', 
                 'Em-dash dialogue',
-                'Dialogue tags'
+                'Dialogue with attribution',
+                'Speaker tag dialogue'
             ][i]
             
             logger.debug(f"   Testing pattern {i+1}: {pattern_name}")
@@ -231,11 +237,21 @@ class CharacterVoiceService:
                 start_pos = match.start()
                 end_pos = match.end()
                 
-                # Extract dialogue text (first capture group for most patterns)
+                # Extract dialogue text (first capture group)
                 dialogue_text = match.group(1).strip()
-                if not dialogue_text:
-                    logger.debug(f"     Match {pattern_matches}: Empty dialogue text, skipping")
+                
+                # Skip very short or empty dialogue
+                if not dialogue_text or len(dialogue_text) < 3:
+                    logger.debug(f"     Match {pattern_matches}: Too short dialogue text, skipping")
                     continue
+                
+                # Skip if we've already found this exact dialogue at this position
+                segment_key = (dialogue_text, start_pos)
+                if segment_key in found_segments:
+                    logger.debug(f"     Match {pattern_matches}: Duplicate dialogue, skipping")
+                    continue
+                
+                found_segments.add(segment_key)
                 
                 logger.debug(f"     Match {pattern_matches}: Found dialogue: '{dialogue_text[:50]}{'...' if len(dialogue_text) > 50 else ''}'")
                 
@@ -246,7 +262,7 @@ class CharacterVoiceService:
                 context_before = text[context_start:start_pos].strip()
                 context_after = text[end_pos:context_end].strip()
                 
-                # Infer speaker from context
+                # Infer speaker from context with improved logic
                 speaker = self._infer_speaker_from_context(
                     dialogue_text, context_before, context_after
                 )
@@ -260,29 +276,45 @@ class CharacterVoiceService:
                     context_before=context_before,
                     context_after=context_after
                 )
+                
                 segments.append(segment)
                 
-            logger.info(f"   Pattern {i+1} ({pattern_name}): Found {pattern_matches} matches")
+            logger.debug(f"   Pattern {i+1} ({pattern_name}): Found {pattern_matches} matches")
         
-        # Remove duplicates and sort by position
+        # Remove duplicate segments (same dialogue text with different speakers)
         unique_segments = []
-        seen_positions = set()
+        seen_dialogue = set()
         
-        for segment in sorted(segments, key=lambda x: x.position):
-            if segment.position not in seen_positions:
+        for segment in segments:
+            # Create a normalized version for comparison
+            normalized_dialogue = segment.text.lower().strip('.,!?;:"\'')
+            
+            if normalized_dialogue not in seen_dialogue:
+                seen_dialogue.add(normalized_dialogue)
                 unique_segments.append(segment)
-                seen_positions.add(segment.position)
+            else:
+                logger.debug(f"   Removing duplicate dialogue: '{segment.text[:30]}...'")
         
-        logger.info(f"📝 Extracted {len(unique_segments)} dialogue segments")
+        logger.info(f"✅ Dialogue extraction complete: Found {len(unique_segments)} unique dialogue segments")
+        
+        if unique_segments:
+            logger.info(f"📝 Sample extracted dialogue:")
+            for i, segment in enumerate(unique_segments[:3]):
+                logger.info(f"   {i+1}. Speaker: '{segment.speaker}' → '{segment.text[:80]}{'...' if len(segment.text) > 80 else ''}'")
+        else:
+            logger.warning(f"⚠️ No dialogue segments found. Text sample for debugging:")
+            logger.warning(f"   {text[:300]}{'...' if len(text) > 300 else ''}")
+        
         return unique_segments
     
     def _infer_speaker_from_context(self, dialogue: str, context_before: str, context_after: str) -> str:
         """
         Infer the speaker of dialogue from surrounding context.
-        Uses pattern matching and NLP techniques.
+        Uses improved pattern matching for modern writing styles.
         """
-        # Common dialogue tag patterns
+        # IMPROVED: More comprehensive dialogue tag patterns
         tag_patterns = [
+            # Standard dialogue tags
             r'(\w+)\s+said',
             r'(\w+)\s+asked',
             r'(\w+)\s+replied',
@@ -293,45 +325,98 @@ class CharacterVoiceService:
             r'(\w+)\s+continued',
             r'(\w+)\s+added',
             r'(\w+)\s+interrupted',
+            # Additional common verbs
+            r'(\w+)\s+called',
+            r'(\w+)\s+cried',
+            r'(\w+)\s+laughed',
+            r'(\w+)\s+sighed',
+            r'(\w+)\s+groaned',
+            r'(\w+)\s+gasped',
+            r'(\w+)\s+breathed',
+            r'(\w+)\s+hissed',
+            # Modern attributions
+            r'(\w+)\s+grinned',
+            r'(\w+)\s+smiled',
+            r'(\w+)\s+frowned',
+            r'(\w+)\s+shook',
+            r'(\w+)\s+nodded',
+            # Possessive forms
+            r"(\w+)'s\s+voice",
+            r"(\w+)'s\s+tone",
         ]
         
-        # Check context after dialogue first (more common)
+        # Check context after dialogue first (most common placement)
         for pattern in tag_patterns:
             match = re.search(pattern, context_after, re.IGNORECASE)
             if match:
                 speaker = match.group(1).title()
-                logger.debug(f"🎭 Inferred speaker '{speaker}' from dialogue tag")
+                logger.debug(f"🎭 Found speaker '{speaker}' in context after dialogue")
                 return speaker
         
-        # Check context before dialogue
+        # Check context before dialogue (alternative placement)
         for pattern in tag_patterns:
             match = re.search(pattern, context_before, re.IGNORECASE)
             if match:
                 speaker = match.group(1).title()
-                logger.debug(f"🎭 Inferred speaker '{speaker}' from preceding context")
+                logger.debug(f"🎭 Found speaker '{speaker}' in context before dialogue")
                 return speaker
         
-        # Look for character names in context (proper nouns)
-        name_pattern = r'\b([A-Z][a-z]+)\b'
-        names_before = re.findall(name_pattern, context_before)
-        names_after = re.findall(name_pattern, context_after)
+        # IMPROVED: Look for character names with better filtering
+        # Look for proper nouns (capitalized words) that could be names
+        name_pattern = r'\b([A-Z][a-z]{1,15})\b'  # Limit length to avoid false positives
         
-        # Prefer names from after context, then before
+        # Search in context after first, then before
+        names_after = re.findall(name_pattern, context_after)
+        names_before = re.findall(name_pattern, context_before)
+        
+        # Combine and filter out common non-character words
         all_names = names_after + names_before
         if all_names:
-            # Use basic filtering for common non-character words
-            potential_names = [name for name in all_names if len(name) > 1 and name.lower() not in {
-                'come', 'as', 'suddenly', 'best', 'aye', 'well', 'dude', 'sir', 'said', 'asked', 
-                'replied', 'then', 'now', 'here', 'there', 'when', 'where', 'what', 'who', 'how', 'why'
-            }]
+            # Enhanced filtering using the optimized stopwords list
+            potential_names = []
+            for name in all_names:
+                name_lower = name.lower()
+                # Skip if it's a common word, but keep if it looks like a real name
+                if (name_lower not in COMMON_NON_CHARACTER_WORDS and 
+                    len(name) >= 2 and 
+                    not name_lower.endswith('ing') and 
+                    not name_lower.endswith('ed') and
+                    name_lower not in ['the', 'and', 'but', 'for', 'with', 'when', 'where', 'what']):
+                    potential_names.append(name)
+            
             if potential_names:
-                speaker = potential_names[0]
-                logger.debug(f"🎭 Potential speaker '{speaker}' from context (will be validated by LLM)")
+                speaker = potential_names[0]  # Take the first good candidate
+                logger.debug(f"🎭 Inferred potential speaker '{speaker}' from nearby proper nouns")
                 return speaker
         
-        # Default to "Unknown" if no speaker can be inferred
-        logger.debug("🎭 Could not infer speaker, using 'Unknown'")
-        return "Unknown"
+        # FALLBACK: Try to extract from paragraph structure
+        # Look for sentence fragments that might indicate speaker changes
+        sentences_before = re.split(r'[.!?]', context_before)
+        for sentence in reversed(sentences_before):
+            sentence = sentence.strip()
+            if sentence and len(sentence) > 5:
+                # Look for a name at the start of a sentence
+                name_match = re.match(r'^([A-Z][a-z]{1,15})', sentence)
+                if name_match:
+                    candidate = name_match.group(1)
+                    if candidate.lower() not in COMMON_NON_CHARACTER_WORDS:
+                        logger.debug(f"🎭 Inferred speaker '{candidate}' from paragraph structure")
+                        return candidate
+        
+        # LAST RESORT: Create a speaker based on dialogue content
+        # For cases where we have dialogue but no clear attribution
+        if dialogue:
+            # Look for self-referential pronouns to guess formality
+            if any(word in dialogue.lower() for word in ['sir', 'madam', 'your lordship', 'your grace']):
+                logger.debug("🎭 Formal dialogue detected, using 'Speaker' as placeholder")
+                return "Speaker"
+            elif any(word in dialogue.lower() for word in ['dude', 'mate', 'bro', 'hey']):
+                logger.debug("🎭 Informal dialogue detected, using 'Character' as placeholder")
+                return "Character"
+        
+        # Default fallback
+        logger.debug("🎭 Could not infer speaker from context, using 'Unknown Speaker'")
+        return "Unknown Speaker"
     
     async def _validate_character_names_with_llm(self, potential_characters: List[str], text_sample: str) -> List[str]:
         """
