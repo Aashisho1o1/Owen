@@ -239,7 +239,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       // Only run voice analysis for authenticated users with sufficient content
       if (isAuthenticated && newContent && newContent.trim().length > 50) {
         try {
-          const response = await analyzeVoiceConsistency(newContent);
+          // Get plain text for voice analysis (not HTML)
+          const plainText = editor.getText();
+          const response = await analyzeVoiceConsistency(plainText);
           setVoiceConsistencyResults(response.results);
           applyVoiceInconsistencyUnderlines(response.results);
         } catch (error) {
