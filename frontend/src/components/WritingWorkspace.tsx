@@ -89,7 +89,7 @@ export const WritingWorkspace: React.FC = () => {
     if (!authLoading && !isInitialized) {
       initializeDocument();
     }
-  }, [isAuthenticated, authLoading, isInitialized, createDocument, setCurrentDocument, setEditorContent]);
+  }, [isAuthenticated, authLoading, isInitialized]); // FIXED: Remove unstable function references
 
   // Handle auth modal - prevent opening when already authenticated
   const handleAuthModalOpen = () => {
