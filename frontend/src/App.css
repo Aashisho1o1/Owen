@@ -987,6 +987,8 @@ body {
     border-top: 1px solid var(--border-light);
   }
 
+} /* <-- Add this closing brace to properly close the @media (max-width: 479px) block */
+
 @media (max-width: 479px) {
   /* ULTRA HIGH SPECIFICITY: Override chat-panel.css @media (max-width: 479px) rules */
   .chat-panel-container .chat-input-container,
