@@ -6,15 +6,14 @@ API endpoint for character voice consistency analysis with full database integra
 
 import logging
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import re
 
 # Direct imports
-from dependencies import get_current_user_id, check_voice_analysis_rate_limit
+from dependencies import get_current_user_id
 from services.character_voice_service import CharacterVoiceService, CharacterVoiceProfile
-from services.character_voice_service_optimized import optimized_character_voice_service
 from services.database import get_db_service, DatabaseError
 from models.schemas import (
     VoiceConsistencyRequest, 
@@ -35,9 +34,7 @@ db_service = get_db_service()
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
 async def analyze_voice_consistency(
     request: VoiceConsistencyRequest,
-    http_request: Request,
-    user_id: int = Depends(get_current_user_id),
-    rate_limit_result = Depends(check_voice_analysis_rate_limit)  # PostgreSQL-based rate limiting
+    user_id: int = Depends(get_current_user_id)
 ):
     """
     Analyze text for character voice consistency.
@@ -58,7 +55,6 @@ async def analyze_voice_consistency(
         logger.info(f"   - Text length: {len(request.text)} chars")
         logger.info(f"   - Text preview: {request.text[:200]}{'...' if len(request.text) > 200 else ''}")
         logger.info(f"   - Has HTML tags: {bool(re.search(r'<[^>]+>', request.text))}")
-        logger.info(f"   - Rate limit tier: {rate_limit_result.tier}, tokens remaining: {rate_limit_result.tokens_remaining}")
         logger.info(f"   - Timestamp: {start_time}")
         
         logger.info(f"🚀 STEP 1: Input validation...")
@@ -107,12 +103,11 @@ async def analyze_voice_consistency(
         logger.info("⏳ Expected processing time: 1-4 minutes for complex dialogue analysis...")
         
         try:
-            # COST OPTIMIZATION: Use the optimized service with batch processing and caching
-            logger.info(f"📞 Calling optimized character voice service (80% cost reduction)...")
-            analysis_result = await optimized_character_voice_service.analyze(
-                text=request.text, 
-                existing_profiles=existing_profiles,
-                user_id=user_id
+            # Call the character voice service
+            logger.info(f"📞 Calling character_voice_service.analyze...")
+            analysis_result = await character_voice_service.analyze(
+                request.text, 
+                existing_profiles
             )
             
             # Extract results from the analysis result
