@@ -74,11 +74,11 @@ CREATE TABLE rate_limit_config (
 INSERT INTO rate_limit_config (tier, endpoint, requests_per_minute, requests_per_hour, requests_per_day, burst_allowance)
 VALUES 
     ('free', 'chat', 10, 300, 1000, 5),
-    ('free', 'voice_analysis', 3, 50, 200, 2),
+    ('free', 'voice_analysis', 50, 500, 2000, 20),  -- ✅ FIXED: Increased from 3 to 50 per minute!
     ('free', 'grammar', 20, 500, 2000, 10),
     ('free', 'auth', 5, 20, 100, 3),
     ('premium', 'chat', 50, 1500, 10000, 20),
-    ('premium', 'voice_analysis', 15, 300, 2000, 10),
+    ('premium', 'voice_analysis', 100, 1000, 10000, 50),  -- ✅ Also increased premium limits
     ('premium', 'grammar', 100, 2000, 20000, 50),
     ('premium', 'auth', 20, 100, 500, 10);
 

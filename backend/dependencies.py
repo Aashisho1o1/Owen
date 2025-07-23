@@ -66,7 +66,7 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Could not validate credentials due to a server error.",
-        )
+        ) 
 
 # New PostgreSQL-based rate limiting dependency
 async def check_rate_limit_dependency(

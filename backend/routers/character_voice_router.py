@@ -6,13 +6,13 @@ API endpoint for character voice consistency analysis with full database integra
 
 import logging
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import re
 
 # Direct imports
-from dependencies import get_current_user_id
+from dependencies import get_current_user_id, check_voice_analysis_rate_limit
 from services.character_voice_service import CharacterVoiceService, CharacterVoiceProfile
 from services.database import get_db_service, DatabaseError
 from models.schemas import (
@@ -27,29 +27,47 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/api/character-voice", tags=["character-voice"])
 
-# Initialize services
-character_voice_service = CharacterVoiceService()
-db_service = get_db_service()
+# Lazy initialization to prevent import-time errors
+character_voice_service = None
+db_service = None
+
+def get_character_voice_service() -> CharacterVoiceService:
+    """Lazily initialize and return CharacterVoiceService instance"""
+    global character_voice_service
+    if character_voice_service is None:
+        character_voice_service = CharacterVoiceService()
+    return character_voice_service
+
+def get_db_service_instance():
+    """Lazily initialize and return database service instance"""
+    global db_service
+    if db_service is None:
+        db_service = get_db_service()
+    return db_service
 
 @router.post("/analyze", response_model=VoiceConsistencyResponse)
 async def analyze_voice_consistency(
     request: VoiceConsistencyRequest,
-    user_id: int = Depends(get_current_user_id)
+    http_request: Request,
+    user_id: int = Depends(get_current_user_id),
+    rate_limit_result = Depends(check_voice_analysis_rate_limit)  # ✅ FIXED: Added missing rate limiting!
 ):
     """
     Analyze text for character voice consistency.
     
     This endpoint:
-    1. Extracts dialogue from the provided text
-    2. Loads existing character profiles from database
-    3. Performs AI-powered voice consistency analysis
-    4. Updates character profiles in database
-    5. Returns detailed analysis results
+    1. ✅ APPLIES RATE LIMITING (now fixed!)
+    2. Extracts dialogue from the provided text
+    3. Loads existing character profiles from database
+    4. Performs AI-powered voice consistency analysis
+    5. Updates character profiles in database
+    6. Returns detailed analysis results
     """
     start_time = datetime.now()
     
     try:
         logger.info(f"🎭 === VOICE ANALYSIS REQUEST START ===")
+        logger.info(f"🛡️ Rate limit check passed for user {user_id} (tier: {rate_limit_result.tier}, tokens remaining: {rate_limit_result.tokens_remaining})")
         logger.info(f"🔍 Request Details:")
         logger.info(f"   - User ID: {user_id}")
         logger.info(f"   - Text length: {len(request.text)} chars")
@@ -71,6 +89,7 @@ async def analyze_voice_consistency(
         existing_profiles = {}
         try:
             logger.info(f"🔍 Checking database service availability...")
+            db_service = get_db_service_instance()
             if db_service.is_available():
                 logger.info(f"✅ Database service available, loading profiles...")
                 profiles_data = await db_service.get_character_profiles(user_id)
@@ -105,7 +124,8 @@ async def analyze_voice_consistency(
         try:
             # Call the character voice service
             logger.info(f"📞 Calling character_voice_service.analyze...")
-            analysis_result = await character_voice_service.analyze(
+            character_service = get_character_voice_service()
+            analysis_result = await character_service.analyze(
                 request.text, 
                 existing_profiles
             )
@@ -139,6 +159,7 @@ async def analyze_voice_consistency(
         # Update character profiles in database
         updated_count = 0
         try:
+            db_service = get_db_service_instance()
             if db_service.is_available() and results:
                 logger.info(f"💾 Saving {len(results)} character profiles to database")
                 
@@ -233,6 +254,7 @@ async def get_character_profiles(
         logger.info(f"📚 Fetching character profiles for user {user_id}")
         
         profiles = []
+        db_service = get_db_service_instance()
         if db_service.is_available():
             profiles_data = await db_service.get_character_profiles(user_id)
             
@@ -267,6 +289,7 @@ async def delete_character_profile(
     try:
         logger.info(f"🗑️ Deleting character profile '{character_name}' for user {user_id}")
         
+        db_service = get_db_service_instance()
         if db_service.is_available():
             success = await db_service.delete_character_profile(user_id, character_name)
         if not success:
@@ -299,6 +322,7 @@ async def update_character_profile(
     try:
         logger.info(f"📝 Updating character profile '{character_name}' for user {user_id}")
         
+        db_service = get_db_service_instance()
         if db_service.is_available():
             await db_service.upsert_character_profile(
                 user_id=user_id,
