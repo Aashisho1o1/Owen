@@ -10,7 +10,6 @@ import DocumentEditor from './pages/DocumentEditor';
 import { WritingWorkspace } from './components/WritingWorkspace';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
-import './styles/chat-input-width-fix.css';
 
 // Light theme overrides for MVP
 const lightThemeOverrides = `
