@@ -227,7 +227,10 @@
 }
 
 .chat-section {
-  width: 400px;
+  /* Let flexbox & media queries decide the size instead of a fixed px width */
+  width: 40%;           /* desktop: take 40 % of workspace */
+  min-width: 320px;     /* never shrink below a phone in portrait */
+  max-width: 640px;     /* don’t exceed a nice readable column */
   background: rgba(255, 255, 255, 0.97); /* Slightly more opaque for contrast */
   backdrop-filter: blur(10px);
   border-left: 1px solid #eeebe6; /* Consistent warm border */
