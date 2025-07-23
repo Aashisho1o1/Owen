@@ -217,7 +217,7 @@
 }
 
 .editor-section.with-chat {
-  width: 60%;
+  width: 50%;           /* reduced to 50% to give chat more space */
   padding-right: 16px; /* Reduced right padding when chat is visible */
 }
 
@@ -228,9 +228,9 @@
 
 .chat-section {
   /* Let flexbox & media queries decide the size instead of a fixed px width */
-  width: 40%;           /* desktop: take 40 % of workspace */
+  width: 50%;           /* increased to 50% for much more chat space */
   min-width: 320px;     /* never shrink below a phone in portrait */
-  max-width: 640px;     /* don’t exceed a nice readable column */
+  max-width: 800px;     /* increased for wider chat input */     /* don’t exceed a nice readable column */
   background: rgba(255, 255, 255, 0.97); /* Slightly more opaque for contrast */
   backdrop-filter: blur(10px);
   border-left: 1px solid #eeebe6; /* Consistent warm border */
@@ -949,4 +949,16 @@ body.light-theme .highlightable-editor,
   background: #fee2e2 !important;
   color: #991b1b !important;
   border-color: #ef4444;
+}
+
+/* ============= CHAT INPUT WIDTH OPTIMIZATIONS ============= */
+
+/* MINIMAL FIX: Just remove margins and hide mode indicator for more space */
+.chat-mode-indicator {
+  display: none !important;      /* hide to save vertical space */
+}
+
+.enhanced-chat-input {
+  margin: 0 !important;          /* remove default margins for full width */
+  width: 100% !important;        /* use full available width */
 } 
