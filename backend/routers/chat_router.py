@@ -3,14 +3,16 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import json
 import re
 import logging
+import time
 from typing import List, Optional
 
 # Import security services
 from services.auth_service import auth_service, AuthenticationError
 from services.validation_service import input_validator
 
-# Import the new production rate limiter
-from services.rate_limiter import check_rate_limit
+# Import the new PostgreSQL-based rate limiter and caching
+from dependencies import check_chat_rate_limit
+from services.infra_service import cache_provider, CacheType, usage_analytics, UsageMetrics
 
 # Change relative imports to absolute imports
 from models.schemas import (
@@ -37,6 +39,40 @@ def get_character_voice_service() -> CharacterVoiceService:
     if character_voice_service is None:
         character_voice_service = CharacterVoiceService()
     return character_voice_service
+
+# Cached LLM generation function
+@cache_provider.cached_call(CacheType.CHAT)
+async def cached_llm_generate(prompt: str, provider: str, user_id: int) -> str:
+    """
+    Cached wrapper for LLM generation to reduce API costs.
+    
+    This function is automatically cached by the PostgreSQL-based cache provider.
+    Cache hits will return instantly, cache misses will call the LLM and store the result.
+    
+    Args:
+        prompt: The prompt to send to the LLM
+        provider: LLM provider (Google Gemini, OpenAI GPT, etc.)
+        user_id: User ID for cache ownership and analytics
+        
+    Returns:
+        Generated response text
+    """
+    logger.info(f"💸 Cache MISS - Making expensive LLM call to {provider}")
+    
+    if provider == "Google Gemini":
+        # Format prompt for Gemini (expects list of dicts)
+        prompts = [{"role": "user", "parts": [prompt]}]
+        return await llm_service.generate_with_selected_llm(prompts, provider)
+    elif provider == "OpenAI GPT":
+        # Format prompt for OpenAI (simple string)
+        return await llm_service.generate_with_selected_llm(prompt, provider)
+    else:
+        # Anthropic Claude or other
+        response_result = await llm_service.generate_with_selected_llm(prompt, provider)
+        if isinstance(response_result, dict) and "text" in response_result:
+            return response_result["text"]
+        else:
+            return str(response_result)
 
 
 logger = logging.getLogger(__name__)
@@ -70,18 +106,17 @@ def build_conversation_context(chat_history: List[ChatMessage], max_history: int
 async def chat(
     chat_request: ChatRequest,
     http_request: Request,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id),
+    rate_limit_result = Depends(check_chat_rate_limit)  # New PostgreSQL-based rate limiting
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
         # ENHANCED DEBUGGING: Log authentication success
         logger.info(f"🔐 Authentication successful for user {user_id}")
         
-        # PRODUCTION RATE LIMITING: Use distributed rate limiter
-        # This prevents abuse across multiple Railway instances
-        await check_rate_limit(http_request, "chat")
-        
-        logger.info(f"🛡️ Rate limit check passed for user {user_id}")
+        # PRODUCTION RATE LIMITING: Now handled by dependency injection
+        # The new PostgreSQL-based rate limiter works across multiple Railway instances
+        logger.info(f"🛡️ Rate limit check passed for user {user_id} (tier: {rate_limit_result.tier}, tokens remaining: {rate_limit_result.tokens_remaining})")
         
         # ENHANCED DEBUGGING: Log LLM service availability
         available_providers = llm_service.get_available_providers()
@@ -172,35 +207,29 @@ async def chat(
         response_text = None
         thinking_trail = None
 
-        logger.info(f"🚀 Generating response with {validated_llm_provider}...")
+        logger.info(f"🚀 Generating response with {validated_llm_provider} (with intelligent caching)...")
         
         try:
-            if validated_llm_provider == "Google Gemini":
-                # Format prompt for Gemini (expects list of dicts)
-                prompts = [
-                    {"role": "user", "parts": [final_prompt]}
-                ]
-                logger.info("🔧 Formatted prompt for Gemini")
-                response_text = await llm_service.generate_with_selected_llm(prompts, validated_llm_provider)
-                logger.info(f"✅ Gemini response received (length: {len(response_text) if response_text else 0} chars)")
-            elif validated_llm_provider == "OpenAI GPT":
-                # Format prompt for OpenAI (simple string)
-                logger.info("🔧 Formatted prompt for OpenAI")
-                response_text = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
-                logger.info(f"✅ OpenAI response received (length: {len(response_text) if response_text else 0} chars)")
-            else: # Anthropic Claude or other
-                logger.info(f"🔧 Formatted prompt for {validated_llm_provider}")
-                response_result = await llm_service.generate_with_selected_llm(final_prompt, validated_llm_provider)
-                
-                if isinstance(response_result, dict) and "text" in response_result:
-                    response_text = response_result["text"]
-                    thinking_trail = response_result.get("thinking_trail")
-                    logger.info(f"✅ {validated_llm_provider} response received (length: {len(response_text) if response_text else 0} chars)")
-                else:
-                    logger.error(f"❌ Unexpected response_result structure from {validated_llm_provider}: {type(response_result)}")
-                    # Avoid circular reference by converting to string safely
-                    response_text = json.dumps({"dialogue_response": f"Error: Received unexpected response structure from LLM service for {validated_llm_provider}."})
-                    thinking_trail = "Error retrieving thinking trail."
+            # COST OPTIMIZATION: Use cached LLM call to reduce API costs
+            start_time = time.time()
+            response_text = await cached_llm_generate(final_prompt, validated_llm_provider, user_id)
+            processing_time_ms = int((time.time() - start_time) * 1000)
+            
+            logger.info(f"✅ Response received (length: {len(response_text) if response_text else 0} chars, time: {processing_time_ms}ms)")
+            
+            # Record usage analytics for cost tracking
+            estimated_tokens = len(final_prompt + (response_text or "")) // 4  # Rough estimate
+            estimated_cost_cents = max(1, estimated_tokens // 100)  # Rough cost estimate
+            
+            await usage_analytics.record_usage(UsageMetrics(
+                user_id=user_id,
+                endpoint="chat",
+                llm_provider=validated_llm_provider,
+                tokens_used=estimated_tokens,
+                estimated_cost_cents=estimated_cost_cents,
+                processing_time_ms=processing_time_ms,
+                cache_hit=processing_time_ms < 1000  # If response was very fast, likely a cache hit
+            ))
         
         except Exception as llm_error:
             logger.error(f"❌ LLM Generation Error with {validated_llm_provider}: {llm_error}")
@@ -402,14 +431,13 @@ async def get_user_preferences(http_request: Request, user_id: int = Depends(get
 async def generate_suggestions(
     suggestion_request: ChatRequest,
     http_request: Request,
-    user_id: int = Depends(get_current_user_id)
+    user_id: int = Depends(get_current_user_id),
+    rate_limit_result = Depends(check_chat_rate_limit)  # Use chat limits for suggestions
 ):
     """Generate multiple actionable suggestions for selected text in Co-Edit mode"""
     try:
-        # PRODUCTION RATE LIMITING: Stricter limits for expensive AI suggestions
-        await check_rate_limit(http_request, "chat")  # Use chat limits for suggestions
-        
-        logger.info(f"🛡️ Suggestions rate limit check passed for user {user_id}")
+        # PRODUCTION RATE LIMITING: Now handled by dependency injection
+        logger.info(f"🛡️ Suggestions rate limit check passed for user {user_id} (tokens remaining: {rate_limit_result.tokens_remaining})")
         
         # Validate inputs
         validated_message = input_validator.validate_chat_message(suggestion_request.message)

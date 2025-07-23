@@ -92,6 +92,7 @@ routers_to_import = [
     ("routers.indexing_router", "indexing_router"),
     ("routers.story_generator_router", "story_generator_router"),
     ("routers.character_voice_router", "character_voice_router"),
+    ("routers.cost_optimization_router", "cost_optimization_router"),
 ]
 
 imported_routers = []
