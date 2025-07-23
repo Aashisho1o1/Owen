@@ -748,152 +748,14 @@ body {
   background: var(--bg-primary);
 }
 
-/* ============= ENHANCED MOBILE CHAT INPUT - FIXING SUBMIT BUTTON ISSUE ============= */
-
-/* CRITICAL FIX: Enhanced Chat Input Container for Mobile with Maximum Specificity */
+/* Responsive layout adjustments for tablets */
 @media (max-width: 768px) {
-  /* Better responsive chat panel width allocation */
   .writing-interface.with-chat .editor-panel {
-    width: 50% !important;
+    width: 50%;
   }
   
   .chat-panel {
-    width: 50% !important;
-  }
-  
-  .chat-panel .chat-input-container,
-  .chat-container .chat-input-container,
-  .chat-input-container {
-    padding: 2px !important;
-    background: var(--bg-elevated);
-    border-top: 2px solid var(--border-medium);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-    z-index: 10;
-  }
-
-  .chat-panel .chat-input-form,
-  .chat-container .chat-input-form,
-  .chat-input-form {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px !important;
-    width: 100%;
-    background: var(--chat-input-bg);
-    border: 2px solid var(--chat-input-border);
-    border-radius: var(--radius-xl);
-    padding: 2px !important;
-    transition: all var(--transition-normal);
-  }
-
-  .chat-input-form:focus-within {
-    border-color: var(--chat-input-focus);
-    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
-  }
-
-  .input-wrapper {
-    flex: 1;
-    position: relative;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-  }
-
-  .chat-textarea {
-    width: 100%;
-    min-height: var(--input-height-md);
-    max-height: 120px;
-    padding: 10px;
-    border: none;
-    outline: none;
-    resize: vertical;
-    background: transparent;
-    color: var(--text-primary);
-    font-size: var(--text-base);
-    line-height: 1.5;
-    font-family: var(--font-sans);
-    border-radius: var(--radius-md);
-  }
-
-  .chat-textarea::placeholder {
-    color: var(--text-tertiary);
-    font-style: italic;
-  }
-
-  .chat-textarea:focus {
-    outline: none;
-    box-shadow: none;
-  }
-
-  /* CRITICAL: Enhanced Send Button - Always Visible and Touchable */
-  .send-button,
-  .chat-send-button,
-  .chat-input-form button[type="submit"] {
-    flex: 0 0 auto;
-    min-height: var(--touch-target-min);
-    min-width: 40px;
-    padding: 10px;
-    background: var(--chat-send-gradient);
-    color: var(--text-inverse);
-    border: none;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    font-weight: var(--font-semibold);
-    font-size: var(--text-sm);
-    transition: all var(--transition-normal);
-    box-shadow: var(--shadow-md);
-    white-space: nowrap;
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    position: relative;
-    z-index: 2;
-  }
-
-  .send-button:hover:not(:disabled),
-  .chat-send-button:hover:not(:disabled),
-  .chat-input-form button[type="submit"]:hover:not(:disabled) {
-    background: var(--button-gradient-hover);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .send-button:disabled,
-  .chat-send-button:disabled,
-  .chat-input-form button[type="submit"]:disabled {
-    background: var(--bg-tertiary);
-    color: var(--text-tertiary);
-    cursor: not-allowed;
-    opacity: 0.6;
-    transform: none;
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* Input footer improvements */
-  .input-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: var(--space-2);
-    padding: 0 var(--space-1);
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-
-  .input-helper-text {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    font-style: italic;
-    flex: 1;
-  }
-
-  .character-count {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    font-weight: var(--font-medium);
+    width: 50%;
   }
 }
 
@@ -942,184 +804,23 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-/* MAXIMUM SPECIFICITY OVERRIDE: Force chat input width optimization */
-@media (max-width: 768px) {
-  .chat-panel .chat-input-container,
-  .chat-container .chat-input-container,
-  .chat-input-container {
-    padding: 2px !important;
-  }
 
-  .chat-panel .chat-input-form,
-  .chat-container .chat-input-form,  
-  .chat-input-form {
-    gap: 2px !important;
-    padding: 2px !important;
-  }
 
-  .chat-panel .input-wrapper,
-  .chat-container .input-wrapper,
-  .input-wrapper {
-    padding: 0 !important;
-    gap: 2px !important;
-  }
-}
-
-/* ============= CRITICAL: Chat Input Width Optimization Override ============= */
-/* These rules MUST come last to override chat-panel.css conflicting styles */
-/* This provides maximum width for mobile typing by reducing all unnecessary padding/gaps */
-
+/* Mobile layout optimization */
 @media (max-width: 479px) {
-  /* Mobile: Stack vertically for very small screens to maximize chat input width */
   .writing-interface.with-chat {
     flex-direction: column;
   }
   
   .writing-interface.with-chat .editor-panel {
-    width: 100% !important;
+    width: 100%;
     height: 60%;
   }
   
   .chat-panel {
-    width: 100% !important;
+    width: 100%;
     height: 40%;
     border-left: none;
     border-top: 1px solid var(--border-light);
-  }
-
-} /* <-- Add this closing brace to properly close the @media (max-width: 479px) block */
-
-@media (max-width: 479px) {
-  /* ULTRA HIGH SPECIFICITY: Override chat-panel.css @media (max-width: 479px) rules */
-  .chat-panel-container .chat-input-container,
-  .chat-container .chat-input-container,
-  .chat-input-container {
-    padding: 2px !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    position: sticky !important;
-    bottom: 0 !important;
-  }
-
-  .chat-panel-container .chat-input-form,
-  .chat-container .chat-input-form,
-  .chat-input-form {
-    gap: 2px !important;
-    padding: 2px !important;
-    margin: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  .chat-panel-container .input-wrapper,
-  .chat-container .input-wrapper,
-  .input-wrapper {
-    gap: 2px !important;
-    padding: 2px !important;
-    margin: 0 !important;
-    display: flex !important;
-    align-items: flex-end !important;
-    background: var(--bg-primary) !important;
-    border: 2px solid var(--border-medium) !important;
-    border-radius: var(--radius-lg) !important;
-    box-shadow: var(--shadow-sm) !important;
-  }
-
-  /* Ensure the textarea takes maximum available width */
-  .chat-panel-container .chat-textarea,
-  .chat-container .chat-textarea,
-  .chat-textarea,
-  .chat-panel-container .chat-input-form input,
-  .chat-container .chat-input-form input,
-  .chat-input-form input,
-  .chat-panel-container .chat-input-form textarea,
-  .chat-container .chat-input-form textarea,
-  .chat-input-form textarea {
-    flex: 1 !important;
-    min-height: 40px !important;
-    max-height: 120px !important;
-    font-size: var(--text-base) !important;
-    border: none !important;
-    background: transparent !important;
-    padding: var(--space-2) !important;
-    resize: none !important;
-    margin: 0 !important;
-  }
-
-  /* Ensure send button is compact but touchable */
-  .chat-panel-container .send-button,
-  .chat-container .send-button,
-  .send-button,
-  .chat-panel-container .chat-send-button,
-  .chat-container .chat-send-button,
-  .chat-send-button,
-  .chat-panel-container .chat-input-form button[type="submit"],
-  .chat-container .chat-input-form button[type="submit"],
-  .chat-input-form button[type="submit"] {
-    flex: 0 0 auto !important;
-    min-height: 40px !important;
-    min-width: 40px !important;
-    padding: var(--space-2) !important;
-    margin: 0 !important;
-    background: var(--primary-600) !important;
-    color: var(--text-inverse) !important;
-    border: none !important;
-    border-radius: var(--radius-lg) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    transition: all var(--transition-normal) !important;
-    box-shadow: var(--shadow-md) !important;
-  }
-}
-
-@media (max-width: 768px) {
-  /* MAXIMUM SPECIFICITY: Override chat-panel.css mobile rules for larger mobile screens */
-  .chat-panel-container .chat-input-container,
-  .chat-container .chat-input-container,
-  .chat-input-container {
-    padding: 2px !important;
-    margin: 0 !important;
-  }
-
-  .chat-panel-container .chat-input-form,
-  .chat-container .chat-input-form,
-  .chat-input-form {
-    gap: 2px !important;
-    padding: 2px !important;
-    margin: 0 !important;
-  }
-
-  .chat-panel-container .input-wrapper,
-  .chat-container .input-wrapper,
-  .input-wrapper {
-    gap: 2px !important;
-    padding: 2px !important;
-    margin: 0 !important;
-  }
-
-  /* Ensure the textarea takes maximum available width */
-  .chat-panel-container .chat-textarea,
-  .chat-container .chat-textarea,
-  .chat-textarea {
-    padding: 8px !important;
-    margin: 0 !important;
-  }
-
-  /* Ensure send button is compact but touchable */
-  .chat-panel-container .send-button,
-  .chat-container .send-button,
-  .send-button,
-  .chat-panel-container .chat-send-button,
-  .chat-container .chat-send-button,
-  .chat-send-button,
-  .chat-panel-container .chat-input-form button[type="submit"],
-  .chat-container .chat-input-form button[type="submit"],
-  .chat-input-form button[type="submit"] {
-    padding: 8px !important;
-    margin: 0 !important;
-    min-width: 44px !important;
-    flex-shrink: 0 !important;
   }
 } 

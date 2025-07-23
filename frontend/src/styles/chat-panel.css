@@ -57,7 +57,7 @@
 .chat-input-container {
   background: #fefefe !important; /* Force light background */
   border-top: 1px solid #e5e7eb;
-  padding: var(--space-3);
+  padding: 8px !important; /* Reduced from var(--space-3) for more typing space */
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(12px);
   flex-shrink: 0;
@@ -465,7 +465,7 @@
   }
 
   .chat-input-container {
-    padding: var(--space-2);
+    padding: 4px !important; /* Maximum reduction for mobile width */
     border-radius: 0;
     position: sticky;
     bottom: 0;
@@ -478,17 +478,17 @@
   .chat-input-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 4px; /* Reduced from var(--space-2) for more compact layout */
   }
 
   .input-wrapper {
     display: flex;
     align-items: flex-end;
-    gap: var(--space-2);
+    gap: 6px; /* Reduced from var(--space-2) for more width */
     background: var(--bg-primary);
     border: 2px solid var(--border-medium);
     border-radius: var(--radius-lg);
-    padding: var(--space-2);
+    padding: 6px; /* Reduced from var(--space-2) for more width */
     box-shadow: var(--shadow-sm);
   }
 
