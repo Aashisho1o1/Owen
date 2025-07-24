@@ -28,6 +28,8 @@ export interface UseChatOptions {
   editorContent: string;
   selectedLLM: string;
   aiMode: string;
+  folderScopeEnabled?: boolean; // Premium Feature 1
+  voiceGuardEnabled?: boolean; // Premium Feature 2
   setApiGlobalError?: React.Dispatch<React.SetStateAction<string | null>>;
   userPreferences?: UserPreferences;
   feedbackOnPrevious?: string;
@@ -73,6 +75,8 @@ export const useChat = ({
   editorContent,
   selectedLLM,
   aiMode,
+  folderScopeEnabled = false, // Default to false for cost control
+  voiceGuardEnabled = false, // Default to false for cost control
   setApiGlobalError,
   userPreferences,
   feedbackOnPrevious,
@@ -81,22 +85,25 @@ export const useChat = ({
   onAuthRequired,
   setHighlightedTextMessageIndex,
 }: UseChatOptions): UseChatReturn => {
-  // Track which highlighted text has already been used so that
-  // we only attach a given highlight to the very first follow-up question.
-  const lastHighlightTextRef = useRef<string | null>(null);
+  // Core chat state
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [thinkingTrail, setThinkingTrail] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState('');
   const [streamIndex, setStreamIndex] = useState(0);
-  const [fullResponse, setFullResponse] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const [fullResponse, setFullResponse] = useState('');
+  
+  // Request management to prevent stale responses
+  const currentRequestId = useRef<number>(0);
+  const lastHighlightTextRef = useRef<string | null>(null);
 
+  // Auto-set initial welcome message when persona changes
   useEffect(() => {
-    // Initialize with a welcome message if no initial messages are provided
-    // Update the welcome message when persona or focus changes
-    if (initialMessages.length === 0) {
+    // Only update if we don't have messages or need to refresh persona
+    if (authorPersona && helpFocus) {
+      // Create a personalized welcome message based on user preferences
       const englishVariantLabel = userPreferences?.english_variant === 'indian' ? 'Indian English' :
                                  userPreferences?.english_variant === 'british' ? 'British English' :
                                  userPreferences?.english_variant === 'american' ? 'American English' : '';
@@ -149,6 +156,18 @@ export const useChat = ({
   const handleSendMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
     
+    // If already streaming, cancel the previous request
+    if (isStreaming) {
+      console.log('🔄 New message while streaming - canceling previous request');
+      currentRequestId.current += 1; // Invalidate previous request
+      setIsStreaming(false);
+      setStreamText('');
+      setStreamIndex(0);
+    }
+    
+    // Capture current request ID for this specific request
+    const requestId = currentRequestId.current;
+    
     setIsStreaming(true);
     setIsThinking(true);
     setThinkingTrail('');
@@ -166,6 +185,7 @@ export const useChat = ({
         : {}),
     } as ChatMessage;
     
+    // Add user message immediately - this won't be affected by request cancellation
     setMessages(prev => {
       const newMessages = [...prev, userMessage];
       
@@ -181,6 +201,7 @@ export const useChat = ({
     
     try {
       logger.info('📤 Sending chat request:', {
+        requestId,
         messageLength: message.length,
         editorContentLength: editorContent.length,
         authorPersona,
@@ -206,7 +227,10 @@ export const useChat = ({
         highlighted_text: isFirstHighlightUse ? highlightedText || "" : "",
         highlight_id: isFirstHighlightUse ? highlightedTextId || "" : "",
         english_variant: "US",
-        ai_mode: aiMode
+        ai_mode: aiMode,
+        // Premium Features (opt-in)
+        folder_scope: folderScopeEnabled,
+        voice_guard: voiceGuardEnabled
       };
       
       // CRITICAL FIX: Use suggestions endpoint for Co-Edit mode with highlighted text
@@ -233,6 +257,15 @@ export const useChat = ({
         response = await api.sendChatMessage(requestPayload);
       }
 
+      // Check if this request is still valid (user hasn't sent a new message)
+      if (requestId !== currentRequestId.current) {
+        console.log('🚫 Request cancelled - newer request in progress', { 
+          currentRequestId: currentRequestId.current, 
+          thisRequestId: requestId 
+        });
+        return; // Silently abandon this response
+      }
+
       console.log('📥 Received chat response:', response);
       
       setIsThinking(false);
@@ -240,18 +273,56 @@ export const useChat = ({
       if (response && response.dialogue_response && response.dialogue_response.trim()) {
         const finalResponse = response.dialogue_response;
         
-        // FIXED: Add the assistant message immediately to ensure correct ordering
+        // Create placeholder assistant message immediately
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: finalResponse,
+          content: '', // Start empty for streaming effect
           timestamp: new Date(),
         };
-        setMessages(prev => [...prev, assistantMessage]);
+        
+        // Add placeholder message and remember its index
+        let assistantMessageIndex = -1;
+        setMessages(prev => {
+          const newMessages = [...prev, assistantMessage];
+          assistantMessageIndex = newMessages.length - 1;
+          return newMessages;
+        });
         
         setFullResponse(finalResponse);
         setIsStreaming(true); // Start streaming the response
         setStreamIndex(0); // Reset stream index
         setThinkingTrail(response.thinking_trail || null);
+        
+        // Update the placeholder message progressively during streaming
+        const updatePlaceholderMessage = (content: string) => {
+          setMessages(prev => prev.map((msg, index) => 
+            index === assistantMessageIndex 
+              ? { ...msg, content } 
+              : msg
+          ));
+        };
+        
+        // Set up progressive message updates
+        let streamingIndex = 0;
+        const streamingInterval = setInterval(() => {
+          if (streamingIndex >= finalResponse.length || requestId !== currentRequestId.current) {
+            clearInterval(streamingInterval);
+            if (requestId === currentRequestId.current) {
+              // Final update with complete message
+              updatePlaceholderMessage(finalResponse);
+              setIsStreaming(false);
+              setStreamText('');
+              setStreamIndex(0);
+            }
+            return;
+          }
+          
+          const typingSpeed = Math.random() * 30 + 20;
+          const currentSlice = finalResponse.substring(0, streamingIndex + 1);
+          updatePlaceholderMessage(currentSlice);
+          setStreamText(currentSlice);
+          streamingIndex++;
+        }, 50); // Faster updates for smoother streaming
         
         // CRITICAL: Dispatch suggestions to ChatContext if available
         if (response.suggestions && response.has_suggestions) {
@@ -273,9 +344,16 @@ export const useChat = ({
           { role: 'assistant', content: fallbackMessage }
         ]);
         setThinkingTrail('Empty response received - using fallback');
+        setIsStreaming(false);
       }
 
     } catch (error: unknown) {
+      // Check if request is still valid before handling error
+      if (requestId !== currentRequestId.current) {
+        console.log('🚫 Error handling cancelled - newer request in progress');
+        return;
+      }
+      
       logger.error('❌ Error sending message in useChat:', error);
       setIsThinking(false);
       setIsStreaming(false);
@@ -389,7 +467,7 @@ export const useChat = ({
         setApiGlobalError(`Backend connection issue (${errorType}). Backend URL: ${CHAT_CONFIG.apiUrl}. Please check if the server is running.`);
       }
     }
-  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId, aiMode]);
+  }, [messages, editorContent, authorPersona, helpFocus, selectedLLM, userPreferences, feedbackOnPrevious, highlightedText, highlightedTextId, aiMode, isStreaming]);
 
   const handleSaveCheckpoint = useCallback(async () => {
     logger.log("Save Checkpoint clicked");

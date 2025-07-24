@@ -81,6 +81,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     setEditorContent: contextOnChange
   } = useEditorContext();
   const { isAuthenticated } = useAuth();
+  const { voiceGuardEnabled } = useChatContext();
 
   // Use props if provided, otherwise use context
   const contentProp = content !== undefined ? content : contextContent;
@@ -237,7 +238,8 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       onChangeProp(newContent);
       
       // Only run voice analysis for authenticated users with sufficient content
-      if (isAuthenticated && newContent && newContent.trim().length > 50) {
+      // CONDITIONAL LOGIC: Only run voice analysis if VoiceGuard is enabled
+      if (isAuthenticated && voiceGuardEnabled && newContent && newContent.trim().length > 50) {
         try {
           // Get plain text for voice analysis (not HTML)
           const plainText = editor.getText();

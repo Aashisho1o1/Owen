@@ -54,6 +54,11 @@ const ChatPane: React.FC = () => {
     // AI interaction mode
     aiMode,
     setAiMode,
+    // Premium features
+    folderScopeEnabled,
+    setFolderScopeEnabled,
+    voiceGuardEnabled,
+    setVoiceGuardEnabled,
     // Text highlighting
     highlightedText,
     highlightedTextMessageIndex,
@@ -122,10 +127,14 @@ const ChatPane: React.FC = () => {
         helpFocus={helpFocus}
         selectedLLM={selectedLLM}
         aiMode={aiMode}
+        folderScopeEnabled={folderScopeEnabled}
+        voiceGuardEnabled={voiceGuardEnabled}
         onAuthorPersonaChange={setAuthorPersona}
         onHelpFocusChange={setHelpFocus}
         onLLMChange={setSelectedLLM}
         onAiModeChange={setAiMode}
+        onFolderScopeChange={setFolderScopeEnabled}
+        onVoiceGuardChange={setVoiceGuardEnabled}
       />
       
       {/* Messages Container - Organism Component */}

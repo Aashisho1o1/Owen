@@ -47,10 +47,14 @@ interface ChatHeaderProps {
   helpFocus: string;
   selectedLLM: string;
   aiMode: string; // NEW: Add AI mode prop
+  folderScopeEnabled: boolean; // Premium Feature 1
+  voiceGuardEnabled: boolean; // Premium Feature 2
   onAuthorPersonaChange: (persona: string) => void;
   onHelpFocusChange: (focus: string) => void;
   onLLMChange: (llm: string) => void;
   onAiModeChange: (mode: string) => void; // NEW: Add AI mode change handler
+  onFolderScopeChange: (enabled: boolean) => void; // Premium Feature 1 handler
+  onVoiceGuardChange: (enabled: boolean) => void; // Premium Feature 2 handler
 }
 
 /**
@@ -64,90 +68,228 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   helpFocus,
   selectedLLM,
   aiMode, // NEW
+  folderScopeEnabled, // Premium Feature 1
+  voiceGuardEnabled, // Premium Feature 2
   onAuthorPersonaChange,
   onHelpFocusChange,
   onLLMChange,
-  onAiModeChange // NEW
+  onAiModeChange, // NEW
+  onFolderScopeChange, // Premium Feature 1 handler
+  onVoiceGuardChange // Premium Feature 2 handler
 }) => {
   return (
-    <div className="chat-header">
-      <div className="chat-title">
-        <span className="title-icon">💬</span>
-        AI Writing Assistant
-        <UnhighlightButton className="unhighlight-in-header" />
-      </div>
-      
-      <div className="chat-controls-simple">
-        {/* NEW: AI Mode Selector - Primary control, placed first */}
-        <div className="control-select-group">
-          <label title="AI Interaction Mode">🎯</label>
-          <select 
-            value={aiMode} 
-            onChange={(e) => onAiModeChange(e.target.value)}
-            className="control-select ai-mode-select"
-            aria-label="Select AI interaction mode"
-          >
-            {AI_MODES.map((mode) => (
-              <option 
-                key={mode.value} 
-                value={mode.value}
-                title={mode.description}
-              >
-                {mode.icon} {mode.label}
-              </option>
-            ))}
-          </select>
-        </div>
+    <>
+      <style>{`
+        .premium-features-group {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          padding: 4px 0;
+          border-left: 2px solid var(--primary-500);
+          padding-left: 12px;
+          margin-left: 8px;
+        }
 
-        <div className="control-select-group">
-          <label>👤</label>
-          <select 
-            value={authorPersona} 
-            onChange={(e) => onAuthorPersonaChange(e.target.value)}
-            className="control-select"
-            aria-label="Select author persona"
-          >
-            {AUTHOR_PERSONAS.map((persona) => (
-              <option key={persona} value={persona}>
-                {persona}
-              </option>
-            ))}
-          </select>
+        .premium-toggle {
+          display: flex;
+          align-items: center;
+        }
+
+        .toggle-label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          color: var(--text-primary);
+          transition: all 0.2s ease;
+        }
+
+        .toggle-label:hover {
+          color: var(--primary-600);
+        }
+
+        .toggle-input {
+          display: none;
+        }
+
+        .toggle-slider {
+          position: relative;
+          width: 32px;
+          height: 16px;
+          background: #cbd5e0;
+          border-radius: 16px;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .toggle-slider::before {
+          content: '';
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 12px;
+          height: 12px;
+          background: white;
+          border-radius: 50%;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-input:checked + .toggle-slider {
+          background: var(--primary-500);
+        }
+
+        .toggle-input:checked + .toggle-slider::before {
+          transform: translateX(16px);
+        }
+
+        .toggle-text {
+          font-size: 0.75rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+          .premium-features-group {
+            gap: 8px;
+            margin-left: 4px;
+            padding-left: 8px;
+          }
+          
+          .toggle-text {
+            font-size: 0.7rem;
+          }
+          
+          .toggle-slider {
+            width: 28px;
+            height: 14px;
+          }
+          
+          .toggle-slider::before {
+            width: 10px;
+            height: 10px;
+          }
+          
+          .toggle-input:checked + .toggle-slider::before {
+            transform: translateX(14px);
+          }
+        }
+      `}</style>
+      
+      <div className="chat-header">
+        <div className="chat-title">
+          <span className="title-icon">💬</span>
+          AI Writing Assistant
+          <UnhighlightButton className="unhighlight-in-header" />
         </div>
         
-        <div className="control-select-group">
-          <label>📝</label>
-          <select 
-            value={helpFocus} 
-            onChange={(e) => onHelpFocusChange(e.target.value)}
-            className="control-select"
-            aria-label="Select writing focus"
-          >
-            {HELP_FOCUSES.map((focus) => (
-              <option key={focus} value={focus}>
-                {focus}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="control-select-group">
-          <label>🤖</label>
-          <select 
-            value={selectedLLM} 
-            onChange={(e) => onLLMChange(e.target.value)}
-            className="control-select"
-            aria-label="Select AI model"
-          >
-            {LLM_OPTIONS.map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
-          </select>
+        <div className="chat-controls-simple">
+          {/* NEW: AI Mode Selector - Primary control, placed first */}
+          <div className="control-select-group">
+            <label title="AI Interaction Mode">🎯</label>
+            <select 
+              value={aiMode} 
+              onChange={(e) => onAiModeChange(e.target.value)}
+              className="control-select ai-mode-select"
+              aria-label="Select AI interaction mode"
+            >
+              {AI_MODES.map((mode) => (
+                <option 
+                  key={mode.value} 
+                  value={mode.value}
+                  title={mode.description}
+                >
+                  {mode.icon} {mode.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Premium Features Toggles */}
+          <div className="premium-features-group">
+            <div className="premium-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={folderScopeEnabled}
+                  onChange={(e) => onFolderScopeChange(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+                <span className="toggle-text" title="Analyze all documents in current folder for deeper feedback">
+                  📁 FolderScope⁺
+                </span>
+              </label>
+            </div>
+            
+            <div className="premium-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={voiceGuardEnabled}
+                  onChange={(e) => onVoiceGuardChange(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+                <span className="toggle-text" title="Highlight inconsistent character voice in this draft">
+                  🛡️ VoiceGuard
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="control-select-group">
+            <label>👤</label>
+            <select 
+              value={authorPersona} 
+              onChange={(e) => onAuthorPersonaChange(e.target.value)}
+              className="control-select"
+              aria-label="Select author persona"
+            >
+              {AUTHOR_PERSONAS.map((persona) => (
+                <option key={persona} value={persona}>
+                  {persona}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="control-select-group">
+            <label>📝</label>
+            <select 
+              value={helpFocus} 
+              onChange={(e) => onHelpFocusChange(e.target.value)}
+              className="control-select"
+              aria-label="Select writing focus"
+            >
+              {HELP_FOCUSES.map((focus) => (
+                <option key={focus} value={focus}>
+                  {focus}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="control-select-group">
+            <label>🤖</label>
+            <select 
+              value={selectedLLM} 
+              onChange={(e) => onLLMChange(e.target.value)}
+              className="control-select"
+              aria-label="Select AI model"
+            >
+              {LLM_OPTIONS.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }; 
  

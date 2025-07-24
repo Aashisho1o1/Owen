@@ -57,6 +57,12 @@ export interface ChatContextType {
   aiMode: string;
   setAiMode: React.Dispatch<React.SetStateAction<string>>;
   
+  // Premium Features (opt-in)
+  folderScopeEnabled: boolean;
+  setFolderScopeEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  voiceGuardEnabled: boolean;
+  setVoiceGuardEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  
   // Text highlighting for AI feedback
   highlightedText: string;
   setHighlightedText: React.Dispatch<React.SetStateAction<string>>;
@@ -103,9 +109,42 @@ export interface ChatContextType {
   submitFeedback: (originalMessage: string, aiResponse: string, feedback: string, type: string) => Promise<void>;
   analyzeWritingSample: (sample: string) => Promise<WritingStyleProfile | null>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
+  
+  // Premium Features Status
+  premiumStatus: { folderScope?: string; voiceGuard?: string };
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
+// Simple cache for API requests to prevent duplicate calls
+const apiCache = new Map<string, { timestamp: number; data: any }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const getCacheKey = (content: string, flags: { folderScope: boolean; voiceGuard: boolean }) => {
+  const contentHash = content.slice(0, 100) + content.slice(-50); // Simple content signature
+  return `${contentHash}_${flags.folderScope}_${flags.voiceGuard}`;
+};
+
+const checkCache = (key: string) => {
+  const cached = apiCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCache = (key: string, data: any) => {
+  apiCache.set(key, { timestamp: Date.now(), data });
+  // Clean old entries periodically
+  if (apiCache.size > 50) {
+    const cutoff = Date.now() - CACHE_DURATION;
+    for (const [k, v] of apiCache.entries()) {
+      if (v.timestamp < cutoff) {
+        apiCache.delete(k);
+      }
+    }
+  }
+};
 
 export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string }> = ({ 
   children, 
@@ -124,6 +163,47 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   
   // NEW: AI Interaction Mode state
   const [aiMode, setAiMode] = useState('talk'); // Default to conversational mode
+
+  // Premium Features state (defaults to false for cost control)
+  const [folderScopeEnabled, setFolderScopeEnabled] = useState(() => {
+    const saved = localStorage.getItem('owen_folder_scope');
+    return saved ? JSON.parse(saved) : false;
+  });
+  
+  const [voiceGuardEnabled, setVoiceGuardEnabled] = useState(() => {
+    const saved = localStorage.getItem('owen_voice_guard');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // NEW: Add status messages for premium features
+  const [premiumStatus, setPremiumStatus] = useState<{
+    folderScope?: string;
+    voiceGuard?: string;
+  }>({});
+
+  // Show status when premium features are toggled
+  useEffect(() => {
+    if (folderScopeEnabled) {
+      setPremiumStatus(prev => ({ ...prev, folderScope: '📁 FolderScope active - analyzing all documents' }));
+      setTimeout(() => setPremiumStatus(prev => ({ ...prev, folderScope: undefined })), 3000);
+    }
+  }, [folderScopeEnabled]);
+
+  useEffect(() => {
+    if (voiceGuardEnabled) {
+      setPremiumStatus(prev => ({ ...prev, voiceGuard: '🛡️ VoiceGuard active - monitoring dialogue consistency' }));
+      setTimeout(() => setPremiumStatus(prev => ({ ...prev, voiceGuard: undefined })), 3000);
+    }
+  }, [voiceGuardEnabled]);
+
+  // Persist premium feature toggles to localStorage
+  useEffect(() => {
+    localStorage.setItem('owen_folder_scope', JSON.stringify(folderScopeEnabled));
+  }, [folderScopeEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('owen_voice_guard', JSON.stringify(voiceGuardEnabled));
+  }, [voiceGuardEnabled]);
 
   // Text highlighting state
   const [highlightedText, setHighlightedText] = useState<string>('');
@@ -191,6 +271,8 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     editorContent,
     selectedLLM,
     aiMode,  // NEW: Pass AI mode to useChat hook
+    folderScopeEnabled, // Premium Feature 1
+    voiceGuardEnabled, // Premium Feature 2
     setApiGlobalError,
     userPreferences,
     feedbackOnPrevious,
@@ -604,6 +686,10 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     setSelectedLLM,
     aiMode,
     setAiMode,
+    folderScopeEnabled,
+    setFolderScopeEnabled,
+    voiceGuardEnabled,
+    setVoiceGuardEnabled,
     highlightedText,
     setHighlightedText,
     highlightedTextId,
@@ -639,6 +725,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     generateTextSuggestions,
     acceptTextSuggestion,
     clearSuggestions,
+    premiumStatus, // Add premiumStatus to context value
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
