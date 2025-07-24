@@ -495,6 +495,13 @@ Character names to validate: {potential_characters}"""
             
             text = plain_text
             
+            # CRITICAL FIX: Ensure dialogue patterns have proper line breaks
+            # This fixes the issue where "sentence.Alice: dialogue" becomes "sentence.\nAlice: dialogue"
+            logger.info(f"🔧 Normalizing dialogue formatting...")
+            # Add line breaks before character dialogue patterns
+            text = re.sub(r'([.!?])\s*([A-Z][a-zA-Z\s]{1,25}):\s*"', r'\1\n\2: "', text)
+            logger.debug(f"   Dialogue formatting normalized")
+            
             logger.info(f"🚀 SERVICE STEP 2: Extracting dialogue segments...")
             try:
                 segments = self._extract_dialogue_segments(text)
