@@ -16,6 +16,7 @@ from datetime import datetime
 
 # CRITICAL FIX: Use the LLM service coordinator (same as successful contextual understanding)
 from services.llm_service import llm_service
+from services.dialogue_extractor import dialogue_extractor
 
 # Import the proper schema models
 from models.schemas import VoiceConsistencyResult
@@ -192,136 +193,40 @@ class CharacterVoiceService:
     
     def _extract_dialogue_segments(self, text: str) -> List[DialogueSegment]:
         """
-        Extract dialogue segments from text with context.
-        Handles various dialogue formats and quotation styles.
+        Extract dialogue segments from text using the dedicated dialogue extractor.
         """
         logger.info(f"🔍 Starting dialogue extraction from {len(text)} chars of text")
-        logger.debug(f"   Text sample: {text[:500]}{'...' if len(text) > 500 else ''}")
         
+        # Use the new dialogue extractor
+        dialogue_matches = dialogue_extractor.extract_dialogue(text, min_confidence=0.5)
+        
+        # Convert DialogueMatch objects to DialogueSegment objects
         segments = []
-        
-        # IMPROVED: More robust dialogue patterns that handle modern writing styles
-        patterns = [
-            # FIXED: Bold markdown dialogue format: **Speaker:** "dialogue"
-            r'\*\*([A-Z][a-zA-Z]*)\*\*:\s*"([^"]{2,})"',
+        for match in dialogue_matches:
+            # Get context before and after
+            context_start = max(0, match.start_pos - 100)
+            context_end = min(len(text), match.end_pos + 100)
             
-            # Basic quoted dialogue: "Hello" (most common)
-            r'"([^"]{2,})"',
-            # Single quoted dialogue: 'Hello'
-            r"'([^']{2,})'",
-            # Em-dash dialogue: —Hello
-            r'—([^—\n]{2,})',
-            # Dialogue with attribution: "Hello," she said.
-            r'"([^"]{2,}),"?\s*[a-zA-Z][^.!?]*[.!?]',
-            # Dialogue with speaker tags: She said, "Hello"
-            r'[A-Z][^.!?]*[.!?]?\s*"([^"]{2,})"',
-        ]
-        
-        logger.info(f"🔍 Testing {len(patterns)} improved dialogue patterns...")
-        
-        # Track found segments to avoid duplicates
-        found_segments = set()
-        
-        for i, pattern in enumerate(patterns):
-            pattern_name = [
-                'Bold markdown dialogue',  # **Speaker:** "dialogue"
-                'Basic quoted dialogue',
-                'Single quoted dialogue', 
-                'Em-dash dialogue',
-                'Dialogue with attribution',
-                'Speaker tag dialogue'
-            ][i]
+            context_before = text[context_start:match.start_pos].strip()
+            context_after = text[match.end_pos:context_end].strip()
             
-            logger.debug(f"   Testing pattern {i+1}: {pattern_name}")
-            matches = re.finditer(pattern, text, re.MULTILINE | re.DOTALL)
-            pattern_matches = 0
-            
-            for match in matches:
-                pattern_matches += 1
-                start_pos = match.start()
-                end_pos = match.end()
-                
-                # FIXED: Handle both single-group and two-group patterns
-                if len(match.groups()) == 2:
-                    # Two groups: speaker and dialogue (e.g., **Speaker:** "dialogue")
-                    speaker = match.group(1).strip()
-                    dialogue_text = match.group(2).strip()
-                elif len(match.groups()) == 1:
-                    # One group: just dialogue (infer speaker from context)
-                    dialogue_text = match.group(1).strip()
-                    speaker = None  # Will be inferred later
-                else:
-                    # Skip patterns with unexpected group count
-                    logger.debug(f"     Match {pattern_matches}: Unexpected group count {len(match.groups())}, skipping")
-                    continue
-                
-                # Skip very short or empty dialogue
-                if not dialogue_text or len(dialogue_text) < 3:
-                    logger.debug(f"     Match {pattern_matches}: Too short dialogue text, skipping")
-                    continue
-                
-                # Skip if we've already found this exact dialogue at this position
-                segment_key = (dialogue_text, start_pos)
-                if segment_key in found_segments:
-                    logger.debug(f"     Match {pattern_matches}: Duplicate dialogue, skipping")
-                    continue
-                
-                found_segments.add(segment_key)
-                
-                logger.debug(f"     Match {pattern_matches}: Found dialogue: '{dialogue_text[:50]}{'...' if len(dialogue_text) > 50 else ''}'")
-                
-                # Get context before and after
-                context_start = max(0, start_pos - 100)
-                context_end = min(len(text), end_pos + 100)
-                
-                context_before = text[context_start:start_pos].strip()
-                context_after = text[end_pos:context_end].strip()
-                
-                # Use extracted speaker or infer from context
-                if not speaker:
-                    speaker = self._infer_speaker_from_context(
-                        dialogue_text, context_before, context_after
-                    )
-                
-                logger.debug(f"     Match {pattern_matches}: Speaker: '{speaker}'")
-                
-                segment = DialogueSegment(
-                    text=dialogue_text,
-                    speaker=speaker,
-                    position=start_pos,
-                    context_before=context_before,
-                    context_after=context_after
-                )
-                
-                segments.append(segment)
-                
-            logger.debug(f"   Pattern {i+1} ({pattern_name}): Found {pattern_matches} matches")
+            segment = DialogueSegment(
+                text=match.text,
+                speaker=match.speaker or "Unknown",
+                position=match.start_pos,
+                context_before=context_before,
+                context_after=context_after
+            )
+            segments.append(segment)
         
-        # Remove duplicate segments (same dialogue text with different speakers)
-        unique_segments = []
-        seen_dialogue = set()
+        logger.info(f"✅ Dialogue extraction complete: Found {len(segments)} dialogue segments")
         
-        for segment in segments:
-            # Create a normalized version for comparison
-            normalized_dialogue = segment.text.lower().strip('.,!?;:"\'')
-            
-            if normalized_dialogue not in seen_dialogue:
-                seen_dialogue.add(normalized_dialogue)
-                unique_segments.append(segment)
-            else:
-                logger.debug(f"   Removing duplicate dialogue: '{segment.text[:30]}...'")
-        
-        logger.info(f"✅ Dialogue extraction complete: Found {len(unique_segments)} unique dialogue segments")
-        
-        if unique_segments:
+        if segments:
             logger.info(f"📝 Sample extracted dialogue:")
-            for i, segment in enumerate(unique_segments[:3]):
+            for i, segment in enumerate(segments[:3]):
                 logger.info(f"   {i+1}. Speaker: '{segment.speaker}' → '{segment.text[:80]}{'...' if len(segment.text) > 80 else ''}'")
-        else:
-            logger.warning(f"⚠️ No dialogue segments found. Text sample for debugging:")
-            logger.warning(f"   {text[:300]}{'...' if len(text) > 300 else ''}")
         
-        return unique_segments
+        return segments
     
     def _infer_speaker_from_context(self, dialogue: str, context_before: str, context_after: str) -> str:
         """
