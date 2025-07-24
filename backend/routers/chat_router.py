@@ -173,14 +173,14 @@ async def chat(
         # Get highlighted text directly from request - this is the user's selection
         highlighted_text = None
         if chat_request.highlighted_text:
-            highlighted_text = input_validator.validate_text_input(chat_request.highlighted_text)
+            highlighted_text = input_validator.validate_suggestion_text(chat_request.highlighted_text)
             logger.info(f"📝 User highlighted text received: {highlighted_text[:100]}..." if len(highlighted_text) > 100 else f"📝 User highlighted text: {highlighted_text}")
         
         # DEPRECATED: Old method of extracting from message - keeping as fallback
         elif "improve this text:" in validated_message and '"' in validated_message:
             parts = validated_message.split('"')
             if len(parts) >= 3:
-                highlighted_text = input_validator.validate_text_input(parts[1])
+                highlighted_text = input_validator.validate_suggestion_text(parts[1])
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
         # FEATURE: Build conversation context from chat history

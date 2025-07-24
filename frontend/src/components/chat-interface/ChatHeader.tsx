@@ -118,7 +118,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           position: relative;
           width: 32px;
           height: 16px;
-          background: #cbd5e0;
+          background: #9ca3af; /* Darker gray for better contrast */
+          border: 1px solid #6b7280; /* Add border for definition */
           border-radius: 16px;
           transition: all 0.2s ease;
           flex-shrink: 0;
@@ -134,11 +135,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           background: white;
           border-radius: 50%;
           transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Slightly stronger shadow */
         }
 
         .toggle-input:checked + .toggle-slider {
-          background: var(--primary-500);
+          background: #3b82f6; /* More vibrant blue */
+          border-color: #2563eb; /* Darker border for checked state */
         }
 
         .toggle-input:checked + .toggle-slider::before {
@@ -165,11 +167,19 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           .toggle-slider {
             width: 28px;
             height: 14px;
+            background: #9ca3af; /* Maintain contrast on mobile */
+            border: 1px solid #6b7280; /* Maintain border on mobile */
           }
           
           .toggle-slider::before {
             width: 10px;
             height: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Maintain shadow on mobile */
+          }
+          
+          .toggle-input:checked + .toggle-slider {
+            background: #3b82f6; /* Maintain vibrant blue on mobile */
+            border-color: #2563eb; /* Maintain border color on mobile */
           }
           
           .toggle-input:checked + .toggle-slider::before {

@@ -201,7 +201,8 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
       )}
       
       <div className="message-content">
-        {renderMessageContent(message)}
+        {/* Hide content during streaming to prevent duplication with StreamingMessage */}
+        {!isStreaming && renderMessageContent(message)}
         {isStreaming && <span className="typing-cursor">|</span>}
         
         {/* Show suggestions if available */}
