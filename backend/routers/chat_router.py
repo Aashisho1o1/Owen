@@ -337,8 +337,8 @@ async def chat(
                     )
                     
                     # Add voice consistency feedback to response if issues found
-                    if voice_results:
-                        inconsistent_characters = [r for r in voice_results if not r.is_consistent]
+                    if voice_results and 'results' in voice_results:
+                        inconsistent_characters = [r for r in voice_results['results'] if not r.is_consistent]
                         if inconsistent_characters:
                             voice_feedback = f"\n\n💬 **Voice Consistency Note:** I noticed some potential voice inconsistencies in your writing:\n"
                             for result in inconsistent_characters[:2]:  # Limit to 2 for brevity

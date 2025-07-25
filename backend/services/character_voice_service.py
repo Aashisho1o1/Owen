@@ -633,7 +633,7 @@ Character names to validate: {potential_characters}"""
             logger.error(f"   - Error occurred at: {datetime.now()}")
             logger.exception("Full service error traceback:")
             
-            # Return empty results instead of raising exception to prevent 500 errors
+            # Return a dictionary with a 'results' key to maintain a consistent return type
             logger.info(f"➡️ Returning empty results to prevent 500 error")
             return {
                 "results": [],
