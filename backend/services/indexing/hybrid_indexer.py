@@ -774,37 +774,37 @@ class HybridIndexer:
             logger.info(f"📁 ========== INTELLIGENT FOLDER SCOPE SEARCH ==========")
             logger.info(f"📁 User: {user_id} | Query: '{query}' | Max docs: {max_documents}")
             
-            # STEP 1: Check if user's documents are indexed, if not index them
-            await self._ensure_user_documents_indexed(user_id)
+            # PERFORMANCE FIX: Skip slow document indexing, go straight to search methods
+            logger.info(f"📁 PERFORMANCE MODE: Skipping document indexing to prevent timeout")
             
-            # STEP 2: Try vector semantic search first (most accurate)
-            logger.info(f"📁 STEP 1: Vector semantic search...")
-            vector_context = await self._get_vector_context_fixed(user_id, query, max_documents)
-            if vector_context:
-                logger.info(f"📁 ✅ Vector search found context: {len(vector_context)} chars")
-                return vector_context
-            else:
-                logger.info(f"📁 ⚠️ Vector search returned no results")
-            
-            # STEP 3: LLM-powered semantic search (cheaper model - Gemini Flash)
-            logger.info(f"📁 STEP 2: LLM semantic search with Gemini Flash...")
-            llm_context = await self._get_llm_semantic_context(user_id, query, max_documents)
+            # STEP 1: Try LLM semantic search first (fastest for most queries)
+            logger.info(f"📁 STEP 1: LLM semantic search with Gemini Flash (FAST)...")
+            llm_context = await asyncio.wait_for(
+                self._get_llm_semantic_context(user_id, query, max_documents),
+                timeout=45.0  # 45 second timeout for LLM search
+            )
             if llm_context:
                 logger.info(f"📁 ✅ LLM semantic search found context: {len(llm_context)} chars")
                 return llm_context
             else:
                 logger.info(f"📁 ⚠️ LLM semantic search returned no results")
             
-            # STEP 4: Last resort - simple keyword matching (much improved)
-            logger.info(f"📁 STEP 3: Enhanced keyword search as last resort...")
-            keyword_context = await self._get_enhanced_keyword_context(user_id, query, max_documents)
+            # STEP 2: Enhanced keyword search (fallback)
+            logger.info(f"📁 STEP 2: Enhanced keyword search (FALLBACK)...")
+            keyword_context = await asyncio.wait_for(
+                self._get_enhanced_keyword_context(user_id, query, max_documents),
+                timeout=30.0  # 30 second timeout for keyword search
+            )
             if keyword_context:
                 logger.info(f"📁 ✅ Enhanced keyword search found context: {len(keyword_context)} chars")
                 return keyword_context
             
-            logger.info(f"📁 ❌ No relevant context found across all methods")
+            logger.info(f"📁 ❌ No relevant context found")
             return None
                 
+        except asyncio.TimeoutError:
+            logger.warning(f"⏰ FolderScope search timed out for user {user_id} - query: '{query}'")
+            return None
         except Exception as e:
             logger.error(f"❌ Error in intelligent folder context search: {e}")
             logger.exception("Full error traceback:")
@@ -922,13 +922,13 @@ class HybridIndexer:
             return None
 
     async def _get_llm_semantic_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
-        """Use cheaper Gemini Flash model for semantic document selection"""
+        """OPTIMIZED: Use faster Gemini Flash model for semantic document selection"""
         try:
             # Import database service
             from services.database import get_db_service
             db_service = get_db_service()
             
-            # Get user's documents with more content for LLM analysis
+            # PERFORMANCE FIX: Limit to 5 recent documents for speed
             query_sql = """
             SELECT id, title, content, updated_at 
             FROM documents 
@@ -936,47 +936,43 @@ class HybridIndexer:
             AND content IS NOT NULL 
             AND LENGTH(TRIM(content)) > 50
             ORDER BY updated_at DESC 
-            LIMIT 10
+            LIMIT 5
             """
             
             documents = db_service.execute_query(query_sql, (user_id,), fetch='all')
             
             if not documents:
+                logger.info(f"📁 LLM Search: No documents found for user {user_id}")
                 return None
             
-            # Prepare document summaries for LLM analysis
+            # PERFORMANCE FIX: Create shorter summaries for faster processing
             doc_summaries = []
             for doc in documents:
                 content = doc[2]
-                # Get first 500 chars as summary
-                summary = content[:500] + "..." if len(content) > 500 else content
+                # MUCH shorter summary - just first 200 chars
+                summary = content[:200] + "..." if len(content) > 200 else content
                 doc_summaries.append({
                     'id': str(doc[0]),
                     'title': doc[1],
                     'summary': summary
                 })
             
-            # Use Gemini Flash (cheaper model) to find relevant documents
+            # PERFORMANCE FIX: Use simpler, faster prompt
             from services.llm.gemini_service import GeminiService
             
-            # Create a separate service instance with Flash model
             gemini_flash = GeminiService()
-            # Override to use the cheaper Flash model
-            import google.generativeai as genai
-            gemini_flash.model = genai.GenerativeModel('gemini-1.5-flash')
             
-            prompt = f"""Given the user query: "{query}"
+            # PERFORMANCE FIX: Much shorter prompt for faster processing
+            prompt = f"""Query: "{query}"
 
-Analyze these document summaries and select the most relevant ones that could help answer the query. Consider semantic meaning, not just keyword matching.
+Which documents contain relevant info? Return only the document numbers (1,2,3...) or "NONE".
 
-Documents:
-{chr(10).join([f"{i+1}. Title: {doc['title']}\nSummary: {doc['summary']}\n" for i, doc in enumerate(doc_summaries)])}
+{chr(10).join([f"{i+1}. {doc['title']}: {doc['summary'][:100]}..." for i, doc in enumerate(doc_summaries)])}
 
-Return ONLY the document IDs (numbers) of the most relevant documents, separated by commas. Maximum {max_documents} documents.
-If no documents are relevant, return "NONE".
+Answer:"""
 
-Response:"""
-
+            logger.info(f"📁 LLM Search: Analyzing {len(doc_summaries)} documents for relevance...")
+            
             response = await gemini_flash.generate_with_selected_llm(
                 prompts=[{"role": "user", "parts": [prompt]}],
                 provider="Google Gemini"
@@ -984,18 +980,25 @@ Response:"""
             
             # Parse LLM response
             response_text = response.strip()
+            logger.info(f"📁 LLM Response: {response_text}")
             
             if response_text == "NONE" or not response_text:
+                logger.info(f"📁 LLM Search: No relevant documents identified")
                 return None
             
-            # Extract document IDs
+            # Extract document IDs more robustly
             try:
-                selected_indices = [int(x.strip()) - 1 for x in response_text.split(',') if x.strip().isdigit()]
+                # Handle various response formats: "1,2,3" or "Documents 1, 2, 3" etc.
+                import re
+                numbers = re.findall(r'\d+', response_text)
+                selected_indices = [int(x) - 1 for x in numbers if x.isdigit()]
                 selected_indices = [i for i in selected_indices if 0 <= i < len(doc_summaries)]
             except:
+                logger.warning(f"📁 LLM Search: Failed to parse response: {response_text}")
                 return None
             
             if not selected_indices:
+                logger.info(f"📁 LLM Search: No valid document indices found")
                 return None
             
             # Get full content for selected documents
@@ -1005,10 +1008,11 @@ Response:"""
                 title = doc[1]
                 content = doc[2]
                 
-                # Extract relevant excerpt based on query
-                excerpt = self._extract_smart_excerpt(content, query)
+                # PERFORMANCE FIX: Extract smaller, more focused excerpts
+                excerpt = self._extract_smart_excerpt(content, query, max_length=600)  # Reduced from 1000
                 context_parts.append(f"**{title}**:\n{excerpt}")
             
+            logger.info(f"📁 LLM Search: Found {len(context_parts)} relevant documents")
             return "\n\n---\n\n".join(context_parts)
             
         except Exception as e:

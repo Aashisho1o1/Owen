@@ -36,6 +36,9 @@ export interface ChatRequest {
   user_preferences?: UserPreferences;
   feedback_on_previous?: string;
   english_variant?: string;
+  // CRITICAL FIX: Add missing premium feature flags
+  folder_scope?: boolean;  // Enable folder-level context search
+  voice_guard?: boolean;   // Enable voice consistency checking
 }
 
 export interface ChatResponse {

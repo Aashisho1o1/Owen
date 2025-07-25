@@ -10,7 +10,18 @@ import { ChatRequest, ChatResponse, EnhancedChatResponse, UserFeedbackRequest } 
 // === CHAT ENDPOINTS ===
 
 export const sendChatMessage = async (request: ChatRequest): Promise<ChatResponse> => {
-  const response = await apiClient.post('/api/chat/', request);
+  // CRITICAL FIX: Extended timeout for FolderScope requests
+  // Vector search + LLM semantic matching can take 2-5 minutes
+  const timeoutMs = (request.folder_scope || request.voice_guard) ? 300000 : 60000; // 5 min vs 1 min
+  
+  console.log(`🔧 Chat request timeout: ${timeoutMs/1000}s (FolderScope: ${request.folder_scope}, VoiceGuard: ${request.voice_guard})`);
+  
+  const response = await apiClient.post('/api/chat/', request, { 
+    timeout: timeoutMs,
+    headers: {
+      'X-Request-Type': request.folder_scope ? 'folder-scope' : 'standard'
+    }
+  });
   return response.data;
 };
 
@@ -47,7 +58,10 @@ export const buildChatRequest = (
   feedbackOnPrevious?: string,
   highlightedText?: string,
   highlightId?: string,
-  aiMode: string = 'talk'
+  aiMode: string = 'talk',
+  // CRITICAL FIX: Add missing premium feature parameters
+  folderScope: boolean = false,
+  voiceGuard: boolean = false
 ): ChatRequest => {
   return {
     message,
@@ -60,6 +74,9 @@ export const buildChatRequest = (
     feedback_on_previous: feedbackOnPrevious || '',
     highlighted_text: highlightedText || '',
     highlight_id: highlightId || '',
-    ai_mode: aiMode
+    ai_mode: aiMode,
+    // CRITICAL FIX: Include premium features in request
+    folder_scope: folderScope,
+    voice_guard: voiceGuard
   };
 }; 
