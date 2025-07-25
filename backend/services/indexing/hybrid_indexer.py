@@ -969,9 +969,9 @@ class HybridIndexer:
             logger.info(f"📁 LLM STEP 3: Executing database query for user {user_id}")
             logger.info(f"📁 LLM STEP 3a: Query: \n{query_sql}")
             logger.info(f"📁 LLM STEP 3b: Params: {(user_id,)}")
-            
-            # CRITICAL FIX: Use correct database service method `execute_query` with `fetch='all'`
-            documents = await db_service.execute_query(query_sql, (user_id,), fetch='all')
+
+            # CRITICAL FIX: Use correct synchronous database service method
+            documents = db_service.execute_query(query_sql, (user_id,), fetch='all')
             
             logger.info(f"📁 LLM STEP 4: Database query executed successfully")
             logger.info(f"📁 LLM STEP 4a: Found {len(documents) if documents else 0} documents")
@@ -1199,8 +1199,8 @@ Answer:"""
             logger.info(f"📁 KEYWORD STEP 5a: Query: \n{query_sql}")
             logger.info(f"📁 KEYWORD STEP 5b: Params: {(user_id, f'%{query}%', f'%{query}%', max_documents)}")
 
-            # CRITICAL FIX: Use correct database service method `execute_query` with `fetch='all'`
-            documents = await db_service.execute_query(
+            # CRITICAL FIX: Use correct synchronous database service method
+            documents = db_service.execute_query(
                 query_sql,
                 (user_id, f'%{query}%', f'%{query}%', max_documents),
                 fetch='all'
