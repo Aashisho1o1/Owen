@@ -336,21 +336,38 @@ async def chat(
                         text=validated_editor_text
                     )
                     
-                    # Add voice consistency feedback to response if issues found
-                    if voice_results and 'results' in voice_results:
-                        inconsistent_characters = [r for r in voice_results['results'] if not r.is_consistent]
-                        if inconsistent_characters:
-                            voice_feedback = f"\n\n💬 **Voice Consistency Note:** I noticed some potential voice inconsistencies in your writing:\n"
-                            for result in inconsistent_characters[:2]:  # Limit to 2 for brevity
-                                voice_feedback += f"• **{result.character_name}**: {result.explanation}\n"
-                            
-                            # Add voice feedback to the response
-                            sanitized_response += voice_feedback
-                            
-                            logger.info(f"🎭 Voice consistency analysis: {len(inconsistent_characters)} inconsistencies found for user {user_id}")
+                    # CRITICAL FIX: Robust type checking for voice_results
+                    if voice_results is None:
+                        logger.warning("⚠️ Voice analysis returned None, skipping voice consistency check")
+                    elif isinstance(voice_results, str):
+                        logger.warning(f"⚠️ Voice analysis returned unexpected string: {voice_results[:200]}")
+                    elif not isinstance(voice_results, dict):
+                        logger.warning(f"⚠️ Voice analysis returned unexpected type: {type(voice_results)}")
+                    elif 'results' not in voice_results:
+                        logger.warning(f"⚠️ Voice analysis missing 'results' key: {voice_results.keys()}")
+                    else:
+                        # Add voice consistency feedback to response if issues found
+                        try:
+                            inconsistent_characters = [r for r in voice_results['results'] if hasattr(r, 'is_consistent') and not r.is_consistent]
+                            if inconsistent_characters:
+                                voice_feedback = f"\n\n💬 **Voice Consistency Note:** I noticed some potential voice inconsistencies in your writing:\n"
+                                for result in inconsistent_characters[:2]:  # Limit to 2 for brevity
+                                    if hasattr(result, 'character_name') and hasattr(result, 'explanation'):
+                                        voice_feedback += f"• **{result.character_name}**: {result.explanation}\n"
+                                
+                                # Add voice feedback to the response
+                                sanitized_response += voice_feedback
+                                
+                                logger.info(f"🎭 Voice consistency analysis: {len(inconsistent_characters)} inconsistencies found for user {user_id}")
+                        except Exception as result_processing_error:
+                            logger.error(f"❌ Error processing voice consistency results: {result_processing_error}")
+                            logger.error(f"❌ Voice results type: {type(voice_results)}")
+                            logger.error(f"❌ Voice results content: {str(voice_results)[:500]}")
                     
                 except Exception as voice_error:
                     logger.error(f"❌ Voice consistency analysis error: {voice_error}")
+                    logger.error(f"❌ Voice error type: {type(voice_error)}")
+                    logger.exception("Voice consistency analysis full traceback:")
                     # Don't fail the chat if voice analysis fails
                     pass
             
