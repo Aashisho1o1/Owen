@@ -159,6 +159,11 @@ async def chat(
         logger.info(f"📁 Folder Scope: {'ENABLED' if chat_request.folder_scope else 'DISABLED'}")
         logger.info(f"🛡️ Voice Guard: {'ENABLED' if chat_request.voice_guard else 'DISABLED'}")
 
+        # CRITICAL DEBUGGING: Let's see exactly what values we're getting
+        logger.info(f"🔧 DEBUGGING - folder_scope type: {type(chat_request.folder_scope)}")
+        logger.info(f"🔧 DEBUGGING - folder_scope value: {repr(chat_request.folder_scope)}")
+        logger.info(f"🔧 DEBUGGING - folder_scope bool conversion: {bool(chat_request.folder_scope)}")
+
         
         # Simplified user preferences - handle both Pydantic model and dict cases
         user_preferences = chat_request.user_preferences
@@ -189,6 +194,12 @@ async def chat(
         
         # NEW: PREMIUM FEATURE - Folder Context Retrieval
         folder_context = None
+        
+        # CRITICAL DEBUGGING: Log the exact condition check
+        logger.info(f"🔧 DEBUGGING - About to check folder_scope condition...")
+        logger.info(f"🔧 DEBUGGING - chat_request.folder_scope = {chat_request.folder_scope}")
+        logger.info(f"🔧 DEBUGGING - if chat_request.folder_scope evaluates to: {bool(chat_request.folder_scope)}")
+        
         if chat_request.folder_scope:
             logger.info("📁 FolderScope enabled - retrieving folder context...")
             try:
