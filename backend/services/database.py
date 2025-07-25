@@ -710,8 +710,8 @@ class PostgreSQLService:
             self.execute_query(
                 """INSERT INTO character_voice_profiles 
                    (character_id, character_name, user_id, dialogue_samples, 
-                    voice_characteristics, sample_count, last_updated, created_at)
-                   VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
+                    voice_embedding, voice_characteristics, sample_count, last_updated, created_at)
+                   VALUES (%s, %s, %s, %s::jsonb, '{}'::jsonb, %s::jsonb, %s, %s, %s)
                    ON CONFLICT (character_id) DO UPDATE SET
                        dialogue_samples = EXCLUDED.dialogue_samples,
                        voice_characteristics = EXCLUDED.voice_characteristics,

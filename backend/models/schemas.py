@@ -290,7 +290,7 @@ class CharacterPersona(BaseModel):
 # === CHARACTER VOICE CONSISTENCY SCHEMAS ===
 class VoiceConsistencyRequest(BaseModel):
     """Request for character voice consistency analysis"""
-    text: str = Field(..., min_length=50, max_length=10000, description="Text to analyze for voice consistency")
+    text: str = Field(..., min_length=50, max_length=100000, description="Text to analyze for voice consistency")
     document_id: Optional[str] = Field(None, description="Optional document ID for context")
     
     @field_validator('text')
