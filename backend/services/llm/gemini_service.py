@@ -166,11 +166,11 @@ class GeminiService(BaseLLMService):
         if not self.model:
             raise Exception("Gemini model not initialized")
         
-        # Truncate input to prevent timeouts
-        if len(prompt) > 1000:
-            logger.info(f"🔧 Truncating prompt from {len(prompt)} to 1000 characters")
-            prompt = prompt[:1000] + ' [TRUNCATED FOR PROCESSING SPEED]'
-        
+        # Smart truncation - Gemini 2.5 Flash supports 1M tokens (~800K chars)
+        max_prompt_size = 100000  # 100K chars ≈ 125K tokens (safe within 1M limit)
+        if len(prompt) > max_prompt_size:
+            logger.info(f"🔧 Truncating prompt from {len(prompt)} to {max_prompt_size} characters")
+            prompt = prompt[:max_prompt_size] + ' [TRUNCATED - FOLDERSCOPE CONTEXT PRESERVED]'
         logger.info(f"🧠 Gemini processing request (length: {len(prompt)} chars)")
         logger.info("⏳ Expected processing time: 15-45 seconds")
         
