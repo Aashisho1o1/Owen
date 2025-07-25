@@ -771,55 +771,154 @@ class HybridIndexer:
             Formatted context string or None if no relevant context found
         """
         try:
-            # Import here to avoid circular imports
-            from ...routers.document_router import get_documents_by_user
-            
             logger.info(f"📁 Getting folder context for user {user_id}")
             
-            # Get user's documents (this would normally use a database service)
-            # For now, we'll use a simple approach
-            documents = []
+            # Try vector store first (if available and populated)
+            vector_context = await self._get_vector_context(query, max_documents)
+            if vector_context:
+                logger.info(f"📁 Using vector store context")
+                return vector_context
             
-            # Use vector store to find relevant documents if any are indexed
-            if hasattr(self.vector_store, 'similarity_search'):
-                try:
-                    # Search for relevant content across indexed documents
-                    results = self.vector_store.similarity_search(query, k=max_documents * 2)
-                    
-                    context_parts = []
-                    seen_docs = set()
-                    
-                    for result in results:
-                        if len(context_parts) >= max_documents:
-                            break
-                            
-                        # Extract document info from metadata
-                        metadata = result.get('metadata', {})
-                        doc_id = metadata.get('document_id')
-                        
-                        if doc_id and doc_id not in seen_docs:
-                            seen_docs.add(doc_id)
-                            
-                            # Format the relevant passage
-                            passage = result.get('page_content', '').strip()
-                            if passage:
-                                context_parts.append(f"Document: {doc_id}\n{passage[:300]}...")
-                    
-                    if context_parts:
-                        context = "\n\n---\n\n".join(context_parts)
-                        logger.info(f"📁 Generated folder context with {len(context_parts)} documents")
-                        return context
-                    else:
-                        logger.info("📁 No relevant documents found in folder context")
-                        return None
-                        
-                except Exception as search_error:
-                    logger.warning(f"⚠️ Vector search failed in folder context: {search_error}")
-                    return None
-            else:
-                logger.info("📁 Vector store not available for folder context")
-                return None
+            # Fallback: Direct database query for user's documents
+            logger.info(f"📁 Vector store empty, using database fallback")
+            return await self._get_database_context(user_id, query, max_documents)
                 
         except Exception as e:
             logger.error(f"❌ Error getting folder context: {e}")
-            return None 
+            return None
+    
+    async def _get_vector_context(self, query: str, max_documents: int) -> Optional[str]:
+        """Get context from vector store if available"""
+        try:
+            if hasattr(self.vector_store, 'similarity_search'):
+                results = self.vector_store.similarity_search(query, k=max_documents * 2)
+                
+                context_parts = []
+                seen_docs = set()
+                
+                for result in results:
+                    if len(context_parts) >= max_documents:
+                        break
+                        
+                    metadata = result.get('metadata', {})
+                    doc_id = metadata.get('document_id')
+                    
+                    if doc_id and doc_id not in seen_docs:
+                        seen_docs.add(doc_id)
+                        passage = result.get('page_content', '').strip()
+                        if passage:
+                            context_parts.append(f"Document: {doc_id}\n{passage[:300]}...")
+                
+                if context_parts:
+                    context = "\n\n---\n\n".join(context_parts)
+                    logger.info(f"📁 Generated vector context with {len(context_parts)} documents")
+                    return context
+            
+            return None
+        except Exception as e:
+            logger.warning(f"⚠️ Vector search failed: {e}")
+            return None
+    
+    async def _get_database_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
+        """Fallback: Get context directly from database"""
+        try:
+            # Import database service
+            from ..database import get_db_service
+            
+            db_service = get_db_service()
+            
+            # Get user's recent documents
+            query_sql = """
+            SELECT id, title, content, updated_at 
+            FROM documents 
+            WHERE user_id = %s 
+            ORDER BY updated_at DESC 
+            LIMIT %s
+            """
+            
+            documents = db_service.execute_query(query_sql, (user_id, max_documents * 2), fetch='all')
+            
+            if not documents:
+                logger.info(f"📁 No documents found for user {user_id}")
+                return None
+            
+            # Filter and format relevant documents
+            context_parts = []
+            query_lower = query.lower()
+            
+            for doc in documents:
+                doc_id = doc['id']
+                title = doc['title']
+                content = doc['content']
+                updated_at = doc['updated_at']
+                
+                # Simple relevance scoring based on title/content matching
+                title_lower = title.lower() if title else ""
+                content_lower = content.lower() if content else ""
+                
+                # Check if query terms appear in title or content
+                relevance_score = 0
+                query_words = query_lower.split()
+                
+                for word in query_words:
+                    if len(word) > 2:  # Skip very short words
+                        if word in title_lower:
+                            relevance_score += 3  # Title matches are more important
+                        if word in content_lower:
+                            relevance_score += 1
+                
+                # Include document if it has some relevance or if we don't have enough yet
+                if relevance_score > 0 or len(context_parts) < 2:
+                    # Extract a relevant excerpt
+                    excerpt = self._extract_relevant_excerpt(content or "", query_words, 300)
+                    
+                    context_parts.append({
+                        'score': relevance_score,
+                        'text': f"Document: {title or 'Untitled'}\n{excerpt}"
+                    })
+                
+                if len(context_parts) >= max_documents:
+                    break
+            
+            if context_parts:
+                # Sort by relevance score and format
+                context_parts.sort(key=lambda x: x['score'], reverse=True)
+                formatted_parts = [part['text'] for part in context_parts]
+                context = "\n\n---\n\n".join(formatted_parts)
+                
+                logger.info(f"📁 Generated database context with {len(context_parts)} documents")
+                return context
+            else:
+                logger.info(f"📁 No relevant context found")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Database context retrieval failed: {e}")
+            return None
+    
+    def _extract_relevant_excerpt(self, content: str, query_words: list, max_length: int = 300) -> str:
+        """Extract a relevant excerpt from document content"""
+        if not content:
+            return "No content available"
+        
+        content = content.strip()
+        if len(content) <= max_length:
+            return content
+        
+        # Look for sentences containing query words
+        sentences = content.split('. ')
+        relevant_sentences = []
+        
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
+            if any(word in sentence_lower for word in query_words if len(word) > 2):
+                relevant_sentences.append(sentence)
+        
+        # If we found relevant sentences, use them
+        if relevant_sentences:
+            excerpt = '. '.join(relevant_sentences[:3])  # Take up to 3 sentences
+            if len(excerpt) <= max_length:
+                return excerpt + '.' if not excerpt.endswith('.') else excerpt
+        
+        # Fallback: return first part of content
+        return content[:max_length] + "..." if len(content) > max_length else content 
