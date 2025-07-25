@@ -154,6 +154,10 @@ async def chat(
         logger.info(f"🎯 Help focus: {chat_request.help_focus}")
         logger.info(f"🤖 AI Mode: {chat_request.ai_mode}")
         logger.info(f"🔧 LLM Provider: {validated_llm_provider}")
+        
+        # NEW: Log premium features usage
+        logger.info(f"📁 Folder Scope: {'ENABLED' if chat_request.folder_scope else 'DISABLED'}")
+        logger.info(f"🛡️ Voice Guard: {'ENABLED' if chat_request.voice_guard else 'DISABLED'}")
 
         
         # Simplified user preferences - handle both Pydantic model and dict cases
@@ -183,6 +187,32 @@ async def chat(
                 highlighted_text = input_validator.validate_suggestion_text(parts[1])
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
+        # NEW: PREMIUM FEATURE - Folder Context Retrieval
+        folder_context = None
+        if chat_request.folder_scope:
+            try:
+                logger.info("📁 FolderScope enabled - retrieving folder context...")
+                # Import the indexing service
+                from ..services.indexing.hybrid_indexer import HybridIndexer
+                indexing_service = HybridIndexer()
+                
+                # Get folder context based on current document/folder
+                folder_context = await indexing_service.get_folder_context(
+                    user_id=user_id,
+                    query=validated_message,
+                    max_documents=5  # Limit to 5 docs to control cost
+                )
+                
+                if folder_context:
+                    logger.info(f"📁 Retrieved folder context: {len(folder_context)} characters")
+                else:
+                    logger.info("📁 No relevant folder context found")
+                    
+            except Exception as folder_error:
+                logger.warning(f"⚠️ Folder context retrieval failed: {folder_error}")
+                # Continue without folder context - don't fail the whole request
+                folder_context = None
+        
         # FEATURE: Build conversation context from chat history
         conversation_context = build_conversation_context(chat_request.chat_history)
         if conversation_context:
@@ -198,7 +228,8 @@ async def chat(
             user_corrections=user_corrections,
             highlighted_text=highlighted_text,
             ai_mode=chat_request.ai_mode,
-            conversation_context=conversation_context
+            conversation_context=conversation_context,
+            folder_context=folder_context  # NEW: Pass folder context
         )
         
         logger.info(f"✅ Prompt assembled successfully (length: {len(final_prompt)} chars)")

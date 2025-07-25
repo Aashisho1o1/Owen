@@ -756,4 +756,70 @@ class HybridIndexer:
             'based_on': 'passage_analysis'
         })
         
-        return suggestions 
+        return suggestions
+    
+    async def get_folder_context(self, user_id: int, query: str, max_documents: int = 5) -> Optional[str]:
+        """
+        Retrieve relevant context from other documents in the user's folder for FolderScope feature.
+        
+        Args:
+            user_id: The user ID to get documents for
+            query: The current user query to find relevant context
+            max_documents: Maximum number of documents to include in context
+            
+        Returns:
+            Formatted context string or None if no relevant context found
+        """
+        try:
+            # Import here to avoid circular imports
+            from ...routers.document_router import get_documents_by_user
+            
+            logger.info(f"📁 Getting folder context for user {user_id}")
+            
+            # Get user's documents (this would normally use a database service)
+            # For now, we'll use a simple approach
+            documents = []
+            
+            # Use vector store to find relevant documents if any are indexed
+            if hasattr(self.vector_store, 'similarity_search'):
+                try:
+                    # Search for relevant content across indexed documents
+                    results = self.vector_store.similarity_search(query, k=max_documents * 2)
+                    
+                    context_parts = []
+                    seen_docs = set()
+                    
+                    for result in results:
+                        if len(context_parts) >= max_documents:
+                            break
+                            
+                        # Extract document info from metadata
+                        metadata = result.get('metadata', {})
+                        doc_id = metadata.get('document_id')
+                        
+                        if doc_id and doc_id not in seen_docs:
+                            seen_docs.add(doc_id)
+                            
+                            # Format the relevant passage
+                            passage = result.get('page_content', '').strip()
+                            if passage:
+                                context_parts.append(f"Document: {doc_id}\n{passage[:300]}...")
+                    
+                    if context_parts:
+                        context = "\n\n---\n\n".join(context_parts)
+                        logger.info(f"📁 Generated folder context with {len(context_parts)} documents")
+                        return context
+                    else:
+                        logger.info("📁 No relevant documents found in folder context")
+                        return None
+                        
+                except Exception as search_error:
+                    logger.warning(f"⚠️ Vector search failed in folder context: {search_error}")
+                    return None
+            else:
+                logger.info("📁 Vector store not available for folder context")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error getting folder context: {e}")
+            return None 

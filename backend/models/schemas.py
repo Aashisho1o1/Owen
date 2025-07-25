@@ -195,6 +195,9 @@ class ChatRequest(BaseModel):
     feedback_on_previous: Optional[str] = None
     highlighted_text: Optional[str] = None
     highlight_id: Optional[str] = None
+    # Premium Features
+    folder_scope: bool = False  # NEW: Whether to include folder context
+    voice_guard: bool = False   # NEW: Whether to enable voice consistency checking
 
 class ChatResponse(BaseModel):
     dialogue_response: str

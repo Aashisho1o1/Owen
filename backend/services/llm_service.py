@@ -175,7 +175,8 @@ class LLMService:
                            user_corrections: Optional[List] = None,
                            highlighted_text: Optional[str] = None,
                            ai_mode: str = "talk",
-                           conversation_context: Optional[str] = None) -> str:
+                           conversation_context: Optional[str] = None,
+                           folder_context: Optional[str] = None) -> str:
         """Assemble a chat prompt with mode-specific templates for Talk vs Co-Edit"""
         
         # Build context parts
@@ -188,6 +189,14 @@ class LLMService:
 
 **Current Request:**"""
             context_parts.append(history_context)
+        
+        # NEW: PREMIUM FEATURE - Add folder context if available
+        if folder_context and folder_context.strip():
+            folder_info = f"""**📁 FOLDER CONTEXT (FolderScope Premium Feature):**
+{folder_context}
+
+This context includes content from other documents in your project folder to help maintain consistency."""
+            context_parts.append(folder_info)
         
         # Add author persona
         if author_persona:
