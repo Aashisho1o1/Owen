@@ -111,8 +111,24 @@ async def chat(
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
+        # CRITICAL DEBUGGING: Log that we've reached the chat endpoint
+        logger.info(f"🎯 CHAT ENDPOINT REACHED - User ID: {user_id}")
+        
         # ENHANCED DEBUGGING: Log authentication success
         logger.info(f"🔐 Authentication successful for user {user_id}")
+        
+        # ENHANCED DEBUGGING: Log request details for debugging
+        request_info = {
+            'user_id': user_id,
+            'folder_scope': chat_request.folder_scope,
+            'voice_guard': chat_request.voice_guard,
+            'ai_mode': chat_request.ai_mode,
+            'message_length': len(chat_request.message),
+            'editor_text_length': len(chat_request.editor_text or ""),
+            'has_highlighted_text': bool(chat_request.highlighted_text),
+            'llm_provider': chat_request.llm_provider
+        }
+        logger.info(f"📋 Request Info: {request_info}")
         
         # PRODUCTION RATE LIMITING: Now handled by dependency injection
         # The new PostgreSQL-based rate limiter works across multiple Railway instances

@@ -11,20 +11,103 @@ import { ChatRequest, ChatResponse, EnhancedChatResponse, UserFeedbackRequest } 
 
 export const sendChatMessage = async (request: ChatRequest): Promise<ChatResponse> => {
   // OPTIMIZED FIX: Reduced timeout for better user experience
-  // FolderScope/VoiceGuard: 2 minutes (was 5 minutes) - should be sufficient for optimized search
-  // Standard requests: 45 seconds (was 1 minute) - faster feedback for normal chat
-  const timeoutMs = (request.folder_scope || request.voice_guard) ? 120000 : 45000; // 2 min vs 45 sec
+  // FolderScope/VoiceGuard: 2.5 minutes - optimized for backend performance
+  // Standard requests: 45 seconds - faster feedback for normal chat
+  const timeoutMs = (request.folder_scope || request.voice_guard) ? 150000 : 45000; // 2.5 min vs 45 sec
   
   console.log(`🔧 Chat request timeout: ${timeoutMs/1000}s (FolderScope: ${request.folder_scope}, VoiceGuard: ${request.voice_guard})`);
   console.log(`🔧 Premium features enabled: FolderScope=${request.folder_scope}, VoiceGuard=${request.voice_guard}`);
   
-  const response = await apiClient.post('/api/chat/', request, { 
-    timeout: timeoutMs,
-    headers: {
-      'X-Request-Type': request.folder_scope ? 'folder-scope' : 'standard'
-    }
+  // ENHANCED DEBUGGING: Check authentication state before request
+  const tokens = localStorage.getItem('owen_access_token');
+  const expiresAt = localStorage.getItem('owen_token_expires');
+  const isExpired = expiresAt ? Date.now() >= parseInt(expiresAt) : true;
+  
+  console.log('🔐 Authentication Debug:', {
+    hasToken: !!tokens,
+    tokenLength: tokens ? tokens.length : 0,
+    isExpired,
+    expiresAt: expiresAt ? new Date(parseInt(expiresAt)).toISOString() : 'none'
   });
-  return response.data;
+  
+  // ENHANCED DEBUGGING: Log request details
+  console.log('📤 Chat Request Details:', {
+    url: '/api/chat/',
+    method: 'POST',
+    timeout: timeoutMs,
+    hasToken: !!tokens,
+    folderScope: request.folder_scope,
+    voiceGuard: request.voice_guard,
+    messagePreview: request.message.substring(0, 50) + '...'
+  });
+
+  // ENHANCED: Add progress feedback for long operations
+  if (request.folder_scope || request.voice_guard) {
+    // Emit progress events for UI feedback
+    window.dispatchEvent(new CustomEvent('folderScopeProgress', { 
+      detail: { stage: 'starting', message: 'Analyzing documents for context...' } 
+    }));
+  }
+
+  try {
+    console.log('📡 Sending request to backend...');
+    const response = await apiClient.post('/api/chat/', request, { 
+      timeout: timeoutMs,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Type': request.folder_scope ? 'folder-scope' : 'standard',
+        'X-Debug-Features': JSON.stringify({
+          folderScope: request.folder_scope,
+          voiceGuard: request.voice_guard
+        })
+      },
+    });
+    
+    console.log('✅ Chat response received:', {
+      status: response.status,
+      hasDialogue: !!response.data.dialogue_response,
+      hasThinking: !!response.data.thinking_trail,
+      responseLength: response.data.dialogue_response?.length || 0
+    });
+    
+    // On success, clear any progress messages
+    if (request.folder_scope || request.voice_guard) {
+      window.dispatchEvent(new CustomEvent('folderScopeProgress', { detail: { stage: 'completed' } }));
+    }
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Chat request failed:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.message,
+      url: error.config?.url,
+      headers: error.config?.headers,
+      timeout: error.code === 'ECONNABORTED' && error.message.includes('timeout')
+    });
+    
+    // On error, clear any progress messages and show error
+    if (request.folder_scope || request.voice_guard) {
+      window.dispatchEvent(new CustomEvent('folderScopeProgress', { 
+        detail: { 
+          stage: 'error', 
+          message: `Request failed: ${error.response?.status || error.message}` 
+        } 
+      }));
+    }
+    
+    // ENHANCED ERROR DEBUGGING: Log specific error details
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      console.error('🔐 Authentication Error Details:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers,
+        hasToken: !!tokens,
+        tokenExpired: isExpired
+      });
+    }
+    
+    throw error; // Re-throw the error for further handling
+  }
 };
 
 export const generateSuggestions = async (request: ChatRequest): Promise<EnhancedChatResponse> => {
