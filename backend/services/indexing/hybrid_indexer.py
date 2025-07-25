@@ -758,9 +758,9 @@ class HybridIndexer:
         
         return suggestions
     
-    async def get_folder_context(self, user_id: int, query: str, max_documents: int = 3) -> Optional[str]:
+    async def get_folder_context(self, user_id: int, query: str, max_documents: int = 5) -> Optional[str]:
         """
-        Retrieve relevant context from other documents in the user's folder for FolderScope feature.
+        ENHANCED: Retrieve relevant context using vector search + LLM semantic matching as fallback.
         
         Args:
             user_id: The user ID to get documents for
@@ -771,205 +771,374 @@ class HybridIndexer:
             Formatted context string or None if no relevant context found
         """
         try:
-            logger.info(f"📁 Getting folder context for user {user_id}")
-            logger.info(f"📁 Query: '{query}' (requesting up to {max_documents} documents)")
+            logger.info(f"📁 ========== INTELLIGENT FOLDER SCOPE SEARCH ==========")
+            logger.info(f"📁 User: {user_id} | Query: '{query}' | Max docs: {max_documents}")
             
-            # Try vector store first (if available and populated)
-            vector_context = await self._get_vector_context(query, max_documents)
+            # STEP 1: Check if user's documents are indexed, if not index them
+            await self._ensure_user_documents_indexed(user_id)
+            
+            # STEP 2: Try vector semantic search first (most accurate)
+            logger.info(f"📁 STEP 1: Vector semantic search...")
+            vector_context = await self._get_vector_context_fixed(user_id, query, max_documents)
             if vector_context:
-                logger.info(f"📁 Using vector store context")
+                logger.info(f"📁 ✅ Vector search found context: {len(vector_context)} chars")
                 return vector_context
+            else:
+                logger.info(f"📁 ⚠️ Vector search returned no results")
             
-            # Fallback: Direct database query for user's documents
-            logger.info(f"📁 Vector store empty, using database fallback")
-            return await self._get_database_context(user_id, query, max_documents)
+            # STEP 3: LLM-powered semantic search (cheaper model - Gemini Flash)
+            logger.info(f"📁 STEP 2: LLM semantic search with Gemini Flash...")
+            llm_context = await self._get_llm_semantic_context(user_id, query, max_documents)
+            if llm_context:
+                logger.info(f"📁 ✅ LLM semantic search found context: {len(llm_context)} chars")
+                return llm_context
+            else:
+                logger.info(f"📁 ⚠️ LLM semantic search returned no results")
+            
+            # STEP 4: Last resort - simple keyword matching (much improved)
+            logger.info(f"📁 STEP 3: Enhanced keyword search as last resort...")
+            keyword_context = await self._get_enhanced_keyword_context(user_id, query, max_documents)
+            if keyword_context:
+                logger.info(f"📁 ✅ Enhanced keyword search found context: {len(keyword_context)} chars")
+                return keyword_context
+            
+            logger.info(f"📁 ❌ No relevant context found across all methods")
+            return None
                 
         except Exception as e:
-            logger.error(f"❌ Error getting folder context: {e}")
-            logger.exception("Full folder context error traceback:")
+            logger.error(f"❌ Error in intelligent folder context search: {e}")
+            logger.exception("Full error traceback:")
             return None
-    
-    async def _get_vector_context(self, query: str, max_documents: int) -> Optional[str]:
-        """Get context from vector store if available"""
+
+    async def _ensure_user_documents_indexed(self, user_id: int):
+        """Ensure user's documents are indexed in the vector store"""
         try:
-            if hasattr(self.vector_store, 'similarity_search'):
-                results = self.vector_store.similarity_search(query, k=max_documents * 2)
-                
-                context_parts = []
-                seen_docs = set()
-                
-                for result in results:
-                    if len(context_parts) >= max_documents:
-                        break
-                        
-                    metadata = result.get('metadata', {})
-                    doc_id = metadata.get('document_id')
-                    
-                    if doc_id and doc_id not in seen_docs:
-                        seen_docs.add(doc_id)
-                        passage = result.get('page_content', '').strip()
-                        if passage:
-                            context_parts.append(f"Document: {doc_id}\n{passage[:300]}...")
-                
-                if context_parts:
-                    context = "\n\n---\n\n".join(context_parts)
-                    logger.info(f"📁 Generated vector context with {len(context_parts)} documents")
-                    return context
-            
-            return None
-        except Exception as e:
-            logger.warning(f"⚠️ Vector search failed: {e}")
-            return None
-    
-    async def _get_database_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
-        """Fallback: Get context directly from database with enhanced excerpt extraction"""
-        try:
-            # Import database service with absolute import to fix relative import error
+            # Import database service
             from services.database import get_db_service
-            
             db_service = get_db_service()
             
-            # Get user's recent documents
+            # Get user's documents
             query_sql = """
             SELECT id, title, content, updated_at 
             FROM documents 
             WHERE user_id = %s 
+            AND content IS NOT NULL 
+            AND LENGTH(TRIM(content)) > 100
+            ORDER BY updated_at DESC
+            """
+            
+            documents = db_service.execute_query(query_sql, (user_id,), fetch='all')
+            
+            if not documents:
+                logger.info(f"📁 No documents found for user {user_id} to index")
+                return
+            
+            # Check which documents need indexing
+            for doc in documents:
+                doc_id = str(doc[0])
+                title = doc[1]
+                content = doc[2]
+                
+                # Quick check if document is already indexed
+                try:
+                    results = self.vector_store.search(
+                        query=f"document_id:{doc_id}",
+                        n_results=1,
+                        filter_dict={"doc_id": doc_id}
+                    )
+                    
+                    if not results:
+                        # Document not indexed, add it
+                        logger.info(f"📁 Indexing document: {title} ({doc_id})")
+                        self.vector_store.add_document(
+                            text=content,
+                            doc_id=doc_id,
+                            metadata={
+                                "title": title,
+                                "user_id": user_id,
+                                "updated_at": doc[3].isoformat() if doc[3] else None
+                            }
+                        )
+                except Exception as index_error:
+                    logger.warning(f"⚠️ Failed to index document {doc_id}: {index_error}")
+                    
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to ensure document indexing: {e}")
+
+    async def _get_vector_context_fixed(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
+        """Fixed vector store search using correct API"""
+        try:
+            # Use the correct search method with user filter
+            results = self.vector_store.search(
+                query=query,
+                n_results=max_documents * 3,  # Get more results to filter
+                filter_dict={"user_id": user_id}
+            )
+            
+            if not results:
+                logger.info("📁 Vector search returned no results")
+                return None
+            
+            # Group by document and get best excerpts
+            doc_contexts = {}
+            for result in results:
+                if result['score'] < 0.3:  # Skip low-relevance results
+                    continue
+                    
+                metadata = result['metadata']
+                doc_id = metadata.get('doc_id')
+                title = metadata.get('title', f'Document {doc_id}')
+                
+                if doc_id not in doc_contexts:
+                    doc_contexts[doc_id] = {
+                        'title': title,
+                        'excerpts': [],
+                        'max_score': result['score']
+                    }
+                
+                if len(doc_contexts[doc_id]['excerpts']) < 2:  # Max 2 excerpts per doc
+                    doc_contexts[doc_id]['excerpts'].append({
+                        'text': result['text'][:800],  # Larger excerpts
+                        'score': result['score']
+                    })
+            
+            if not doc_contexts:
+                return None
+            
+            # Sort documents by relevance and create context
+            sorted_docs = sorted(doc_contexts.items(), 
+                               key=lambda x: x[1]['max_score'], 
+                               reverse=True)[:max_documents]
+            
+            context_parts = []
+            for doc_id, doc_data in sorted_docs:
+                excerpts_text = "\n".join([ex['text'] for ex in doc_data['excerpts']])
+                context_parts.append(f"**{doc_data['title']}**:\n{excerpts_text}")
+            
+            return "\n\n---\n\n".join(context_parts)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Vector search failed: {e}")
+            return None
+
+    async def _get_llm_semantic_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
+        """Use cheaper Gemini Flash model for semantic document selection"""
+        try:
+            # Import database service
+            from services.database import get_db_service
+            db_service = get_db_service()
+            
+            # Get user's documents with more content for LLM analysis
+            query_sql = """
+            SELECT id, title, content, updated_at 
+            FROM documents 
+            WHERE user_id = %s 
+            AND content IS NOT NULL 
+            AND LENGTH(TRIM(content)) > 50
             ORDER BY updated_at DESC 
+            LIMIT 10
+            """
+            
+            documents = db_service.execute_query(query_sql, (user_id,), fetch='all')
+            
+            if not documents:
+                return None
+            
+            # Prepare document summaries for LLM analysis
+            doc_summaries = []
+            for doc in documents:
+                content = doc[2]
+                # Get first 500 chars as summary
+                summary = content[:500] + "..." if len(content) > 500 else content
+                doc_summaries.append({
+                    'id': str(doc[0]),
+                    'title': doc[1],
+                    'summary': summary
+                })
+            
+            # Use Gemini Flash (cheaper model) to find relevant documents
+            from services.llm.gemini_service import GeminiService
+            
+            # Create a separate service instance with Flash model
+            gemini_flash = GeminiService()
+            # Override to use the cheaper Flash model
+            import google.generativeai as genai
+            gemini_flash.model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""Given the user query: "{query}"
+
+Analyze these document summaries and select the most relevant ones that could help answer the query. Consider semantic meaning, not just keyword matching.
+
+Documents:
+{chr(10).join([f"{i+1}. Title: {doc['title']}\nSummary: {doc['summary']}\n" for i, doc in enumerate(doc_summaries)])}
+
+Return ONLY the document IDs (numbers) of the most relevant documents, separated by commas. Maximum {max_documents} documents.
+If no documents are relevant, return "NONE".
+
+Response:"""
+
+            response = await gemini_flash.generate_with_selected_llm(
+                prompts=[{"role": "user", "parts": [prompt]}],
+                provider="Google Gemini"
+            )
+            
+            # Parse LLM response
+            response_text = response.strip()
+            
+            if response_text == "NONE" or not response_text:
+                return None
+            
+            # Extract document IDs
+            try:
+                selected_indices = [int(x.strip()) - 1 for x in response_text.split(',') if x.strip().isdigit()]
+                selected_indices = [i for i in selected_indices if 0 <= i < len(doc_summaries)]
+            except:
+                return None
+            
+            if not selected_indices:
+                return None
+            
+            # Get full content for selected documents
+            context_parts = []
+            for idx in selected_indices[:max_documents]:
+                doc = documents[idx]
+                title = doc[1]
+                content = doc[2]
+                
+                # Extract relevant excerpt based on query
+                excerpt = self._extract_smart_excerpt(content, query)
+                context_parts.append(f"**{title}**:\n{excerpt}")
+            
+            return "\n\n---\n\n".join(context_parts)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ LLM semantic search failed: {e}")
+            return None
+
+    def _extract_smart_excerpt(self, content: str, query: str, max_length: int = 1000) -> str:
+        """Extract the most relevant excerpt from content based on query"""
+        try:
+            # Split into sentences
+            sentences = [s.strip() for s in content.replace('\n', ' ').split('.') if s.strip()]
+            
+            if len(sentences) <= 3:
+                return content[:max_length]
+            
+            # Simple scoring: more query words = higher score
+            query_words = set(query.lower().split())
+            
+            sentence_scores = []
+            for i, sentence in enumerate(sentences):
+                words = set(sentence.lower().split())
+                score = len(query_words.intersection(words))
+                # Boost score for sentences in the middle (often contain more context)
+                if len(sentences) > 5 and len(sentences) * 0.2 < i < len(sentences) * 0.8:
+                    score += 1
+                sentence_scores.append((score, i, sentence))
+            
+            # Sort by score and get top sentences
+            sentence_scores.sort(key=lambda x: x[0], reverse=True)
+            
+            # Take top scoring sentences and some context
+            selected_indices = set()
+            for score, idx, _ in sentence_scores[:3]:  # Top 3 sentences
+                if score > 0:  # Only if there's some relevance
+                    # Add context sentences around the selected one
+                    for i in range(max(0, idx-1), min(len(sentences), idx+2)):
+                        selected_indices.add(i)
+            
+            if not selected_indices:
+                # Fallback: take first part of document
+                return content[:max_length]
+            
+            # Create excerpt from selected sentences
+            selected_indices = sorted(selected_indices)
+            excerpt_sentences = [sentences[i] for i in selected_indices]
+            excerpt = '. '.join(excerpt_sentences) + '.'
+            
+            return excerpt[:max_length] + "..." if len(excerpt) > max_length else excerpt
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Smart excerpt extraction failed: {e}")
+            return content[:max_length]
+
+    async def _get_enhanced_keyword_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
+        """Enhanced keyword search as last resort - much better than the previous version"""
+        try:
+            # Import database service
+            from services.database import get_db_service
+            db_service = get_db_service()
+            
+            # Expand query with synonyms and related terms
+            expanded_query_terms = self._expand_query_terms(query)
+            
+            # Build PostgreSQL full-text search query
+            search_terms = " | ".join([f"'{term}'" for term in expanded_query_terms])
+            
+            query_sql = """
+            SELECT id, title, content, updated_at,
+                   ts_rank(to_tsvector('english', title || ' ' || content), 
+                          to_tsquery('english', %s)) as rank
+            FROM documents 
+            WHERE user_id = %s 
+            AND content IS NOT NULL 
+            AND LENGTH(TRIM(content)) > 50
+            AND (to_tsvector('english', title || ' ' || content) @@ to_tsquery('english', %s)
+                 OR title ILIKE %s
+                 OR content ILIKE %s)
+            ORDER BY rank DESC, updated_at DESC
             LIMIT %s
             """
             
-            documents = db_service.execute_query(query_sql, (user_id, max_documents * 2), fetch='all')
+            # Create search patterns
+            like_pattern = f"%{query}%"
+            
+            documents = db_service.execute_query(
+                query_sql, 
+                (search_terms, user_id, search_terms, like_pattern, like_pattern, max_documents * 2), 
+                fetch='all'
+            )
             
             if not documents:
-                logger.info(f"📁 No documents found for user {user_id} in database fallback.")
                 return None
             
-            # Filter and format relevant documents
+            # Process and rank results
             context_parts = []
-            query_lower = query.lower()
+            for doc in documents[:max_documents]:
+                title = doc[1]
+                content = doc[2]
+                rank = doc[4] if len(doc) > 4 else 0
+                
+                # Extract smart excerpt
+                excerpt = self._extract_smart_excerpt(content, query, 800)
+                context_parts.append(f"**{title}** (relevance: {rank:.2f}):\n{excerpt}")
             
-            for doc in documents:
-                doc_id = doc['id']
-                title = doc['title']
-                content = doc['content']
-                updated_at = doc['updated_at']
-                
-                # Simple relevance scoring based on title/content matching
-                title_lower = title.lower() if title else ""
-                content_lower = content.lower() if content else ""
-                
-                # Check if query terms appear in title or content
-                relevance_score = 0
-                query_words = query_lower.split()
-                
-                for word in query_words:
-                    if len(word) > 2:  # Skip very short words
-                        if word in title_lower:
-                            relevance_score += 3  # Title matches are more important
-                        if word in content_lower:
-                            relevance_score += 1
-                
-                # ENHANCED: Always include some documents even without direct matches
-                # to provide broader narrative context
-                if relevance_score > 0 or len(context_parts) < max_documents:
-                    # Extract a MUCH larger relevant excerpt for better context
-                    excerpt = self._extract_relevant_excerpt(content or "", query_words, 800)  # Increased from 300 to 800
-                    
-                    context_parts.append({
-                        'score': relevance_score,
-                        'title': title or 'Untitled',
-                        'excerpt': excerpt,
-                        'text': f"Document: {title or 'Untitled'}\nContent: {excerpt}"
-                    })
-                
-                if len(context_parts) >= max_documents:
-                    break
+            return "\n\n---\n\n".join(context_parts) if context_parts else None
             
-            if context_parts:
-                # Sort by relevance score and format
-                context_parts.sort(key=lambda x: x['score'], reverse=True)
-                formatted_parts = [part['text'] for part in context_parts]
-                context = "\n\n---\n\n".join(formatted_parts)
-                
-                # ENHANCED: Add context summary for better LLM understanding
-                doc_titles = [part['title'] for part in context_parts]
-                total_chars = len(context)
-                
-                logger.info(f"📁 Generated database context with {len(context_parts)} documents ({total_chars} chars)")
-                logger.info(f"📁 Documents included: {', '.join(doc_titles)}")
-                
-                return context
-            else:
-                logger.info(f"📁 No relevant context found for query: {query}")
-                return None
-                
         except Exception as e:
-            logger.error(f"❌ Database context retrieval failed: {e}")
-            logger.exception("Full database context error traceback:")
+            logger.warning(f"⚠️ Enhanced keyword search failed: {e}")
             return None
 
-    def _extract_relevant_excerpt(self, content: str, query_words: list, max_length: int = 800) -> str:
-        """Extract a relevant excerpt from document content with enhanced context"""
-        if not content:
-            return "No content available"
+    def _expand_query_terms(self, query: str) -> List[str]:
+        """Expand query with related terms for better matching"""
+        query_lower = query.lower()
+        terms = [query_lower]
         
-        content = content.strip()
+        # Common expansions for writing-related queries
+        expansions = {
+            'letter': ['note', 'message', 'correspondence', 'mail', 'writing'],
+            'character': ['person', 'protagonist', 'hero', 'villain', 'figure'],
+            'gave': ['handed', 'delivered', 'passed', 'sent', 'provided'],
+            'received': ['got', 'obtained', 'accepted', 'took'],
+            'wrote': ['written', 'penned', 'composed', 'authored'],
+            'said': ['told', 'spoke', 'mentioned', 'stated', 'expressed'],
+            'went': ['traveled', 'moved', 'headed', 'departed'],
+            'found': ['discovered', 'located', 'uncovered', 'encountered'],
+        }
         
-        # ENHANCED: If content is reasonably sized, return more of it
-        if len(content) <= max_length:
-            return content
+        # Add expansions for words in the query
+        for word in query_lower.split():
+            if word in expansions:
+                terms.extend(expansions[word])
         
-        # Look for sentences containing query words
-        sentences = content.split('. ')
-        relevant_sentences = []
-        context_sentences = []
-        
-        # Find sentences with query word matches
-        for i, sentence in enumerate(sentences):
-            sentence_lower = sentence.lower()
-            if any(word in sentence_lower for word in query_words if len(word) > 2):
-                relevant_sentences.append((i, sentence))
-        
-        # If we found relevant sentences, include surrounding context
-        if relevant_sentences:
-            # Get indices of relevant sentences
-            relevant_indices = [idx for idx, _ in relevant_sentences]
-            
-            # Include surrounding sentences for better context
-            context_indices = set()
-            for idx in relevant_indices:
-                # Include 2 sentences before and after each relevant sentence
-                for offset in range(-2, 3):
-                    if 0 <= idx + offset < len(sentences):
-                        context_indices.add(idx + offset)
-            
-            # Build excerpt from context sentences
-            sorted_indices = sorted(context_indices)
-            context_sentences = [sentences[i] for i in sorted_indices]
-            excerpt = '. '.join(context_sentences)
-            
-            if len(excerpt) <= max_length:
-                return excerpt + '.' if not excerpt.endswith('.') else excerpt
-            
-            # If still too long, truncate but keep complete sentences
-            truncated = ""
-            for sentence in context_sentences:
-                if len(truncated + sentence + '. ') <= max_length:
-                    truncated += sentence + '. '
-                else:
-                    break
-            return truncated.rstrip() + "..."
-        
-        # ENHANCED: Fallback - return first substantial portion with better logic
-        # Try to end at sentence boundaries
-        if len(content) > max_length:
-            truncate_at = max_length
-            # Try to find a sentence ending near the limit
-            for i in range(max_length - 100, max_length):
-                if i < len(content) and content[i] in '.!?':
-                    truncate_at = i + 1
-                    break
-            
-            return content[:truncate_at] + "..." if truncate_at < len(content) else content[:max_length] + "..."
-        
-        return content 
+        return list(set(terms))  # Remove duplicates 
