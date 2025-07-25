@@ -1038,10 +1038,7 @@ Answer:"""
             
             logger.info(f"📁 LLM STEP 10: Calling Gemini Flash model")
             
-            response = await gemini_flash.generate_with_selected_llm(
-                prompts=[{"role": "user", "parts": [prompt]}],
-                provider="Google Gemini"
-            )
+            response = await gemini_flash.generate_text(prompt)
             
             logger.info(f"📁 LLM STEP 11: ✅ Gemini response received")
             
