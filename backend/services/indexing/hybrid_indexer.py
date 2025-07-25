@@ -822,8 +822,8 @@ class HybridIndexer:
     async def _get_database_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
         """Fallback: Get context directly from database"""
         try:
-            # Import database service
-            from ..database import get_db_service
+            # Import database service with absolute import to fix relative import error
+            from services.database import get_db_service
             
             db_service = get_db_service()
             

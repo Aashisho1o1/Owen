@@ -190,13 +190,12 @@ async def chat(
         # NEW: PREMIUM FEATURE - Folder Context Retrieval
         folder_context = None
         if chat_request.folder_scope:
+            logger.info("📁 FolderScope enabled - retrieving folder context...")
             try:
-                logger.info("📁 FolderScope enabled - retrieving folder context...")
-                # Import the indexing service
-                from ..services.indexing.hybrid_indexer import HybridIndexer
+                # Import the indexing service with absolute import
+                from services.indexing.hybrid_indexer import HybridIndexer
                 indexing_service = HybridIndexer()
                 
-                # Get folder context based on current document/folder
                 folder_context = await indexing_service.get_folder_context(
                     user_id=user_id,
                     query=validated_message,
@@ -332,10 +331,9 @@ async def chat(
             voice_analysis_results = []
             if validated_editor_text and len(validated_editor_text) > 100:
                 try:
-                    # Analyze editor text for voice consistency
-                    voice_results = await get_character_voice_service().analyze_text_for_voice_consistency(
-                        text=validated_editor_text,
-                        user_id=user_id
+                    # Analyze editor text for voice consistency using the correct method name
+                    voice_results = await get_character_voice_service().analyze(
+                        text=validated_editor_text
                     )
                     
                     # Add voice consistency feedback to response if issues found
