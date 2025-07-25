@@ -6,8 +6,7 @@
  */
 
 import React from 'react';
-import { ChatMessage } from '../../services/api/types';
-import { SuggestionOption } from '../../services/api/types';
+import { ChatMessage, SuggestionOption } from '../../services/api/types';
 import { SuggestionsDisplay } from './SuggestionsDisplay';
 import { useChatContext } from '../../contexts/ChatContext';
 import { useEditorContext } from '../../contexts/EditorContext';
@@ -18,10 +17,6 @@ interface EnhancedChatMessageProps {
   originalText?: string;
   showSuggestions?: boolean;
   isStreaming?: boolean;
-}
-
-interface ReplacementInfo {
-  [key: string]: unknown;
 }
 
 export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
@@ -163,59 +158,57 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
   };
 
   const handleAcceptSuggestion = async (suggestion: SuggestionOption) => {
-    await acceptTextSuggestion(suggestion, (newContent: string, replacementInfo: ReplacementInfo) => {
-      // Update the editor content using EditorContext
-      setEditorContent(newContent);
-      
-      // Add visual feedback for the replacement
-      console.log('Content updated with suggestion:', replacementInfo);
-      
-      // Dispatch event to notify other components
-      window.dispatchEvent(new CustomEvent('suggestionAccepted', {
-        detail: { newContent, replacementInfo, suggestionId: suggestion.id }
-      }));
-    });
+    try {
+      await acceptTextSuggestion(suggestion, (newContent, replacementInfo) => {
+        console.log('📝 Content updated via suggestion:', {
+          newContentLength: newContent.length,
+          replacementInfo
+        });
+        setEditorContent(newContent);
+      });
+    } catch (error) {
+      console.error('❌ Failed to accept suggestion:', error);
+    }
   };
 
+  // Determine message styling based on role and streaming state
+  const messageClass = `message ${message.role}-message${isStreaming ? ' streaming' : ''}`;
+
   return (
-    <div className={`message ${message.role === 'user' ? 'user-message' : 'ai-message'}`}>
-      {message.role === 'assistant' && (
-        <div className="message-avatar">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          >
+    <div className={messageClass}>
+      <div className="message-avatar">
+        {message.role === 'user' ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
             <line x1="8" y1="2" x2="8" y2="6"></line>
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
-        </div>
-      )}
-      
-      <div className="message-content">
-        {/* Hide content during streaming to prevent duplication with StreamingMessage */}
-        {!isStreaming && renderMessageContent(message)}
-        {isStreaming && <span className="typing-cursor">|</span>}
-        
-        {/* Show suggestions if available */}
-        {showSuggestions && suggestions.length > 0 && (
-          <SuggestionsDisplay
-            suggestions={suggestions}
-            originalText={originalText}
-            onAcceptSuggestion={handleAcceptSuggestion}
-            isAccepting={isAcceptingSuggestion}
-            acceptedSuggestionId={acceptedSuggestionId ?? undefined}
-          />
         )}
       </div>
+      <div className="message-content">
+        {renderMessageContent(message)}
+        {/* Add typing cursor only for streaming AI messages */}
+        {isStreaming && message.role === 'assistant' && (
+          <span className="typing-cursor" aria-hidden="true">|</span>
+        )}
+      </div>
+      
+      {/* Show suggestions for AI messages when available */}
+      {showSuggestions && suggestions.length > 0 && (
+        <SuggestionsDisplay
+          suggestions={suggestions}
+          originalText={originalText}
+          onAcceptSuggestion={handleAcceptSuggestion}
+          isAccepting={isAcceptingSuggestion}
+          acceptedSuggestionId={acceptedSuggestionId || undefined}
+        />
+      )}
     </div>
   );
 };

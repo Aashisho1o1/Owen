@@ -111,23 +111,29 @@
   line-height: inherit;
 }
 
-/* Enhanced blinking animation for typewriter-style cursor */
+/* Enhanced blinking animation for typewriter-style cursor - PERFORMANCE OPTIMIZED */
 @keyframes typewriterBlink {
-  0%, 50% {
+  0%, 40% {
     opacity: 1;
   }
-  51%, 100% {
-    opacity: 0;
+  45%, 90% {
+    opacity: 0.4;
+  }
+  95%, 100% {
+    opacity: 1;
   }
 }
 
-/* Blinking animation for cursor - enhanced visibility */
+/* Blinking animation for cursor - enhanced visibility but smoother */
 @keyframes cursorBlink {
-  0%, 50% {
+  0%, 40% {
     opacity: 1;
   }
-  51%, 100% {
-    opacity: 0;
+  45%, 90% {
+    opacity: 0.4;
+  }
+  95%, 100% {
+    opacity: 1;
   }
 }
 

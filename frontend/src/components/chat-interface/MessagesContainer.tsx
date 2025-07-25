@@ -127,24 +127,24 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
       
       {/* Chat Messages with preserved highlighted text context */}
       {messages.map((msg, index) => {
-        // Show current active highlighted text at the specific message it's associated with
-        const shouldShowCurrentHighlight = highlightedText && 
-          highlightedText.trim() && 
+        // Check if this message should show current active highlighted text
+        const shouldShowCurrentHighlight = (
+          highlightedText &&
+          highlightedText.trim() &&
           highlightedTextMessageIndex === index &&
-          shownHighlightedTextIndex !== index;
-        
-        // Show preserved highlighted text from this message (if any)
+          shownHighlightedTextIndex !== index
+        );
+
+        // Check if this specific message has preserved highlighted text
         const messageHasHighlightedText = msg.highlightedText && msg.highlightedText.trim();
         
-        // Mark as shown if we're about to show current highlight
-        if (shouldShowCurrentHighlight) {
+        // Check if this is the last AI message for suggestions
+        const isLastAIMessage = msg.role === 'assistant' && index === messages.length - 1;
+        
+        // Mark that we've shown this highlighted text
+        if (shouldShowCurrentHighlight && shownHighlightedTextIndex !== index) {
           setShownHighlightedTextIndex(index);
         }
-        
-        // Show suggestions on the last AI message if we have suggestions
-        const isLastAIMessage = msg.role === 'assistant' && 
-          index === messages.length - 1 && 
-          Array.isArray(currentSuggestions) && currentSuggestions.length > 0;
 
         return (
           <div key={index}>
@@ -170,35 +170,19 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
               </div>
             )}
             
-            {/* The actual message */}
+            {/* The actual message with streaming support built-in */}
             <EnhancedChatMessage
               message={msg}
               suggestions={isLastAIMessage ? currentSuggestions : []}
               showSuggestions={isLastAIMessage}
-              isStreaming={isStreaming && index === messages.length - 1}
+              isStreaming={isStreaming && isLastAIMessage}
             />
           </div>
         );
       })}
       
-      {/* Streaming message */}
-      {isStreaming && streamText && (
-        <StreamingMessage
-          streamText={streamText}
-          isStreaming={isStreaming}
-        />
-      )}
-
-      {/* If a highlight is pending display (before first question) AND we already have messages above, make sure it's in the reader's view. */}
-      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && messages.length > 0 && (
-        <div className="inline-highlighted-text">
-          <HighlightedTextDisplay
-            highlightedText={highlightedText}
-            contextualPrompts={contextualPrompts}
-            onPromptClick={onPromptClick}
-          />
-        </div>
-      )}
+      {/* REMOVED: Duplicate streaming message that was causing empty boxes */}
+      {/* The streaming effect is now handled within EnhancedChatMessage */}
       
       <div ref={messagesEndRef} />
       

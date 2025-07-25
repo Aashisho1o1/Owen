@@ -130,26 +130,28 @@ export const useChat = ({
     }
   }, [authorPersona, helpFocus, initialMessages.length, userPreferences?.english_variant]);
   
-  // Effect for simulating typing stream
+  // Effect for simulating typing stream - OPTIMIZED FOR PERFORMANCE
   useEffect(() => {
     if (!isStreaming || streamIndex >= fullResponse.length) {
       if (isStreaming && streamIndex >= fullResponse.length) {
-        // FIXED: Don't add the message here - it should already be in the messages array
-        // The streaming effect should only handle the typing animation
-        setIsStreaming(false); // End streaming
-        setStreamText(''); // Clear stream text
-        setStreamIndex(0); // Reset stream index
+        // Streaming complete - clean up
+        setIsStreaming(false);
+        setStreamText('');
+        setStreamIndex(0);
       }
       return;
     }
 
-    const typingSpeed = Math.random() * 30 + 20; // Simulate variable typing speed
-    const timer = setTimeout(() => {
-      setStreamText(fullResponse.substring(0, streamIndex + 1));
-      setStreamIndex(prevIndex => prevIndex + 1);
-    }, typingSpeed);
+    // Use requestAnimationFrame for smoother, synchronized updates
+    const frameId = requestAnimationFrame(() => {
+      // Batch multiple characters for smoother animation (reduces DOM thrashing)
+      const charsToAdd = Math.min(3, fullResponse.length - streamIndex);
+      const newText = fullResponse.substring(0, streamIndex + charsToAdd);
+      setStreamText(newText);
+      setStreamIndex(prevIndex => prevIndex + charsToAdd);
+    });
 
-    return () => clearTimeout(timer);
+    return () => cancelAnimationFrame(frameId);
   }, [isStreaming, streamIndex, fullResponse]);
 
 
@@ -293,7 +295,8 @@ export const useChat = ({
         setStreamIndex(0); // Reset stream index
         setThinkingTrail(response.thinking_trail || null);
         
-        // Update the placeholder message progressively during streaming
+        // SIMPLIFIED: Update the placeholder message using the existing useEffect streaming
+        // The useEffect above handles the progressive updates
         const updatePlaceholderMessage = (content: string) => {
           setMessages(prev => prev.map((msg, index) => 
             index === assistantMessageIndex 
@@ -302,27 +305,31 @@ export const useChat = ({
           ));
         };
         
-        // Set up progressive message updates
-        let streamingIndex = 0;
-        const streamingInterval = setInterval(() => {
-          if (streamingIndex >= finalResponse.length || requestId !== currentRequestId.current) {
-            clearInterval(streamingInterval);
-            if (requestId === currentRequestId.current) {
-              // Final update with complete message
-              updatePlaceholderMessage(finalResponse);
-              setIsStreaming(false);
-              setStreamText('');
-              setStreamIndex(0);
-            }
+        // Watch for streamText changes and update the message content
+        const updateInterval = setInterval(() => {
+          if (requestId !== currentRequestId.current) {
+            clearInterval(updateInterval);
             return;
           }
           
-          const typingSpeed = Math.random() * 30 + 20;
-          const currentSlice = finalResponse.substring(0, streamingIndex + 1);
-          updatePlaceholderMessage(currentSlice);
-          setStreamText(currentSlice);
-          streamingIndex++;
-        }, 50); // Faster updates for smoother streaming
+          // Get current stream text and update the message
+          setMessages(prev => prev.map((msg, index) => 
+            index === assistantMessageIndex 
+              ? { ...msg, content: streamText } 
+              : msg
+          ));
+          
+          // Check if streaming is complete
+          if (!isStreaming) {
+            clearInterval(updateInterval);
+            // Final update with complete message
+            setMessages(prev => prev.map((msg, index) => 
+              index === assistantMessageIndex 
+                ? { ...msg, content: finalResponse } 
+                : msg
+            ));
+          }
+        }, 100); // Reduced frequency to prevent blinking
         
         // CRITICAL: Dispatch suggestions to ChatContext if available
         if (response.suggestions && response.has_suggestions) {
