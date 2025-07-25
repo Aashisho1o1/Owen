@@ -467,7 +467,16 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   // Auto-save & sync
   const setCurrentDocument = (doc: Document | null) => {
+    console.log('📋 useDocuments: Setting current document:', {
+      newDocId: doc?.id || 'null',
+      newDocTitle: doc?.title || 'null',
+      previousDocId: state.currentDocument?.id || 'null',
+      previousDocTitle: state.currentDocument?.title || 'null',
+      hasUnsavedChanges: state.hasUnsavedChanges
+    });
+    
     if (state.currentDocument && state.hasUnsavedChanges) {
+      console.log('💾 useDocuments: Auto-saving previous document before switching');
       saveNow();
     }
     
@@ -488,6 +497,8 @@ export const useDocuments = (): UseDocumentsReturn => {
       lastContentRef.current = doc.content;
       lastTitleRef.current = doc.title;
     }
+    
+    console.log('✅ useDocuments: Current document set successfully');
   };
 
   const updateContent = useCallback((content: string) => {
@@ -511,6 +522,13 @@ export const useDocuments = (): UseDocumentsReturn => {
 
     setState(prev => ({ ...prev, isSaving: true }));
     
+    console.log('💾 useDocuments: Saving document:', {
+      documentId: state.currentDocument.id,
+      title: state.currentDocument.title,
+      pendingContent: state.pendingContent.substring(0, 100) + '...',
+      pendingContentLength: state.pendingContent.length
+    });
+    
     try {
       const updates: Partial<Document> = {
         content: state.pendingContent,
@@ -518,6 +536,12 @@ export const useDocuments = (): UseDocumentsReturn => {
       };
 
       const updatedDocument = await api.updateDocument(state.currentDocument.id, updates);
+      
+      console.log('✅ useDocuments: Document saved successfully:', {
+        documentId: updatedDocument.id,
+        title: updatedDocument.title,
+        wordCount: updatedDocument.word_count
+      });
       
       setState(prev => ({
         ...prev,

@@ -28,7 +28,7 @@ import './WritingWorkspace.css';
 export const WritingWorkspace: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Add authLoading
   const { isChatVisible, toggleChat } = useChatContext();
-  const { editorContent, setEditorContent, documentManager } = useEditorContext();
+  const { editorContent, setEditorContent } = useEditorContext();
   const {
     createDocument,
     updateTitle,
@@ -165,7 +165,7 @@ export const WritingWorkspace: React.FC = () => {
 
   // Handle document selection from Fiction Document Manager
   const handleDocumentSelect = (document: { id: string; title: string; content: string }) => {
-    // Update the document manager with proper Document structure
+    // CRITICAL FIX: Update the document manager with proper Document structure
     const fullDocument = {
       ...document,
       created_at: new Date().toISOString(),
@@ -175,10 +175,22 @@ export const WritingWorkspace: React.FC = () => {
       document_type: 'novel' as const
     };
     
-    documentManager.setCurrentDocument(fullDocument);
+    console.log('📋 WritingWorkspace: Selecting document:', {
+      documentId: document.id,
+      title: document.title,
+      contentLength: document.content.length
+    });
+    
+    // CRITICAL: Set the current document in the document management system
+    // This ensures that when content is saved, it goes to the RIGHT document
+    setCurrentDocument(fullDocument);
+    
+    // Update local editor state to reflect the selected document
     setEditorContent(document.content);
     setDocumentTitle(document.title);
     setShowDocumentManager(false);
+    
+    console.log('✅ WritingWorkspace: Document selection complete');
   };
 
   // Handle returning to writing space from Document Manager
