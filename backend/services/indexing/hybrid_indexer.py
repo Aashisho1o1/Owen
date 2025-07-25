@@ -967,13 +967,13 @@ class HybridIndexer:
             """
             
             logger.info(f"📁 LLM STEP 3: Executing database query for user {user_id}")
-            logger.info(f"📁 LLM STEP 3a: Query: {query_sql}")
-            logger.info(f"📁 LLM STEP 3b: Params: ({user_id},)")
+            logger.info(f"📁 LLM STEP 3a: Query: \n{query_sql}")
+            logger.info(f"📁 LLM STEP 3b: Params: {(user_id,)}")
             
-            # CRITICAL FIX: Use fetch_all instead of execute_query
-            documents = await db_service.fetch_all(query_sql, (user_id,))
+            # CRITICAL FIX: Use correct database service method `execute_query` with `fetch='all'`
+            documents = await db_service.execute_query(query_sql, (user_id,), fetch='all')
             
-            logger.info(f"📁 LLM STEP 4: Database query completed successfully")
+            logger.info(f"📁 LLM STEP 4: Database query executed successfully")
             logger.info(f"📁 LLM STEP 4a: Found {len(documents) if documents else 0} documents")
             
             if not documents:
@@ -1196,16 +1196,17 @@ Answer:"""
             """
             
             logger.info(f"📁 KEYWORD STEP 5: Executing database query")
-            logger.info(f"📁 KEYWORD STEP 5a: Query: {query_sql}")
-            logger.info(f"📁 KEYWORD STEP 5b: Params: ({user_id}, {like_pattern}, {like_pattern}, {max_documents * 2})")
-            
-            # CRITICAL FIX: Use fetch_all instead of execute_query
-            documents = await db_service.fetch_all(
-                query_sql, 
-                (user_id, like_pattern, like_pattern, max_documents * 2)
+            logger.info(f"📁 KEYWORD STEP 5a: Query: \n{query_sql}")
+            logger.info(f"📁 KEYWORD STEP 5b: Params: {(user_id, f'%{query}%', f'%{query}%', max_documents)}")
+
+            # CRITICAL FIX: Use correct database service method `execute_query` with `fetch='all'`
+            documents = await db_service.execute_query(
+                query_sql,
+                (user_id, f'%{query}%', f'%{query}%', max_documents),
+                fetch='all'
             )
             
-            logger.info(f"📁 KEYWORD STEP 6: Database query completed")
+            logger.info(f"📁 KEYWORD STEP 6: Database query executed successfully")
             logger.info(f"📁 KEYWORD STEP 6a: Found {len(documents) if documents else 0} documents")
             
             if not documents:
