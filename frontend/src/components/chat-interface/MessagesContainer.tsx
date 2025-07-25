@@ -5,7 +5,6 @@ import { ErrorDisplay } from './ErrorDisplay';
 import { UnhighlightButton } from './UnhighlightButton';
 import { ChatMessage as ChatMessageType } from '../../services/api';
 import { SuggestionOption } from '../../services/api/types';
-import { StreamingMessage } from './StreamingMessage';
 import { useChatContext } from '../../contexts/ChatContext';
 
 interface MessagesContainerProps {
