@@ -1,3 +1,8 @@
+# backend/main.py
+# FORCE REDEPLOY: This comment is added to trigger a fresh build on Railway
+# and ensure the latest bug fixes for FolderScope are applied.
+# Deployment timestamp: 2024-07-25 12:00:00 UTC
+
 """
 DOG Writer Backend - AI Writing Assistant MVP
 Clean main application file with modular architecture.
