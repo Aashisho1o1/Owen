@@ -774,6 +774,30 @@ class HybridIndexer:
             logger.info(f"📁 ========== INTELLIGENT FOLDER SCOPE SEARCH ==========")
             logger.info(f"📁 User: {user_id} | Query: '{query}' | Max docs: {max_documents}")
             
+            # OPTIMIZED FIX: Reduced timeout to match frontend (2 minutes instead of 4 minutes)
+            context_string = await asyncio.wait_for(
+                self._execute_folder_search(user_id, query, max_documents),
+                timeout=120  # 2 minutes timeout (was 240 seconds)
+            )
+            
+            if context_string:
+                logger.info(f"📁 Total context characters: {len(context_string)}")
+                logger.info(f"📁 ========== INTELLIGENT FOLDER SCOPE SEARCH COMPLETE ==========")
+                return context_string
+            else:
+                logger.info(f"📁 No relevant context found after all attempts.")
+                logger.info(f"📁 ========== INTELLIGENT FOLDER SCOPE SEARCH COMPLETE ==========")
+                return None
+        except asyncio.TimeoutError:
+            logger.error(f"❌ FolderScope context retrieval timed out after 120 seconds for user {user_id}, query '{query}'")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error in get_folder_context: {e}", exc_info=True)
+            return None
+
+    async def _execute_folder_search(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
+        """Internal method to execute the actual folder search logic"""
+        try:
             # PERFORMANCE FIX: Skip slow document indexing, go straight to search methods
             logger.info(f"📁 PERFORMANCE MODE: Skipping document indexing to prevent timeout")
             
@@ -781,7 +805,7 @@ class HybridIndexer:
             logger.info(f"📁 STEP 1: LLM semantic search with Gemini Flash (FAST)...")
             llm_context = await asyncio.wait_for(
                 self._get_llm_semantic_context(user_id, query, max_documents),
-                timeout=45.0  # 45 second timeout for LLM search
+                timeout=60.0  # 1 minute timeout for LLM search
             )
             if llm_context:
                 logger.info(f"📁 ✅ LLM semantic search found context: {len(llm_context)} chars")
@@ -793,7 +817,7 @@ class HybridIndexer:
             logger.info(f"📁 STEP 2: Enhanced keyword search (FALLBACK)...")
             keyword_context = await asyncio.wait_for(
                 self._get_enhanced_keyword_context(user_id, query, max_documents),
-                timeout=30.0  # 30 second timeout for keyword search
+                timeout=45.0  # 45 second timeout for keyword search
             )
             if keyword_context:
                 logger.info(f"📁 ✅ Enhanced keyword search found context: {len(keyword_context)} chars")
@@ -801,13 +825,12 @@ class HybridIndexer:
             
             logger.info(f"📁 ❌ No relevant context found")
             return None
-                
+            
         except asyncio.TimeoutError:
-            logger.warning(f"⏰ FolderScope search timed out for user {user_id} - query: '{query}'")
+            logger.error(f"❌ Internal folder search timed out for user {user_id}, query '{query}'")
             return None
         except Exception as e:
-            logger.error(f"❌ Error in intelligent folder context search: {e}")
-            logger.exception("Full error traceback:")
+            logger.error(f"❌ Error in _execute_folder_search: {e}", exc_info=True)
             return None
 
     async def _ensure_user_documents_indexed(self, user_id: int):
@@ -924,9 +947,13 @@ class HybridIndexer:
     async def _get_llm_semantic_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
         """OPTIMIZED: Use faster Gemini Flash model for semantic document selection"""
         try:
+            logger.info(f"📁 LLM STEP 1: Starting semantic search for user {user_id}")
+            
             # Import database service
             from services.database import get_db_service
             db_service = get_db_service()
+            
+            logger.info(f"📁 LLM STEP 2: Database service obtained successfully")
             
             # PERFORMANCE FIX: Limit to 5 recent documents for speed
             query_sql = """
@@ -939,28 +966,61 @@ class HybridIndexer:
             LIMIT 5
             """
             
-            documents = db_service.execute_query(query_sql, (user_id,), fetch='all')
+            logger.info(f"📁 LLM STEP 3: Executing database query for user {user_id}")
+            logger.info(f"📁 LLM STEP 3a: Query: {query_sql}")
+            logger.info(f"📁 LLM STEP 3b: Params: ({user_id},)")
+            
+            # CRITICAL FIX: Use fetch_all instead of execute_query
+            documents = await db_service.fetch_all(query_sql, (user_id,))
+            
+            logger.info(f"📁 LLM STEP 4: Database query completed successfully")
+            logger.info(f"📁 LLM STEP 4a: Found {len(documents) if documents else 0} documents")
             
             if not documents:
                 logger.info(f"📁 LLM Search: No documents found for user {user_id}")
                 return None
             
+            logger.info(f"📁 LLM STEP 5: Processing documents for summaries")
+            
             # PERFORMANCE FIX: Create shorter summaries for faster processing
             doc_summaries = []
-            for doc in documents:
-                content = doc[2]
-                # MUCH shorter summary - just first 200 chars
-                summary = content[:200] + "..." if len(content) > 200 else content
-                doc_summaries.append({
-                    'id': str(doc[0]),
-                    'title': doc[1],
-                    'summary': summary
-                })
+            for i, doc in enumerate(documents):
+                try:
+                    doc_id = doc['id'] if isinstance(doc, dict) else doc[0]
+                    title = doc['title'] if isinstance(doc, dict) else doc[1] 
+                    content = doc['content'] if isinstance(doc, dict) else doc[2]
+                    
+                    logger.info(f"📁 LLM STEP 5.{i+1}: Processing doc '{title}' (content length: {len(content)})")
+                    
+                    # MUCH shorter summary - just first 200 chars
+                    summary = content[:200] + "..." if len(content) > 200 else content
+                    doc_summaries.append({
+                        'id': str(doc_id),
+                        'title': title,
+                        'summary': summary
+                    })
+                    
+                    logger.info(f"📁 LLM STEP 5.{i+1}: ✅ Summary created (length: {len(summary)})")
+                    
+                except Exception as doc_error:
+                    logger.error(f"📁 LLM STEP 5.{i+1}: ❌ Error processing document: {doc_error}")
+                    logger.error(f"📁 LLM STEP 5.{i+1}: Document data: {doc}")
+                    continue
+            
+            logger.info(f"📁 LLM STEP 6: Created {len(doc_summaries)} document summaries")
+            
+            if not doc_summaries:
+                logger.warning(f"📁 LLM Search: No valid document summaries created")
+                return None
+            
+            logger.info(f"📁 LLM STEP 7: Initializing Gemini service")
             
             # PERFORMANCE FIX: Use simpler, faster prompt
             from services.llm.gemini_service import GeminiService
             
             gemini_flash = GeminiService()
+            
+            logger.info(f"📁 LLM STEP 8: Creating prompt for {len(doc_summaries)} documents")
             
             # PERFORMANCE FIX: Much shorter prompt for faster processing
             prompt = f"""Query: "{query}"
@@ -971,12 +1031,19 @@ Which documents contain relevant info? Return only the document numbers (1,2,3..
 
 Answer:"""
 
+            logger.info(f"📁 LLM STEP 9: Prompt created (length: {len(prompt)})")
+            logger.info(f"📁 LLM STEP 9a: Prompt preview: {prompt[:200]}...")
+            
             logger.info(f"📁 LLM Search: Analyzing {len(doc_summaries)} documents for relevance...")
+            
+            logger.info(f"📁 LLM STEP 10: Calling Gemini Flash model")
             
             response = await gemini_flash.generate_with_selected_llm(
                 prompts=[{"role": "user", "parts": [prompt]}],
                 provider="Google Gemini"
             )
+            
+            logger.info(f"📁 LLM STEP 11: ✅ Gemini response received")
             
             # Parse LLM response
             response_text = response.strip()
@@ -986,6 +1053,8 @@ Answer:"""
                 logger.info(f"📁 LLM Search: No relevant documents identified")
                 return None
             
+            logger.info(f"📁 LLM STEP 12: Parsing response for document indices")
+            
             # Extract document IDs more robustly
             try:
                 # Handle various response formats: "1,2,3" or "Documents 1, 2, 3" etc.
@@ -993,30 +1062,55 @@ Answer:"""
                 numbers = re.findall(r'\d+', response_text)
                 selected_indices = [int(x) - 1 for x in numbers if x.isdigit()]
                 selected_indices = [i for i in selected_indices if 0 <= i < len(doc_summaries)]
-            except:
-                logger.warning(f"📁 LLM Search: Failed to parse response: {response_text}")
+                
+                logger.info(f"📁 LLM STEP 12a: Found numbers: {numbers}")
+                logger.info(f"📁 LLM STEP 12b: Selected indices: {selected_indices}")
+                
+            except Exception as parse_error:
+                logger.error(f"📁 LLM STEP 12: ❌ Failed to parse response: {parse_error}")
+                logger.error(f"📁 LLM STEP 12a: Response text: {response_text}")
                 return None
             
             if not selected_indices:
                 logger.info(f"📁 LLM Search: No valid document indices found")
                 return None
             
+            logger.info(f"📁 LLM STEP 13: Extracting content for {len(selected_indices)} documents")
+            
             # Get full content for selected documents
             context_parts = []
             for idx in selected_indices[:max_documents]:
-                doc = documents[idx]
-                title = doc[1]
-                content = doc[2]
-                
-                # PERFORMANCE FIX: Extract smaller, more focused excerpts
-                excerpt = self._extract_smart_excerpt(content, query, max_length=600)  # Reduced from 1000
-                context_parts.append(f"**{title}**:\n{excerpt}")
+                try:
+                    doc = documents[idx]
+                    title = doc['title'] if isinstance(doc, dict) else doc[1]
+                    content = doc['content'] if isinstance(doc, dict) else doc[2]
+                    
+                    logger.info(f"📁 LLM STEP 13.{idx+1}: Extracting from '{title}'")
+                    
+                    # PERFORMANCE FIX: Extract smaller, more focused excerpts
+                    excerpt = self._extract_smart_excerpt(content, query, max_length=600)  # Reduced from 1000
+                    context_parts.append(f"**{title}**:\n{excerpt}")
+                    
+                    logger.info(f"📁 LLM STEP 13.{idx+1}: ✅ Excerpt created (length: {len(excerpt)})")
+                    
+                except Exception as extract_error:
+                    logger.error(f"📁 LLM STEP 13.{idx+1}: ❌ Error extracting content: {extract_error}")
+                    continue
             
             logger.info(f"📁 LLM Search: Found {len(context_parts)} relevant documents")
-            return "\n\n---\n\n".join(context_parts)
+            
+            final_context = "\n\n---\n\n".join(context_parts)
+            logger.info(f"📁 LLM STEP 14: ✅ Final context created (length: {len(final_context)})")
+            
+            return final_context
             
         except Exception as e:
-            logger.warning(f"⚠️ LLM semantic search failed: {e}")
+            logger.error(f"❌ LLM semantic search failed with detailed error:")
+            logger.error(f"❌ Error type: {type(e).__name__}")
+            logger.error(f"❌ Error message: {str(e)}")
+            logger.error(f"❌ Error args: {e.args}")
+            import traceback
+            logger.error(f"❌ Full traceback: {traceback.format_exc()}")
             return None
 
     def _extract_smart_excerpt(self, content: str, query: str, max_length: int = 1000) -> str:
@@ -1069,58 +1163,95 @@ Answer:"""
     async def _get_enhanced_keyword_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
         """Enhanced keyword search as last resort - much better than the previous version"""
         try:
+            logger.info(f"📁 KEYWORD STEP 1: Starting enhanced keyword search for user {user_id}")
+            logger.info(f"📁 KEYWORD STEP 1a: Query: '{query}'")
+            logger.info(f"📁 KEYWORD STEP 1b: Max documents: {max_documents}")
+            
             # Import database service
             from services.database import get_db_service
             db_service = get_db_service()
             
-            # Expand query with synonyms and related terms
-            expanded_query_terms = self._expand_query_terms(query)
+            logger.info(f"📁 KEYWORD STEP 2: Database service obtained successfully")
             
-            # Build PostgreSQL full-text search query
-            search_terms = " | ".join([f"'{term}'" for term in expanded_query_terms])
+            # Expand query with synonyms and related terms
+            logger.info(f"📁 KEYWORD STEP 3: Expanding query terms")
+            expanded_query_terms = self._expand_query_terms(query)
+            logger.info(f"📁 KEYWORD STEP 3a: Expanded terms: {expanded_query_terms}")
+            
+            # CRITICAL FIX: Use simpler SQL query instead of PostgreSQL full-text search
+            logger.info(f"📁 KEYWORD STEP 4: Building simplified SQL query")
+            
+            # Simple LIKE-based search that works on all databases
+            like_pattern = f"%{query}%"
             
             query_sql = """
-            SELECT id, title, content, updated_at,
-                   ts_rank(to_tsvector('english', title || ' ' || content), 
-                          to_tsquery('english', %s)) as rank
+            SELECT id, title, content, updated_at
             FROM documents 
             WHERE user_id = %s 
             AND content IS NOT NULL 
             AND LENGTH(TRIM(content)) > 50
-            AND (to_tsvector('english', title || ' ' || content) @@ to_tsquery('english', %s)
-                 OR title ILIKE %s
-                 OR content ILIKE %s)
-            ORDER BY rank DESC, updated_at DESC
+            AND (title ILIKE %s OR content ILIKE %s)
+            ORDER BY updated_at DESC
             LIMIT %s
             """
             
-            # Create search patterns
-            like_pattern = f"%{query}%"
+            logger.info(f"📁 KEYWORD STEP 5: Executing database query")
+            logger.info(f"📁 KEYWORD STEP 5a: Query: {query_sql}")
+            logger.info(f"📁 KEYWORD STEP 5b: Params: ({user_id}, {like_pattern}, {like_pattern}, {max_documents * 2})")
             
-            documents = db_service.execute_query(
+            # CRITICAL FIX: Use fetch_all instead of execute_query
+            documents = await db_service.fetch_all(
                 query_sql, 
-                (search_terms, user_id, search_terms, like_pattern, like_pattern, max_documents * 2), 
-                fetch='all'
+                (user_id, like_pattern, like_pattern, max_documents * 2)
             )
             
+            logger.info(f"📁 KEYWORD STEP 6: Database query completed")
+            logger.info(f"📁 KEYWORD STEP 6a: Found {len(documents) if documents else 0} documents")
+            
             if not documents:
+                logger.info(f"📁 KEYWORD Search: No documents found for user {user_id}")
                 return None
+            
+            logger.info(f"📁 KEYWORD STEP 7: Processing {len(documents)} documents")
             
             # Process and rank results
             context_parts = []
-            for doc in documents[:max_documents]:
-                title = doc[1]
-                content = doc[2]
-                rank = doc[4] if len(doc) > 4 else 0
-                
-                # Extract smart excerpt
-                excerpt = self._extract_smart_excerpt(content, query, 800)
-                context_parts.append(f"**{title}** (relevance: {rank:.2f}):\n{excerpt}")
+            for i, doc in enumerate(documents[:max_documents]):
+                try:
+                    title = doc['title'] if isinstance(doc, dict) else doc[1]
+                    content = doc['content'] if isinstance(doc, dict) else doc[2]
+                    
+                    logger.info(f"📁 KEYWORD STEP 7.{i+1}: Processing '{title}' (content length: {len(content)})")
+                    
+                    # Extract smart excerpt
+                    excerpt = self._extract_smart_excerpt(content, query, 800)
+                    context_parts.append(f"**{title}**:\n{excerpt}")
+                    
+                    logger.info(f"📁 KEYWORD STEP 7.{i+1}: ✅ Excerpt created (length: {len(excerpt)})")
+                    
+                except Exception as doc_error:
+                    logger.error(f"📁 KEYWORD STEP 7.{i+1}: ❌ Error processing document: {doc_error}")
+                    logger.error(f"📁 KEYWORD STEP 7.{i+1}: Document data: {doc}")
+                    continue
             
-            return "\n\n---\n\n".join(context_parts) if context_parts else None
+            logger.info(f"📁 KEYWORD STEP 8: Created {len(context_parts)} context parts")
+            
+            final_context = "\n\n---\n\n".join(context_parts) if context_parts else None
+            
+            if final_context:
+                logger.info(f"📁 KEYWORD STEP 9: ✅ Final context created (length: {len(final_context)})")
+            else:
+                logger.info(f"📁 KEYWORD STEP 9: No context parts created")
+            
+            return final_context
             
         except Exception as e:
-            logger.warning(f"⚠️ Enhanced keyword search failed: {e}")
+            logger.error(f"❌ Enhanced keyword search failed with detailed error:")
+            logger.error(f"❌ Error type: {type(e).__name__}")
+            logger.error(f"❌ Error message: {str(e)}")
+            logger.error(f"❌ Error args: {e.args}")
+            import traceback
+            logger.error(f"❌ Full traceback: {traceback.format_exc()}")
             return None
 
     def _expand_query_terms(self, query: str) -> List[str]:

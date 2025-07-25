@@ -10,11 +10,13 @@ import { ChatRequest, ChatResponse, EnhancedChatResponse, UserFeedbackRequest } 
 // === CHAT ENDPOINTS ===
 
 export const sendChatMessage = async (request: ChatRequest): Promise<ChatResponse> => {
-  // CRITICAL FIX: Extended timeout for FolderScope requests
-  // Vector search + LLM semantic matching can take 2-5 minutes
-  const timeoutMs = (request.folder_scope || request.voice_guard) ? 300000 : 60000; // 5 min vs 1 min
+  // OPTIMIZED FIX: Reduced timeout for better user experience
+  // FolderScope/VoiceGuard: 2 minutes (was 5 minutes) - should be sufficient for optimized search
+  // Standard requests: 45 seconds (was 1 minute) - faster feedback for normal chat
+  const timeoutMs = (request.folder_scope || request.voice_guard) ? 120000 : 45000; // 2 min vs 45 sec
   
   console.log(`🔧 Chat request timeout: ${timeoutMs/1000}s (FolderScope: ${request.folder_scope}, VoiceGuard: ${request.voice_guard})`);
+  console.log(`🔧 Premium features enabled: FolderScope=${request.folder_scope}, VoiceGuard=${request.voice_guard}`);
   
   const response = await apiClient.post('/api/chat/', request, { 
     timeout: timeoutMs,
