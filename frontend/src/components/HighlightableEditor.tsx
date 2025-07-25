@@ -681,13 +681,18 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       // Handle both HTML and plain text content
       const isContentDifferent = currentContent !== contentProp && currentText !== contentProp;
       
-      if (isContentDifferent) {
+      // CRITICAL FIX: Don't overwrite if user recently edited content
+      const userHasRecentContent = currentContent.length > 0 && contentProp.length === 0;
+      const shouldPreventOverwrite = userHasRecentContent && isContentDifferent;
+      
+      if (isContentDifferent && !shouldPreventOverwrite) {
         console.log('🔄 Updating editor content:', {
           currentContentLength: currentContent.length,
           currentTextLength: currentText.length,
           newContentLength: contentProp.length,
           newContentPreview: contentProp.substring(0, 100) + '...',
-          isHTML: contentProp.includes('<') && contentProp.includes('>')
+          isHTML: contentProp.includes('<') && contentProp.includes('>'),
+          preventedOverwrite: false
         });
         
         // Set content and preserve cursor position if possible
@@ -706,6 +711,12 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           console.warn('Failed to restore cursor position:', error);
           editor.commands.focus('end');
         }
+      } else if (shouldPreventOverwrite) {
+        console.log('🛡️ PREVENTING content overwrite to preserve user input:', {
+          currentContentLength: currentContent.length,
+          incomingContentLength: contentProp.length,
+          reason: 'User has content, incoming is empty'
+        });
       }
     }
   }, [contentProp, editor]);

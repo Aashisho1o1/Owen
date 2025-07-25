@@ -471,15 +471,20 @@ export const useDocuments = (): UseDocumentsReturn => {
       saveNow();
     }
     
+    // CRITICAL FIX: Don't overwrite content if user has unsaved changes for the same document
+    const isUpdatingSameDocument = doc && state.currentDocument && doc.id === state.currentDocument.id;
+    const shouldPreserveContent = isUpdatingSameDocument && state.hasUnsavedChanges;
+    
     setState(prev => ({
       ...prev,
       currentDocument: doc,
-      pendingContent: doc?.content || '',
-      pendingTitle: doc?.title || '',
-      hasUnsavedChanges: false
+      // Preserve user content if they have unsaved changes to the same document
+      pendingContent: shouldPreserveContent ? prev.pendingContent : (doc?.content || ''),
+      pendingTitle: shouldPreserveContent ? prev.pendingTitle : (doc?.title || ''),
+      hasUnsavedChanges: shouldPreserveContent ? prev.hasUnsavedChanges : false
     }));
     
-    if (doc) {
+    if (doc && !shouldPreserveContent) {
       lastContentRef.current = doc.content;
       lastTitleRef.current = doc.title;
     }

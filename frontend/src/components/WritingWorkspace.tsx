@@ -32,12 +32,14 @@ export const WritingWorkspace: React.FC = () => {
   const {
     createDocument,
     updateTitle,
+    updateContent, // Add updateContent to connect editor changes to document management
     saveNow,
     isSaving,
     lastSaved,
     hasUnsavedChanges,
     currentDocument,
-    setCurrentDocument
+    setCurrentDocument,
+    pendingContent, // Add pendingContent to access the current draft
   } = useDocuments();
 
   // Auth state for header
@@ -49,6 +51,14 @@ export const WritingWorkspace: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   
+  // FIXED: Connect editor content changes to document management
+  const handleEditorContentChange = (content: string) => {
+    setEditorContent(content); // Update local editor state
+    if (isAuthenticated && currentDocument) {
+      updateContent(content); // Update document management state
+    }
+  };
+
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
   
@@ -66,7 +76,7 @@ export const WritingWorkspace: React.FC = () => {
           const newDoc = await createDocument('untitled doc');
           setCurrentDocument(newDoc);
           setDocumentTitle(newDoc.title);
-          setEditorContent(newDoc.content || '');
+          setEditorContent(newDoc.content || ''); // Use actual content for new docs
         } else {
           // Guest mode - just set up local state
           setDocumentTitle('untitled doc');
@@ -90,6 +100,21 @@ export const WritingWorkspace: React.FC = () => {
       initializeDocument();
     }
   }, [isAuthenticated, authLoading, isInitialized]); // FIXED: Remove unstable function references
+
+  // SYNC EFFECT: Keep editor content in sync with document management
+  useEffect(() => {
+    if (currentDocument && pendingContent !== editorContent) {
+      // Only sync if the pending content is different and not empty
+      // This prevents overwriting user input with empty server content
+      if (pendingContent && pendingContent.trim().length > 0) {
+        console.log('📝 Syncing editor with pending document content:', {
+          pendingContentLength: pendingContent.length,
+          editorContentLength: editorContent.length
+        });
+        setEditorContent(pendingContent);
+      }
+    }
+  }, [pendingContent, editorContent, currentDocument]); // Sync when pending content changes
 
   // Handle auth modal - prevent opening when already authenticated
   const handleAuthModalOpen = () => {
@@ -285,7 +310,7 @@ export const WritingWorkspace: React.FC = () => {
           <div className="editor-container">
             <HighlightableEditor
               content={editorContent}
-              onChange={setEditorContent}
+              onChange={handleEditorContentChange}
             />
             
             {/* Enhanced AI Discovery Hint - Clean and focused */}
