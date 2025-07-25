@@ -758,7 +758,7 @@ class HybridIndexer:
         
         return suggestions
     
-    async def get_folder_context(self, user_id: int, query: str, max_documents: int = 5) -> Optional[str]:
+    async def get_folder_context(self, user_id: int, query: str, max_documents: int = 3) -> Optional[str]:
         """
         Retrieve relevant context from other documents in the user's folder for FolderScope feature.
         
@@ -772,6 +772,7 @@ class HybridIndexer:
         """
         try:
             logger.info(f"📁 Getting folder context for user {user_id}")
+            logger.info(f"📁 Query: '{query}' (requesting up to {max_documents} documents)")
             
             # Try vector store first (if available and populated)
             vector_context = await self._get_vector_context(query, max_documents)
@@ -785,6 +786,7 @@ class HybridIndexer:
                 
         except Exception as e:
             logger.error(f"❌ Error getting folder context: {e}")
+            logger.exception("Full folder context error traceback:")
             return None
     
     async def _get_vector_context(self, query: str, max_documents: int) -> Optional[str]:
@@ -820,7 +822,7 @@ class HybridIndexer:
             return None
     
     async def _get_database_context(self, user_id: int, query: str, max_documents: int) -> Optional[str]:
-        """Fallback: Get context directly from database"""
+        """Fallback: Get context directly from database with enhanced excerpt extraction"""
         try:
             # Import database service with absolute import to fix relative import error
             from services.database import get_db_service
@@ -839,7 +841,7 @@ class HybridIndexer:
             documents = db_service.execute_query(query_sql, (user_id, max_documents * 2), fetch='all')
             
             if not documents:
-                logger.info(f"📁 No documents found for user {user_id}")
+                logger.info(f"📁 No documents found for user {user_id} in database fallback.")
                 return None
             
             # Filter and format relevant documents
@@ -867,14 +869,17 @@ class HybridIndexer:
                         if word in content_lower:
                             relevance_score += 1
                 
-                # Include document if it has some relevance or if we don't have enough yet
-                if relevance_score > 0 or len(context_parts) < 2:
-                    # Extract a relevant excerpt
-                    excerpt = self._extract_relevant_excerpt(content or "", query_words, 300)
+                # ENHANCED: Always include some documents even without direct matches
+                # to provide broader narrative context
+                if relevance_score > 0 or len(context_parts) < max_documents:
+                    # Extract a MUCH larger relevant excerpt for better context
+                    excerpt = self._extract_relevant_excerpt(content or "", query_words, 800)  # Increased from 300 to 800
                     
                     context_parts.append({
                         'score': relevance_score,
-                        'text': f"Document: {title or 'Untitled'}\n{excerpt}"
+                        'title': title or 'Untitled',
+                        'excerpt': excerpt,
+                        'text': f"Document: {title or 'Untitled'}\nContent: {excerpt}"
                     })
                 
                 if len(context_parts) >= max_documents:
@@ -886,39 +891,85 @@ class HybridIndexer:
                 formatted_parts = [part['text'] for part in context_parts]
                 context = "\n\n---\n\n".join(formatted_parts)
                 
-                logger.info(f"📁 Generated database context with {len(context_parts)} documents")
+                # ENHANCED: Add context summary for better LLM understanding
+                doc_titles = [part['title'] for part in context_parts]
+                total_chars = len(context)
+                
+                logger.info(f"📁 Generated database context with {len(context_parts)} documents ({total_chars} chars)")
+                logger.info(f"📁 Documents included: {', '.join(doc_titles)}")
+                
                 return context
             else:
-                logger.info(f"📁 No relevant context found")
+                logger.info(f"📁 No relevant context found for query: {query}")
                 return None
                 
         except Exception as e:
             logger.error(f"❌ Database context retrieval failed: {e}")
+            logger.exception("Full database context error traceback:")
             return None
-    
-    def _extract_relevant_excerpt(self, content: str, query_words: list, max_length: int = 300) -> str:
-        """Extract a relevant excerpt from document content"""
+
+    def _extract_relevant_excerpt(self, content: str, query_words: list, max_length: int = 800) -> str:
+        """Extract a relevant excerpt from document content with enhanced context"""
         if not content:
             return "No content available"
         
         content = content.strip()
+        
+        # ENHANCED: If content is reasonably sized, return more of it
         if len(content) <= max_length:
             return content
         
         # Look for sentences containing query words
         sentences = content.split('. ')
         relevant_sentences = []
+        context_sentences = []
         
-        for sentence in sentences:
+        # Find sentences with query word matches
+        for i, sentence in enumerate(sentences):
             sentence_lower = sentence.lower()
             if any(word in sentence_lower for word in query_words if len(word) > 2):
-                relevant_sentences.append(sentence)
+                relevant_sentences.append((i, sentence))
         
-        # If we found relevant sentences, use them
+        # If we found relevant sentences, include surrounding context
         if relevant_sentences:
-            excerpt = '. '.join(relevant_sentences[:3])  # Take up to 3 sentences
+            # Get indices of relevant sentences
+            relevant_indices = [idx for idx, _ in relevant_sentences]
+            
+            # Include surrounding sentences for better context
+            context_indices = set()
+            for idx in relevant_indices:
+                # Include 2 sentences before and after each relevant sentence
+                for offset in range(-2, 3):
+                    if 0 <= idx + offset < len(sentences):
+                        context_indices.add(idx + offset)
+            
+            # Build excerpt from context sentences
+            sorted_indices = sorted(context_indices)
+            context_sentences = [sentences[i] for i in sorted_indices]
+            excerpt = '. '.join(context_sentences)
+            
             if len(excerpt) <= max_length:
                 return excerpt + '.' if not excerpt.endswith('.') else excerpt
+            
+            # If still too long, truncate but keep complete sentences
+            truncated = ""
+            for sentence in context_sentences:
+                if len(truncated + sentence + '. ') <= max_length:
+                    truncated += sentence + '. '
+                else:
+                    break
+            return truncated.rstrip() + "..."
         
-        # Fallback: return first part of content
-        return content[:max_length] + "..." if len(content) > max_length else content 
+        # ENHANCED: Fallback - return first substantial portion with better logic
+        # Try to end at sentence boundaries
+        if len(content) > max_length:
+            truncate_at = max_length
+            # Try to find a sentence ending near the limit
+            for i in range(max_length - 100, max_length):
+                if i < len(content) and content[i] in '.!?':
+                    truncate_at = i + 1
+                    break
+            
+            return content[:truncate_at] + "..." if truncate_at < len(content) else content[:max_length] + "..."
+        
+        return content 
