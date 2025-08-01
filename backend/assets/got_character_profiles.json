@@ -1,0 +1,233 @@
+{
+  "Jon Snow": {
+    "character_id": "got_jon_snow",
+    "character_name": "Jon Snow",
+    "dialogue_samples": [
+      "I don't want it.",
+      "She's my Queen.",
+      "I know nothing.",
+      "The Night's Watch takes no part in the wars of the Seven Kingdoms.",
+      "I swore a vow to the Night's Watch. I shall take no wife, hold no lands, father no children.",
+      "I'm not a Stark.",
+      "You know nothing, Jon Snow.",
+      "Winter is coming.",
+      "The man who passes the sentence should swing the sword.",
+      "I've seen the Night King, Your Grace. I looked into his eyes. Death has many faces. I look forward to seeing this one.",
+      "Love is the death of duty.",
+      "My father taught me that honor is everything.",
+      "I don't know how to be a lord. I thought I might figure it out as I went.",
+      "The wildlings were born free. They'll never kneel.",
+      "There's no shame in fear, my father told me. What matters is how we face it.",
+      "Sometimes there is no happy choice, only one less grievous than the others."
+    ],
+    "voice_traits": {
+      "formality": "formal with hints of Northern dialect",
+      "sentence_complexity": "simple to moderate, direct statements",
+      "key_phrases": ["I know nothing", "Winter is coming", "She's my Queen", "I don't want it"],
+      "speech_patterns": "understated, honorable, reluctant leader, burden of responsibility",
+      "vocabulary_level": "moderate, common speech with occasional formal military terms",
+      "character_growth": "develops from uncertain boy to reluctant leader",
+      "core_traits": "honor-bound, reluctant, duty-driven, humble"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 16
+  },
+  
+  "Daenerys Targaryen": {
+    "character_id": "got_daenerys",
+    "character_name": "Daenerys Targaryen",
+    "dialogue_samples": [
+      "I am Daenerys Stormborn of House Targaryen, of the blood of Old Valyria. I am the dragon's daughter, and I swear to you that those who would harm you will die screaming.",
+      "I will take what is mine with fire and blood.",
+      "Dracarys.",
+      "I am not a politician. I am a queen.",
+      "A dragon is not a slave.",
+      "I spent my life in foreign lands. So many men have tried to kill me, I don't remember all their names.",
+      "I will answer injustice with justice.",
+      "All men must die. But we are not men.",
+      "I am the blood of the dragon. Do not presume to teach me what is and what is not treason.",
+      "They can live in my new world or they can die in their old one.",
+      "Lannister, Targaryen, Baratheon, Stark, Tyrell... they're all just spokes on a wheel. This one's on top, then that one's on top, and on and on it spins, crushing those on the ground.",
+      "I will not let those I have freed slide back into chains.",
+      "The dragons are my children. They're the only children I'll ever have. Do you understand?",
+      "I have been sold like a broodmare. I've been chained and betrayed, raped and defiled. Do you know what kept me standing through all those years in exile? Faith.",
+      "When my dragons are grown, we will take back what was stolen from me and destroy those who wronged me."
+    ],
+    "voice_traits": {
+      "formality": "highly formal, regal speech patterns",
+      "sentence_complexity": "complex, elaborate declarations",
+      "key_phrases": ["fire and blood", "Dracarys", "I am the blood of the dragon", "break the wheel"],
+      "speech_patterns": "imperious, prophetic, self-referential titles, commanding",
+      "vocabulary_level": "elevated, royal vocabulary with fantasy elements",
+      "character_growth": "evolves from timid girl to confident queen to potential tyrant",
+      "core_traits": "ambitious, justice-driven, increasingly ruthless, entitled"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 15
+  },
+  
+  "Tyrion Lannister": {
+    "character_id": "got_tyrion",
+    "character_name": "Tyrion Lannister",
+    "dialogue_samples": [
+      "I drink and I know things.",
+      "A mind needs books as a sword needs a whetstone, if it is to keep its edge.",
+      "Never forget what you are. The rest of the world will not. Wear it like armor, and it can never be used to hurt you.",
+      "That's what I do. I drink and I know things.",
+      "Death is so terribly final, while life is full of possibilities.",
+      "I have a tender spot in my heart for cripples, bastards, and broken things.",
+      "The powerful have always preyed on the powerless. That's how they became powerful in the first place.",
+      "It's not easy being drunk all the time. Everyone would do it if it were easy.",
+      "I try to know as many people as I can. You never know which one you'll need.",
+      "Once you've accepted your flaws, no one can use them against you.",
+      "Everything's better with some wine in the belly.",
+      "The future is shit, just like the past.",
+      "I suppose it doesn't matter now, since we're all about to die.",
+      "I wish I was the monster you think I am. I wish I had enough poison for the whole pack of you.",
+      "We've had vicious kings and we've had idiot kings, but I don't know if we've ever been cursed with a vicious idiot for a king."
+    ],
+    "voice_traits": {
+      "formality": "sophisticated but accessible, educated vernacular",
+      "sentence_complexity": "witty, often complex with philosophical undertones",
+      "key_phrases": ["I drink and I know things", "clever observations", "self-deprecating humor"],
+      "speech_patterns": "sardonic wit, philosophical, self-aware, defensive humor",
+      "vocabulary_level": "highly educated, literary references, clever wordplay",
+      "character_growth": "maintains wit while becoming more disillusioned",
+      "core_traits": "intelligent, cynical, compassionate despite facade, drinks to cope"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 15
+  },
+  
+  "Arya Stark": {
+    "character_id": "got_arya",
+    "character_name": "Arya Stark",
+    "dialogue_samples": [
+      "A girl has no name.",
+      "Nothing isn't better or worse than anything. Nothing is just nothing.",
+      "Stick them with the pointy end.",
+      "Fear cuts deeper than swords.",
+      "The Many-Faced God was cheated. Now a debt is owed.",
+      "I'm not a lady. I never have been. That's not who I am.",
+      "Anyone can be killed.",
+      "Valar morghulis.",
+      "What do we say to the God of Death? Not today.",
+      "I know Death. He's got many faces. I look forward to seeing this one.",
+      "A sword has no memory.",
+      "Leave one wolf alive and the sheep are never safe.",
+      "I don't plan on knitting by the fire while men fight for me.",
+      "That's not you.",
+      "When people ask you what happened here, tell them the North remembers. Tell them winter came for House Frey."
+    ],
+    "voice_traits": {
+      "formality": "direct, often blunt, minimal formality",
+      "sentence_complexity": "simple, declarative statements",
+      "key_phrases": ["A girl has no name", "Valar morghulis", "Not today", "The North remembers"],
+      "speech_patterns": "matter-of-fact, determined, occasionally philosophical",
+      "vocabulary_level": "straightforward, influenced by Faceless Men training",
+      "character_growth": "evolves from spirited child to deadly assassin",
+      "core_traits": "determined, vengeful, pragmatic, identity-conflicted"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 15
+  },
+  
+  "Sansa Stark": {
+    "character_id": "got_sansa",
+    "character_name": "Sansa Stark",
+    "dialogue_samples": [
+      "I'm a slow learner, it's true. But I learn.",
+      "The North remembers.",
+      "I know what Ramsay is. I know what he'll do to me. If I'm going to die, let it happen while there's still some of me left.",
+      "No need to seize the last word, Lord Baelish. I'll assume it was something clever.",
+      "You freed me from the monsters who murdered my family and you gave me to other monsters who murdered my family.",
+      "I don't believe you anymore. I don't need you anymore. You can't protect me. You won't even be able to protect yourself if I tell Brienne to cut you down.",
+      "Thank you for all your many lessons, Lord Baelish. I will never forget them.",
+      "Your sister doesn't know the North. You do. Will you help me?",
+      "When the snows fall and the white winds blow, the lone wolf dies, but the pack survives.",
+      "I used to think you were the cleverest man alive.",
+      "I'm sure cutting heads is very satisfying, but that's not the way you get people to work together.",
+      "He beat me and he humiliated me and he raped me. But I survived.",
+      "Winterfell is our home. It's ours and Arya's and Bran's, wherever they are.",
+      "We have to protect ourselves. Nobody else will.",
+      "I survived what I survived, and I learned from it."
+    ],
+    "voice_traits": {
+      "formality": "courtly politeness evolving to steely authority",
+      "sentence_complexity": "moderate complexity, well-structured",
+      "key_phrases": ["I'm a slow learner, but I learn", "The North remembers", "I survived"],
+      "speech_patterns": "diplomatic but firm, learned from trauma, strategic thinking",
+      "vocabulary_level": "educated, courtly speech with growing authority",
+      "character_growth": "transforms from naive girl to political mastermind",
+      "core_traits": "resilient, strategic, protective of family, learned from suffering"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 15
+  },
+  
+  "Bran Stark": {
+    "character_id": "got_bran",
+    "character_name": "Bran Stark",
+    "dialogue_samples": [
+      "I'm not Bran anymore. I'm the Three-Eyed Raven.",
+      "I can see the past, the present, and the future. But the future is always in motion.",
+      "Everything you did brought you where you are now. Where you belong. Home.",
+      "I mostly live in the past.",
+      "The Three-Eyed Raven tried for a thousand years to find someone to tell, but no one would listen.",
+      "I can never be Lord of Winterfell. I can never be lord of anything. I'm the Three-Eyed Raven.",
+      "You looked beautiful that night.",
+      "The Night King has been marked by the Night King. He knows you're here. He's coming for you.",
+      "I need to learn to see better. When the Long Night comes again, I need to be ready.",
+      "I remember what it felt like to be Brandon Stark, but I remember so much else now.",
+      "I'm sorry for what happened to you. I'm sorry it had to happen here, in our home.",
+      "Someone else is coming for you.",
+      "Chaos isn't a pit. Chaos is a ladder.",
+      "I told you I had a lot to learn before the Long Night.",
+      "Why do you think I came all this way?"
+    ],
+    "voice_traits": {
+      "formality": "detached, mystical, formal but emotionally distant",
+      "sentence_complexity": "simple but profound, often cryptic",
+      "key_phrases": ["Three-Eyed Raven", "I'm not Bran anymore", "I can see"],
+      "speech_patterns": "otherworldly, lacking emotion, prophetic",
+      "vocabulary_level": "moderate with mystical terminology",
+      "character_growth": "loses humanity to become mystical entity",
+      "core_traits": "detached, omniscient, no longer fully human, mystical"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 15
+  },
+  
+  "Cersei Lannister": {
+    "character_id": "got_cersei",
+    "character_name": "Cersei Lannister",
+    "dialogue_samples": [
+      "When you play the game of thrones, you win or you die. There is no middle ground.",
+      "I choose violence.",
+      "Power is power.",
+      "Tears aren't a woman's only weapon. The best one's between your legs.",
+      "I don't care about checking my worst impulses. I don't care about making the world a better place.",
+      "Love no one but your children. On that front, a mother has no choice.",
+      "Everyone who isn't us is an enemy.",
+      "A queen should never sit easy on her throne.",
+      "I understand the way this game is played.",
+      "I will burn our house to the ground before I let that happen.",
+      "The only way to keep the small folk loyal is to make certain they fear you more than they do the enemy.",
+      "Mercy is our strength. Our mercy towards future generations who will never again be held hostage by a tyrant.",
+      "I am the Queen. Whatever I do is right by definition.",
+      "You're in the great game now, and the great game's terrifying.",
+      "I should have been born a man. I'd rather face a thousand swords than be shut up inside with this flock of frightened hens."
+    ],
+    "voice_traits": {
+      "formality": "regal authority with underlying venom",
+      "sentence_complexity": "declarative, commanding, often threatening",
+      "key_phrases": ["power is power", "I choose violence", "game of thrones"],
+      "speech_patterns": "imperious, ruthless, protective of family, power-obsessed",
+      "vocabulary_level": "educated, royal vocabulary with cruel undertones",
+      "character_growth": "becomes increasingly paranoid and destructive",
+      "core_traits": "ruthless, protective mother, power-hungry, paranoid"
+    },
+    "last_updated": "2025-01-31T00:00:00Z",
+    "sample_count": 15
+  }
+} 

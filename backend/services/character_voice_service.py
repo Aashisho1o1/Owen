@@ -10,6 +10,7 @@ import json
 import logging
 import hashlib
 import html
+import os
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -139,10 +140,95 @@ class CharacterVoiceService:
             else:
                 logger.error("❌ CharacterVoiceService: LLM service coordinator missing generate_with_selected_llm method")
             
+            # Load GoT demo profiles
+            self.got_profiles = self._load_got_demo_profiles()
             logger.info("✅ CharacterVoiceService: Service initialized successfully")
         except Exception as e:
             logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
             raise
+    
+    def _load_got_demo_profiles(self) -> Dict[str, CharacterVoiceProfile]:
+        """
+        Load Game of Thrones character profiles for demo mode.
+        
+        Returns:
+            Dictionary of character name to CharacterVoiceProfile
+        """
+        try:
+            # Get the absolute path to the profiles file
+            # This file is in backend/services/, so we go up one level to backend/, then to assets/
+            service_dir = os.path.dirname(os.path.abspath(__file__))  # backend/services/
+            backend_dir = os.path.dirname(service_dir)  # backend/
+            profiles_path = os.path.join(backend_dir, 'assets', 'got_character_profiles.json')
+            
+            if not os.path.exists(profiles_path):
+                logger.warning(f"🎭 GoT profiles file not found at {profiles_path}")
+                return {}
+            
+            with open(profiles_path, 'r', encoding='utf-8') as f:
+                profiles_data = json.load(f)
+            
+            got_profiles = {}
+            for character_name, profile_data in profiles_data.items():
+                got_profiles[character_name] = CharacterVoiceProfile(
+                    character_id=profile_data['character_id'],
+                    character_name=profile_data['character_name'],
+                    dialogue_samples=profile_data['dialogue_samples'],
+                    voice_traits=profile_data['voice_traits'],
+                    last_updated=profile_data['last_updated'],
+                    sample_count=profile_data['sample_count']
+                )
+            
+            logger.info(f"✅ Loaded {len(got_profiles)} GoT character profiles for demo mode")
+            return got_profiles
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to load GoT profiles: {e}")
+            return {}
+    
+    def _is_got_demo_text(self, text: str) -> bool:
+        """
+        Detect if the input text appears to be Game of Thrones content.
+        
+        This uses a simple but effective heuristic approach.
+        """
+        if not text:
+            return False
+        
+        # Common GoT terms and character names (case-insensitive)
+        got_indicators = [
+            # Character names (distinctive ones)
+            'daenerys', 'tyrion', 'arya stark', 'jon snow', 'sansa stark', 'bran stark',
+            'cersei', 'jaime', 'joffrey', 'tywin', 'robb stark', 'catelyn', 'ned stark',
+            'theon', 'ramsay', 'margaery', 'olenna', 'oberyn', 'sandor', 'bronn',
+            
+            # Unique GoT terms
+            'winterfell', 'king\'s landing', 'westeros', 'essos', 'seven kingdoms',
+            'iron throne', 'night\'s watch', 'wall', 'beyond the wall', 'wildlings',
+            'dothraki', 'unsullied', 'faceless men', 'three-eyed raven',
+            'night king', 'white walkers', 'dragons', 'dragonstone', 'valyrian',
+            
+            # Distinctive phrases
+            'winter is coming', 'fire and blood', 'a girl has no name', 'dracarys',
+            'you know nothing', 'the north remembers', 'valar morghulis', 'hodor',
+            'what do we say to death', 'not today', 'chaos is a ladder',
+            
+            # Houses and titles
+            'house stark', 'house lannister', 'house targaryen', 'house baratheon',
+            'your grace', 'my lord', 'my lady', 'ser ', 'maester', 'lord commander'
+        ]
+        
+        text_lower = text.lower()
+        matches = 0
+        
+        for indicator in got_indicators:
+            if indicator in text_lower:
+                matches += 1
+                if matches >= 3:  # Found at least 3 GoT indicators
+                    logger.info(f"🐉 GoT demo mode activated - detected {matches} GoT indicators in text")
+                    return True
+        
+        return False
     
     def _is_likely_character_name(self, name: str) -> bool:
         """
@@ -455,6 +541,15 @@ Character names to validate: {potential_characters}"""
             logger.info(f"   - Text preview: {text[:100]}{'...' if len(text) > 100 else ''}")
             logger.info(f"   - Has HTML tags: {bool(re.search(r'<[^>]+>', text))}")
             logger.info(f"   - Existing profiles: {len(existing_profiles) if existing_profiles else 0}")
+            
+            # 🐉 DEMO MODE: Check if this is GoT content and inject demo profiles
+            is_got_demo = self._is_got_demo_text(text)
+            if is_got_demo and self.got_profiles:
+                logger.info(f"🐉 === GAME OF THRONES DEMO MODE ACTIVATED ===")
+                logger.info(f"🎭 Using {len(self.got_profiles)} pre-loaded GoT character profiles")
+                logger.info(f"📜 Available characters: {list(self.got_profiles.keys())}")
+                existing_profiles = self.got_profiles.copy()  # Use demo profiles instead of user profiles
+                logger.info(f"✅ Demo profiles injected successfully")
             
             logger.info(f"🚀 SERVICE STEP 1: Text preprocessing...")
             # Limit text length to prevent API timeouts
