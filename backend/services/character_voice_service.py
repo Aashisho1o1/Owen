@@ -142,6 +142,39 @@ class CharacterVoiceService:
             
             # Load GoT demo profiles
             self.got_profiles = self._load_got_demo_profiles()
+            
+            # Character name alias mapping for demo mode
+            self.got_character_aliases = {
+                # Script format -> Profile name
+                'BRAN': 'Bran Stark',
+                'JON': 'Jon Snow', 
+                'TYRION': 'Tyrion Lannister',
+                'DAENERYS': 'Daenerys Targaryen',
+                'ARYA': 'Arya Stark',
+                'SANSA': 'Sansa Stark',
+                'CERSEI': 'Cersei Lannister',
+                'JAIME': 'Jaime Lannister',
+                
+                # Alternative formats
+                'bran': 'Bran Stark',
+                'jon': 'Jon Snow',
+                'tyrion': 'Tyrion Lannister', 
+                'daenerys': 'Daenerys Targaryen',
+                'arya': 'Arya Stark',
+                'sansa': 'Sansa Stark',
+                'cersei': 'Cersei Lannister',
+                'jaime': 'Jaime Lannister',
+                
+                # Mixed case
+                'Bran': 'Bran Stark',
+                'Jon': 'Jon Snow',
+                'Tyrion': 'Tyrion Lannister',
+                'Daenerys': 'Daenerys Targaryen', 
+                'Arya': 'Arya Stark',
+                'Sansa': 'Sansa Stark',
+                'Cersei': 'Cersei Lannister',
+                'Jaime': 'Jaime Lannister',
+            }
             logger.info("✅ CharacterVoiceService: Service initialized successfully")
         except Exception as e:
             logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
@@ -191,16 +224,23 @@ class CharacterVoiceService:
         Detect if the input text appears to be Game of Thrones content.
         
         This uses a simple but effective heuristic approach.
+        Enhanced for better demo detection.
         """
         if not text:
             return False
         
         # Common GoT terms and character names (case-insensitive)
         got_indicators = [
-            # Character names (distinctive ones)
+            # Character names (distinctive ones) - ENHANCED with single names
             'daenerys', 'tyrion', 'arya stark', 'jon snow', 'sansa stark', 'bran stark',
             'cersei', 'jaime', 'joffrey', 'tywin', 'robb stark', 'catelyn', 'ned stark',
             'theon', 'ramsay', 'margaery', 'olenna', 'oberyn', 'sandor', 'bronn',
+            
+            # CRITICAL: Single name variants for script format
+            'bran', 'tyrion', 'arya', 'sansa', 'jaime', 'joffrey', 'tywin', 'robb',
+            'catelyn', 'theon', 'ramsay', 'margaery', 'oberyn', 'bronn', 'davos',
+            'grey worm', 'missandei', 'varys', 'littlefinger', 'qyburn', 'mountain',
+            'hound', 'tormund', 'gilly', 'samwell', 'gendry', 'yara', 'euron',
             
             # Unique GoT terms
             'winterfell', 'king\'s landing', 'westeros', 'essos', 'seven kingdoms',
@@ -213,22 +253,50 @@ class CharacterVoiceService:
             'you know nothing', 'the north remembers', 'valar morghulis', 'hodor',
             'what do we say to death', 'not today', 'chaos is a ladder',
             
-            # Houses and titles
+            # Houses and titles - ENHANCED
             'house stark', 'house lannister', 'house targaryen', 'house baratheon',
-            'your grace', 'my lord', 'my lady', 'ser ', 'maester', 'lord commander'
+            'your grace', 'my lord', 'my lady', 'ser ', 'maester', 'lord commander',
+            'hand of the king', 'mother of dragons', 'king in the north', 'lord tyrion'
         ]
         
         text_lower = text.lower()
         matches = 0
+        matched_indicators = []
         
         for indicator in got_indicators:
             if indicator in text_lower:
                 matches += 1
-                if matches >= 3:  # Found at least 3 GoT indicators
-                    logger.info(f"🐉 GoT demo mode activated - detected {matches} GoT indicators in text")
+                matched_indicators.append(indicator)
+                # REDUCED threshold for better demo detection
+                if matches >= 2:  # Changed from 3 to 2 for easier activation
+                    logger.info(f"🐉 GoT demo mode activated - detected {matches} GoT indicators: {matched_indicators}")
                     return True
         
+        logger.debug(f"🔍 GoT detection: Found {matches} indicators {matched_indicators}, need 2+ for activation")
         return False
+    
+    def _normalize_character_name(self, character_name: str) -> str:
+        """
+        Normalize character names for demo mode.
+        Maps script format names to full profile names.
+        """
+        if not hasattr(self, 'got_character_aliases'):
+            return character_name
+            
+        # Try exact match first
+        if character_name in self.got_character_aliases:
+            normalized = self.got_character_aliases[character_name]
+            logger.debug(f"🔄 Normalized character name: '{character_name}' -> '{normalized}'")
+            return normalized
+            
+        # Try case-insensitive match
+        for alias, canonical in self.got_character_aliases.items():
+            if character_name.lower() == alias.lower():
+                logger.debug(f"🔄 Normalized character name (case-insensitive): '{character_name}' -> '{canonical}'")
+                return canonical
+                
+        # Return original if no match found
+        return character_name
     
     def _is_likely_character_name(self, name: str) -> bool:
         """
@@ -296,9 +364,13 @@ class CharacterVoiceService:
             context_before = text[context_start:match.start_pos].strip()
             context_after = text[match.end_pos:context_end].strip()
             
+            # Apply character name normalization for demo mode
+            original_speaker = match.speaker or "Unknown"
+            normalized_speaker = self._normalize_character_name(original_speaker)
+            
             segment = DialogueSegment(
                 text=match.text,
-                speaker=match.speaker or "Unknown",
+                speaker=normalized_speaker,  # Use normalized name
                 position=match.start_pos,
                 context_before=context_before,
                 context_after=context_after
@@ -311,6 +383,10 @@ class CharacterVoiceService:
             logger.info(f"📝 Sample extracted dialogue:")
             for i, segment in enumerate(segments[:3]):
                 logger.info(f"   {i+1}. Speaker: '{segment.speaker}' → '{segment.text[:80]}{'...' if len(segment.text) > 80 else ''}'")
+            
+            # Log character name mapping for demo mode
+            unique_speakers = list(set(segment.speaker for segment in segments))
+            logger.info(f"🎭 Found {len(unique_speakers)} unique speakers: {unique_speakers}")
         
         return segments
     
@@ -553,7 +629,8 @@ Character names to validate: {potential_characters}"""
             
             logger.info(f"🚀 SERVICE STEP 1: Text preprocessing...")
             # Limit text length to prevent API timeouts
-            MAX_TEXT_LENGTH = 10000
+            # ENHANCED: Higher limit for demo mode to preserve full scripts
+            MAX_TEXT_LENGTH = 50000 if is_got_demo else 10000
             if len(text) > MAX_TEXT_LENGTH:
                 logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
                 text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"

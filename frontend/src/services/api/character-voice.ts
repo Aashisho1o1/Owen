@@ -51,20 +51,40 @@ let analysisTimeout: NodeJS.Timeout | null = null;
  * Check if text contains dialogue worth analyzing
  */
 export const hasDialogue = (text: string): boolean => {
-  // IMPROVED: More inclusive dialogue detection patterns that match backend
+  // COMPREHENSIVE: Enhanced dialogue detection patterns for all common formats
   const dialoguePatterns = [
-    /"[^"]{2,}"/g,                    // Basic quoted dialogue (matches backend)
-    /'[^']{2,}'/g,                    // Single quoted dialogue  
+    // Basic quoted dialogue (matches backend)
+    /"[^"]{2,}"/g,                    // Standard double quotes
+    /'[^']{2,}'/g,                    // Single quotes
+    /["""][^"""]{2,}["""]/g,          // Smart quotes (from PDF copy-paste)
+    
+    // Script/screenplay format (CRITICAL for GoT demo)
+    /[A-Z]+:\s*"[^"]{2,}"/g,          // UPPERCASE SPEAKER: "dialogue"
+    /[A-Z][a-z]+:\s*"[^"]{2,}"/g,     // TitleCase Speaker: "dialogue"
+    /[A-Z\s]+:\s*"[^"]{2,}"/g,        // MULTI WORD SPEAKER: "dialogue"
+    
+    // Narrative dialogue attribution
+    /"[^"]{2,},"?\s*[a-zA-Z]/g,       // "dialogue," attribution
+    /[A-Z][^.!?]*\s*"[^"]{2,}"/g,     // Speaker tag "dialogue"
+    
+    // Em-dash and other formats
     /—[^—\n]{2,}/g,                   // Em-dash dialogue
-    /"[^"]{2,},"?\s*[a-zA-Z]/g,       // Dialogue with attribution
-    /[A-Z][^.!?]*\s*"[^"]{2,}"/g      // Speaker tag dialogue
+    /\s*"[^"]{10,}"/g,                // Longer quoted passages (likely dialogue)
   ];
   
-  // Return true if any pattern matches
-  return dialoguePatterns.some(pattern => {
+  // Debug logging for troubleshooting
+  const hasAnyDialogue = dialoguePatterns.some(pattern => {
     const matches = text.match(pattern);
-    return matches && matches.length > 0;
+    const found = matches && matches.length > 0;
+    if (found) {
+      console.log(`🎭 Dialogue pattern matched:`, pattern.toString(), `Found ${matches.length} matches`);
+      console.log(`📝 Sample matches:`, matches.slice(0, 3));
+    }
+    return found;
   });
+  
+  console.log(`🔍 hasDialogue result:`, hasAnyDialogue, `for text length:`, text.length);
+  return hasAnyDialogue;
 };
 
 /**
