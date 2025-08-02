@@ -10,13 +10,11 @@ import './styles/editor.css'
 import './styles/suggestions-compact-fix.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <ThemeProvider>
-        <AppProvider>
-          <App />
-        </AppProvider>
-      </ThemeProvider>
-    </AuthProvider>
-  </React.StrictMode>
+  <AuthProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <App />
+      </AppProvider>
+    </ThemeProvider>
+  </AuthProvider>
 )

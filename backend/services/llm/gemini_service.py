@@ -177,13 +177,13 @@ class GeminiService(BaseLLMService):
         try:
             loop = asyncio.get_event_loop()
             
-            # Increased timeout for voice analysis - Gemini 2.5 Flash is faster but still needs time for complex analysis
+            # Extended timeout for complex voice analysis - allows for thorough character analysis
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, lambda: self.model.generate_content(
                     prompt,
                     generation_config=self.generation_config
                 )),
-                timeout=300.0  # Increased to 5 minutes to match frontend expectations
+                timeout=270.0  # 4.5 minutes - sufficient time for complex GoT voice analysis and other detailed character work
             )
             
             if not response.text:
