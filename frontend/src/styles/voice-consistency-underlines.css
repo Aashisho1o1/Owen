@@ -31,15 +31,6 @@
   background-color: rgba(16, 185, 129, 0.1);
 }
 
-/* Debug mode highlighting (shows all analyzed dialogue) */
-.voice-inconsistent[data-confidence-level="debug"],
-[data-voice-inconsistency="true"][data-confidence-level="debug"] {
-  text-decoration-color: #3B82F6; /* Blue */
-  text-decoration-style: dotted;
-  background-color: rgba(59, 130, 246, 0.1);
-  border-bottom: 1px dotted #3B82F6;
-}
-
 /* Hover effects for all levels */
 .voice-inconsistent:hover,
 [data-voice-inconsistency="true"]:hover {

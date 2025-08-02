@@ -72,19 +72,11 @@ export const hasDialogue = (text: string): boolean => {
     /\s*"[^"]{10,}"/g,                // Longer quoted passages (likely dialogue)
   ];
   
-  // Debug logging for troubleshooting
-  const hasAnyDialogue = dialoguePatterns.some(pattern => {
+  // Check for dialogue patterns
+  return dialoguePatterns.some(pattern => {
     const matches = text.match(pattern);
-    const found = matches && matches.length > 0;
-    if (found) {
-      console.log(`🎭 Dialogue pattern matched:`, pattern.toString(), `Found ${matches.length} matches`);
-      console.log(`📝 Sample matches:`, matches.slice(0, 3));
-    }
-    return found;
+    return matches && matches.length > 0;
   });
-  
-  console.log(`🔍 hasDialogue result:`, hasAnyDialogue, `for text length:`, text.length);
-  return hasAnyDialogue;
 };
 
 /**
@@ -109,60 +101,15 @@ export const analyzeVoiceConsistency = async (
       };
     }
 
-    console.log("🎭 Starting voice consistency analysis...");
-    
-    // DEBUG: Log detailed request information
-    console.log("📊 Voice Analysis Request Details:", {
-      textLength: text.length,
-      textPreview: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
-      hasHTML: text.includes('<') && text.includes('>'),
-      dialogueFound: hasDialogue(text),
-      timestamp: new Date().toISOString()
-    });
-    
     const requestData: VoiceConsistencyRequest = { text };
-    
-    // DEBUG: Log the exact payload being sent
-    console.log("📤 Sending voice analysis request:", {
-      payload: requestData,
-      payloadSize: JSON.stringify(requestData).length,
-      endpoint: '/api/character-voice/analyze'
-    });
     
     const response = await apiClient.post<VoiceConsistencyResponse>(
       '/api/character-voice/analyze',
       requestData
     );
     
-    // DEBUG: Log successful response details
-    console.log("📥 Voice analysis response received:", {
-      status: response.status,
-      statusText: response.statusText,
-      dataKeys: Object.keys(response.data),
-      charactersAnalyzed: response.data.characters_analyzed,
-      dialogueSegments: response.data.dialogue_segments_found,
-      resultsCount: response.data.results.length,
-      processingTime: response.data.processing_time_ms
-    });
-    
-    // DEBUG: Log each result for detailed inspection
-    if (response.data.results.length > 0) {
-      console.log("🎯 Voice analysis results breakdown:");
-      response.data.results.forEach((result, index) => {
-        console.log(`  Result ${index + 1}:`, {
-          character: result.character_name,
-          isConsistent: result.is_consistent,
-          confidence: result.confidence_score,
-          flaggedTextPreview: result.flagged_text.substring(0, 50) + '...',
-          explanation: result.explanation
-        });
-      });
-    }
-    
-    console.log(`✅ Voice analysis completed: ${response.data.characters_analyzed} characters analyzed`);
     return response.data;
   } catch (error) {
-    // DEBUG: Enhanced error logging with full details
     console.error("❌ Voice analysis failed with detailed error info:");
     console.error("🔍 Error Type:", error.constructor.name);
     console.error("🔍 Error Message:", error.message);
@@ -240,13 +187,10 @@ export const analyzeVoiceConsistencyDebounced = (
  */
 export const getCharacterProfiles = async (): Promise<CharacterVoiceProfilesResponse> => {
   try {
-    console.log("📚 Fetching character profiles...");
-    
     const response = await apiClient.get<CharacterVoiceProfilesResponse>(
       '/api/character-voice/profiles'
     );
     
-    console.log(`✅ Retrieved ${response.data.profiles.length} character profiles`);
     return response.data;
   } catch (error) {
     console.error("❌ Failed to fetch character profiles:", error);
@@ -265,14 +209,11 @@ export const updateCharacterProfile = async (
   }
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log(`📝 Updating character profile: ${characterName}`);
-    
     const response = await apiClient.post<{ success: boolean; message: string }>(
       `/api/character-voice/profiles/${encodeURIComponent(characterName)}/update`,
       profileData
     );
     
-    console.log(`✅ Updated character profile: ${characterName}`);
     return response.data;
   } catch (error) {
     console.error(`❌ Failed to update character profile ${characterName}:`, error);
@@ -287,13 +228,10 @@ export const deleteCharacterProfile = async (
   characterName: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log(`🗑️ Deleting character profile: ${characterName}`);
-    
     const response = await apiClient.delete<{ success: boolean; message: string }>(
       `/api/character-voice/profiles/${encodeURIComponent(characterName)}`
     );
     
-    console.log(`✅ Deleted character profile: ${characterName}`);
     return response.data;
   } catch (error) {
     console.error(`❌ Failed to delete character profile ${characterName}:`, error);

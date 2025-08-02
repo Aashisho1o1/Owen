@@ -87,16 +87,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   const contentProp = content !== undefined ? content : contextContent;
   const onChangeProp = onChange || contextOnChange;
 
-  // DEBUG: Log content changes
-  useEffect(() => {
-    console.log('📝 Content tracking:', {
-      contentProp: contentProp?.length || 0,
-      contentPreview: contentProp?.substring(0, 100) || 'No content',
-      contentSource: content !== undefined ? 'props' : 'context',
-      contextContent: contextContent?.length || 0,
-      propsContent: content?.length || 0
-    });
-  }, [contentProp, contextContent, content]);
+  // Content tracking (removed console logs for production)
 
   // Text selection state
   const [selection, setSelection] = useState<{top: number; left: number; text: string} | null>(null);
@@ -116,9 +107,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
-  
-  // Debug mode for testing voice consistency
-  const [debugMode, setDebugMode] = useState(false);
   
   // Add observer to maintain voice inconsistency styles
   const voiceInconsistencyObserver = useRef<MutationObserver | null>(null);
@@ -421,15 +409,13 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   const applyVoiceInconsistencyUnderlines = (results: VoiceConsistencyResult[]) => {
     if (!editor) return;
 
-    console.log('🎯 Applying voice inconsistency underlines:', results);
-
     const doc = editor.state.doc;
     const tr = editor.state.tr;
     let appliedCount = 0;
 
     results.forEach((result) => {
       // ENHANCED: Apply underlines for inconsistent OR low-confidence results (or all in debug mode)
-      const shouldHighlight = debugMode || !result.is_consistent || result.confidence_score < 0.7;
+      const shouldHighlight = !result.is_consistent || result.confidence_score < 0.7;
       
       if (shouldHighlight) {
         const textToFind = result.flagged_text;
@@ -451,8 +437,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             console.log(`✅ Found match at position ${from}-${to}:`, nodeText.slice(match.index, match.index + match.length));
             
             // Use orange for low confidence, red for inconsistent, blue for debug mode
-            const confidenceLevel = debugMode && result.is_consistent ? 'debug' :
-                                   !result.is_consistent ? 'high' : 
+            const confidenceLevel = !result.is_consistent ? 'high' : 
                                    result.confidence_score < 0.5 ? 'high' :
                                    result.confidence_score < 0.7 ? 'medium' : 'low';
             
@@ -867,46 +852,40 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           </div>
         )}
         
-        {/* DEBUG: Visual indicator for selection state */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{
-            position: 'absolute',
-            top: '5px',
-            right: '5px',
-            background: 'rgba(0,0,0,0.8)',
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '10px',
-            zIndex: 2000,
-            pointerEvents: 'none'
-          }}>
-            Selection: {selection ? `"${selection.text.substring(0, 20)}..." (${selection.top}, ${selection.left})` : 'None'}
-          </div>
-        )}
+
         
-        {/* DEBUG: Voice analysis debug toggle */}
-        {process.env.NODE_ENV === 'development' && voiceConsistencyResults.length > 0 && (
-          <button
-            style={{
-              position: 'absolute',
-              top: '5px',
-              left: '5px',
-              background: debugMode ? '#3B82F6' : '#6B7280',
+        {/* Voice consistency indicator */}
+        {(() => {
+          const inconsistentResults = voiceConsistencyResults.filter(r => !r.is_consistent);
+          const hasVoiceIssues = inconsistentResults.length > 0;
+          
+          if (!hasVoiceIssues) return null;
+          
+          return (
+            <div className="voice-consistency-indicator" style={{
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              background: '#ff6b35',
               color: 'white',
-              border: 'none',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '10px',
-              cursor: 'pointer',
-              zIndex: 2000
-            }}
-            onClick={() => setDebugMode(!debugMode)}
-            title={debugMode ? 'Hide all dialogue highlights' : 'Show all analyzed dialogue (debug)'}
-          >
-            {debugMode ? '🔍 Debug ON' : '🔍 Debug OFF'}
-          </button>
-        )}
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              zIndex: 1000,
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>💬</span>
+              <span>
+                {inconsistentResults.length === 1 
+                  ? `1 character voice issue` 
+                  : `${inconsistentResults.length} character voice issues`}
+              </span>
+            </div>
+          );
+        })()}
       </div>
       
       {/* Floating AI Button for text selection - rendered outside editor wrapper using portal */}
@@ -926,39 +905,6 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         </button>,
         document.body
       )}
-      
-      {/* Voice consistency indicator */}
-      {(() => {
-        const inconsistentResults = voiceConsistencyResults.filter(r => !r.is_consistent);
-        const hasVoiceIssues = inconsistentResults.length > 0;
-        
-        if (!hasVoiceIssues) return null;
-        
-        return (
-          <div className="voice-consistency-indicator" style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            background: '#ff6b35',
-            color: 'white',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            zIndex: 1000,
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>💬</span>
-            <span>
-              {inconsistentResults.length === 1 
-                ? `1 character voice issue` 
-                : `${inconsistentResults.length} character voice issues`}
-            </span>
-          </div>
-        );
-      })()}
     </div>
   );
 };

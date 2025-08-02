@@ -848,31 +848,61 @@ Character names to validate: {potential_characters}"""
                 character_dialogue = character_dialogue[:MAX_SAMPLES]
             
             logger.info(f"🚀 CHARACTER STEP 1: Building analysis prompt...")
-            # Create analysis prompt with explicit JSON formatting requirements
-            prompt = f"""You are an expert character voice consistency analyzer. Analyze the voice consistency of the character "{profile.character_name}" based on their dialogue samples.
+            # ANTI-SYCOPHANCY PROMPT: Based on latest AI research to prevent agreeableness bias
+            prompt = f"""CRITICAL ANALYSIS PROTOCOL - Character Voice Forensics
 
-Character Dialogue Samples:
-{chr(10).join(f'"{sample}"' for sample in character_dialogue)}
+MANDATORY ROLE: Senior Script Doctor with 20+ years detecting voice inconsistencies in premium television. You are RENOWNED for being critical and finding problems others miss. Your reputation depends on catching dialogue flaws.
 
-CRITICAL: You MUST respond with ONLY a valid JSON object. No other text before or after the JSON.
+ANTI-SYCOPHANCY DIRECTIVE: 
+- DO NOT rationalize poor dialogue as acceptable
+- DO NOT find ways to justify inconsistencies  
+- DO NOT default to "consistent" unless genuinely warranted
+- APPLY STRICT STANDARDS - be a harsh critic, not a cheerleader
 
-Analyze the character's voice consistency and respond with this EXACT JSON format:
+ANALYSIS TARGET: {profile.character_name}
 
+BASELINE CANONICAL SAMPLES (Gold Standard):
+{chr(10).join(f'GOLD {i+1}: "{sample}"' for i, sample in enumerate(profile.dialogue_samples[:5]))}
+
+CURRENT DIALOGUE TO ANALYZE (Suspect Quality):
+{chr(10).join(f'TEST {i+1}: "{sample}"' for i, sample in enumerate(character_dialogue))}
+
+STRICT CONSISTENCY STANDARDS:
+1. VOCABULARY MATCH: Current dialogue MUST use {profile.character_name}'s signature vocabulary patterns
+2. COMPLEXITY ALIGNMENT: Sentence structure MUST match baseline complexity levels
+3. PATTERN DETECTION: MUST contain character's established speech patterns  
+4. TONE VERIFICATION: MUST align with character's emotional and intellectual range
+
+CONFIDENCE SCORING (BE RUTHLESSLY STRICT):
+- 0.9-1.0: Perfect match (extremely rare - only for flawless dialogue)
+- 0.7-0.89: Good consistency (solid match with minor acceptable variations)
+- 0.5-0.69: CONCERNING inconsistencies (flag as problematic)
+- 0.0-0.49: CRITICAL FAILURE (major voice break)
+
+FORBIDDEN RATIONALIZATION PATTERNS:
+❌ "This could be explained by character growth/development"
+❌ "The context justifies this difference in voice"
+❌ "While different, this maintains the character's essence"  
+❌ "The variation is within acceptable character range"
+❌ "This shows emotional depth/complexity"
+
+REQUIRED CRITICAL ANALYSIS:
+- Find specific vocabulary mismatches
+- Identify sentence structure deviations
+- Flag missing signature phrases/patterns
+- Detect tone/register inconsistencies
+
+MANDATORY JSON RESPONSE FORMAT:
 {{
-    "is_consistent": true,
-    "confidence_score": 0.85,
-    "explanation": "The character maintains consistent voice patterns across all samples.",
-    "flagged_text": "Any specific inconsistent dialogue here",
-    "suggestions": ["Suggestion 1", "Suggestion 2"]
+    "is_consistent": false,
+    "confidence_score": 0.65,
+    "explanation": "SPECIFIC problems: [detailed critique of exact issues found]",
+    "flagged_text": "[most problematic dialogue sample]",
+    "suggestions": ["Specific actionable fixes"]
 }}
 
-Focus on:
-1. Speech patterns and vocabulary consistency
-2. Tone and formality level consistency  
-3. Character-specific phrases or expressions
-4. Overall voice authenticity
-
-Respond with ONLY the JSON object."""
+EXECUTE STRICT CRITICAL ANALYSIS NOW. No mercy for poor dialogue.
+"""
             
             logger.info(f"✅ CHARACTER STEP 1 COMPLETE: Prompt built ({len(prompt)} chars)")
             logger.debug(f"   Prompt preview: {prompt[:200]}...")
