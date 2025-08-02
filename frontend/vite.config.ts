@@ -5,9 +5,9 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Remove console.log in production builds (keep console.error/warn)
+  // Keep all console messages in production for debugging (only remove debugger)
   esbuild: {
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : []
   },
   build: {
     outDir: 'dist',
