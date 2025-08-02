@@ -117,6 +117,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Voice consistency analysis
   const [voiceConsistencyResults, setVoiceConsistencyResults] = useState<VoiceConsistencyResult[]>([]);
   
+  // Debug mode for testing voice consistency
+  const [debugMode, setDebugMode] = useState(false);
+  
   // Add observer to maintain voice inconsistency styles
   const voiceInconsistencyObserver = useRef<MutationObserver | null>(null);
   
@@ -422,11 +425,15 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
 
     const doc = editor.state.doc;
     const tr = editor.state.tr;
+    let appliedCount = 0;
 
     results.forEach((result) => {
-      if (!result.is_consistent) {
+      // ENHANCED: Apply underlines for inconsistent OR low-confidence results (or all in debug mode)
+      const shouldHighlight = debugMode || !result.is_consistent || result.confidence_score < 0.7;
+      
+      if (shouldHighlight) {
         const textToFind = result.flagged_text;
-        console.log(`🔍 Looking for inconsistent text: "${textToFind}"`);
+        console.log(`🔍 Looking for text to highlight: "${textToFind}" (consistent: ${result.is_consistent}, confidence: ${result.confidence_score})`);
 
         let found = false;
         doc.descendants((node, pos) => {
@@ -443,14 +450,20 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
             
             console.log(`✅ Found match at position ${from}-${to}:`, nodeText.slice(match.index, match.index + match.length));
             
+            // Use orange for low confidence, red for inconsistent, blue for debug mode
+            const confidenceLevel = debugMode && result.is_consistent ? 'debug' :
+                                   !result.is_consistent ? 'high' : 
+                                   result.confidence_score < 0.5 ? 'high' :
+                                   result.confidence_score < 0.7 ? 'medium' : 'low';
+            
             tr.addMark(from, to, editor.schema.marks.voiceInconsistency.create({
               character: result.character_name,
               confidence: result.confidence_score,
               explanation: result.explanation,
-              confidenceLevel: result.confidence_score > 0.8 ? 'high' : 
-                              result.confidence_score > 0.6 ? 'medium' : 'low'
+              confidenceLevel: confidenceLevel
             }));
             
+            appliedCount++;
             found = true;
           }
         });
@@ -463,7 +476,38 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
 
     if (tr.docChanged) {
       editor.view.dispatch(tr);
-      console.log('✅ Applied voice inconsistency underlines');
+      console.log(`✅ Applied ${appliedCount} voice inconsistency underlines`);
+    } else {
+      console.log(`ℹ️ No underlines applied - all ${results.length} characters appear consistent (confidence > 0.7)`);
+      
+      // DEBUGGING: Show toast notification when analysis completes but no issues found
+      if (results.length > 0) {
+        const avgConfidence = results.reduce((sum, r) => sum + r.confidence_score, 0) / results.length;
+        console.log(`🎯 Analysis Summary: ${results.length} characters analyzed, average confidence: ${avgConfidence.toFixed(2)}`);
+        
+        // Temporary visual feedback for successful analysis with no issues
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #10B981;
+          color: white;
+          padding: 12px 16px;
+          border-radius: 8px;
+          z-index: 10000;
+          font-size: 14px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        `;
+        notification.textContent = `✅ Voice analysis complete: ${results.length} characters consistent`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 3000);
+      }
     }
   };
 
@@ -839,6 +883,29 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           }}>
             Selection: {selection ? `"${selection.text.substring(0, 20)}..." (${selection.top}, ${selection.left})` : 'None'}
           </div>
+        )}
+        
+        {/* DEBUG: Voice analysis debug toggle */}
+        {process.env.NODE_ENV === 'development' && voiceConsistencyResults.length > 0 && (
+          <button
+            style={{
+              position: 'absolute',
+              top: '5px',
+              left: '5px',
+              background: debugMode ? '#3B82F6' : '#6B7280',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '10px',
+              cursor: 'pointer',
+              zIndex: 2000
+            }}
+            onClick={() => setDebugMode(!debugMode)}
+            title={debugMode ? 'Hide all dialogue highlights' : 'Show all analyzed dialogue (debug)'}
+          >
+            {debugMode ? '🔍 Debug ON' : '🔍 Debug OFF'}
+          </button>
         )}
       </div>
       

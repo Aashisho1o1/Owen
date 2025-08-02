@@ -1,167 +1,57 @@
-/* Voice Consistency Underlines - Grammarly-style jiggly underlines for dialogue inconsistencies */
-/* ENHANCED VERSION - Maximum visibility and compatibility */
+/* Voice Inconsistency Underlines - Comprehensive Styling */
 
-/* NUCLEAR CSS - Maximum specificity for TipTap compatibility */
-.highlightable-editor .voice-inconsistent,
+/* Base voice inconsistency mark */
 .voice-inconsistent,
-[data-voice-explanation],
-span.voice-inconsistent {
-  position: relative !important;
-  display: inline !important;
-  cursor: pointer !important;
-  
-  /* PRIMARY: Animated underline */
-  background-image: repeating-linear-gradient(
-    45deg,
-    #f59e0b 0px,
-    #f59e0b 2px,
-    transparent 2px,
-    transparent 4px
-  ) !important;
-  background-position: 0 100% !important;
-  background-size: 4px 2px !important;
-  background-repeat: repeat-x !important;
-  
-  /* FALLBACK: Static border if background fails */
-  border-bottom: 2px dotted #f59e0b !important;
-  
-  /* FALLBACK: Subtle background tint for visibility */
-  box-shadow: inset 0 -2px 0 0 rgba(245, 158, 11, 0.3) !important;
-  
-  /* Inherit text properties */
-  line-height: inherit !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  color: inherit !important;
-  text-decoration: none !important;
-  
-  /* Animation */
-  animation: voice-inconsistency-wiggle 2s ease-in-out infinite !important;
-  transition: all 0.2s ease !important;
+[data-voice-inconsistency="true"] {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 2px;
+  position: relative;
+  cursor: help;
 }
 
-/* ENHANCED: Global keyframes with maximum compatibility */
-@keyframes voice-inconsistency-wiggle {
-  0% { 
-    background-position: 0 100% !important; 
-    transform: translateX(0) !important;
-  }
-  25% { 
-    background-position: 1px 100% !important; 
-    transform: translateX(0.5px) !important;
-  }
-  50% { 
-    background-position: 2px 100% !important; 
-    transform: translateX(1px) !important;
-  }
-  75% { 
-    background-position: 1px 100% !important; 
-    transform: translateX(0.5px) !important;
-  }
-  100% { 
-    background-position: 0 100% !important; 
-    transform: translateX(0) !important;
-  }
+/* High confidence inconsistency (definitely problematic) */
+.voice-inconsistent[data-confidence-level="high"],
+[data-voice-inconsistency="true"][data-confidence-level="high"] {
+  text-decoration-color: #EF4444; /* Bright red */
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
-/* FALLBACK: Static wiggle animation using transform only */
-@keyframes voice-inconsistency-wiggle-fallback {
-  0%, 100% { transform: translateX(0) !important; }
-  25% { transform: translateX(0.5px) !important; }
-  50% { transform: translateX(1px) !important; }
-  75% { transform: translateX(0.5px) !important; }
+/* Medium confidence inconsistency (possibly problematic) */
+.voice-inconsistent[data-confidence-level="medium"],
+[data-voice-inconsistency="true"][data-confidence-level="medium"] {
+  text-decoration-color: #F59E0B; /* Orange */
+  background-color: rgba(245, 158, 11, 0.1);
 }
 
-/* Apply animation with multiple fallback methods */
-.highlightable-editor .voice-inconsistent,
-.voice-inconsistent {
-  animation: 
-    voice-inconsistency-wiggle 2s ease-in-out infinite,
-    voice-inconsistency-wiggle-fallback 2s ease-in-out infinite !important;
+/* Low confidence inconsistency (mild concern) */
+.voice-inconsistent[data-confidence-level="low"],
+[data-voice-inconsistency="true"][data-confidence-level="low"] {
+  text-decoration-color: #10B981; /* Green - just flagged for review */
+  background-color: rgba(16, 185, 129, 0.1);
 }
 
-/* ENHANCED: Different severity levels with better visibility - TipTap compatible */
-.voice-inconsistent.low-confidence,
-[data-voice-underline="true"].low-confidence {
-  border-bottom: 2px solid #fbbf24 !important;
-  text-decoration: underline !important;
-  text-decoration-color: #fbbf24 !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(251, 191, 36, 0.3) !important;
+/* Debug mode highlighting (shows all analyzed dialogue) */
+.voice-inconsistent[data-confidence-level="debug"],
+[data-voice-inconsistency="true"][data-confidence-level="debug"] {
+  text-decoration-color: #3B82F6; /* Blue */
+  text-decoration-style: dotted;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-bottom: 1px dotted #3B82F6;
 }
 
-.voice-inconsistent.medium-confidence,
-[data-voice-underline="true"].medium-confidence {
-  border-bottom: 2px solid #f59e0b !important;
-  text-decoration: underline !important;
-  text-decoration-color: #f59e0b !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(245, 158, 11, 0.3) !important;
+/* Hover effects for all levels */
+.voice-inconsistent:hover,
+[data-voice-inconsistency="true"]:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  text-decoration-thickness: 3px;
+  transition: all 0.2s ease;
 }
 
-.voice-inconsistent.high-confidence,
-[data-voice-underline="true"].high-confidence {
-  border-bottom: 2px solid #dc2626 !important;
-  text-decoration: underline !important;
-  text-decoration-color: #dc2626 !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(220, 38, 38, 0.3) !important;
-}
-
-/* ENHANCED: TipTap-compatible base styles */
-[data-voice-underline="true"] {
-  position: relative !important;
-  display: inline !important;
-  cursor: pointer !important;
-  border-bottom: 2px solid #f59e0b !important;
-  text-decoration: underline !important;
-  text-decoration-color: #f59e0b !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(245, 158, 11, 0.3) !important;
-}
-
-/* ENHANCED: Additional selectors for maximum TipTap compatibility */
-[data-voice-underline="true"][data-confidence-level="high"],
-[data-confidence-level="high"] {
-  border-bottom: 2px solid #dc2626 !important;
-  text-decoration: underline !important;
-  text-decoration-color: #dc2626 !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(220, 38, 38, 0.3) !important;
-}
-
-[data-voice-underline="true"][data-confidence-level="medium"],
-[data-confidence-level="medium"] {
-  border-bottom: 2px solid #f59e0b !important;
-  text-decoration: underline !important;
-  text-decoration-color: #f59e0b !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(245, 158, 11, 0.3) !important;
-}
-
-[data-voice-underline="true"][data-confidence-level="low"],
-[data-confidence-level="low"] {
-  border-bottom: 2px solid #fbbf24 !important;
-  text-decoration: underline !important;
-  text-decoration-color: #fbbf24 !important;
-  text-decoration-style: wavy !important;
-  box-shadow: inset 0 -2px 0 0 rgba(251, 191, 36, 0.3) !important;
-}
-
-/* ENHANCED: Hover effects with better visibility */
-.voice-inconsistent:hover {
-  background-color: rgba(245, 158, 11, 0.1) !important;
-  border-radius: 2px !important;
-  animation-duration: 1s !important;
-  transform: scale(1.02) !important;
-  box-shadow: 
-    inset 0 -2px 0 0 rgba(245, 158, 11, 0.5),
-    0 1px 3px rgba(245, 158, 11, 0.3) !important;
-}
-
-/* TOOLTIP: Enhanced tooltip styling */
-.voice-inconsistent::after {
-  content: attr(data-voice-explanation);
+/* Tooltip styling for explanations */
+.voice-inconsistent::after,
+[data-voice-inconsistency="true"]::after {
+  content: attr(data-explanation);
   position: absolute;
   bottom: 100%;
   left: 50%;
@@ -171,98 +61,38 @@ span.voice-inconsistent {
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 12px;
-  line-height: 1.4;
   white-space: nowrap;
-  max-width: 300px;
-  white-space: normal;
-  word-wrap: break-word;
-  z-index: 10000;
+  z-index: 1000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.voice-inconsistent::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(1px);
-  border: 5px solid transparent;
-  border-top-color: rgba(0, 0, 0, 0.9);
-  z-index: 10001;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
+  max-width: 300px;
+  white-space: normal;
 }
 
 .voice-inconsistent:hover::after,
-.voice-inconsistent:hover::before {
+[data-voice-inconsistency="true"]:hover::after {
   opacity: 1;
 }
 
-/* ACCESSIBILITY: Focus states */
-.voice-inconsistent:focus {
-  outline: 2px solid #2563eb !important;
-  outline-offset: 2px !important;
-  border-radius: 2px !important;
+/* Character-specific styling if needed */
+.voice-inconsistent[data-character*="Tyrion"] {
+  /* Could add character-specific styling here */
 }
 
-/* RESPONSIVE: Mobile adjustments */
-@media (max-width: 768px) {
-  .voice-inconsistent::after {
-    font-size: 11px;
-    padding: 6px 10px;
-    max-width: 250px;
+/* Animation for newly applied marks */
+@keyframes voice-inconsistency-highlight {
+  0% {
+    background-color: rgba(239, 68, 68, 0.3);
+    text-decoration-thickness: 4px;
   }
-  
-  .voice-inconsistent::before {
-    border-width: 4px;
+  100% {
+    background-color: rgba(239, 68, 68, 0.1);
+    text-decoration-thickness: 2px;
   }
 }
 
-/* DARK MODE: Enhanced dark mode support */
-@media (prefers-color-scheme: dark) {
-  .voice-inconsistent::after {
-    background: rgba(255, 255, 255, 0.95);
-    color: #1f2937;
-  }
-  
-  .voice-inconsistent::before {
-    border-top-color: rgba(255, 255, 255, 0.95);
-  }
-  
-  .voice-inconsistent:hover {
-    background-color: rgba(245, 158, 11, 0.15) !important;
-  }
-}
-
-/* ULTIMATE FALLBACK: If all else fails, make it visible with simple styling */
-.highlightable-editor .voice-inconsistent {
-  /* Ensure minimum visibility */
-  border-bottom: 2px solid #f59e0b !important;
-  text-decoration: underline !important;
-  text-decoration-color: #f59e0b !important;
-  text-decoration-style: wavy !important;
-}
-
-/* PERFORMANCE: Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  .voice-inconsistent {
-    animation: none !important;
-    /* Keep static underline for accessibility */
-    border-bottom: 2px solid #f59e0b !important;
-    text-decoration: underline !important;
-    text-decoration-color: #f59e0b !important;
-    text-decoration-style: wavy !important;
-  }
-}
-
-/* DEBUG: Visual indicator that CSS is loaded */
-.voice-inconsistent::selection {
-  background: rgba(245, 158, 11, 0.3) !important;
-}
-
-.voice-inconsistent::-moz-selection {
-  background: rgba(245, 158, 11, 0.3) !important;
+.voice-inconsistent.newly-applied,
+[data-voice-inconsistency="true"].newly-applied {
+  animation: voice-inconsistency-highlight 1s ease;
 } 
