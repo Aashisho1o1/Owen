@@ -856,6 +856,11 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         
         {/* Voice consistency indicator */}
         {(() => {
+          // SAFETY: Ensure voiceConsistencyResults is defined before accessing
+          if (!voiceConsistencyResults || !Array.isArray(voiceConsistencyResults)) {
+            return null;
+          }
+          
           const inconsistentResults = voiceConsistencyResults.filter(r => !r.is_consistent);
           const hasVoiceIssues = inconsistentResults.length > 0;
           

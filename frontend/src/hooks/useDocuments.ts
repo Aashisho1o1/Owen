@@ -71,7 +71,7 @@ interface UseDocumentsReturn extends DocumentState {
 }
 
 export const useDocuments = (): UseDocumentsReturn => {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [state, setState] = useState<DocumentState>({
     documents: [],
     folders: [],
@@ -152,6 +152,12 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   // Fetch initial data (documents and folders)
   const fetchAllData = useCallback(async () => {
+    // SAFETY: Wait for authentication to complete before making API calls
+    if (isAuthLoading) {
+      console.log('🔄 useDocuments: Authentication still loading, skipping data load');
+      return;
+    }
+    
     if (!user) {
       console.log('🔐 useDocuments: No user, skipping data load');
       // Clear any existing data when user logs out
@@ -236,7 +242,7 @@ export const useDocuments = (): UseDocumentsReturn => {
     } finally {
       fetchInProgress.current = false;
     }
-  }, [user, state.documents.length]);
+  }, [user, state.documents.length, isAuthLoading]);
 
   useEffect(() => {
     fetchAllData();
