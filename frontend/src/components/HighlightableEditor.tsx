@@ -347,147 +347,124 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     },
   });
 
-  // Apply voice inconsistency underlines using TipTap's native Mark system - COMPLETELY REWRITTEN
-  const applyVoiceInconsistencyUnderlines = (results: VoiceConsistencyResult[]) => {
-    if (!editor) {
-      console.warn('❌ Editor not available for voice inconsistency highlighting');
-      return;
+  // Enhanced fuzzy text matching function
+  const findBestTextMatch = (nodeText: string, flaggedText: string) => {
+    const nodeTextLower = nodeText.toLowerCase();
+    const flaggedTextLower = flaggedText.toLowerCase();
+    
+    // Strategy 1: Direct match
+    let matchIndex = nodeTextLower.indexOf(flaggedTextLower);
+    if (matchIndex !== -1) {
+      return { index: matchIndex, length: flaggedTextLower.length };
     }
-
-    console.log('🎯 Applying voice inconsistency underlines using PROPER TipTap Mark system:', {
-      totalResults: results.length,
-      inconsistentCount: results.filter(r => !r.is_consistent).length,
-      inconsistentTexts: results.filter(r => !r.is_consistent).map(r => r.flagged_text?.substring(0, 50) || 'N/A')
-    });
-
-    // Clear all existing voice inconsistency marks first
-    editor.commands.unsetVoiceInconsistency();
-
-    let appliedCount = 0;
-    const inconsistentResults = results.filter(result => !result.is_consistent && result.flagged_text);
-
-    // Process each inconsistent result using proper TipTap document traversal
-    inconsistentResults.forEach(result => {
-      const textToFind = result.flagged_text?.trim();
-      if (!textToFind || textToFind.length < 5) {
-        console.warn('⚠️ Skipping invalid flagged text for character:', result.character_name);
-        return;
+    
+    // Strategy 2: Clean text by removing quotes and punctuation
+    const cleanFlagged = flaggedTextLower.replace(/["""''`"'()[\]]/g, '').replace(/\s+/g, ' ').trim();
+    const cleanNode = nodeTextLower.replace(/["""''`"'()[\]]/g, '').replace(/\s+/g, ' ');
+    
+    matchIndex = cleanNode.indexOf(cleanFlagged);
+    if (matchIndex !== -1 && cleanFlagged.length > 3) {
+      // Find the original position by counting characters
+      let originalIndex = 0;
+      let cleanIndex = 0;
+      while (cleanIndex < matchIndex && originalIndex < nodeText.length) {
+        if (!/["""''`"'()[\]]/.test(nodeText[originalIndex])) {
+          cleanIndex++;
+        }
+        originalIndex++;
       }
-
-      // CORRECT APPROACH: Use TipTap's document traversal to find text
-      const doc = editor.state.doc;
-      let found = false;
-
-      // Traverse the document using TipTap's node structure
-      doc.descendants((node, pos) => {
-        if (found) return false; // Stop if we already found a match
-        
-        if (node.isText && node.text) {
-          const nodeText = node.text.toLowerCase();
-          const searchText = textToFind.toLowerCase();
-          
-          // Try exact match first
-          let matchIndex = nodeText.indexOf(searchText);
-          
-          // If no exact match, try partial matching
-          if (matchIndex === -1 && searchText.length > 20) {
-            const shortSearch = searchText.substring(0, 20);
-            matchIndex = nodeText.indexOf(shortSearch);
+      return { index: originalIndex, length: cleanFlagged.length + 2 }; // Add some buffer
+    }
+    
+    // Strategy 3: Extract core words and find partial matches
+    const flaggedWords = cleanFlagged.split(' ').filter(word => word.length > 2);
+    if (flaggedWords.length > 0) {
+      const firstWord = flaggedWords[0];
+      const lastWord = flaggedWords[flaggedWords.length - 1];
+      
+      const firstWordIndex = cleanNode.indexOf(firstWord);
+      const lastWordIndex = cleanNode.indexOf(lastWord, firstWordIndex);
+      
+      if (firstWordIndex !== -1 && lastWordIndex !== -1) {
+        // Map back to original text
+        let originalStart = 0;
+        let cleanPos = 0;
+        while (cleanPos < firstWordIndex && originalStart < nodeText.length) {
+          if (!/["""''`"'()[\]]/.test(nodeText[originalStart])) {
+            cleanPos++;
           }
+          originalStart++;
+        }
+        const estimatedLength = Math.max(flaggedText.length, lastWordIndex - firstWordIndex + lastWord.length);
+        return { index: originalStart, length: estimatedLength };
+      }
+    }
+    
+    // Strategy 4: Fuzzy word matching - find any significant words
+    if (flaggedWords.length > 0) {
+      for (const word of flaggedWords) {
+        if (word.length > 4) { // Only match significant words
+          const wordIndex = nodeTextLower.indexOf(word);
+          if (wordIndex !== -1) {
+            return { index: wordIndex, length: Math.min(flaggedText.length, word.length + 10) };
+          }
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  const applyVoiceInconsistencyUnderlines = (results: VoiceConsistencyResult[]) => {
+    if (!editor) return;
+
+    console.log('🎯 Applying voice inconsistency underlines:', results);
+
+    const doc = editor.state.doc;
+    const tr = editor.state.tr;
+
+    results.forEach((result) => {
+      if (!result.is_consistent) {
+        const textToFind = result.flagged_text;
+        console.log(`🔍 Looking for inconsistent text: "${textToFind}"`);
+
+        let found = false;
+        doc.descendants((node, pos) => {
+          if (found || node.type.name !== 'text') return;
+
+          const nodeText = node.text || '';
           
-          if (matchIndex !== -1) {
-            // Calculate actual document positions
-            const from = pos + matchIndex;
-            const to = Math.min(pos + matchIndex + searchText.length, pos + node.text.length);
+          // Use enhanced fuzzy matching
+          const match = findBestTextMatch(nodeText, textToFind);
+          
+          if (match) {
+            const from = pos + match.index;
+            const to = Math.min(pos + match.index + match.length, pos + nodeText.length);
             
-            // Validate positions
-            if (from >= 0 && to > from && to <= doc.content.size) {
-            const confidence = result.confidence_score;
-              const confidenceLevel = confidence <= 0.4 ? 'high' : confidence <= 0.7 ? 'medium' : 'low';
-
-              try {
-                // Apply mark using TipTap's transaction system - PROPER WAY
-                const tr = editor.state.tr;
-                tr.addMark(
-                  from,
-                  to,
-                  editor.schema.marks.voiceInconsistency.create({
-                    character: result.character_name,
-                    confidence: confidence,
-                    explanation: result.explanation,
-                    confidenceLevel: confidenceLevel
-                  })
-                );
-                
-                // Dispatch the transaction
-                editor.view.dispatch(tr);
-                
-                appliedCount++;
-                found = true;
-                
-                console.log('✅ Applied TipTap voice inconsistency mark using PROPER method:', {
-                  character: result.character_name,
-                  confidence: confidence,
-                  confidenceLevel,
-                  from,
-                  to,
-                  nodeText: node.text.substring(matchIndex, matchIndex + 30)
-                });
-              } catch (error) {
-                console.error('❌ Failed to apply mark:', error);
-              }
-            } else {
-              console.warn('❌ Invalid position range:', { from, to, docSize: doc.content.size });
-            }
+            console.log(`✅ Found match at position ${from}-${to}:`, nodeText.slice(match.index, match.index + match.length));
+            
+            tr.addMark(from, to, editor.schema.marks.voiceInconsistency.create({
+              character: result.character_name,
+              confidence: result.confidence_score,
+              explanation: result.explanation,
+              confidenceLevel: result.confidence_score > 0.8 ? 'high' : 
+                              result.confidence_score > 0.6 ? 'medium' : 'low'
+            }));
+            
+            found = true;
           }
-        }
-        
-        return !found; // Continue traversal if not found
-      });
+        });
 
-      if (!found) {
-        console.warn('❌ Could not find text in document for character:', result.character_name, 'text:', textToFind.substring(0, 30));
+        if (!found) {
+          console.warn(`❌ Could not find text for character: ${result.character_name} text: '${textToFind}'`);
+        }
       }
     });
 
-    console.log(`🎯 Applied ${appliedCount} voice inconsistency marks using PROPER TipTap system`);
-
-    // Verify the marks were applied - IMPROVED verification
-    setTimeout(() => {
-      const editorElement = editor.view.dom;
-      const appliedUnderlines = editorElement.querySelectorAll('.voice-inconsistent, [data-voice-inconsistency="true"]');
-      console.log(`🎯 FINAL COUNT: Applied ${appliedUnderlines.length} voice inconsistency underlines (expected: ${appliedCount})`);
-      
-      // Also check TipTap's internal state
-      const marksInDoc: Array<{pos: number, character: string, text?: string}> = [];
-      editor.state.doc.descendants((node, pos) => {
-        if (node.marks) {
-          node.marks.forEach(mark => {
-            if (mark.type.name === 'voiceInconsistency') {
-              marksInDoc.push({
-                pos,
-                character: mark.attrs.character,
-                text: node.text?.substring(0, 20)
-              });
-            }
-          });
-        }
-      });
-      
-      console.log(`🔍 TipTap internal marks count: ${marksInDoc.length}`, marksInDoc);
-      
-      appliedUnderlines.forEach((el, index) => {
-        const computedStyle = window.getComputedStyle(el);
-        console.log(`🧪 DOM Underline ${index + 1}:`, {
-          text: el.textContent?.substring(0, 30),
-          hasUnderline: computedStyle.textDecorationLine.includes('underline'),
-          borderBottom: computedStyle.borderBottomWidth !== '0px',
-          className: el.className,
-          dataAttributes: Array.from(el.attributes).filter(attr => attr.name.startsWith('data-')).map(attr => `${attr.name}="${attr.value}"`),
-          visible: computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden'
-        });
-      });
-    }, 500);
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+      console.log('✅ Applied voice inconsistency underlines');
+    }
   };
 
   // Handle active discussion highlighting from ChatContext using DOM manipulation
