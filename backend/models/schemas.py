@@ -4,6 +4,7 @@ import re
 from pydantic import field_validator
 from enum import Enum
 from datetime import datetime
+from dataclasses import dataclass, asdict
 
 # === ENUMS ===
 class DocumentType(str, Enum):
@@ -343,4 +344,32 @@ class DeleteCharacterProfileRequest(BaseModel):
     def validate_character_name(cls, v):
         if not v.strip():
             raise ValueError('Character name cannot be empty')
-        return v.strip() 
+        return v.strip()
+
+# === DATA CLASSES FOR VOICE ANALYSIS ===
+
+@dataclass
+class DialogueSegment:
+    """Represents a single piece of dialogue with context."""
+    text: str
+    speaker: str
+    position: int
+    context_before: str
+    context_after: str
+
+@dataclass
+class CharacterVoiceProfile:
+    """Character voice profile with dialogue samples and traits."""
+    character_id: str
+    character_name: str
+    dialogue_samples: List[str]
+    voice_traits: Dict[str, Any]
+    last_updated: str
+    sample_count: int
+
+    def to_dict(self):
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]):
+        return cls(**data) 

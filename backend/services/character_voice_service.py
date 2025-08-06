@@ -20,7 +20,8 @@ from services.llm_service import llm_service
 from services.dialogue_extractor import dialogue_extractor
 
 # Import the proper schema models
-from models.schemas import VoiceConsistencyResult
+from models.schemas import VoiceConsistencyResult, DialogueSegment, CharacterVoiceProfile
+from config.demo_config import is_demo_enabled, detect_demo_content, demo_config
 
 # Configure logging with more detailed formatting
 logging.basicConfig(
@@ -99,32 +100,6 @@ COMMON_NON_CHARACTER_WORDS = {
     'september', 'october', 'november', 'december'
 }
 
-@dataclass
-class DialogueSegment:
-    """Represents a single piece of dialogue with context."""
-    text: str
-    speaker: str
-    position: int
-    context_before: str
-    context_after: str
-
-@dataclass
-class CharacterVoiceProfile:
-    """Character voice profile with dialogue samples and traits."""
-    character_id: str
-    character_name: str
-    dialogue_samples: List[str]
-    voice_traits: Dict[str, Any]
-    last_updated: str
-    sample_count: int
-
-    def to_dict(self):
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
-        return cls(**data)
-
 class CharacterVoiceService:
     """
     Analyzes character voice consistency using the same successful pattern as contextual understanding.
@@ -140,157 +115,36 @@ class CharacterVoiceService:
             else:
                 logger.error("❌ CharacterVoiceService: LLM service coordinator missing generate_with_selected_llm method")
             
-            # Load GoT demo profiles
-            self.got_profiles = self._load_got_demo_profiles()
-            
-            # Character name alias mapping for demo mode
-            self.got_character_aliases = {
-                # Script format -> Profile name
-                'BRAN': 'Bran Stark',
-                'JON': 'Jon Snow', 
-                'TYRION': 'Tyrion Lannister',
-                'DAENERYS': 'Daenerys Targaryen',
-                'ARYA': 'Arya Stark',
-                'SANSA': 'Sansa Stark',
-                'CERSEI': 'Cersei Lannister',
-                'JAIME': 'Jaime Lannister',
-                
-                # Alternative formats
-                'bran': 'Bran Stark',
-                'jon': 'Jon Snow',
-                'tyrion': 'Tyrion Lannister', 
-                'daenerys': 'Daenerys Targaryen',
-                'arya': 'Arya Stark',
-                'sansa': 'Sansa Stark',
-                'cersei': 'Cersei Lannister',
-                'jaime': 'Jaime Lannister',
-                
-                # Mixed case
-                'Bran': 'Bran Stark',
-                'Jon': 'Jon Snow',
-                'Tyrion': 'Tyrion Lannister',
-                'Daenerys': 'Daenerys Targaryen', 
-                'Arya': 'Arya Stark',
-                'Sansa': 'Sansa Stark',
-                'Cersei': 'Cersei Lannister',
-                'Jaime': 'Jaime Lannister',
-            }
+            # Load demo profiles if demo mode is active
+            if is_demo_enabled():
+                self.demo_profiles = demo_config.profiles
+                self.demo_aliases = demo_config.aliases
+                logger.info(f"✅ Loaded {len(self.demo_profiles)} profiles for '{demo_config.demo_name}' demo.")
+            else:
+                self.demo_profiles = {}
+                self.demo_aliases = {}
+
             logger.info("✅ CharacterVoiceService: Service initialized successfully")
         except Exception as e:
             logger.error(f"❌ CharacterVoiceService: Initialization failed: {e}")
             raise
-    
-    def _load_got_demo_profiles(self) -> Dict[str, CharacterVoiceProfile]:
-        """
-        Load Game of Thrones character profiles for demo mode.
-        
-        Returns:
-            Dictionary of character name to CharacterVoiceProfile
-        """
-        try:
-            # Get the absolute path to the profiles file
-            # This file is in backend/services/, so we go up one level to backend/, then to assets/
-            service_dir = os.path.dirname(os.path.abspath(__file__))  # backend/services/
-            backend_dir = os.path.dirname(service_dir)  # backend/
-            profiles_path = os.path.join(backend_dir, 'assets', 'got_character_profiles.json')
-            
-            if not os.path.exists(profiles_path):
-                logger.warning(f"🎭 GoT profiles file not found at {profiles_path}")
-                return {}
-            
-            with open(profiles_path, 'r', encoding='utf-8') as f:
-                profiles_data = json.load(f)
-            
-            got_profiles = {}
-            for character_name, profile_data in profiles_data.items():
-                got_profiles[character_name] = CharacterVoiceProfile(
-                    character_id=profile_data['character_id'],
-                    character_name=profile_data['character_name'],
-                    dialogue_samples=profile_data['dialogue_samples'],
-                    voice_traits=profile_data['voice_traits'],
-                    last_updated=profile_data['last_updated'],
-                    sample_count=profile_data['sample_count']
-                )
-            
-            logger.info(f"✅ Loaded {len(got_profiles)} GoT character profiles for demo mode")
-            return got_profiles
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to load GoT profiles: {e}")
-            return {}
-    
-    def _is_got_demo_text(self, text: str) -> bool:
-        """
-        Detect if the input text appears to be Game of Thrones content.
-        
-        This uses a simple but effective heuristic approach.
-        Enhanced for better demo detection.
-        """
-        if not text:
-            return False
-        
-        # Common GoT terms and character names (case-insensitive)
-        got_indicators = [
-            # Character names (distinctive ones) - ENHANCED with single names
-            'daenerys', 'tyrion', 'arya stark', 'jon snow', 'sansa stark', 'bran stark',
-            'cersei', 'jaime', 'joffrey', 'tywin', 'robb stark', 'catelyn', 'ned stark',
-            'theon', 'ramsay', 'margaery', 'olenna', 'oberyn', 'sandor', 'bronn',
-            
-            # CRITICAL: Single name variants for script format
-            'bran', 'tyrion', 'arya', 'sansa', 'jaime', 'joffrey', 'tywin', 'robb',
-            'catelyn', 'theon', 'ramsay', 'margaery', 'oberyn', 'bronn', 'davos',
-            'grey worm', 'missandei', 'varys', 'littlefinger', 'qyburn', 'mountain',
-            'hound', 'tormund', 'gilly', 'samwell', 'gendry', 'yara', 'euron',
-            
-            # Unique GoT terms
-            'winterfell', 'king\'s landing', 'westeros', 'essos', 'seven kingdoms',
-            'iron throne', 'night\'s watch', 'wall', 'beyond the wall', 'wildlings',
-            'dothraki', 'unsullied', 'faceless men', 'three-eyed raven',
-            'night king', 'white walkers', 'dragons', 'dragonstone', 'valyrian',
-            
-            # Distinctive phrases
-            'winter is coming', 'fire and blood', 'a girl has no name', 'dracarys',
-            'you know nothing', 'the north remembers', 'valar morghulis', 'hodor',
-            'what do we say to death', 'not today', 'chaos is a ladder',
-            
-            # Houses and titles - ENHANCED
-            'house stark', 'house lannister', 'house targaryen', 'house baratheon',
-            'your grace', 'my lord', 'my lady', 'ser ', 'maester', 'lord commander',
-            'hand of the king', 'mother of dragons', 'king in the north', 'lord tyrion'
-        ]
-        
-        text_lower = text.lower()
-        matches = 0
-        matched_indicators = []
-        
-        for indicator in got_indicators:
-            if indicator in text_lower:
-                matches += 1
-                matched_indicators.append(indicator)
-                # REDUCED threshold for better demo detection
-                if matches >= 2:  # Changed from 3 to 2 for easier activation
-                    logger.info(f"🐉 GoT demo mode activated - detected {matches} GoT indicators: {matched_indicators}")
-                    return True
-        
-        logger.debug(f"🔍 GoT detection: Found {matches} indicators {matched_indicators}, need 2+ for activation")
-        return False
     
     def _normalize_character_name(self, character_name: str) -> str:
         """
         Normalize character names for demo mode.
         Maps script format names to full profile names.
         """
-        if not hasattr(self, 'got_character_aliases'):
+        if not is_demo_enabled() or not self.demo_aliases:
             return character_name
             
         # Try exact match first
-        if character_name in self.got_character_aliases:
-            normalized = self.got_character_aliases[character_name]
+        if character_name in self.demo_aliases:
+            normalized = self.demo_aliases[character_name]
             logger.debug(f"🔄 Normalized character name: '{character_name}' -> '{normalized}'")
             return normalized
             
         # Try case-insensitive match
-        for alias, canonical in self.got_character_aliases.items():
+        for alias, canonical in self.demo_aliases.items():
             if character_name.lower() == alias.lower():
                 logger.debug(f"🔄 Normalized character name (case-insensitive): '{character_name}' -> '{canonical}'")
                 return canonical
@@ -618,19 +472,18 @@ Character names to validate: {potential_characters}"""
             logger.info(f"   - Has HTML tags: {bool(re.search(r'<[^>]+>', text))}")
             logger.info(f"   - Existing profiles: {len(existing_profiles) if existing_profiles else 0}")
             
-            # 🐉 DEMO MODE: Check if this is GoT content and inject demo profiles
-            is_got_demo = self._is_got_demo_text(text)
-            if is_got_demo and self.got_profiles:
-                logger.info(f"🐉 === GAME OF THRONES DEMO MODE ACTIVATED ===")
-                logger.info(f"🎭 Using {len(self.got_profiles)} pre-loaded GoT character profiles")
-                logger.info(f"📜 Available characters: {list(self.got_profiles.keys())}")
-                existing_profiles = self.got_profiles.copy()  # Use demo profiles instead of user profiles
+            # 🐉 DEMO MODE: Check if this is demo content and inject demo profiles
+            is_demo = detect_demo_content(text)
+            if is_demo and self.demo_profiles:
+                logger.info(f"🐉 === {demo_config.demo_name.upper()} DEMO MODE ACTIVATED ===")
+                logger.info(f"🎭 Using {len(self.demo_profiles)} pre-loaded character profiles")
+                existing_profiles = self.demo_profiles.copy()
                 logger.info(f"✅ Demo profiles injected successfully")
             
             logger.info(f"🚀 SERVICE STEP 1: Text preprocessing...")
             # Limit text length to prevent API timeouts
             # ENHANCED: Higher limit for demo mode to preserve full scripts
-            MAX_TEXT_LENGTH = 50000 if is_got_demo else 10000
+            MAX_TEXT_LENGTH = demo_config.max_text_length if is_demo else 10000
             if len(text) > MAX_TEXT_LENGTH:
                 logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
                 text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"

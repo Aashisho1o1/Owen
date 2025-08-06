@@ -4,12 +4,6 @@ Coordinated LLM Service
 Main service that coordinates different LLM providers and provides
 a unified interface for the application.
 
-OPTIMIZATION BENEFITS:
-- Reduced from 658 lines to ~150 lines
-- Separated concerns (each LLM has its own service)
-- Better error handling and logging
-- Cleaner prompt management
-- Easier testing and maintenance
 """
 
 import json
