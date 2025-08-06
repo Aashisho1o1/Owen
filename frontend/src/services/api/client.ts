@@ -9,7 +9,8 @@ import { clearAuthTokens, getStoredTokens, refreshToken } from './auth';
 import { logger } from '../utils/logger';
 
 // Use VITE_API_URL from environment variables - MUST be defined in .env file
-const API_URL = import.meta.env.VITE_API_URL;
+// Normalize API_URL to prevent double slashes (trailing slash issues)
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || '';
 
 // Validate environment variable is loaded
 if (!API_URL) {
@@ -24,6 +25,12 @@ console.log('🌐 API Configuration:', {
   NODE_ENV: import.meta.env.NODE_ENV,
   env_loaded: !!import.meta.env.VITE_API_URL
 });
+
+// Development safety check for double slashes
+if (import.meta.env.DEV && import.meta.env.VITE_API_URL?.endsWith('/')) {
+  console.warn('⚠️ VITE_API_URL ends with trailing slash. This has been auto-corrected to prevent double-slash issues.');
+  console.warn('💡 Recommendation: Remove trailing slash from VITE_API_URL in your .env file');
+}
 
 // Create axios instance with configuration
 const apiClient = axios.create({
@@ -144,6 +151,13 @@ const refreshTokens = async (): Promise<string | null> => {
 apiClient.interceptors.request.use(
   (config) => {
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    
+    // Development safety check for double slashes in URLs
+    if (import.meta.env.DEV && config.url?.includes('//api/')) {
+      console.error('🚨 DOUBLE SLASH DETECTED in API URL:', config.url);
+      console.error('💡 This usually indicates a trailing slash issue in VITE_API_URL');
+      console.error('🔧 Expected URL pattern: baseURL + /api/... (no double slashes)');
+    }
     
     // FIXED: Only apply deduplication to GET requests and exclude voice analysis
     if (config.method?.toLowerCase() === 'get' && !config.url?.includes('/character-voice/')) {
