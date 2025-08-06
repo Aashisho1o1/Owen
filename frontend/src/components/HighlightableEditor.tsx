@@ -522,22 +522,41 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
           }
         });
         
-        // Get all text content and find the text to highlight
-        const allText = editorElement.textContent || '';
-        const textIndex = allText.indexOf(text);
-        console.log('🔍 Looking for text:', text, 'in editor content, found at index:', textIndex);
+        // FIX: Add delay to ensure DOM is ready and use multiple search strategies
+        const applyHighlightWithRetry = (retryCount = 0) => {
+          // Get all text content and find the text to highlight
+          const allText = editorElement.textContent || '';
+          const textIndex = allText.indexOf(text);
+          console.log('🔍 Looking for text:', text, 'in editor content, found at index:', textIndex, 'retry:', retryCount);
+          
+          if (textIndex >= 0) {
+            // Text found, proceed with highlighting
+            highlightTextInEditor(text, editorElement);
+          } else if (retryCount < 3) {
+            // Text not found, retry after DOM settles
+            console.log('⏳ Text not found, retrying in 50ms...');
+            setTimeout(() => applyHighlightWithRetry(retryCount + 1), 50);
+          } else {
+            console.warn('⚠️ Could not find text to highlight after 3 retries:', text);
+          }
+        };
         
-        if (textIndex >= 0) {
-          // Use a more robust text search and highlight approach
+        // Helper function to apply highlighting to text in editor
+        const highlightTextInEditor = (textToHighlight: string, editorElement: Element) => {
           const walker = document.createTreeWalker(
             editorElement,
             NodeFilter.SHOW_TEXT,
             null
           );
           
+          const allText = editorElement.textContent || '';
+          const textIndex = allText.indexOf(textToHighlight);
+          
+          if (textIndex < 0) return false;
+          
           let currentOffset = 0;
           const targetStartOffset = textIndex;
-          const targetEndOffset = textIndex + text.length;
+          const targetEndOffset = textIndex + textToHighlight.length;
           let textNode;
           
           while ((textNode = walker.nextNode())) {
@@ -561,34 +580,33 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
               const highlightText = nodeValue.substring(startInNode, endInNode);
               const afterText = nodeValue.substring(endInNode);
               
-              // Create the highlight span with MINIMAL inline styles (let CSS handle it)
+              // Create the highlight span
               const highlightSpan = document.createElement('span');
               highlightSpan.className = 'active-discussion-highlight';
               highlightSpan.textContent = highlightText;
-              // REMOVED inline styles - let CSS handle all styling to avoid conflicts
               
-              // Replace the text node with our highlighted version
+              // Replace the text node with our structured content
               const parent = textNode.parentNode;
               if (parent) {
-                if (beforeText) {
-                  parent.insertBefore(document.createTextNode(beforeText), textNode);
-                }
-                parent.insertBefore(highlightSpan, textNode);
-                if (afterText) {
-                  parent.insertBefore(document.createTextNode(afterText), textNode);
-                }
-                parent.removeChild(textNode);
+                // Create document fragment to replace the text node
+                const fragment = document.createDocumentFragment();
+                if (beforeText) fragment.appendChild(document.createTextNode(beforeText));
+                fragment.appendChild(highlightSpan);
+                if (afterText) fragment.appendChild(document.createTextNode(afterText));
                 
+                parent.replaceChild(fragment, textNode);
                 console.log('✅ Successfully applied highlight to text:', highlightText);
+                return true;
               }
               break;
             }
-            
             currentOffset += nodeLength;
           }
-        } else {
-          console.warn('❌ Text not found in editor content');
-        }
+          return false;
+        };
+        
+        // Start the highlighting process
+        applyHighlightWithRetry();
       } else if (action === 'remove') {
         // IMPROVED: Remove all highlights with better cleanup
         const highlights = editorElement.querySelectorAll('.active-discussion-highlight');

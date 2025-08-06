@@ -384,6 +384,12 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   // Text highlighting handlers
   const handleTextHighlighted = useCallback((text: string, highlightId?: string) => {
+    // PREVENT DUPLICATE HIGHLIGHTS: Don't re-highlight the same text
+    if (highlightedText === text) {
+      logger.log('🔄 Same text already highlighted, skipping:', text.substring(0, 50) + '...');
+      return;
+    }
+    
     // ENHANCEMENT: Only clear the active highlight in the editor, preserve chat context
     if (highlightedText && highlightedText !== text) {
       // Clear ONLY the active highlight from the editor (not from chat context)
@@ -408,21 +414,23 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     // Reset message index so new highlight appears at the appropriate position
     setHighlightedTextMessageIndex(null);
     
-    // Apply new highlight in editor
-    const highlightEvent = new CustomEvent('applyActiveDiscussionHighlight', {
-      detail: { 
-        text, 
-        highlightId: highlightId || `active-discussion-${Date.now()}`,
-        action: 'add'
-      }
-    });
-    window.dispatchEvent(highlightEvent);
-    
-    logger.log('✨ Text highlighted for AI feedback (new conversation thread):', { 
-      text: text.substring(0, 50) + '...', 
-      highlightId,
-      timestamp: new Date().toISOString()
-    });
+    // Apply new highlight in editor with slight delay to ensure DOM is ready
+    setTimeout(() => {
+      const highlightEvent = new CustomEvent('applyActiveDiscussionHighlight', {
+        detail: { 
+          text, 
+          highlightId: highlightId || `active-discussion-${Date.now()}`,
+          action: 'add'
+        }
+      });
+      window.dispatchEvent(highlightEvent);
+      
+      logger.log('✨ Text highlighted for AI feedback (new conversation thread):', { 
+        text: text.substring(0, 50) + '...', 
+        highlightId,
+        timestamp: new Date().toISOString()
+      });
+    }, 10); // Small delay to ensure DOM is ready
   }, [highlightedText, highlightedTextId]);
 
   const clearTextHighlight = useCallback(() => {
