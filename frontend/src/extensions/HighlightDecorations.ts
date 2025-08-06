@@ -64,11 +64,13 @@ export const HighlightDecorations = Extension.create({
               console.log('🔧 PLUGIN STATE: Processing highlight command:', highlightCommand.type, highlightCommand);
               switch (highlightCommand.type) {
                 case 'add':
-                  // Remove existing highlights first to avoid overlaps
+                  // Remove only the specific highlight ID, keep others
                   const filteredHighlights = value.highlights.filter(h => h.id !== highlightCommand.id);
+                  // Also remove any highlights with the same text to avoid exact duplicates
+                  const finalHighlights = filteredHighlights.filter(h => h.text !== highlightCommand.text);
                   return {
                     highlights: [
-                      ...filteredHighlights,
+                      ...finalHighlights,
                       {
                         id: highlightCommand.id,
                         from: highlightCommand.from,

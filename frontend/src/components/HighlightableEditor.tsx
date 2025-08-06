@@ -514,10 +514,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         const id = highlightId || `highlight-${Date.now()}`;
         console.log('✨ Adding decoration-based highlight:', text);
         
-        // Clear any existing highlights first
-        editor.commands.clearAllHighlights();
-        
-        // Add the new highlight using our decoration extension
+        // Add the new highlight using our decoration extension (don't clear first)
         const success = editor.commands.addHighlight({
           id,
           text,
