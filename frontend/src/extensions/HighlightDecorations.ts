@@ -123,7 +123,10 @@ export const HighlightDecorations = Extension.create({
           decorations(state) {
             const { highlights } = highlightPluginKey.getState(state) || { highlights: [] };
             
+            console.log('🎨 Rendering decorations, highlight count:', highlights.length);
+            
             const decorations = highlights.map(highlight => {
+              console.log('🖍️ Creating decoration for:', highlight.text, 'from', highlight.from, 'to', highlight.to);
               return Decoration.inline(highlight.from, highlight.to, {
                 class: highlight.className,
                 'data-highlight-id': highlight.id,
@@ -131,6 +134,7 @@ export const HighlightDecorations = Extension.create({
               });
             });
             
+            console.log('🎨 Created', decorations.length, 'decorations');
             return DecorationSet.create(state.doc, decorations);
           }
         }
@@ -141,11 +145,18 @@ export const HighlightDecorations = Extension.create({
   addCommands() {
     return {
       addHighlight: (options: { id: string; text: string; className?: string }) => ({ tr, state, dispatch }: any) => {
+        console.log('🔍 Searching for text in document:', options.text);
+        
         // Find the text in the document
         const doc = state.doc;
         let found = false;
         let from = 0;
         let to = 0;
+        
+        // Get the document text for debugging
+        const docText = doc.textContent;
+        console.log('📄 Document content length:', docText.length);
+        console.log('📄 Document preview:', docText.substring(0, 200) + '...');
         
         // Search for the text in the document
         doc.descendants((node, pos) => {
@@ -154,17 +165,23 @@ export const HighlightDecorations = Extension.create({
           const nodeText = node.text || '';
           const index = nodeText.indexOf(options.text);
           
+          console.log('🔍 Checking node at pos', pos, ':', nodeText.substring(0, 50), '... (looking for:', options.text + ')');
+          
           if (index >= 0) {
             from = pos + index;
             to = pos + index + options.text.length;
             found = true;
+            console.log('✅ Text found! Position:', from, 'to', to);
           }
         });
         
         if (!found) {
           console.warn('❌ Text not found for highlighting:', options.text);
+          console.warn('📄 Full document text:', docText);
           return false;
         }
+        
+        console.log('📍 Adding highlight command to transaction');
         
         if (dispatch) {
           tr.setMeta('highlightCommand', {
@@ -176,6 +193,7 @@ export const HighlightDecorations = Extension.create({
             className: options.className || 'active-discussion-highlight'
           });
           dispatch(tr);
+          console.log('✅ Highlight command dispatched');
         }
         
         return true;
