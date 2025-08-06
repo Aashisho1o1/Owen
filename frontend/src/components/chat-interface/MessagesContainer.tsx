@@ -106,7 +106,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           as soon as the user clicks "Ask AI". It remains visible
           until the first related question is asked, after which it
           gets anchored to that message via highlightedTextMessageIndex. */}
-      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && messages.length === 0 && (
+      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && (
         <HighlightedTextDisplay
           highlightedText={highlightedText}
           contextualPrompts={contextualPrompts}

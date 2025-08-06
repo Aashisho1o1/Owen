@@ -129,12 +129,12 @@ export const HighlightDecorations = Extension.create({
             console.log('🎨 DECORATION RENDER: highlight count =', highlights.length);
             
             const decorations = highlights.map(highlight => {
-              console.log('🖍️ Creating decoration:', highlight.text, 'from', highlight.from, 'to', highlight.to);
-              return Decoration.inline(highlight.from, highlight.to, {
-                class: highlight.className,
-                'data-highlight-id': highlight.id,
-                'data-highlight-text': highlight.text
-              });
+                                console.log('🖍️ Creating decoration:', highlight.text, 'from', highlight.from, 'to', highlight.to);
+                  return Decoration.inline(highlight.from, highlight.to, {
+                    class: highlight.className,
+                    'data-highlight-id': highlight.id,
+                    'data-highlight-text': highlight.text
+                  });
             });
             
             console.log('🎨 DECORATIONS CREATED:', decorations.length);
