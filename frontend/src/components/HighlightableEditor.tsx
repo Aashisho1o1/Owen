@@ -23,6 +23,7 @@ import {
   VoiceConsistencyResult 
 } from '../services/api/character-voice';
 import { VoiceInconsistencyMark } from '../extensions/VoiceInconsistencyMark';
+import { HighlightDecorations } from '../extensions/HighlightDecorations';
 
 interface HighlightableEditorProps {
   content?: string;
@@ -222,6 +223,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     extensions: [
       StarterKit,
       VoiceInconsistencyMark,
+      HighlightDecorations,
     ],
     content: contentProp || '',
     onUpdate: async ({ editor }) => {
@@ -496,188 +498,48 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     }
   };
 
-  // Handle active discussion highlighting from ChatContext using DOM manipulation
+  // Handle active discussion highlighting using Tiptap decorations (survives re-renders)
   useEffect(() => {
     let isMounted = true; // MEMORY LEAK FIX: Track component mount state
     
     const handleActiveDiscussionHighlight = (event: CustomEvent) => {
       if (!editor || !isMounted) return; // MEMORY LEAK FIX: Check if component is still mounted
 
-      const { text, action } = event.detail;
-      const editorElement = editor.view.dom;
+      const { text, action, highlightId } = event.detail;
       
-      console.log('🎯 HIGHLIGHT EVENT:', { text, action, hasEditor: !!editor });
+      console.log('🎯 DECORATION HIGHLIGHT EVENT:', { text, action, highlightId, hasEditor: !!editor });
       
       if (action === 'add' && text) {
-        // Remove existing highlights first - IMPROVED cleanup
-        const existingHighlights = editorElement.querySelectorAll('.active-discussion-highlight');
-        console.log('🧹 Removing', existingHighlights.length, 'existing highlights');
-        existingHighlights.forEach(el => {
-          const parent = el.parentNode;
-          if (parent) {
-            // Create a text node with the original content
-            const textNode = document.createTextNode(el.textContent || '');
-            parent.replaceChild(textNode, el);
-            parent.normalize();
-          }
+        // Use decoration-based highlighting instead of DOM manipulation
+        const id = highlightId || `highlight-${Date.now()}`;
+        console.log('✨ Adding decoration-based highlight:', text);
+        
+        // Clear any existing highlights first
+        editor.commands.clearAllHighlights();
+        
+        // Add the new highlight using our decoration extension
+        const success = editor.commands.addHighlight({
+          id,
+          text,
+          className: 'active-discussion-highlight'
         });
         
-        // FIX: Add delay to ensure DOM is ready and use multiple search strategies
-        const applyHighlightWithRetry = (retryCount = 0) => {
-          // Get all text content and find the text to highlight
-          const allText = editorElement.textContent || '';
-          const textIndex = allText.indexOf(text);
-          console.log('🔍 Looking for text:', text, 'in editor content, found at index:', textIndex, 'retry:', retryCount);
-          
-          if (textIndex >= 0) {
-            // Text found, proceed with highlighting
-            highlightTextInEditor(text, editorElement);
-          } else if (retryCount < 3) {
-            // Text not found, retry after DOM settles
-            console.log('⏳ Text not found, retrying in 50ms...');
-            setTimeout(() => applyHighlightWithRetry(retryCount + 1), 50);
-          } else {
-            console.warn('⚠️ Could not find text to highlight after 3 retries:', text);
-          }
-        };
+        if (success) {
+          console.log('✅ Decoration highlight applied successfully:', text);
+        } else {
+          console.warn('⚠️ Failed to apply decoration highlight:', text);
+        }
         
-        // Helper function to apply highlighting to text in editor
-        const highlightTextInEditor = (textToHighlight: string, editorElement: Element) => {
-          const walker = document.createTreeWalker(
-            editorElement,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
-          
-          const allText = editorElement.textContent || '';
-          const textIndex = allText.indexOf(textToHighlight);
-          
-          if (textIndex < 0) return false;
-          
-          let currentOffset = 0;
-          const targetStartOffset = textIndex;
-          const targetEndOffset = textIndex + textToHighlight.length;
-          let textNode;
-          
-          while ((textNode = walker.nextNode())) {
-            const nodeValue = textNode.nodeValue || '';
-            const nodeLength = nodeValue.length;
-            
-            // Check if our target text spans this node
-            if (currentOffset <= targetStartOffset && (currentOffset + nodeLength) >= targetStartOffset) {
-              const startInNode = targetStartOffset - currentOffset;
-              const endInNode = Math.min(targetEndOffset - currentOffset, nodeLength);
-              
-              console.log('🎯 Found text node to highlight:', {
-                nodeValue: nodeValue.substring(0, 50),
-                startInNode,
-                endInNode,
-                textToHighlight: nodeValue.substring(startInNode, endInNode)
-              });
-              
-              // Split the text node if necessary and wrap the target text
-              const beforeText = nodeValue.substring(0, startInNode);
-              const highlightText = nodeValue.substring(startInNode, endInNode);
-              const afterText = nodeValue.substring(endInNode);
-              
-              // Create the highlight span
-              const highlightSpan = document.createElement('span');
-              highlightSpan.className = 'active-discussion-highlight';
-              highlightSpan.textContent = highlightText;
-              
-              // Replace the text node with our structured content
-              const parent = textNode.parentNode;
-              if (parent) {
-                // Create document fragment to replace the text node
-                const fragment = document.createDocumentFragment();
-                if (beforeText) fragment.appendChild(document.createTextNode(beforeText));
-                fragment.appendChild(highlightSpan);
-                if (afterText) fragment.appendChild(document.createTextNode(afterText));
-                
-                parent.replaceChild(fragment, textNode);
-                console.log('✅ Successfully applied highlight to text:', highlightText);
-                return true;
-              }
-              break;
-            }
-            currentOffset += nodeLength;
-          }
-          return false;
-        };
-        
-        // Start the highlighting process
-        applyHighlightWithRetry();
       } else if (action === 'remove') {
-        // IMPROVED: Remove all highlights with better cleanup
-        const highlights = editorElement.querySelectorAll('.active-discussion-highlight');
-        console.log('🧹 Removing all highlights:', highlights.length);
+        // Remove specific highlight by ID
+        const id = highlightId || 'unknown';
+        console.log('🧹 Removing decoration highlight:', id);
+        editor.commands.removeHighlight(id);
         
-        highlights.forEach(el => {
-          const parent = el.parentNode;
-          if (parent) {
-            // Create a clean text node without any styling
-            const textNode = document.createTextNode(el.textContent || '');
-            parent.replaceChild(textNode, el);
-          }
-        });
-        
-        // Normalize all text nodes to merge adjacent ones
-        const walker = document.createTreeWalker(
-          editorElement,
-          NodeFilter.SHOW_ELEMENT,
-          null
-        );
-        
-        let element;
-        const elementsToNormalize = [editorElement];
-        while ((element = walker.nextNode())) {
-          if (element instanceof HTMLElement) {
-            elementsToNormalize.push(element);
-          }
-        }
-        
-        // Normalize in reverse order to avoid DOM structure changes affecting traversal
-        elementsToNormalize.reverse().forEach(el => {
-          if (el && typeof el.normalize === 'function') {
-            el.normalize();
-          }
-        });
-        
-        console.log('🧹 Completed highlight removal and text normalization');
       } else if (action === 'clear-all') {
-        // ENHANCED: Clear all highlights with comprehensive cleanup
-        const highlights = editorElement.querySelectorAll('.active-discussion-highlight');
-        console.log('🧹 CLEAR-ALL: Removing all highlights:', highlights.length);
-        
-        // Store parent elements that need normalization
-        const parentsToNormalize = new Set();
-        
-        highlights.forEach(el => {
-          const parent = el.parentNode;
-          if (parent) {
-            parentsToNormalize.add(parent);
-            // SECURITY: Safely create text node with sanitized content
-            const textContent = el.textContent || '';
-            // Sanitize the text content to prevent any potential XSS
-            const sanitizedText = textContent.replace(/[<>&"']/g, '');
-            const textNode = document.createTextNode(sanitizedText);
-            parent.replaceChild(textNode, el);
-          }
-        });
-        
-        // Normalize all affected parent elements to merge text nodes
-        parentsToNormalize.forEach(parent => {
-          if (parent && parent instanceof HTMLElement && typeof parent.normalize === 'function') {
-            parent.normalize();
-          }
-        });
-        
-        // Also normalize the entire editor to ensure clean state
-        if (editorElement.normalize) {
-          editorElement.normalize();
-        }
-        
-        console.log('🧹 CLEAR-ALL: Completed comprehensive cleanup and normalization');
+        // Clear all highlights using decoration commands
+        console.log('🧹 CLEAR-ALL: Removing all decoration highlights');
+        editor.commands.clearAllHighlights();
       }
     };
 
