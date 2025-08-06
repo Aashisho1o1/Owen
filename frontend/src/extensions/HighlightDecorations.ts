@@ -130,7 +130,8 @@ export const HighlightDecorations = Extension.create({
               return Decoration.inline(highlight.from, highlight.to, {
                 class: highlight.className,
                 'data-highlight-id': highlight.id,
-                'data-highlight-text': highlight.text
+                'data-highlight-text': highlight.text,
+                style: 'background: red !important; color: white !important; border: 2px solid blue !important;' // EXTREME TEST STYLING
               });
             });
             
