@@ -384,13 +384,20 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
 
   // Text highlighting handlers
   const handleTextHighlighted = useCallback((text: string, highlightId?: string) => {
-    // PREVENT DUPLICATE HIGHLIGHTS: Don't re-highlight the same text
-    if (highlightedText === text) {
-      logger.log('🔄 Same text already highlighted, skipping:', text.substring(0, 50) + '...');
+    // ALWAYS re-apply visual highlight (UI might have lost it due to DOM changes)
+    // Only skip if the text is empty or invalid
+    if (!text || text.length < 3) {
+      logger.log('🚫 Invalid text for highlighting, skipping:', text);
       return;
     }
     
-    // ENHANCEMENT: Only clear the active highlight in the editor, preserve chat context
+    // Check if we're re-highlighting the same text
+    const isSameText = highlightedText === text;
+    if (isSameText) {
+      logger.log('🔄 Re-applying highlight for same text (UI may have lost it):', text.substring(0, 50) + '...');
+    }
+    
+    // ENHANCEMENT: Only clear the active highlight in the editor if it's different text
     if (highlightedText && highlightedText !== text) {
       // Clear ONLY the active highlight from the editor (not from chat context)
       const clearEvent = new CustomEvent('applyActiveDiscussionHighlight', {
@@ -408,11 +415,13 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
       });
     }
     
-    // Set new highlighted text (this will create a new conversation thread)
-    setHighlightedText(text);
-    setHighlightedTextId(highlightId || null);
-    // Reset message index so new highlight appears at the appropriate position
-    setHighlightedTextMessageIndex(null);
+    // Set highlighted text state (even if same text, to refresh UI)
+    if (!isSameText) {
+      setHighlightedText(text);
+      setHighlightedTextId(highlightId || null);
+      // Reset message index so new highlight appears at the appropriate position
+      setHighlightedTextMessageIndex(null);
+    }
     
     // Apply new highlight in editor with slight delay to ensure DOM is ready
     setTimeout(() => {
