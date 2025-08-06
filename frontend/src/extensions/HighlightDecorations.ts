@@ -61,6 +61,7 @@ export const HighlightDecorations = Extension.create({
             const highlightCommand = tr.getMeta('highlightCommand');
             
             if (highlightCommand) {
+              console.log('🔧 PLUGIN STATE: Processing highlight command:', highlightCommand.type, highlightCommand);
               switch (highlightCommand.type) {
                 case 'add':
                   // Remove existing highlights first to avoid overlaps
@@ -123,7 +124,10 @@ export const HighlightDecorations = Extension.create({
           decorations(state) {
             const { highlights } = highlightPluginKey.getState(state) || { highlights: [] };
             
+            console.log('🎨 DECORATION RENDER: highlight count =', highlights.length);
+            
             const decorations = highlights.map(highlight => {
+              console.log('🖍️ Creating decoration:', highlight.text, 'from', highlight.from, 'to', highlight.to);
               return Decoration.inline(highlight.from, highlight.to, {
                 class: highlight.className,
                 'data-highlight-id': highlight.id,
@@ -131,6 +135,7 @@ export const HighlightDecorations = Extension.create({
               });
             });
             
+            console.log('🎨 DECORATIONS CREATED:', decorations.length);
             return DecorationSet.create(state.doc, decorations);
           }
         }
@@ -167,15 +172,18 @@ export const HighlightDecorations = Extension.create({
         }
         
         if (dispatch) {
-          tr.setMeta('highlightCommand', {
+          const command = {
             type: 'add',
             id: options.id,
             from,
             to,
             text: options.text,
             className: options.className || 'active-discussion-highlight'
-          });
+          };
+          console.log('🚀 DISPATCHING COMMAND:', command);
+          tr.setMeta('highlightCommand', command);
           dispatch(tr);
+          console.log('✅ COMMAND DISPATCHED');
         }
         
         return true;
