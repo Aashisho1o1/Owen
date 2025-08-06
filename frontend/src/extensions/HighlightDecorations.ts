@@ -45,12 +45,14 @@ export const HighlightDecorations = Extension.create({
   name: 'highlightDecorations',
 
   addProseMirrorPlugins() {
+    console.log('🔌 HighlightDecorations: Adding ProseMirror plugins');
     return [
       new Plugin<HighlightState>({
         key: highlightPluginKey,
         
         state: {
           init() {
+            console.log('🔌 HighlightDecorations: Plugin state initialized');
             return {
               highlights: []
             };
@@ -61,6 +63,7 @@ export const HighlightDecorations = Extension.create({
             const highlightCommand = tr.getMeta('highlightCommand');
             
             if (highlightCommand) {
+              console.log('🔌 HighlightDecorations: Processing highlight command:', highlightCommand);
               switch (highlightCommand.type) {
                 case 'add':
                   // Remove existing highlights first to avoid overlaps
@@ -136,7 +139,12 @@ export const HighlightDecorations = Extension.create({
             });
             
             console.log('🎨 Created', decorations.length, 'decorations');
-            return DecorationSet.create(state.doc, decorations);
+            
+            const decorationSet = DecorationSet.create(state.doc, decorations);
+            console.log('🎨 DecorationSet created:', decorationSet);
+            console.log('🎨 DecorationSet size:', decorationSet.size);
+            
+            return decorationSet;
           }
         }
       })
