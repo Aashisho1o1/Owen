@@ -1,7 +1,6 @@
 import React, {
   createContext,
   useContext,
-  useState,
   useEffect,
   ReactNode,
   useCallback,
@@ -9,16 +8,8 @@ import React, {
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import { useSafeState } from '../hooks/useSafeState';
-import { 
-  loginUser, 
-  registerUser, 
-  logoutUser, 
-  getUserProfile, 
-  setAuthTokens, 
-  clearAuthTokens, 
-  getStoredTokens, 
-  isTokenExpired 
-} from '../services/api/auth';
+// Note: Auth functions are implemented within this context
+// import { getStoredTokens } from '../services/api/auth';
 
 // Types for authentication
 interface UserProfile {
@@ -113,6 +104,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useSafeState(false);
   const [isLoading, setIsLoading] = useSafeState(true);
   const [error, setError] = useSafeState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useSafeState(false);
 
   // Token management
   // 🔒 SECURITY NOTE: localStorage is vulnerable to XSS attacks
@@ -199,9 +191,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (err) {
       console.error('❌ Failed to load user profile:', {
         error: err,
-        status: err?.response?.status,
-        statusText: err?.response?.statusText,
-        data: err?.response?.data
+        status: (err as any)?.response?.status,
+        statusText: (err as any)?.response?.statusText,
+        data: (err as any)?.response?.data
       });
       logger.error('Error loading user profile:', err);
       setUser(null);
@@ -249,7 +241,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const responseInterceptor = apiInstance.interceptors.response.use(
       (response) => response,
       async (err) => {
-        const originalRequest = err.config;
+        const originalRequest = (err as any).config;
 
         // CRITICAL FIX: Don't attempt token refresh for login/register/refresh endpoints
         const isAuthEndpoint = originalRequest.url && (
@@ -301,11 +293,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize authentication state - FIXED: Remove problematic dependencies
   useEffect(() => {
-    let isInitialized = false;
-    
     const initializeAuth = async () => {
       if (isInitialized) return; // Prevent multiple initializations
-      isInitialized = true;
+      setIsInitialized(true);
       
       console.log('🚀 Initializing authentication...');
       setIsLoading(true);
@@ -340,7 +330,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     initializeAuth();
-  }, []); // FIXED: Empty dependency array - runs only once
+  }, [isInitialized]); // FIXED: Include isInitialized in dependency array
 
   // Add token expiration listener
   useEffect(() => {
@@ -415,17 +405,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (err) {
       console.error('🔐 ❌ Login failed at step:', {
         error: err,
-        status: err?.response?.status,
-        statusText: err?.response?.statusText,
-        data: err?.response?.data,
-        config: err?.config,
-        url: err?.config?.url,
-        method: err?.config?.method
+        status: (err as any)?.response?.status,
+        statusText: (err as any)?.response?.statusText,
+        data: (err as any)?.response?.data,
+        config: (err as any)?.config,
+        url: (err as any)?.config?.url,
+        method: (err as any)?.config?.method
       });
       
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
-          ? err.response.data.detail
+          ? (err.response.data as any).detail
           : 'Login failed. Please try again.';
       setError(errorMessage);
       logger.error('Login error:', err);
@@ -465,15 +455,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (err) {
       console.error('❌ Registration failed:', {
         error: err,
-        status: err?.response?.status,
-        statusText: err?.response?.statusText,
-        data: err?.response?.data,
-        config: err?.config
+        status: (err as any)?.response?.status,
+        statusText: (err as any)?.response?.statusText,
+        data: (err as any)?.response?.data,
+        config: (err as any)?.config
       });
       
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
-          ? err.response.data.detail
+          ? (err.response.data as any).detail
           : 'Registration failed. Please try again.';
       setError(errorMessage);
       logger.error('Registration error:', err);
@@ -494,7 +484,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (err) {
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
-          ? err.response.data.detail
+          ? (err.response.data as any).detail
           : 'Failed to update profile.';
       setError(errorMessage);
       logger.error('Profile update error:', err);
@@ -515,7 +505,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (err) {
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
-          ? err.response.data.detail
+          ? (err.response.data as any).detail
           : 'Failed to change password.';
       setError(errorMessage);
       logger.error('Password change error:', err);
