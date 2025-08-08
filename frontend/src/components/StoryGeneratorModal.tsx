@@ -139,8 +139,9 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
   };
 
   const handleShareToTwitter = () => {
-    const tweetText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories at owenwrites.co`);
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}`;
+    const tweetText = encodeURIComponent(`${generatedStory}\n\n✨ Generated with Owen AI Writer - Create your own viral micro-stories`);
+    const appUrl = encodeURIComponent('https://www.owenwrites.co/');
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${appUrl}`;
     window.open(tweetUrl, '_blank', 'width=550,height=420');
   };
 
@@ -184,6 +185,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       setCopyStatus('success');
       setTimeout(() => setCopyStatus('idle'), 2000);
     } catch (err) {
+      console.error('❌ Copy for sharing failed:', err);
       setCopyStatus('error');
       setTimeout(() => setCopyStatus('idle'), 2000);
     }
@@ -214,6 +216,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
           setCopyStatus('success');
           setTimeout(() => setCopyStatus('idle'), 2000);
         } catch (err) {
+          console.error('❌ Fallback copy failed:', err);
           setCopyStatus('error');
           setTimeout(() => setCopyStatus('idle'), 2000);
         } finally {
@@ -221,6 +224,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
         }
       }
     } catch (err) {
+      console.error('❌ Copy story failed:', err);
       setCopyStatus('error');
       setTimeout(() => setCopyStatus('idle'), 2000);
     }
