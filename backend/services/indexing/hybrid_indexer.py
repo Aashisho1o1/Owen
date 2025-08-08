@@ -9,6 +9,8 @@ from datetime import datetime
 import json
 import logging
 import time
+import threading
+from functools import lru_cache
 
 from .vector_store import VectorStore
 from .graph_builder import GeminiGraphBuilder
@@ -24,18 +26,68 @@ class HybridIndexer:
     - Knowledge graph relationships  
     - PathRAG-inspired path retrieval
     - LLM-enhanced entity extraction using Gemini
+    
+    MEMORY OPTIMIZATION: Implemented as thread-safe singleton to prevent
+    multiple instances from loading heavy embedding models into memory.
     """
     
-    def __init__(self, 
-                 collection_name: str = "documents",
-                 gemini_service: Optional[GeminiService] = None):
+    # Singleton pattern implementation
+    _instance = None
+    _lock = threading.Lock()
+    _initialized = False
+    
+    def __new__(cls, 
+                collection_name: str = "documents",
+                gemini_service: Optional[GeminiService] = None):
         """
-        Initialize the hybrid indexer with all components.
+        Thread-safe singleton implementation using double-checked locking pattern.
+        
+        Engineering reasoning:
+        1. Double-checked locking: Check _instance twice to avoid unnecessary locking
+        2. Threading.Lock(): Ensures thread safety in concurrent environments
+        3. Memory optimization: Prevents multiple 400MB+ models from loading
+        4. Initialization safety: _initialized flag prevents re-initialization
         
         Args:
             collection_name: Name for the vector collection
             gemini_service: Optional Gemini service instance
+            
+        Returns:
+            Singleton instance of HybridIndexer
         """
+        # First check (no lock needed) - fast path for existing instance
+        if cls._instance is not None:
+            return cls._instance
+            
+        # Acquire lock for instance creation
+        with cls._lock:
+            # Second check (with lock) - ensures only one thread creates instance
+            if cls._instance is None:
+                logger.info("🔄 Creating singleton HybridIndexer instance (memory optimization)")
+                cls._instance = super(HybridIndexer, cls).__new__(cls)
+                # Initialize the instance with provided parameters
+                cls._instance._initialize(collection_name, gemini_service)
+            return cls._instance
+    
+    def _initialize(self, 
+                   collection_name: str = "documents",
+                   gemini_service: Optional[GeminiService] = None):
+        """
+        Private initialization method called only once per singleton instance.
+        
+        Engineering reasoning:
+        1. Separated from __new__ to ensure initialization happens exactly once
+        2. Thread-safe: Called only within the locked section of __new__
+        3. Memory efficient: Heavy objects (VectorStore, models) created once
+        4. State protection: _initialized flag prevents accidental re-initialization
+        """
+        if self._initialized:
+            logger.debug("HybridIndexer already initialized, skipping re-initialization")
+            return
+            
+        logger.info(f"🚀 Initializing HybridIndexer singleton with collection: {collection_name}")
+        
+        # Initialize heavy components (done only once now)
         self.vector_store = VectorStore(collection_name)
         self.gemini_service = gemini_service or GeminiService()
         self.graph_builder = GeminiGraphBuilder(self.gemini_service)
@@ -50,7 +102,9 @@ class HybridIndexer:
             model_name = self.gemini_service.model.model_name
         logger.info(f"HybridIndexer initialized with Gemini model: {model_name}")
         
-        logger.info("HybridIndexer initialized with Gemini-powered entity extraction")
+        # Mark as initialized
+        self._initialized = True
+        logger.info("✅ HybridIndexer singleton initialization complete")
 
     async def index_document(self, 
                            document_id: str, 
@@ -1274,4 +1328,33 @@ Answer:"""
             if word in expansions:
                 terms.extend(expansions[word])
         
-        return list(set(terms))  # Remove duplicates 
+        return list(set(terms))  # Remove duplicates
+
+
+# Factory function for convenient singleton access
+def get_hybrid_indexer(collection_name: str = "documents", 
+                      gemini_service: Optional[GeminiService] = None) -> HybridIndexer:
+    """
+    Factory function to get the singleton HybridIndexer instance.
+    
+    Engineering benefits:
+    1. Clean API: Hides singleton implementation details from callers
+    2. Consistent interface: Same parameters as original constructor
+    3. Memory optimization: Always returns the same instance
+    4. Easy migration: Drop-in replacement for HybridIndexer() calls
+    
+    Args:
+        collection_name: Name for the vector collection (ignored if instance exists)
+        gemini_service: Optional Gemini service instance (ignored if instance exists)
+        
+    Returns:
+        Singleton HybridIndexer instance
+        
+    Usage:
+        # Old way (creates new instance each time):
+        indexer = HybridIndexer()
+        
+        # New way (reuses singleton):
+        indexer = get_hybrid_indexer()
+    """
+    return HybridIndexer(collection_name, gemini_service) 

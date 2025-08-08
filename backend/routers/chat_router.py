@@ -219,9 +219,11 @@ async def chat(
         if chat_request.folder_scope:
             logger.info("📁 FolderScope enabled - retrieving folder context...")
             try:
-                # Import the indexing service with absolute import
-                from services.indexing.hybrid_indexer import HybridIndexer
-                indexing_service = HybridIndexer()
+                # Import the optimized indexing service (now singleton for memory efficiency)
+                from services.indexing.hybrid_indexer import get_hybrid_indexer
+                # MEMORY OPTIMIZATION: get_hybrid_indexer() returns singleton instance
+                # This prevents loading 400MB+ embedding model on every chat request
+                indexing_service = get_hybrid_indexer()
                 
                 folder_context = await indexing_service.get_folder_context(
                     user_id=user_id,
