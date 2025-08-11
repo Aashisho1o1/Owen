@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union
 import logging
 
 from services.llm_service import LLMService
@@ -33,7 +33,7 @@ class StoryGenerateResponse(BaseModel):
 async def generate_story(
     request: StoryGenerateRequest,
     http_request: Request,
-    user_id: int = Depends(get_current_user_id)
+    user_id: Union[str, int] = Depends(get_current_user_id)  # Accept both guest UUIDs and user IDs
 ):
     """
     Generate a complete short story based on user inputs.
