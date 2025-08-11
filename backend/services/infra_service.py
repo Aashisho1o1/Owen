@@ -151,14 +151,50 @@ class RateLimiter:
                 endpoint=endpoint
             )
     
-    async def get_user_tier(self, user_id: int) -> str:
+    async def get_user_tier(self, user_id) -> str:
         """
-        Get user's rate limiting tier.
-        For MVP, everyone is 'free'. Later, check user subscription.
+        Get user's rate limiting tier with guest detection.
+        
+        Engineering approach:
+        1. Check if user_id is a guest session (UUID format)
+        2. If regular user, check subscription tier (future enhancement)
+        3. Return appropriate tier for rate limiting
+        
+        Args:
+            user_id: Either integer (regular user) or UUID string (guest session)
+        
+        Returns:
+            str: 'guest', 'free', 'premium', or 'enterprise'
         """
-        # TODO: Implement actual tier checking based on user subscription
-        # For now, everyone gets free tier
-        return "free"
+        try:
+            # Check if this is a guest session (UUID format)
+            if isinstance(user_id, str):
+                # Guest sessions are UUIDs, regular user IDs are integers
+                import re
+                uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                if re.match(uuid_pattern, user_id):
+                    logger.debug(f"Detected guest session for rate limiting: {user_id}")
+                    return "guest"
+            
+            # Regular user - check their subscription tier
+            if isinstance(user_id, int):
+                # TODO: Implement actual tier checking based on user subscription
+                # For now, all registered users get free tier
+                # Future implementation:
+                # user = await self.db.execute_query(
+                #     "SELECT subscription_tier FROM users WHERE id = %s",
+                #     (user_id,), fetch='one'
+                # )
+                # return user.get('subscription_tier', 'free')
+                return "free"
+            
+            # Fallback for unexpected user_id format
+            logger.warning(f"Unexpected user_id format for tier detection: {user_id} ({type(user_id)})")
+            return "free"
+            
+        except Exception as e:
+            logger.error(f"Error determining user tier for {user_id}: {e}")
+            return "free"  # Fail-safe default
 
 class CacheProvider:
     """

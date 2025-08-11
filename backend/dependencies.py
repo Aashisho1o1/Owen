@@ -22,24 +22,18 @@ security = HTTPBearer()
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     """
     FastAPI dependency to get the current user's ID from a JWT token.
+    
+    **Updated for Guest Support**: This now handles both regular user tokens 
+    and guest session tokens, returning appropriate user identifiers for each.
 
-    This function serves as the single source of truth for user authentication
-    on all protected routes. It ensures that every protected endpoint
-    goes through the same validation logic.
-
-    It extracts the token from the 'Authorization: Bearer <token>' header,
-    verifies its signature and expiration, and checks if the user exists
-    and is active in the database.
-
-    Raises:
-        HTTPException: 
-            - 401 Unauthorized: If the token is missing, malformed, invalid,
-              expired, or the associated user is not found or inactive.
-            - 500 Internal Server Error: For any other unexpected errors
-              during the authentication process.
+    Engineering approach:
+    1. Try to verify as regular user token first (most common case)
+    2. If that fails with specific error, try guest token verification
+    3. Return consistent user_id format for downstream code compatibility
 
     Returns:
-        int: The authenticated user's unique ID.
+        int: The authenticated user's unique ID (real user) or 
+             str: Guest session identifier formatted as "guest_{session_id}"
     """
     if credentials is None or not credentials.credentials:
         logger.warning("Authentication attempt failed: No credentials provided.")
@@ -51,9 +45,27 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     
     try:
         token = credentials.credentials
-        user_info = auth_service.verify_token(token)
-        logger.info(f"Successfully authenticated user_id: {user_info['user_id']}")
-        return user_info['user_id']
+        
+        # First, try to verify as a regular user token (most common case)
+        try:
+            user_info = auth_service.verify_token(token)
+            logger.info(f"Successfully authenticated user_id: {user_info['user_id']}")
+            return user_info['user_id']
+        except AuthenticationError as e:
+            # If regular token verification fails, check if it's a guest token
+            if "Invalid token type" in str(e) or "not found" in str(e).lower():
+                try:
+                    guest_info = auth_service.verify_guest_token(token)
+                    # Return session_id as user_id for guests (maintains compatibility)
+                    guest_user_id = guest_info['session_id']
+                    logger.info(f"Successfully authenticated guest session: {guest_user_id}")
+                    return guest_user_id
+                except AuthenticationError:
+                    # Neither regular nor guest token worked
+                    raise e  # Raise the original error
+            else:
+                raise e  # Re-raise non-guest-related errors
+        
     except AuthenticationError as e:
         logger.warning(f"Authentication failed for token. Reason: {e}")
         raise HTTPException(

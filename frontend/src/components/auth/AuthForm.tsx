@@ -15,7 +15,7 @@ interface AuthFormProps {
  * Uses specialized form components and validation hook for clean separation of concerns.
  */
 export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChange }) => {
-  const { login, register, isLoading, error: authError } = useAuth();
+  const { login, register, createGuestSession, isLoading, error: authError } = useAuth();
   const { 
     errors, 
     validateForm, 
@@ -89,6 +89,23 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
     } catch (error) {
       console.error('Authentication error:', error);
       setSubmitError('Authentication failed. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle guest session creation
+  const handleGuestSession = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const success = await createGuestSession();
+      if (success) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Guest session error:', error);
+      setSubmitError('Failed to create guest session. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +259,39 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
           )}
         </button>
       </form>
+
+      {/* Guest Access Section */}
+      <div className="auth-divider">
+        <div className="auth-divider-line"></div>
+        <span className="auth-divider-text">or</span>
+        <div className="auth-divider-line"></div>
+      </div>
+
+      <button
+        type="button"
+        className="auth-guest-button"
+        onClick={handleGuestSession}
+        disabled={isSubmitting || isLoading}
+      >
+        {(isSubmitting || isLoading) ? (
+          <div className="auth-loading-spinner">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 2V6M10 14V18M18 10H14M6 10H2M15.657 4.343L12.828 7.172M7.172 12.828L4.343 15.657M15.657 15.657L12.828 12.828M7.172 7.172L4.343 4.343" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Creating Guest Session...</span>
+          </div>
+        ) : (
+          <>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 2l2.5 2.5L8 7M2 8h12M8 14l-2.5-2.5L8 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div className="auth-guest-button-content">
+              <span className="auth-guest-button-title">Try Without Account</span>
+              <span className="auth-guest-button-subtitle">Experience all features • No email required • 24-hour trial</span>
+            </div>
+          </>
+        )}
+      </button>
 
       {/* Mode Switch */}
       <div className="auth-mode-switch">

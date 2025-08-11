@@ -58,6 +58,7 @@ interface AuthContextType {
   // Actions
   login: (data: LoginData) => Promise<boolean>;
   register: (data: RegisterData) => Promise<boolean>;
+  createGuestSession: () => Promise<boolean>;  // NEW: Guest session creation
   logout: () => void;
   updateProfile: (data: { display_name?: string; email?: string }) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -513,6 +514,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const createGuestSession = async (): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    // Debug logging
+    console.log('🎯 Guest session creation:', { 
+      apiUrl: API_URL,
+      fullUrl: `${API_URL}/api/auth/guest`
+    });
+    
+    try {
+      console.log('🎯 STEP 1: Making guest session API request...');
+      const response = await apiInstance.post('/api/auth/guest');
+      console.log('🎯 STEP 2: ✅ Guest session API request successful:', response.data);
+      
+      const { access_token, token_type, expires_in, user: userProfile } = response.data;
+
+      console.log('🎯 STEP 3: Storing guest tokens...');
+      // Store tokens (no refresh token for guests)
+      storeTokens({ 
+        access_token, 
+        refresh_token: '', // Guests don't get refresh tokens
+        token_type, 
+        expires_in 
+      });
+      console.log('🎯 STEP 3: ✅ Guest tokens stored successfully');
+      
+      console.log('🎯 STEP 4: Setting guest user data...');
+      // Set user data (includes guest-specific info)
+      setUser({
+        ...userProfile,
+        preferences: {
+          onboarding_completed: true, // Skip onboarding for guests
+          user_corrections: [],
+          writing_style_profile: {},
+          writing_type: 'fiction',
+          feedback_style: 'constructive',
+          primary_goal: 'try_features'
+        },
+        onboarding_completed: true
+      });
+      setIsAuthenticated(true);
+      console.log('🎯 STEP 4: ✅ Guest user data set successfully');
+      
+      logger.log('Guest session created successfully', { 
+        username: userProfile.username,
+        sessionType: 'guest',
+        expiresIn: expires_in 
+      });
+      console.log('🎯 STEP 5: ✅ Guest session completed successfully');
+      return true;
+    } catch (err) {
+      console.error('🎯 ❌ Guest session creation failed:', {
+        error: err,
+        status: (err as any)?.response?.status,
+        statusText: (err as any)?.response?.statusText,
+        data: (err as any)?.response?.data,
+        config: (err as any)?.config,
+        url: (err as any)?.config?.url,
+        method: (err as any)?.config?.method
+      });
+      
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? (err.response.data as any).detail
+          : 'Failed to create guest session. Please try again.';
+      setError(errorMessage);
+      logger.error('Guest session creation error:', err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -524,6 +599,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error,
     login,
     register,
+    createGuestSession,
     logout,
     updateProfile,
     changePassword,
