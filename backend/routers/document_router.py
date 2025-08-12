@@ -7,7 +7,7 @@ Extracted from main.py as part of God File refactoring.
 import logging
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 import json
 
@@ -41,7 +41,7 @@ router = APIRouter(
 @router.get("")
 async def get_documents(
     request: Request,
-    user_id: int = Depends(get_current_user_id),
+    user_id: Union[str, int] = Depends(get_current_user_id),
     folder_id: Optional[str] = Query(None),
     status: Optional[DocumentStatus] = Query(None),
     document_type: Optional[DocumentType] = Query(None),
@@ -54,6 +54,20 @@ async def get_documents(
     try:
         # Apply rate limiting for document listing
         await check_rate_limit(request, "general")
+        
+        # Handle guest users: return empty documents list
+        if isinstance(user_id, str):
+            logger.info(f"Guest user {user_id} requesting documents - returning empty list")
+            return {
+                "documents": [],
+                "total_count": 0,
+                "page_info": {
+                    "has_next": False,
+                    "has_previous": False,
+                    "current_offset": 0,
+                    "limit": limit
+                }
+            }
         
         # Build query conditions
         conditions = ["user_id = %s"]

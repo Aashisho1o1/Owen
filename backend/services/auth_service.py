@@ -11,7 +11,7 @@ import secrets
 import os
 import uuid
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Tuple
 from email_validator import validate_email, EmailNotValidError
 
@@ -519,14 +519,14 @@ class AuthService:
                 "session_id": session_id,
                 "type": "guest",
                 "device_fp": device_fingerprint,
-                "exp": datetime.utcnow() + timedelta(hours=24),  # 24-hour session
-                "iat": datetime.utcnow()
+                "exp": datetime.now(timezone.utc) + timedelta(hours=24),  # 24-hour session
+                "iat": datetime.now(timezone.utc)
             }
             
             guest_token = jwt.encode(guest_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
             
             # 5. Store session in dedicated guest table (not users table)
-            expires_at = datetime.utcnow() + timedelta(hours=24)
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
             
             self.db.execute_query(
                 """INSERT INTO guest_sessions 
@@ -606,7 +606,7 @@ class AuthService:
                 raise AuthenticationError("Invalid device for this session")
             
             # 4. Check session expiry (defense in depth)
-            if session['expires_at'] < datetime.utcnow():
+            if session['expires_at'] < datetime.now(timezone.utc):
                 logger.info(f"Guest session {session_id} expired, marking inactive")
                 self.db.execute_query(
                     "UPDATE guest_sessions SET is_active = FALSE WHERE id = %s",
