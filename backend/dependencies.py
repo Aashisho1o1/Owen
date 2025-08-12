@@ -52,19 +52,18 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
             logger.info(f"Successfully authenticated user_id: {user_info['user_id']}")
             return user_info['user_id']
         except AuthenticationError as e:
-            # If regular token verification fails, check if it's a guest token
-            if "Invalid token type" in str(e) or "not found" in str(e).lower():
-                try:
-                    guest_info = auth_service.verify_guest_token(token)
-                    # Return session_id as user_id for guests (maintains compatibility)
-                    guest_user_id = guest_info['session_id']
-                    logger.info(f"Successfully authenticated guest session: {guest_user_id}")
-                    return guest_user_id
-                except AuthenticationError:
-                    # Neither regular nor guest token worked
-                    raise e  # Raise the original error
-            else:
-                raise e  # Re-raise non-guest-related errors
+            # CRITICAL FIX: Always try guest token verification on any auth failure
+            # This ensures guest sessions work regardless of the specific error message
+            try:
+                guest_info = auth_service.verify_guest_token(token)
+                # Return session_id as user_id for guests (maintains compatibility)
+                guest_user_id = guest_info['session_id']
+                logger.info(f"Successfully authenticated guest session: {guest_user_id}")
+                return guest_user_id
+            except AuthenticationError as guest_error:
+                # Neither regular nor guest token worked - return original error for better debugging
+                logger.debug(f"Guest token verification also failed: {guest_error}")
+                raise e  # Raise the original user token error
         
     except AuthenticationError as e:
         logger.warning(f"Authentication failed for token. Reason: {e}")
