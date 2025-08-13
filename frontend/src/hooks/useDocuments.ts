@@ -245,8 +245,14 @@ export const useDocuments = (): UseDocumentsReturn => {
   }, [user, state.documents.length, isAuthLoading]);
 
   useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    // CRITICAL FIX: Only fetch data after auth initialization completes
+    // This prevents premature API calls that trigger 403 → logout loops
+    if (!isAuthLoading) {
+      fetchAllData();
+    } else {
+      console.log('🔄 useDocuments: Waiting for auth initialization to complete...');
+    }
+  }, [fetchAllData, isAuthLoading]);
 
   // Document CRUD operations
   const createDocument = async (

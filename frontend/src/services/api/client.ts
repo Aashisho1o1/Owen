@@ -254,6 +254,16 @@ apiClient.interceptors.response.use(
     
     // Handle 401 AND 403 errors with token refresh
     if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+      // CRITICAL FIX: Check if we have a token before attempting refresh
+      // This prevents logout loops for unauthenticated users
+      const storedTokens = getStoredTokens();
+      if (!storedTokens.accessToken) {
+        // No token exists = user hasn't authenticated yet, this is expected behavior
+        console.log(`🔒 Got ${error.response?.status} but no token exists - user needs to authenticate first`);
+        // IMPORTANT: Don't trigger logout event - user was never logged in!
+        return Promise.reject(error);
+      }
+      
       // CRITICAL: Don't attempt token refresh for auth endpoints to prevent infinite loops
       const isAuthEndpoint = originalRequest.url && (
         originalRequest.url.includes('/api/auth/login') ||
