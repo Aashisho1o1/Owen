@@ -4,12 +4,16 @@ from typing import Optional, Union
 import logging
 
 from services.llm_service import LLMService
-from services.rate_limiter import check_rate_limit
+# REMOVED: from services.rate_limiter import check_rate_limit
 from services.validation_service import input_validator
-from dependencies import get_current_user_id
+from services.auth_service import auth_service
+from dependencies import get_current_user_id, check_chat_rate_limit
 
 logger = logging.getLogger(__name__)
 llm_service = LLMService()
+
+# Guest quota configuration
+GUEST_DAILY_LIMIT = 2  # Maximum story generations per 24h for guests
 
 router = APIRouter(
     prefix="/api/story-generator",
@@ -33,7 +37,8 @@ class StoryGenerateResponse(BaseModel):
 async def generate_story(
     request: StoryGenerateRequest,
     http_request: Request,
-    user_id: Union[str, int] = Depends(get_current_user_id)  # Accept both guest UUIDs and user IDs
+    user_id: Union[str, int] = Depends(get_current_user_id),  # Accept both guest UUIDs and user IDs
+    rate_limit_result = Depends(check_chat_rate_limit)  # FIXED: Proper async rate limiting
 ):
     """
     Generate a complete short story based on user inputs.
@@ -46,8 +51,24 @@ async def generate_story(
     5. Returns structured response with story and metadata
     """
     try:
-        # Apply rate limiting - reuse existing chat rate limits
-        await check_rate_limit(http_request, "chat")
+        # FIXED: Rate limiting now handled by FastAPI dependency injection (check_chat_rate_limit)
+        # This prevents the async/await bug that caused first-click hangs
+        
+        # GUEST QUOTA ENFORCEMENT: Check daily limits for cost control
+        if isinstance(user_id, str):  # Guest sessions are UUID strings
+            usage_count = auth_service.get_guest_usage_count(user_id)
+            if usage_count >= GUEST_DAILY_LIMIT:
+                logger.info(f"Guest {user_id} hit daily story limit: {usage_count}/{GUEST_DAILY_LIMIT}")
+                quota_info = auth_service.get_guest_quota(user_id, GUEST_DAILY_LIMIT)
+                raise HTTPException(
+                    status_code=402,  # Payment Required - perfect for quota limits
+                    detail={
+                        "code": "GUEST_LIMIT_REACHED",
+                        "message": f"You've used your {GUEST_DAILY_LIMIT} free daily stories. Sign up for unlimited access!",
+                        "quota": quota_info
+                    }
+                )
+            logger.info(f"Guest {user_id} story generation: {usage_count + 1}/{GUEST_DAILY_LIMIT}")
         
         # Validate inputs using existing validation service
         # This ensures consistency with other endpoints and security
@@ -92,6 +113,15 @@ TITLE: [Punchy, intriguing title that makes people click]
         
         # Log successful generation
         logger.info(f"Story generated successfully for user {user_id}, length: {len(story_text)} chars")
+        
+        # GUEST ANALYTICS: Track successful story generation for quota enforcement
+        if isinstance(user_id, str):  # Guest sessions
+            auth_service.track_guest_activity(user_id, "story_generate", {
+                "story_length": len(story_text),
+                "spark_category": story_spark[:50],  # First 50 chars for categorization
+                "reader_emotion": reader_emotion,
+                "author_vibe": author_vibe
+            })
         
         # Return structured response
         return StoryGenerateResponse(
