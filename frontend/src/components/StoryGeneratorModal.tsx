@@ -111,6 +111,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       // Validate custom input
       if (storySpark === "✨ Custom idea" && !finalSpark) {
         setError('Please enter your custom story idea.');
+        setIsGenerating(false); // CRITICAL: Reset loading state on validation failure
         return;
       }
       
@@ -122,18 +123,24 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
         const guestSessionSuccess = await createGuestSession();
         if (!guestSessionSuccess) {
           setError('Unable to create session. Please try again or sign in.');
+          setIsGenerating(false); // CRITICAL: Reset loading state on guest session failure
           return;
         }
         // Verify token was created
         token = localStorage.getItem('owen_access_token');
         if (!token) {
           setError('Session creation failed. Please try again.');
+          setIsGenerating(false); // CRITICAL: Reset loading state if token missing
           return;
         }
         console.log('✅ Guest session created successfully for story generation');
+        
+        // Allow auth state to propagate (prevents race conditions)
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       
       // Make API request using centralized client (now guaranteed to have auth token)
+      console.log('🚀 Starting story generation API call...');
       const response = await apiClient.post('/api/story-generator/generate', {
         story_spark: finalSpark,
         reader_emotion: readerEmotion,
@@ -144,8 +151,10 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       // Response is already JSON with axios, no need to parse
       const data: StoryGenerateResponse = response.data;
       setGeneratedStory(data.story);
+      console.log('✅ Story generation completed successfully');
       
     } catch (err) {
+      console.error('❌ Story generation error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate story. Please try again.';
       setError(errorMessage);
     } finally {
