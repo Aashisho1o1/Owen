@@ -264,6 +264,13 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
       
+      // CRITICAL FIX: Add refresh token guard for guest sessions
+      // Guest sessions have access tokens but no refresh tokens
+      if (!storedTokens.refreshToken) {
+        console.log('🧑‍🚀 Guest session detected (no refresh token) - skipping token refresh');
+        return Promise.reject(error);
+      }
+      
       // CRITICAL: Don't attempt token refresh for auth endpoints to prevent infinite loops
       const isAuthEndpoint = originalRequest.url && (
         originalRequest.url.includes('/api/auth/login') ||
