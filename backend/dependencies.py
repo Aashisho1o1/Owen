@@ -8,6 +8,7 @@ consistency and adherence to the DRY (Don't Repeat Yourself) principle.
 
 import logging
 import time
+from typing import Union
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Reusable security scheme using HTTP Bearer for JWT tokens.
 security = HTTPBearer()
 
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Union[str, int]:
     """
     FastAPI dependency to get the current user's ID from a JWT token.
     
@@ -83,7 +84,7 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
 async def check_rate_limit_dependency(
     request: Request,
     endpoint: str = "general",
-    user_id: int = Depends(get_current_user_id)
+    user_id: Union[str, int] = Depends(get_current_user_id)
 ) -> RateLimitResult:
     """
     FastAPI dependency for PostgreSQL-based rate limiting.
@@ -155,15 +156,15 @@ async def check_rate_limit_dependency(
         )
 
 # Convenience functions for specific endpoints
-async def check_chat_rate_limit(request: Request, user_id: int = Depends(get_current_user_id)) -> RateLimitResult:
+async def check_chat_rate_limit(request: Request, user_id: Union[str, int] = Depends(get_current_user_id)) -> RateLimitResult:
     """Rate limit dependency specifically for chat endpoints"""
     return await check_rate_limit_dependency(request, "chat", user_id)
 
-async def check_voice_analysis_rate_limit(request: Request, user_id: int = Depends(get_current_user_id)) -> RateLimitResult:
+async def check_voice_analysis_rate_limit(request: Request, user_id: Union[str, int] = Depends(get_current_user_id)) -> RateLimitResult:
     """Rate limit dependency specifically for voice analysis endpoints"""
     return await check_rate_limit_dependency(request, "voice_analysis", user_id)
 
-async def check_grammar_rate_limit(request: Request, user_id: int = Depends(get_current_user_id)) -> RateLimitResult:
+async def check_grammar_rate_limit(request: Request, user_id: Union[str, int] = Depends(get_current_user_id)) -> RateLimitResult:
     """Rate limit dependency specifically for grammar endpoints"""
     return await check_rate_limit_dependency(request, "grammar", user_id)
 

@@ -25,7 +25,7 @@ import json
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Dict, List, Optional, Any, Tuple, Callable, Union
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
@@ -62,7 +62,7 @@ class CacheResult:
 @dataclass 
 class UsageMetrics:
     """Usage tracking metrics"""
-    user_id: int
+    user_id: Union[str, int]
     endpoint: str
     tokens_used: int
     estimated_cost_cents: int
@@ -90,7 +90,7 @@ class RateLimiter:
         self.db = get_db_service()
         logger.info("🛡️ RateLimiter initialized with PostgreSQL backend")
     
-    async def check_limit(self, user_id: int, endpoint: str, tier: str = "free") -> RateLimitResult:
+    async def check_limit(self, user_id: Union[str, int], endpoint: str, tier: str = "free") -> RateLimitResult:
         """
         Check if user is within rate limits for endpoint.
         
@@ -490,7 +490,7 @@ class InfraService:
         
         logger.info("🏗️ InfraService initialized with PostgreSQL backend")
     
-    async def check_rate_limit(self, user_id: int, endpoint: str) -> RateLimitResult:
+    async def check_rate_limit(self, user_id: Union[str, int], endpoint: str) -> RateLimitResult:
         """Check rate limits for user and endpoint"""
         tier = await self.rate_limiter.get_user_tier(user_id)
         return await self.rate_limiter.check_limit(user_id, endpoint, tier)
