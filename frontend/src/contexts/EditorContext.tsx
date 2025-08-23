@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
-import { Document, DocumentFolder, DocumentTemplate, SearchResult } from '../services/api/types';
+import { Document, DocumentFolder, SearchResult } from '../services/api/types';
 import { useEditor } from '../hooks/useEditor';
 import { useDocuments } from '../hooks/useDocuments';
 
@@ -8,7 +8,6 @@ interface DocumentManager {
   currentDocument: Document | null;
   documents: Document[];
   folders: DocumentFolder[];
-  templates: DocumentTemplate[];
   isLoading: boolean;
   error: string | null;
   searchResults: SearchResult[];
@@ -98,7 +97,7 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Build context value
   const value: EditorContextType = {
     editorContent,
-    setEditorContent,
+    setEditorContent, // Back to original - no custom handler here
     documentManager: {
       ...documentsHook,
       saveCurrentDocument // Add the missing method
@@ -115,4 +114,4 @@ export const useEditorContext = (): EditorContextType => {
     throw new Error('useEditorContext must be used within an EditorProvider');
   }
   return context;
-}; 
+};

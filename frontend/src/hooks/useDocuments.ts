@@ -153,7 +153,7 @@ export const useDocuments = (): UseDocumentsReturn => {
     
     // Only set new timer if we have unsaved changes and a current document
     if (state.hasUnsavedChanges && state.currentDocument) {
-      autoSaveTimerRef.current = setTimeout(performAutoSave, 2000);
+      autoSaveTimerRef.current = setTimeout(performAutoSave, 2000); // Back to 2 seconds for stability
     }
     
     return () => {
@@ -631,5 +631,4 @@ export const useDocuments = (): UseDocumentsReturn => {
   };
 };
 
- 
  
