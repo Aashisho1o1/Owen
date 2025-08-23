@@ -101,6 +101,10 @@ const apiInstance = axios.create({
 
 // Auth provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // DEBUG: Track AuthProvider instances
+  const instanceId = React.useRef(Math.random().toString(36).substr(2, 9));
+  console.log(`🔍 AuthProvider Instance Created: ${instanceId.current}`);
+  
   const [user, setUser] = useSafeState<UserProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useSafeState(false);
   const [isLoading, setIsLoading] = useSafeState(true);
@@ -298,7 +302,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isInitialized) return; // Prevent multiple initializations
       setIsInitialized(true);
       
-      console.log('🚀 Initializing authentication...');
+      console.log(`🚀 [${instanceId.current}] Initializing authentication...`);
       setIsLoading(true);
       
       try {
