@@ -8,6 +8,7 @@ import React, {
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import { useSafeState } from '../hooks/useSafeState';
+import { updateApiClientToken } from '../services/api/client'; // CRITICAL: Import token sync function
 // Note: Auth functions are implemented within this context
 // import { getStoredTokens } from '../services/api/auth';
 
@@ -101,10 +102,6 @@ const apiInstance = axios.create({
 
 // Auth provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // DEBUG: Track AuthProvider instances
-  const instanceId = React.useRef(Math.random().toString(36).substr(2, 9));
-  console.log(`🔍 AuthProvider Instance Created: ${instanceId.current}`);
-  
   const [user, setUser] = useSafeState<UserProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useSafeState(false);
   const [isLoading, setIsLoading] = useSafeState(true);
@@ -143,8 +140,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('owen_token_type', tokens.token_type);
       localStorage.setItem('owen_token_expires', (Date.now() + tokens.expires_in * 1000).toString());
       
-      // Set axios default auth header
+      // Set axios default auth header for AuthContext instance
       apiInstance.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
+      
+      // CRITICAL: Also update the shared apiClient instance!
+      updateApiClientToken(tokens.access_token, tokens.token_type);
+      console.log('🔄 Token synchronized across all axios instances');
     } catch (err) {
       logger.error('Error storing tokens:', err);
     }
@@ -165,7 +166,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('expires_at');
       localStorage.removeItem('owen_expires_in'); // Remove old key format
       
+      // Clear from AuthContext instance
       delete apiInstance.defaults.headers.common['Authorization'];
+      
+      // CRITICAL: Also clear from shared apiClient instance!
+      updateApiClientToken(null);
+      console.log('🧹 Tokens cleared from all axios instances');
     } catch (err) {
       logger.error('Error clearing tokens:', err);
     }
@@ -296,19 +302,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [refreshToken, getStoredTokens]);
 
-  // Initialize authentication state - FIXED: Remove problematic dependencies
+  // Initialize authentication state - CRITICAL FIX: Empty dependency array
   useEffect(() => {
     const initializeAuth = async () => {
       if (isInitialized) return; // Prevent multiple initializations
       setIsInitialized(true);
       
-      console.log(`🚀 [${instanceId.current}] Initializing authentication...`);
+      console.log('🚀 Initializing authentication...');
       setIsLoading(true);
       
       try {
         const tokens = getStoredTokens();
         if (tokens) {
           console.log('🔍 Found stored tokens, validating...');
+          
+          // CRITICAL: Sync token to apiClient immediately
+          updateApiClientToken(tokens.access_token, tokens.token_type);
           
           // Try to get user profile to verify token validity
           const success = await loadUserProfile();
@@ -365,6 +374,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('expires_at');
       localStorage.removeItem('owen_expires_in'); // Remove old key format
       
+      // CRITICAL: Clear from apiClient too
+      updateApiClientToken(null);
+      
       // Reset expiration handling flag after a short delay
       setTimeout(() => {
         isHandlingExpiration = false;
@@ -394,9 +406,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       console.log('🔐 STEP 3: Storing tokens...');
-      // Store tokens
+      // Store tokens (this will sync to apiClient automatically)
       storeTokens({ access_token, refresh_token, token_type, expires_in });
-      console.log('🔐 STEP 3: ✅ Tokens stored successfully');
+      console.log('🔐 STEP 3: ✅ Tokens stored and synchronized successfully');
       
       console.log('🔐 STEP 4: Setting user data...');
       // Set user data
@@ -464,7 +476,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
-      // Store tokens
+      // Store tokens (this will sync to apiClient automatically)
       storeTokens({ access_token, refresh_token, token_type, expires_in });
       
       // Set user data
@@ -568,14 +580,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { access_token, token_type, expires_in, user: userProfile } = response.data;
 
       console.log('🎯 STEP 3: Storing guest tokens...');
-      // Store tokens (no refresh token for guests)
+      // Store tokens (no refresh token for guests) - this will sync to apiClient automatically
       storeTokens({ 
         access_token, 
         refresh_token: '', // Guests don't get refresh tokens
         token_type, 
         expires_in 
       });
-      console.log('🎯 STEP 3: ✅ Guest tokens stored successfully');
+      console.log('🎯 STEP 3: ✅ Guest tokens stored and synchronized successfully');
       
       console.log('🎯 STEP 4: Setting guest user data...');
       // Set user data (includes guest-specific info)
