@@ -331,7 +331,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     initializeAuth();
-  }, [isInitialized]); // FIXED: Include isInitialized in dependency array
+  }, []); // CRITICAL FIX: Empty dependency array - run only once on mount
 
   // Add token expiration listener
   useEffect(() => {
