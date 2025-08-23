@@ -653,6 +653,77 @@ class AuthService:
             # Don't fail the main operation if analytics fail
             logger.warning(f"Failed to track guest activity: {e}")
 
+    def get_guest_usage_count(self, session_id: str) -> int:
+        """
+        Count rolling 24-hour guest interactions for expensive operations.
+        
+        Engineering rationale:
+        - Only counts story_generate and chat_message (expensive LLM calls)
+        - Rolling 24h window prevents daily reset gaming
+        - Returns 0 on errors to fail safe (allow operation)
+        - Used for enforcing daily quotas to control costs
+        """
+        try:
+            result = self.db.execute_query(
+                """SELECT COUNT(*) AS count FROM guest_analytics
+                   WHERE session_id = %s 
+                   AND action IN ('story_generate', 'chat_message')
+                   AND created_at > NOW() - INTERVAL '24 hours'""",
+                (session_id,),
+                fetch='one'
+            )
+            count = int(result['count'] if result and result.get('count') is not None else 0)
+            logger.debug(f"Guest {session_id} usage count in last 24h: {count}")
+            return count
+        except Exception as e:
+            logger.warning(f"Failed to get guest usage count for {session_id}: {e}")
+            return 0  # Fail safe: allow operation if count check fails
+
+    def get_guest_quota(self, session_id: str, daily_limit: int = 2) -> Dict[str, Any]:
+        """
+        Get guest quota status for frontend display and enforcement.
+        
+        Returns quota information compatible with existing rate limit patterns.
+        Used by frontend to show usage and prompt upgrades.
+        """
+        try:
+            count = self.get_guest_usage_count(session_id)
+            remaining = max(0, daily_limit - count)
+            
+            # Calculate reset time based on oldest usage in current 24h window
+            reset_result = self.db.execute_query(
+                """SELECT MIN(created_at) AS oldest_usage FROM guest_analytics
+                   WHERE session_id = %s 
+                   AND action IN ('story_generate', 'chat_message')
+                   AND created_at > NOW() - INTERVAL '24 hours'""",
+                (session_id,),
+                fetch='one'
+            )
+            
+            reset_at = None
+            if reset_result and reset_result.get('oldest_usage'):
+                # Reset 24 hours after oldest usage
+                reset_time = reset_result['oldest_usage'] + timedelta(hours=24)
+                reset_at = reset_time.isoformat()
+            
+            return {
+                "limit": daily_limit,
+                "used": count,
+                "remaining": remaining,
+                "reset_at": reset_at,
+                "session_id": session_id
+            }
+        except Exception as e:
+            logger.error(f"Failed to get guest quota for {session_id}: {e}")
+            # Return safe defaults
+            return {
+                "limit": daily_limit,
+                "used": 0,
+                "remaining": daily_limit,
+                "reset_at": None,
+                "session_id": session_id
+            }
+
     def convert_guest_to_user(self, session_id: str, email: str, password: str, name: str = None) -> Dict[str, Any]:
         """
         Convert guest session to full user account with data migration.

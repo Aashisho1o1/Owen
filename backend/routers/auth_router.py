@@ -7,7 +7,7 @@ Extracted from main.py as part of God File refactoring.
 import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Request
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 # Import models from centralized schemas
 from models.schemas import (
@@ -276,6 +276,35 @@ async def cleanup_expired_guests(request: Request):
     except Exception as e:
         logger.error(f"Guest cleanup error: {e}")
         raise HTTPException(status_code=500, detail="Cleanup operation failed")
+
+@router.get("/guest-quota")
+async def get_guest_quota(user_id = Depends(get_current_user_id)):
+    """
+    Get guest quota information for frontend display.
+    
+    Returns quota status for guest users, or null for regular users.
+    Used by frontend to show usage meters and upgrade prompts.
+    """
+    try:
+        # Only return quota for guest sessions
+        if isinstance(user_id, str):  # Guest sessions are UUID strings
+            quota_info = auth_service.get_guest_quota(user_id, daily_limit=2)
+            return {
+                "is_guest": True,
+                "quota": quota_info,
+                "upgrade_message": f"You've used {quota_info['used']}/{quota_info['limit']} free AI interactions today."
+            }
+        else:
+            # Regular users don't have quotas
+            return {
+                "is_guest": False,
+                "quota": None,
+                "upgrade_message": None
+            }
+            
+    except Exception as e:
+        logger.error(f"Error fetching guest quota: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get quota information")
 
 @router.get("/profile")
 async def get_profile(request: Request, user_id = Depends(get_current_user_id)):

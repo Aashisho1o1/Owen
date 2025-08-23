@@ -4,7 +4,7 @@ import json
 import re
 import logging
 import time
-from typing import List, Optional
+from typing import List, Optional, Union
 
 # Import security services
 from services.auth_service import auth_service, AuthenticationError
@@ -31,6 +31,9 @@ from dependencies import get_current_user_id
 llm_service = LLMService()
 # character_voice_service = CharacterVoiceService()  # REMOVE eager init
 character_voice_service: Optional[CharacterVoiceService] = None  # Lazy init placeholder
+
+# Guest quota configuration - shared with story generation
+GUEST_DAILY_LIMIT = 2  # Maximum chat interactions per 24h for guests
 
 
 def get_character_voice_service() -> CharacterVoiceService:
@@ -106,13 +109,29 @@ def build_conversation_context(chat_history: List[ChatMessage], max_history: int
 async def chat(
     chat_request: ChatRequest,
     http_request: Request,
-    user_id: int = Depends(get_current_user_id),
+    user_id: Union[str, int] = Depends(get_current_user_id),  # Accept both guest UUIDs and user IDs
     rate_limit_result = Depends(check_chat_rate_limit)  # New PostgreSQL-based rate limiting
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
         # CRITICAL DEBUGGING: Log that we've reached the chat endpoint
         logger.info(f"🎯 CHAT ENDPOINT REACHED - User ID: {user_id}")
+        
+        # GUEST QUOTA ENFORCEMENT: Check daily limits for cost control
+        if isinstance(user_id, str):  # Guest sessions are UUID strings
+            usage_count = auth_service.get_guest_usage_count(user_id)
+            if usage_count >= GUEST_DAILY_LIMIT:
+                logger.info(f"Guest {user_id} hit daily chat limit: {usage_count}/{GUEST_DAILY_LIMIT}")
+                quota_info = auth_service.get_guest_quota(user_id, GUEST_DAILY_LIMIT)
+                raise HTTPException(
+                    status_code=402,  # Payment Required - perfect for quota limits
+                    detail={
+                        "code": "GUEST_LIMIT_REACHED",
+                        "message": f"You've used your {GUEST_DAILY_LIMIT} free daily AI chats. Sign up for unlimited access!",
+                        "quota": quota_info
+                    }
+                )
+            logger.info(f"Guest {user_id} chat interaction: {usage_count + 1}/{GUEST_DAILY_LIMIT}")
         
         # ENHANCED DEBUGGING: Log authentication success
         logger.info(f"🔐 Authentication successful for user {user_id}")
@@ -401,6 +420,17 @@ async def chat(
                     pass
             
             logger.info(f"🎉 Chat response generated successfully for user {user_id}")
+            
+            # GUEST ANALYTICS: Track successful chat interaction for quota enforcement
+            if isinstance(user_id, str):  # Guest sessions
+                auth_service.track_guest_activity(user_id, "chat_message", {
+                    "message_length": len(chat_request.message),
+                    "response_length": len(sanitized_response),
+                    "llm_provider": validated_llm_provider,
+                    "ai_mode": chat_request.ai_mode,
+                    "author_persona": chat_request.author_persona
+                })
+            
             return ChatResponse(
                 dialogue_response=sanitized_response,
                 thinking_trail=thinking_trail

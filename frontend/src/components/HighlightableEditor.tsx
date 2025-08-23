@@ -219,6 +219,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     setSelection(null);
   }, [selection, setHighlightedText, handleTextHighlighted, isChatVisible, openChatWithText]);
   
+  // Add debounce ref for content updates
+  const updateDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -228,7 +231,16 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     content: contentProp || '',
     onUpdate: async ({ editor }) => {
       const newContent = editor.getHTML();
-      onChangeProp(newContent);
+      
+      // Debounce content updates to prevent excessive saves
+      if (updateDebounceRef.current) {
+        clearTimeout(updateDebounceRef.current);
+      }
+      
+      // Update content immediately for responsive UI
+      updateDebounceRef.current = setTimeout(() => {
+        onChangeProp(newContent);
+      }, 300); // 300ms debounce for optimal UX
       
       // Only run voice analysis for authenticated users with sufficient content
       // CONDITIONAL LOGIC: Only run voice analysis if VoiceGuard is enabled
@@ -549,6 +561,12 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       if (voiceInconsistencyObserver.current) {
         voiceInconsistencyObserver.current.disconnect();
         voiceInconsistencyObserver.current = null;
+      }
+      
+      // Clean up update debounce timer
+      if (updateDebounceRef.current) {
+        clearTimeout(updateDebounceRef.current);
+        updateDebounceRef.current = null;
       }
       
       window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);

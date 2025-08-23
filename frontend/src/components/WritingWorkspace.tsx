@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import HighlightableEditor from './HighlightableEditor';
 import ChatPane from './ChatPane';
 import DocumentManager from './DocumentManager';
@@ -52,12 +52,12 @@ export const WritingWorkspace: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   
   // FIXED: Connect editor content changes to document management
-  const handleEditorContentChange = (content: string) => {
+  const handleEditorContentChange = useCallback((content: string) => {
     setEditorContent(content); // Update local editor state
     if (isAuthenticated && currentDocument) {
       updateContent(content); // Update document management state
     }
-  };
+  }, [isAuthenticated, currentDocument, updateContent, setEditorContent]);
 
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);

@@ -93,7 +93,7 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   // Auto-save function
   const performAutoSave = useCallback(async () => {
-    if (!state.currentDocument || !state.hasUnsavedChanges) return;
+    if (!state.currentDocument || !state.hasUnsavedChanges || state.isSaving) return;
 
     const contentChanged = state.pendingContent !== lastContentRef.current;
     const titleChanged = state.pendingTitle !== lastTitleRef.current;
@@ -106,6 +106,13 @@ export const useDocuments = (): UseDocumentsReturn => {
       const updates: Partial<Document> = {};
       if (contentChanged) updates.content = state.pendingContent;
       if (titleChanged) updates.title = state.pendingTitle;
+
+      console.log('🔄 Auto-saving document:', {
+        documentId: state.currentDocument.id,
+        contentChanged,
+        titleChanged,
+        contentLength: state.pendingContent.length
+      });
 
       await api.updateDocument(state.currentDocument.id, updates);
       
@@ -123,18 +130,28 @@ export const useDocuments = (): UseDocumentsReturn => {
           updated_at: new Date().toISOString()
         } : null
       }));
+      
+      console.log('✅ Auto-save completed successfully');
     } catch (error) {
       const apiError = error as ApiError;
+      console.error('❌ Auto-save failed:', error);
       setState(prev => ({ 
         ...prev, 
         isSaving: false, 
         error: apiError.response?.data?.detail || apiError.message || 'Failed to save document' 
       }));
     }
-  }, [state.currentDocument, state.hasUnsavedChanges, state.pendingContent, state.pendingTitle]);
+  }, [state.currentDocument, state.hasUnsavedChanges, state.pendingContent, state.pendingTitle, state.isSaving]);
 
-  // Setup auto-save timer
+  // Setup auto-save timer with proper cleanup and reset
   useEffect(() => {
+    // Clear any existing timer first
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    
+    // Only set new timer if we have unsaved changes and a current document
     if (state.hasUnsavedChanges && state.currentDocument) {
       autoSaveTimerRef.current = setTimeout(performAutoSave, 2000);
     }
@@ -142,9 +159,10 @@ export const useDocuments = (): UseDocumentsReturn => {
     return () => {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
       }
     };
-  }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument]);
+  }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument, state.pendingContent, state.pendingTitle]);
 
   // FIXED: Add request deduplication to prevent duplicate API calls
   const fetchInProgress = useRef(false);
