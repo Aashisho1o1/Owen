@@ -38,6 +38,7 @@ export const WritingWorkspace: React.FC = () => {
     hasUnsavedChanges,
     currentDocument,
     setCurrentDocument,
+    getDocument, // Add getDocument to load real documents
   } = useDocuments();
 
   // Auth state for header
@@ -177,36 +178,34 @@ export const WritingWorkspace: React.FC = () => {
   };
 
   // Handle document selection from Fiction Document Manager
-  const handleDocumentSelect = (document: { id: string; title: string; content: string }) => {
-    // CRITICAL FIX: Update the document manager with proper Document structure
-    // FIXED: Use actual word count calculation instead of character count
-    const wordCount = document.content ? document.content.trim().split(/\s+/).filter(Boolean).length : 0;
-    
-    const fullDocument = {
-      ...document,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      user_id: 'current-user', // Will be properly set by the backend
-      word_count: wordCount, // FIXED: Actual word count, not character count
-      document_type: 'novel' as const
-    };
-    
-    console.log('📋 WritingWorkspace: Selecting document:', {
-      documentId: document.id,
-      title: document.title,
-      contentLength: document.content.length,
-      wordCount: wordCount
-    });
-    
-    // CRITICAL: Set the current document in the document management system
-    // This ensures that when content is saved, it goes to the RIGHT document
-    setCurrentDocument(fullDocument);
-    
-    // FIXED: Let the useEffect handle content loading to avoid race conditions
-    // The useEffect will detect the document change and load content properly
-    setShowDocumentManager(false);
-    
-    console.log('✅ WritingWorkspace: Document selection complete');
+  const handleDocumentSelect = async (document: { id: string; title: string; content: string }) => {
+    try {
+      console.log('📋 WritingWorkspace: Loading real document from database:', document.id);
+      
+      // CRITICAL FIX: Load the REAL document from database instead of creating fake one
+      const realDocument = await getDocument(document.id);
+      
+      console.log('📋 WritingWorkspace: Real document loaded:', {
+        documentId: realDocument.id,
+        title: realDocument.title,
+        contentLength: realDocument.content?.length || 0,
+        wordCount: realDocument.word_count,
+        updatedAt: realDocument.updated_at
+      });
+      
+      // Set the REAL document from database
+      setCurrentDocument(realDocument);
+      
+      // Close the document manager modal
+      setShowDocumentManager(false);
+      
+      console.log('✅ WritingWorkspace: Real document selection complete');
+    } catch (error) {
+      console.error('❌ WritingWorkspace: Failed to load document:', error);
+      // Fallback: close modal and show error
+      setShowDocumentManager(false);
+      alert('Failed to load document. Please try again.');
+    }
   };
 
   // Handle returning to writing space from Document Manager
