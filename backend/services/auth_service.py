@@ -16,6 +16,7 @@ from typing import Optional, Dict, Any, Tuple
 from email_validator import validate_email, EmailNotValidError
 
 from .database import get_db_service, DatabaseError
+from .enhanced_validation import AuthValidationService, DetailedAuthenticationError
 
 logger = logging.getLogger(__name__)
 
@@ -112,14 +113,31 @@ class AuthService:
         self.db.execute_query(query, (user_id, token_hash, expires_at, device_info, ip_address))
     
     def register_user(self, username: str, email: str, password: str, name: str = None) -> Dict[str, Any]:
-        """Register a new user"""
+        """Register a new user with enhanced validation"""
         try:
-            # Validate email
+            # Enhanced validation with detailed error messages
+            validation_result = AuthValidationService.validate_registration_data(email, password, name or "")
+            
+            if not validation_result.is_valid:
+                # Create detailed error message
+                error_messages = validation_result.get_error_messages()
+                if len(error_messages) == 1:
+                    error_msg = error_messages[0]
+                else:
+                    error_msg = "Please fix the following issues: " + "; ".join(error_messages)
+                
+                raise DetailedAuthenticationError(
+                    error_msg, 
+                    validation_result, 
+                    "validation_failed"
+                )
+            
+            # Normalize email
             try:
                 valid_email = validate_email(email)
                 email = valid_email.email
             except EmailNotValidError as e:
-                raise AuthenticationError(f"Invalid email: {e}")
+                raise DetailedAuthenticationError(f"Invalid email format: {e}")
             
             # Check if user already exists
             existing_user = self.db.execute_query(
@@ -129,7 +147,7 @@ class AuthService:
             )
             
             if existing_user:
-                raise AuthenticationError("User with this email or username already exists")
+                raise DetailedAuthenticationError("An account with this email address already exists. Please try logging in instead.")
             
             # Hash password
             password_hash = self._hash_password(password)

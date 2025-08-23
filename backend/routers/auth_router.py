@@ -16,6 +16,7 @@ from models.schemas import (
 
 # Import services
 from services.auth_service import auth_service, AuthenticationError
+from services.enhanced_validation import DetailedAuthenticationError
 from services.database import get_db_service, DatabaseError
 
 # Import production rate limiter
@@ -70,6 +71,11 @@ async def register(user_data: UserCreate, request: Request) -> TokenResponse:
                 "created_at": result['user']['created_at']
             }
         )
+    except DetailedAuthenticationError as e:
+        logger.error(f"Detailed authentication error during registration: {e}")
+        # Return detailed error information for better user experience
+        error_detail = e.to_dict()
+        raise HTTPException(status_code=400, detail=error_detail)
     except AuthenticationError as e:
         logger.error(f"Authentication error during registration: {e}")
         raise HTTPException(status_code=400, detail=str(e))

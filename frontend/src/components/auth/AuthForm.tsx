@@ -19,6 +19,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
   const { 
     errors, 
     validateForm, 
+    validateFieldRealTime,
     clearFieldError, 
     setSubmitError, 
     clearErrors 
@@ -46,7 +47,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
     clearErrors();
   }, [mode, clearErrors]);
 
-  // Handle input changes
+  // Handle input changes with real-time validation
   const handleInputChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
@@ -54,6 +55,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
     if (errors[field]) {
       clearFieldError(field);
     }
+  };
+
+  // Handle input blur for real-time validation
+  const handleInputBlur = (field: keyof FormData) => {
+    const value = formData[field];
+    validateFieldRealTime(field, value, mode, formData);
   };
 
   // Handle form submission
@@ -140,6 +147,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
               placeholder="Enter your full name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
+              onBlur={() => handleInputBlur('name')}
               disabled={isSubmitting || isLoading}
               autoComplete="name"
             />
@@ -160,6 +168,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
             placeholder="Enter your email address"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
+            onBlur={() => handleInputBlur('email')}
             disabled={isSubmitting || isLoading}
             autoComplete="email"
           />
@@ -176,6 +185,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
             id="auth-password"
             value={formData.password}
             onChange={(value) => handleInputChange('password', value)}
+            onBlur={() => handleInputBlur('password')}
             disabled={isSubmitting || isLoading}
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
             className={errors.password ? 'error' : ''}
@@ -196,6 +206,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess, onModeChang
               id="auth-confirm-password"
               value={formData.confirmPassword}
               onChange={(value) => handleInputChange('confirmPassword', value)}
+              onBlur={() => handleInputBlur('confirmPassword')}
               placeholder="Confirm your password"
               disabled={isSubmitting || isLoading}
               autoComplete="new-password"

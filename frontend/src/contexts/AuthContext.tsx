@@ -414,10 +414,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         method: (err as any)?.config?.method
       });
       
-      const errorMessage =
-        axios.isAxiosError(err) && err.response?.data?.detail
-          ? (err.response.data as any).detail
-          : 'Login failed. Please try again.';
+      // Handle detailed error messages from backend
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        
+        // Check if it's a detailed validation error
+        if (typeof detail === 'object' && detail.validation_errors) {
+          // Extract the most relevant error message
+          const validationErrors = detail.validation_errors;
+          if (validationErrors.length > 0) {
+            errorMessage = validationErrors[0].message;
+          } else if (detail.message) {
+            errorMessage = detail.message;
+          }
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
       setError(errorMessage);
       logger.error('Login error:', err);
       return false;
@@ -462,10 +478,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         config: (err as any)?.config
       });
       
-      const errorMessage =
-        axios.isAxiosError(err) && err.response?.data?.detail
-          ? (err.response.data as any).detail
-          : 'Registration failed. Please try again.';
+      // Handle detailed error messages from backend
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        
+        // Check if it's a detailed validation error
+        if (typeof detail === 'object' && detail.validation_errors) {
+          // Extract the most relevant error message
+          const validationErrors = detail.validation_errors;
+          if (validationErrors.length > 0) {
+            errorMessage = validationErrors[0].message;
+          } else if (detail.message) {
+            errorMessage = detail.message;
+          }
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
       setError(errorMessage);
       logger.error('Registration error:', err);
       return false;
