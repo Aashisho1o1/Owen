@@ -50,7 +50,19 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
   // NEW: Toggle state for highlighted section (Behavioral Psychology: User Control)
+  // Start expanded, then collapse after first message to save space but keep accessible
   const [showHighlightedSection, setShowHighlightedSection] = useState(true);
+  
+  // Auto-collapse after first message is sent (but keep toggle visible)
+  useEffect(() => {
+    if (messages.length > 0 && showHighlightedSection) {
+      // Small delay to let user see the context is preserved
+      const timer = setTimeout(() => {
+        setShowHighlightedSection(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, showHighlightedSection]);
 
   // Handle user scroll to detect if they want auto-scroll or not
   const handleUserScroll = () => {
@@ -103,11 +115,9 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         </div>
       )}
 
-      {/* Display an inline preview of the currently selected text
-          as soon as the user clicks "Ask AI". It remains visible
-          until the first related question is asked, after which it
-          gets anchored to that message via highlightedTextMessageIndex. */}
-      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && (
+      {/* Display collapsible highlighted section toggle - always visible when text is highlighted
+          This allows users to reference the context throughout the conversation */}
+      {highlightedText && highlightedText.trim() && (
         <>
           {/* Toggle Button - Behavioral Psychology: Progressive Disclosure */}
           <button 
@@ -118,7 +128,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           >
             <span className="toggle-icon">{showHighlightedSection ? '📖' : '📝'}</span>
             <span className="toggle-text">
-              {showHighlightedSection ? 'Hide Context' : `Show Context: "${highlightedText.substring(0, 40)}..."`}
+              {showHighlightedSection ? 'Hide Reference' : `Reference: "${highlightedText.substring(0, 40)}..."`}
             </span>
             <span className="toggle-arrow">{showHighlightedSection ? '▼' : '▶'}</span>
           </button>
@@ -242,6 +252,19 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
+          position: relative;
+        }
+        
+        .highlight-section-toggle::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: #3b82f6;
+          border-radius: 8px 0 0 8px;
+          opacity: 0.6;
         }
         
         .highlight-section-toggle:hover {
