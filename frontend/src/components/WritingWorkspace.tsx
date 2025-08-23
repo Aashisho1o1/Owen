@@ -9,6 +9,7 @@ import { useChatContext } from '../contexts/ChatContext';
 import { useEditorContext } from '../contexts/EditorContext';
 import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
+import { Document } from '../services/api/types'; // ✅ ADDED: Import Document type
 // Voice consistency analysis is now handled in HighlightableEditor
 import './WritingWorkspace.css';
 
@@ -38,7 +39,7 @@ export const WritingWorkspace: React.FC = () => {
     hasUnsavedChanges,
     currentDocument,
     setCurrentDocument,
-    getDocument, // Add getDocument to load real documents
+    // ✅ REMOVED: getDocument - no longer needed
   } = useDocuments();
 
   // Auth state for header
@@ -177,35 +178,28 @@ export const WritingWorkspace: React.FC = () => {
     return lastSaved.toLocaleDateString();
   };
 
-  // Handle document selection from Fiction Document Manager
-  const handleDocumentSelect = async (document: { id: string; title: string; content: string }) => {
-    try {
-      console.log('📋 WritingWorkspace: Loading real document from database:', document.id);
-      
-      // CRITICAL FIX: Load the REAL document from database instead of creating fake one
-      const realDocument = await getDocument(document.id);
-      
-      console.log('📋 WritingWorkspace: Real document loaded:', {
-        documentId: realDocument.id,
-        title: realDocument.title,
-        contentLength: realDocument.content?.length || 0,
-        wordCount: realDocument.word_count,
-        updatedAt: realDocument.updated_at
-      });
-      
-      // Set the REAL document from database
-      setCurrentDocument(realDocument);
-      
-      // Close the document manager modal
-      setShowDocumentManager(false);
-      
-      console.log('✅ WritingWorkspace: Real document selection complete');
-    } catch (error) {
-      console.error('❌ WritingWorkspace: Failed to load document:', error);
-      // Fallback: close modal and show error
-      setShowDocumentManager(false);
-      alert('Failed to load document. Please try again.');
-    }
+  // ✅ FIXED: Handle document selection from Fiction Document Manager
+  const handleDocumentSelect = (document: Document) => {
+    console.log('📋 WritingWorkspace: Selecting document:', {
+      documentId: document.id,
+      title: document.title,
+      wordCount: document.word_count,
+      updatedAt: document.updated_at
+    });
+    
+    // ✅ The document from DocumentManager is ALREADY complete with all fields!
+    // This includes real timestamps, word_count, user_id, etc.
+    // No need for extra API call - just use it directly!
+    setCurrentDocument(document);
+    
+    // ✅ Update local editor state to match the document
+    setDocumentTitle(document.title);
+    setEditorContent(document.content || '');
+    
+    // Close the modal
+    setShowDocumentManager(false);
+    
+    console.log('✅ WritingWorkspace: Document loaded successfully');
   };
 
   // Handle returning to writing space from Document Manager
@@ -393,4 +387,4 @@ export const WritingWorkspace: React.FC = () => {
   );
 };
 
-export default WritingWorkspace; 
+export default WritingWorkspace;
