@@ -283,14 +283,20 @@ export const WritingWorkspace: React.FC = () => {
           )}
         </div>
         
-        {/* Document Title - Simplified and concise */}
+        {/* IMPROVED: Document Title with better context */}
         <div className="title-section">
           <input
             type="text"
             value={documentTitle}
             onChange={(e) => handleTitleChange(e.target.value)}
             className="document-title-input"
-            placeholder="untitled doc"
+            placeholder={currentDocument ? "Untitled Document" : (isAuthenticated ? "New Document (click Home to save)" : "Guest Draft")}
+            title={currentDocument ? 
+              `Editing "${currentDocument.title}" (ID: ${currentDocument.id})` : 
+              isAuthenticated ? 
+                "Create a new document from Home to save this content" : 
+                "Sign in and create a document to save your work"
+            }
           />
         </div>
         
@@ -307,18 +313,34 @@ export const WritingWorkspace: React.FC = () => {
             <span className="copy-text">{isChatVisible ? "Hide AI" : "Show AI"}</span>
           </button>
 
-          {/* Save Status - Only for authenticated users */}
+          {/* IMPROVED: Save Status with better user feedback */}
           {isAuthenticated && (
             <div className="save-status">
-              {isSaving && <span className="status-saving">Saving...</span>}
+              {isSaving && <span className="status-saving">💾 Saving...</span>}
               {!isSaving && hasUnsavedChanges && (
-                <button onClick={handleSaveNow} className="save-now-btn">
-                  Save Now
+                <button onClick={handleSaveNow} className="save-now-btn" title="Click to save your changes">
+                  💾 Save Now
                 </button>
               )}
-              {!isSaving && !hasUnsavedChanges && lastSaved && (
-                <span className="status-saved">Saved {formatLastSaved()}</span>
+              {!isSaving && !hasUnsavedChanges && lastSaved && currentDocument && (
+                <span className="status-saved" title={`Document "${currentDocument.title}" saved ${formatLastSaved()}`}>
+                  ✅ Saved {formatLastSaved()}
+                </span>
               )}
+              {!isSaving && !currentDocument && (
+                <span className="status-unsaved" title="Create a new document or open an existing one to save your work">
+                  📝 Unsaved draft
+                </span>
+              )}
+            </div>
+          )}
+          
+          {/* IMPROVED: Guest mode indicator */}
+          {!isAuthenticated && (
+            <div className="save-status guest-status">
+              <span className="status-guest" title="Sign in to save and manage your documents">
+                👤 Guest mode - Sign in to save
+              </span>
             </div>
           )}
         </div>

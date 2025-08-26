@@ -62,7 +62,8 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     searchDocuments,
     clearSearch,
     getDocumentsByFolder,
-    getTotalWordCount
+    getTotalWordCount,
+    refreshAll
   } = useDocuments();
 
   // State Management - Focused and minimal
@@ -232,7 +233,28 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
         {/* Content Section */}
         <div className="document-content">
           {error && (
-            <div className="error-message">❌ {error}</div>
+            <div className="error-message">
+              <div>❌ {error}</div>
+              {(error.includes('Failed to load') || error.includes('rate limit') || error.includes('network')) && (
+                <button 
+                  onClick={refreshAll} 
+                  className="error-retry-button"
+                  disabled={isLoading}
+                  style={{ 
+                    marginTop: '10px', 
+                    padding: '8px 16px', 
+                    backgroundColor: '#007bff', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '4px',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    opacity: isLoading ? 0.6 : 1
+                  }}
+                >
+                  {isLoading ? '🔄 Retrying...' : '🔄 Retry Loading'}
+                </button>
+              )}
+            </div>
           )}
           {renderContent()}
         </div>

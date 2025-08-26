@@ -14,7 +14,7 @@ export interface UseEditorReturn {
   updateContent: (newContent: string) => void;
 }
 
-const DEFAULT_INITIAL_CONTENT = 'Once upon a time, in a bustling city, a young detective named Kenji stumbled upon a mysterious diary. His partner, a seasoned veteran named Rina, always told him to trust his gut.';
+const DEFAULT_INITIAL_CONTENT = '<!-- Start writing your story here... This placeholder text will disappear when you begin typing. -->\n\nTip: Click "New Document" to create and save your work, or open an existing document from the file manager.';
 
 export const useEditor = ({
   initialContent = DEFAULT_INITIAL_CONTENT,

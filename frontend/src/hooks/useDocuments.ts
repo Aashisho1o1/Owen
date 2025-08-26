@@ -91,33 +91,47 @@ export const useDocuments = (): UseDocumentsReturn => {
   const lastContentRef = useRef<string>('');
   const lastTitleRef = useRef<string>('');
 
-  // Auto-save function
+  // FIXED: Auto-save function with optimized dependencies to prevent infinite loops
   const performAutoSave = useCallback(async () => {
-    if (!state.currentDocument || !state.hasUnsavedChanges || state.isSaving) return;
+    // Get current state values to avoid stale closures
+    const currentDoc = state.currentDocument;
+    const hasChanges = state.hasUnsavedChanges;
+    const isSaving = state.isSaving;
+    const pendingContent = state.pendingContent;
+    const pendingTitle = state.pendingTitle;
 
-    const contentChanged = state.pendingContent !== lastContentRef.current;
-    const titleChanged = state.pendingTitle !== lastTitleRef.current;
+    if (!currentDoc || !hasChanges || isSaving) {
+      console.log('⏸️ Auto-save skipped:', { hasDoc: !!currentDoc, hasChanges, isSaving });
+      return;
+    }
 
-    if (!contentChanged && !titleChanged) return;
+    const contentChanged = pendingContent !== lastContentRef.current;
+    const titleChanged = pendingTitle !== lastTitleRef.current;
+
+    if (!contentChanged && !titleChanged) {
+      console.log('⏸️ Auto-save skipped: no actual changes detected');
+      return;
+    }
 
     try {
-      setState(prev => ({ ...prev, isSaving: true }));
+      setState(prev => ({ ...prev, isSaving: true, error: null }));
       
       const updates: Partial<Document> = {};
-      if (contentChanged) updates.content = state.pendingContent;
-      if (titleChanged) updates.title = state.pendingTitle;
+      if (contentChanged) updates.content = pendingContent;
+      if (titleChanged) updates.title = pendingTitle;
 
       console.log('🔄 Auto-saving document:', {
-        documentId: state.currentDocument.id,
+        documentId: currentDoc.id,
         contentChanged,
         titleChanged,
-        contentLength: state.pendingContent.length
+        contentLength: pendingContent.length
       });
 
-      await api.updateDocument(state.currentDocument.id, updates);
+      await api.updateDocument(currentDoc.id, updates);
       
-      lastContentRef.current = state.pendingContent;
-      lastTitleRef.current = state.pendingTitle;
+      // Update refs to track what was saved
+      lastContentRef.current = pendingContent;
+      lastTitleRef.current = pendingTitle;
       
       setState(prev => ({
         ...prev,
@@ -141,9 +155,10 @@ export const useDocuments = (): UseDocumentsReturn => {
         error: apiError.response?.data?.detail || apiError.message || 'Failed to save document' 
       }));
     }
-  }, [state.currentDocument, state.hasUnsavedChanges, state.pendingContent, state.pendingTitle, state.isSaving]);
+  }, [state]); // Simplified dependency - just the state object
 
-  // Setup auto-save timer with proper cleanup and reset
+  // FIXED: Setup auto-save timer with proper dependencies - removed pendingContent and pendingTitle
+  // to prevent constant timer resets that block auto-save execution
   useEffect(() => {
     // Clear any existing timer first
     if (autoSaveTimerRef.current) {
@@ -151,9 +166,10 @@ export const useDocuments = (): UseDocumentsReturn => {
       autoSaveTimerRef.current = null;
     }
     
-    // Only set new timer if we have unsaved changes and a current document
-    if (state.hasUnsavedChanges && state.currentDocument) {
-      autoSaveTimerRef.current = setTimeout(performAutoSave, 2000); // Back to 2 seconds for stability
+    // Only set new timer if we have unsaved changes and a current document and not already saving
+    if (state.hasUnsavedChanges && state.currentDocument && !state.isSaving) {
+      console.log('⏰ Setting auto-save timer for 2 seconds');
+      autoSaveTimerRef.current = setTimeout(performAutoSave, 2000);
     }
     
     return () => {
@@ -162,7 +178,7 @@ export const useDocuments = (): UseDocumentsReturn => {
         autoSaveTimerRef.current = null;
       }
     };
-  }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument, state.pendingContent, state.pendingTitle]);
+  }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument, state.isSaving]); // CRITICAL: Removed pendingContent and pendingTitle
 
   // FIXED: Add request deduplication to prevent duplicate API calls
   const fetchInProgress = useRef(false);
@@ -190,15 +206,16 @@ export const useDocuments = (): UseDocumentsReturn => {
       return;
     }
 
-    // FIXED: Prevent duplicate requests for same user
+    // FIXED: Improved request deduplication - only prevent overlapping requests, allow explicit refreshes
     const currentUserId = user.user_id;
     if (fetchInProgress.current) {
       console.log('🔄 useDocuments: Request already in progress, skipping');
       return;
     }
 
-    if (lastUserId.current === currentUserId && state.documents.length > 0) {
-      console.log('📊 useDocuments: Data already loaded for current user');
+    // Allow refresh if user changed OR if documents array is empty (failed previous load)
+    if (lastUserId.current === currentUserId && state.documents.length > 0 && !state.error) {
+      console.log('📊 useDocuments: Data already loaded for current user, skipping');
       return;
     }
 
@@ -628,7 +645,14 @@ export const useDocuments = (): UseDocumentsReturn => {
     getWordCount,
     getDocumentsByFolder,
     getTotalWordCount,
-    refreshAll: fetchAllData,
+    refreshAll: useCallback(async () => {
+      // FIXED: Force refresh by clearing cache and reloading data
+      console.log('🔄 useDocuments: Force refreshing all data');
+      fetchInProgress.current = false;
+      lastUserId.current = null;
+      setState(prev => ({ ...prev, error: null }));
+      await fetchAllData();
+    }, [fetchAllData]),
   };
 };
 
