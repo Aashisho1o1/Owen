@@ -87,6 +87,7 @@ routers_to_import = [
     ("routers.story_generator_router", "story_generator_router"),
     ("routers.character_voice_router", "character_voice_router"),
     ("routers.cost_optimization_router", "cost_optimization_router"),
+    ("routers.local_ai_router", "local_ai_router"),  # NEW: Local AI models
 ]
 
 imported_routers = []
