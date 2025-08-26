@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# Disable ChromaDB telemetry to prevent backend crashes on Railway
+# Disable ChromaDB telemetry to prevent backend crashes on Railway (connection test: comment updated)
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
 # --- Centralized Logging Configuration ---
