@@ -19,6 +19,20 @@ from .ollama_service import ollama_service
 from .gemini_service import gemini_service
 from .base_service import LLMError
 
+# Try importing HuggingFace service
+try:
+    from .huggingface_service import huggingface_service
+    HUGGINGFACE_AVAILABLE = True
+    logger.info("🤗 HuggingFace service imported successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ HuggingFace service not available: {e}")
+    huggingface_service = None
+    HUGGINGFACE_AVAILABLE = False
+except Exception as e:
+    logger.error(f"❌ Error importing HuggingFace service: {e}")
+    huggingface_service = None
+    HUGGINGFACE_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 class TaskComplexity(Enum):
@@ -34,6 +48,8 @@ class ProviderType(Enum):
     LOCAL_POWER = "local_120b"   # gpt-oss:120b via Ollama  
     CLOUD_GEMINI = "cloud_gemini" # Google Gemini API
     CLOUD_OPENAI = "cloud_openai" # OpenAI API (if available)
+    HF_FAST = "hf_20b"          # gpt-oss:20b via HuggingFace
+    HF_POWER = "hf_120b"        # gpt-oss:120b via HuggingFace
 
 @dataclass
 class RoutingRule:
@@ -72,6 +88,7 @@ class HybridLLMService:
         self.routing_rules = self._setup_routing_rules()
         self.local_available = False
         self.cloud_available = False
+        self.huggingface_available = False
         
         # Initialize with capability check
         asyncio.create_task(self._check_capabilities())
@@ -83,7 +100,7 @@ class HybridLLMService:
                 task_type="quick_consistency_check",
                 complexity=TaskComplexity.SIMPLE,
                 preferred_provider=ProviderType.LOCAL_FAST,
-                fallback_providers=[ProviderType.CLOUD_GEMINI],
+                fallback_providers=[ProviderType.HF_FAST, ProviderType.CLOUD_GEMINI],
                 max_response_time=10.0,
                 cost_sensitivity=1.0
             ),
@@ -91,7 +108,7 @@ class HybridLLMService:
                 task_type="dialogue_analysis", 
                 complexity=TaskComplexity.MEDIUM,
                 preferred_provider=ProviderType.LOCAL_POWER,
-                fallback_providers=[ProviderType.LOCAL_FAST, ProviderType.CLOUD_GEMINI],
+                fallback_providers=[ProviderType.LOCAL_FAST, ProviderType.HF_POWER, ProviderType.HF_FAST, ProviderType.CLOUD_GEMINI],
                 max_response_time=30.0,
                 cost_sensitivity=0.8
             ),
@@ -99,7 +116,7 @@ class HybridLLMService:
                 task_type="deep_reasoning",
                 complexity=TaskComplexity.COMPLEX,
                 preferred_provider=ProviderType.LOCAL_POWER,
-                fallback_providers=[ProviderType.CLOUD_GEMINI],
+                fallback_providers=[ProviderType.HF_POWER, ProviderType.CLOUD_GEMINI],
                 max_response_time=60.0,
                 cost_sensitivity=0.6
             ),
@@ -107,7 +124,7 @@ class HybridLLMService:
                 task_type="creative_writing",
                 complexity=TaskComplexity.COMPLEX,
                 preferred_provider=ProviderType.CLOUD_GEMINI,  # Cloud better for creativity
-                fallback_providers=[ProviderType.LOCAL_POWER],
+                fallback_providers=[ProviderType.LOCAL_POWER, ProviderType.HF_POWER],
                 max_response_time=45.0,
                 cost_sensitivity=0.3
             ),
@@ -115,7 +132,7 @@ class HybridLLMService:
                 task_type="structured_output",
                 complexity=TaskComplexity.MEDIUM,
                 preferred_provider=ProviderType.LOCAL_POWER,
-                fallback_providers=[ProviderType.CLOUD_GEMINI, ProviderType.LOCAL_FAST],
+                fallback_providers=[ProviderType.HF_POWER, ProviderType.CLOUD_GEMINI, ProviderType.LOCAL_FAST, ProviderType.HF_FAST],
                 max_response_time=25.0,
                 cost_sensitivity=0.9
             )
@@ -134,8 +151,16 @@ class HybridLLMService:
             # Check cloud Gemini availability
             self.cloud_available = gemini_service and gemini_service.is_available()
             
+            # Check HuggingFace availability
+            self.huggingface_available = (
+                HUGGINGFACE_AVAILABLE and 
+                huggingface_service and 
+                huggingface_service.is_available()
+            )
+            
             logger.info(f"🏠 Local models available: {self.local_available}")
             logger.info(f"☁️ Cloud models available: {self.cloud_available}")
+            logger.info(f"🤗 HuggingFace models available: {self.huggingface_available}")
             
             if self.local_available:
                 models = ollama_status.get("gpt_oss_models", [])
@@ -144,6 +169,7 @@ class HybridLLMService:
         except Exception as e:
             logger.error(f"Error checking capabilities: {e}")
             self.local_available = False
+            self.huggingface_available = False
     
     async def route_request(self, 
                           task_type: str,
@@ -273,6 +299,42 @@ class HybridLLMService:
                 "cost": self._estimate_cost(provider, len(str(prompt)))
             }
             
+        elif provider == ProviderType.HF_FAST:
+            if not self.huggingface_available:
+                raise LLMError("HuggingFace not available")
+            
+            if isinstance(prompt, str):
+                response = await huggingface_service.generate_text(
+                    prompt, model_name="gpt-oss-20b", **kwargs
+                )
+            else:
+                response = await huggingface_service.generate_with_conversation_history(prompt)
+            
+            return {
+                "content": response,
+                "provider": "huggingface",
+                "model_used": "gpt-oss-20b",
+                "cost": self._estimate_cost(provider, len(str(prompt)))
+            }
+            
+        elif provider == ProviderType.HF_POWER:
+            if not self.huggingface_available:
+                raise LLMError("HuggingFace not available")
+            
+            if isinstance(prompt, str):
+                response = await huggingface_service.generate_text(
+                    prompt, model_name="gpt-oss-120b", **kwargs
+                )
+            else:
+                response = await huggingface_service.generate_with_conversation_history(prompt)
+            
+            return {
+                "content": response,
+                "provider": "huggingface",
+                "model_used": "gpt-oss-120b", 
+                "cost": self._estimate_cost(provider, len(str(prompt)))
+            }
+            
         else:
             raise LLMError(f"Provider {provider.value} not implemented")
     
@@ -283,6 +345,14 @@ class HybridLLMService:
         elif provider == ProviderType.CLOUD_GEMINI:
             # Rough estimate: $0.001 per 1000 characters
             return (prompt_length / 1000) * 0.001
+        elif provider == ProviderType.HF_FAST:
+            # HuggingFace gpt-oss-20b: $0.0002 per 1000 tokens (very competitive)
+            estimated_tokens = prompt_length // 4  # Rough character to token conversion
+            return (estimated_tokens / 1000) * 0.0002
+        elif provider == ProviderType.HF_POWER:
+            # HuggingFace gpt-oss-120b: $0.0008 per 1000 tokens
+            estimated_tokens = prompt_length // 4
+            return (estimated_tokens / 1000) * 0.0008
         else:
             return 0.01  # Default cloud cost estimate
     
@@ -336,6 +406,7 @@ Task: Analyze consistency and provide specific feedback on voice patterns.
         
         local_requests = len([m for m in recent_metrics if "local" in m.provider_used])
         cloud_requests = len([m for m in recent_metrics if "cloud" in m.provider_used])
+        hf_requests = len([m for m in recent_metrics if "huggingface" in m.provider_used])
         
         total_cost = sum(m.cost_estimate for m in recent_metrics)
         avg_response_time = sum(m.response_time for m in recent_metrics) / total_requests
@@ -354,8 +425,10 @@ Task: Analyze consistency and provide specific feedback on voice patterns.
                 "total_cost": f"${total_cost:.4f}",
                 "estimated_savings": f"${savings:.4f}",
                 "local_requests": local_requests,
+                "hf_requests": hf_requests,
                 "cloud_requests": cloud_requests,
-                "cost_efficiency": f"{(local_requests/total_requests*100):.1f}% free requests"
+                "cost_efficiency": f"{((local_requests)/total_requests*100):.1f}% free requests",
+                "low_cost_efficiency": f"{((local_requests + hf_requests)/total_requests*100):.1f}% free or low-cost requests"
             },
             "recommendations": self._get_optimization_recommendations()
         }
@@ -367,20 +440,39 @@ Task: Analyze consistency and provide specific feedback on voice patterns.
         
         recommendations = []
         
-        if not self.local_available:
+        if not self.local_available and not self.huggingface_available:
             recommendations.extend([
-                "🚀 Install Ollama for 100% cost savings on dialogue analysis",
-                "   Run: ollama pull gpt-oss:20b",
+                "🚀 Setup Options for Cost Savings:",
+                "   1. Local: Install Ollama (ollama pull gpt-oss:20b) - 100% free",
+                "   2. Cloud: Setup HuggingFace API - 90% cost reduction vs Gemini",
                 "   Expected savings: $50-200/month"
+            ])
+        elif not self.local_available and self.huggingface_available:
+            recommendations.extend([
+                "🏠 Consider local models for even greater savings:",
+                "   Run: ollama pull gpt-oss:20b",
+                "   Upgrade from low-cost to zero-cost inference"
+            ])
+        elif self.local_available and not self.huggingface_available:
+            recommendations.extend([
+                "🤗 Consider HuggingFace as cloud fallback:",
+                "   Setup HUGGINGFACE_API_KEY for better reliability",
+                "   Much cheaper than Gemini API for cloud requests"
             ])
         
         recent_failures = [m for m in self.metrics_history[-50:] if not m.success]
         if len(recent_failures) > 5:
-            recommendations.append("⚠️ Consider upgrading hardware for local model reliability")
+            recommendations.append("⚠️ Consider upgrading hardware for local model reliability or enable HuggingFace fallback")
         
-        cloud_usage = len([m for m in self.metrics_history[-50:] if "cloud" in m.provider_used])
+        cloud_usage = len([m for m in self.metrics_history[-50:] if "cloud_gemini" in m.provider_used])
         if cloud_usage > 25:
-            recommendations.append("💡 High cloud usage detected - local models could save significant costs")
+            recommendations.append("💰 High Gemini usage detected - HuggingFace models are 80% cheaper for same quality")
+        
+        hf_usage = len([m for m in self.metrics_history[-50:] if "huggingface" in m.provider_used])
+        local_usage = len([m for m in self.metrics_history[-50:] if "local" in m.provider_used])
+        
+        if hf_usage > local_usage and self.local_available:
+            recommendations.append("🏠 You're using more cloud HF than local - consider routing more tasks locally")
         
         return recommendations or ["✅ Your setup is optimally configured!"]
 

@@ -18,6 +18,7 @@ gemini_service = None
 openai_service = None
 ollama_service = None
 hybrid_service = None
+huggingface_service = None
 
 try:
     from .llm.base_service import get_prompt_template, PromptLibrary, LLMError
@@ -55,6 +56,17 @@ try:
     except Exception as e:
         logger.error(f"❌ Unexpected error importing Ollama service: {e}")
         ollama_service = None
+    
+    # NEW: Try importing HuggingFace service for cost-effective cloud inference
+    try:
+        from .llm.huggingface_service import huggingface_service
+        logger.info("🤗 HuggingFace service imported successfully")
+    except ImportError as e:
+        logger.warning(f"⚠️ HuggingFace service not available: {e}")
+        huggingface_service = None
+    except Exception as e:
+        logger.error(f"❌ Unexpected error importing HuggingFace service: {e}")
+        huggingface_service = None
     
     # NEW: Try importing Hybrid service for intelligent routing
     try:
@@ -113,6 +125,13 @@ class LLMService:
             else:
                 logger.warning("⚠️ Local gpt-oss provider not available")
             
+            # NEW: Add HuggingFace models if available
+            if huggingface_service and huggingface_service.is_available():
+                self.providers["HuggingFace gpt-oss"] = huggingface_service
+                logger.info("🤗 HuggingFace gpt-oss provider registered")
+            else:
+                logger.warning("⚠️ HuggingFace gpt-oss provider not available")
+            
             # NEW: Add Hybrid service if available
             if hybrid_service:
                 self.providers["Hybrid (Smart Routing)"] = hybrid_service
@@ -134,8 +153,15 @@ class LLMService:
             logger.warning("⚠️ No LLM providers available, defaulting to Google Gemini")
             return "Google Gemini"
             
-        # Prefer Gemini first, then OpenAI
-        for provider_name in ["Google Gemini", "OpenAI GPT"]:
+        # Prefer cost-effective options: Local → HuggingFace → Cloud
+        priority_order = [
+            "Local gpt-oss",           # Free, fast, private
+            "HuggingFace gpt-oss",     # Low cost, reliable cloud
+            "Google Gemini",           # Reliable cloud fallback  
+            "OpenAI GPT"               # Premium cloud option
+        ]
+        
+        for provider_name in priority_order:
             if provider_name in self.providers:
                 service = self.providers[provider_name]
                 if service.is_available():
