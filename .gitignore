@@ -124,6 +124,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.example
 .venv
 env/
 venv/
@@ -189,4 +190,7 @@ duplicate-report/
 html-report/
 coverage/
 .tox/
-.nox/ 
+.nox/ .env
+backend/.env
+backend/.env.example
+.env.example
