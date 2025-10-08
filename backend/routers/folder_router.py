@@ -8,6 +8,7 @@ import logging
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
+from typing import Union
 
 # Import models from centralized schemas
 from models.schemas import FolderCreate, FolderUpdate
@@ -27,9 +28,13 @@ router = APIRouter(
 )
 
 @router.get("")
-async def get_folders(user_id: int = Depends(get_current_user_id)):
+async def get_folders(user_id: Union[str, int] = Depends(get_current_user_id)):
     """Get all folders for the authenticated user"""
     try:
+        # Handle guest users: return empty folders list
+        if isinstance(user_id, str):
+            logger.info(f"Guest user {user_id} requesting folders - returning empty list")
+            return []
         folders = db_service.execute_query(
             """SELECT f.*, 
                (SELECT COUNT(*) FROM documents d WHERE d.folder_id = f.id) as document_count

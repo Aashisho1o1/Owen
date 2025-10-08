@@ -25,7 +25,7 @@ import json
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Dict, List, Optional, Any, Tuple, Callable, Union
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
@@ -62,7 +62,7 @@ class CacheResult:
 @dataclass 
 class UsageMetrics:
     """Usage tracking metrics"""
-    user_id: int
+    user_id: Union[str, int]
     endpoint: str
     tokens_used: int
     estimated_cost_cents: int
@@ -90,7 +90,7 @@ class RateLimiter:
         self.db = get_db_service()
         logger.info("🛡️ RateLimiter initialized with PostgreSQL backend")
     
-    async def check_limit(self, user_id: int, endpoint: str, tier: str = "free") -> RateLimitResult:
+    async def check_limit(self, user_id: Union[str, int], endpoint: str, tier: str = "free") -> RateLimitResult:
         """
         Check if user is within rate limits for endpoint.
         
@@ -151,14 +151,50 @@ class RateLimiter:
                 endpoint=endpoint
             )
     
-    async def get_user_tier(self, user_id: int) -> str:
+    async def get_user_tier(self, user_id) -> str:
         """
-        Get user's rate limiting tier.
-        For MVP, everyone is 'free'. Later, check user subscription.
+        Get user's rate limiting tier with guest detection.
+        
+        Engineering approach:
+        1. Check if user_id is a guest session (UUID format)
+        2. If regular user, check subscription tier (future enhancement)
+        3. Return appropriate tier for rate limiting
+        
+        Args:
+            user_id: Either integer (regular user) or UUID string (guest session)
+        
+        Returns:
+            str: 'guest', 'free', 'premium', or 'enterprise'
         """
-        # TODO: Implement actual tier checking based on user subscription
-        # For now, everyone gets free tier
-        return "free"
+        try:
+            # Check if this is a guest session (UUID format)
+            if isinstance(user_id, str):
+                # Guest sessions are UUIDs, regular user IDs are integers
+                import re
+                uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                if re.match(uuid_pattern, user_id):
+                    logger.debug(f"Detected guest session for rate limiting: {user_id}")
+                    return "guest"
+            
+            # Regular user - check their subscription tier
+            if isinstance(user_id, int):
+                # TODO: Implement actual tier checking based on user subscription
+                # For now, all registered users get free tier
+                # Future implementation:
+                # user = await self.db.execute_query(
+                #     "SELECT subscription_tier FROM users WHERE id = %s",
+                #     (user_id,), fetch='one'
+                # )
+                # return user.get('subscription_tier', 'free')
+                return "free"
+            
+            # Fallback for unexpected user_id format
+            logger.warning(f"Unexpected user_id format for tier detection: {user_id} ({type(user_id)})")
+            return "free"
+            
+        except Exception as e:
+            logger.error(f"Error determining user tier for {user_id}: {e}")
+            return "free"  # Fail-safe default
 
 class CacheProvider:
     """
@@ -454,7 +490,7 @@ class InfraService:
         
         logger.info("🏗️ InfraService initialized with PostgreSQL backend")
     
-    async def check_rate_limit(self, user_id: int, endpoint: str) -> RateLimitResult:
+    async def check_rate_limit(self, user_id: Union[str, int], endpoint: str) -> RateLimitResult:
         """Check rate limits for user and endpoint"""
         tier = await self.rate_limiter.get_user_tier(user_id)
         return await self.rate_limiter.check_limit(user_id, endpoint, tier)

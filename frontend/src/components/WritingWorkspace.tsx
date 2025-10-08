@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import HighlightableEditor from './HighlightableEditor';
 import ChatPane from './ChatPane';
 import DocumentManager from './DocumentManager';
@@ -9,6 +9,7 @@ import { useChatContext } from '../contexts/ChatContext';
 import { useEditorContext } from '../contexts/EditorContext';
 import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
+import { Document } from '../services/api/types'; // ✅ ADDED: Import Document type
 // Voice consistency analysis is now handled in HighlightableEditor
 import './WritingWorkspace.css';
 
@@ -30,7 +31,6 @@ export const WritingWorkspace: React.FC = () => {
   const { isChatVisible, toggleChat } = useChatContext();
   const { editorContent, setEditorContent } = useEditorContext();
   const {
-    createDocument,
     updateTitle,
     updateContent, // Add updateContent to connect editor changes to document management
     saveNow,
@@ -39,7 +39,7 @@ export const WritingWorkspace: React.FC = () => {
     hasUnsavedChanges,
     currentDocument,
     setCurrentDocument,
-    pendingContent, // Add pendingContent to access the current draft
+    // ✅ REMOVED: getDocument - no longer needed
   } = useDocuments();
 
   // Auth state for header
@@ -52,12 +52,12 @@ export const WritingWorkspace: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   
   // FIXED: Connect editor content changes to document management
-  const handleEditorContentChange = (content: string) => {
+  const handleEditorContentChange = useCallback((content: string) => {
     setEditorContent(content); // Update local editor state
     if (isAuthenticated && currentDocument) {
       updateContent(content); // Update document management state
     }
-  };
+  }, [isAuthenticated, currentDocument, updateContent, setEditorContent]);
 
   // Fiction Document Manager state
   const [showDocumentManager, setShowDocumentManager] = useState(false);
@@ -65,18 +65,26 @@ export const WritingWorkspace: React.FC = () => {
   // Story Generator state
   const [showStoryGenerator, setShowStoryGenerator] = useState(false);
 
-  // Initialize document on component mount
+  // Initialize document on component mount - FIXED: Don't create new documents automatically
   useEffect(() => {
     const initializeDocument = async () => {
       try {
         setIsLoading(true);
         
         if (isAuthenticated) {
-          // Create a new document for authenticated users
-          const newDoc = await createDocument('untitled doc');
-          setCurrentDocument(newDoc);
-          setDocumentTitle(newDoc.title);
-          setEditorContent(newDoc.content || ''); // Use actual content for new docs
+          // CRITICAL FIX: Check if there's already a current document
+          // Only create new document if user explicitly wants one
+          if (!currentDocument) {
+            // Start with empty state - let user choose to create or open existing
+            setDocumentTitle('');
+            setEditorContent('');
+            console.log('📋 WritingWorkspace: Ready for document selection');
+          } else {
+            // Use existing current document
+            setDocumentTitle(currentDocument.title);
+            setEditorContent(currentDocument.content || '');
+            console.log('📋 WritingWorkspace: Loaded existing document:', currentDocument.title);
+          }
         } else {
           // Guest mode - just set up local state
           setDocumentTitle('untitled doc');
@@ -99,22 +107,29 @@ export const WritingWorkspace: React.FC = () => {
     if (!authLoading && !isInitialized) {
       initializeDocument();
     }
-  }, [isAuthenticated, authLoading, isInitialized]); // FIXED: Remove unstable function references
+  }, [isAuthenticated, authLoading, isInitialized, currentDocument, setEditorContent]); // FIXED: Add all dependencies
 
-  // SYNC EFFECT: Keep editor content in sync with document management
+  // CRITICAL FIX: Simplified state sync - only sync when document changes, not on every content update
   useEffect(() => {
-    if (currentDocument && pendingContent !== editorContent) {
-      // Only sync if the pending content is different and not empty
-      // This prevents overwriting user input with empty server content
-      if (pendingContent && pendingContent.trim().length > 0) {
-        console.log('📝 Syncing editor with pending document content:', {
-          pendingContentLength: pendingContent.length,
-          editorContentLength: editorContent.length
+    if (currentDocument) {
+      // Only sync when switching to a different document
+      const isNewDocument = currentDocument.content !== editorContent;
+      const hasNoUserContent = !editorContent || editorContent.trim().length === 0;
+      
+      // Only overwrite editor content if:
+      // 1. It's a genuinely different document, AND
+      // 2. User hasn't typed anything yet, OR the document has actual content
+      if (isNewDocument && (hasNoUserContent || currentDocument.content)) {
+        console.log('📝 Loading document content into editor:', {
+          documentId: currentDocument.id,
+          documentTitle: currentDocument.title,
+          contentLength: currentDocument.content?.length || 0
         });
-        setEditorContent(pendingContent);
+        setEditorContent(currentDocument.content || '');
+        setDocumentTitle(currentDocument.title);
       }
     }
-  }, [pendingContent, editorContent, currentDocument]); // Sync when pending content changes
+  }, [currentDocument, editorContent, setEditorContent, setDocumentTitle]); // FIXED: Include currentDocument object
 
   // Handle auth modal - prevent opening when already authenticated
   const handleAuthModalOpen = () => {
@@ -163,34 +178,28 @@ export const WritingWorkspace: React.FC = () => {
     return lastSaved.toLocaleDateString();
   };
 
-  // Handle document selection from Fiction Document Manager
-  const handleDocumentSelect = (document: { id: string; title: string; content: string }) => {
-    // CRITICAL FIX: Update the document manager with proper Document structure
-    const fullDocument = {
-      ...document,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      user_id: 'current-user', // Will be properly set by the backend
-      word_count: document.content.length,
-      document_type: 'novel' as const
-    };
-    
+  // ✅ FIXED: Handle document selection from Fiction Document Manager
+  const handleDocumentSelect = (document: Document) => {
     console.log('📋 WritingWorkspace: Selecting document:', {
       documentId: document.id,
       title: document.title,
-      contentLength: document.content.length
+      wordCount: document.word_count,
+      updatedAt: document.updated_at
     });
     
-    // CRITICAL: Set the current document in the document management system
-    // This ensures that when content is saved, it goes to the RIGHT document
-    setCurrentDocument(fullDocument);
+    // ✅ The document from DocumentManager is ALREADY complete with all fields!
+    // This includes real timestamps, word_count, user_id, etc.
+    // No need for extra API call - just use it directly!
+    setCurrentDocument(document);
     
-    // Update local editor state to reflect the selected document
-    setEditorContent(document.content);
+    // ✅ Update local editor state to match the document
     setDocumentTitle(document.title);
+    setEditorContent(document.content || '');
+    
+    // Close the modal
     setShowDocumentManager(false);
     
-    console.log('✅ WritingWorkspace: Document selection complete');
+    console.log('✅ WritingWorkspace: Document loaded successfully');
   };
 
   // Handle returning to writing space from Document Manager
@@ -274,14 +283,20 @@ export const WritingWorkspace: React.FC = () => {
           )}
         </div>
         
-        {/* Document Title - Simplified and concise */}
+        {/* IMPROVED: Document Title with better context */}
         <div className="title-section">
           <input
             type="text"
             value={documentTitle}
             onChange={(e) => handleTitleChange(e.target.value)}
             className="document-title-input"
-            placeholder="untitled doc"
+            placeholder={currentDocument ? "Untitled Document" : (isAuthenticated ? "New Document (click Home to save)" : "Guest Draft")}
+            title={currentDocument ? 
+              `Editing "${currentDocument.title}" (ID: ${currentDocument.id})` : 
+              isAuthenticated ? 
+                "Create a new document from Home to save this content" : 
+                "Sign in and create a document to save your work"
+            }
           />
         </div>
         
@@ -298,18 +313,34 @@ export const WritingWorkspace: React.FC = () => {
             <span className="copy-text">{isChatVisible ? "Hide AI" : "Show AI"}</span>
           </button>
 
-          {/* Save Status - Only for authenticated users */}
+          {/* IMPROVED: Save Status with better user feedback */}
           {isAuthenticated && (
             <div className="save-status">
-              {isSaving && <span className="status-saving">Saving...</span>}
+              {isSaving && <span className="status-saving">💾 Saving...</span>}
               {!isSaving && hasUnsavedChanges && (
-                <button onClick={handleSaveNow} className="save-now-btn">
-                  Save Now
+                <button onClick={handleSaveNow} className="save-now-btn" title="Click to save your changes">
+                  💾 Save Now
                 </button>
               )}
-              {!isSaving && !hasUnsavedChanges && lastSaved && (
-                <span className="status-saved">Saved {formatLastSaved()}</span>
+              {!isSaving && !hasUnsavedChanges && lastSaved && currentDocument && (
+                <span className="status-saved" title={`Document "${currentDocument.title}" saved ${formatLastSaved()}`}>
+                  ✅ Saved {formatLastSaved()}
+                </span>
               )}
+              {!isSaving && !currentDocument && (
+                <span className="status-unsaved" title="Create a new document or open an existing one to save your work">
+                  📝 Unsaved draft
+                </span>
+              )}
+            </div>
+          )}
+          
+          {/* IMPROVED: Guest mode indicator */}
+          {!isAuthenticated && (
+            <div className="save-status guest-status">
+              <span className="status-guest" title="Sign in to save and manage your documents">
+                👤 Guest mode - Sign in to save
+              </span>
             </div>
           )}
         </div>
@@ -378,4 +409,4 @@ export const WritingWorkspace: React.FC = () => {
   );
 };
 
-export default WritingWorkspace; 
+export default WritingWorkspace;

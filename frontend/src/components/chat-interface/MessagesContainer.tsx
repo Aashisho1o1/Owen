@@ -19,7 +19,6 @@ interface MessagesContainerProps {
   onPromptClick: (prompt: string) => void;
   onTestConnection: () => Promise<void>;
   currentSuggestions?: SuggestionOption[];
-  clearSuggestions?: () => void;
 }
 
 /**
@@ -37,8 +36,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   isStreaming,
   onPromptClick,
   onTestConnection,
-  currentSuggestions = [],
-  clearSuggestions
+  currentSuggestions = []
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +48,21 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   
   // Smart auto-scroll state - only scroll when user is near bottom
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  
+  // NEW: Toggle state for highlighted section (Behavioral Psychology: User Control)
+  // Start expanded, then collapse after first message to save space but keep accessible
+  const [showHighlightedSection, setShowHighlightedSection] = useState(true);
+  
+  // Auto-collapse after first message is sent (but keep toggle visible)
+  useEffect(() => {
+    if (messages.length > 0 && showHighlightedSection) {
+      // Small delay to let user see the context is preserved
+      const timer = setTimeout(() => {
+        setShowHighlightedSection(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, showHighlightedSection]);
 
   // Handle user scroll to detect if they want auto-scroll or not
   const handleUserScroll = () => {
@@ -102,16 +115,33 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
         </div>
       )}
 
-      {/* Display an inline preview of the currently selected text
-          as soon as the user clicks "Ask AI". It remains visible
-          until the first related question is asked, after which it
-          gets anchored to that message via highlightedTextMessageIndex. */}
-      {highlightedText && highlightedText.trim() && highlightedTextMessageIndex === null && (
-        <HighlightedTextDisplay
-          highlightedText={highlightedText}
-          contextualPrompts={contextualPrompts}
-          onPromptClick={onPromptClick}
-        />
+      {/* Display collapsible highlighted section toggle - always visible when text is highlighted
+          This allows users to reference the context throughout the conversation */}
+      {highlightedText && highlightedText.trim() && (
+        <>
+          {/* Toggle Button - Behavioral Psychology: Progressive Disclosure */}
+          <button 
+            onClick={() => setShowHighlightedSection(!showHighlightedSection)}
+            className="highlight-section-toggle"
+            aria-expanded={showHighlightedSection}
+            aria-label={showHighlightedSection ? 'Hide highlighted section' : 'Show highlighted section'}
+          >
+            <span className="toggle-icon">{showHighlightedSection ? '📖' : '📝'}</span>
+            <span className="toggle-text">
+              {showHighlightedSection ? 'Hide Reference' : `Reference: "${highlightedText.substring(0, 40)}..."`}
+            </span>
+            <span className="toggle-arrow">{showHighlightedSection ? '▼' : '▶'}</span>
+          </button>
+          
+          {/* Collapsible Highlighted Section */}
+          {showHighlightedSection && (
+            <HighlightedTextDisplay
+              highlightedText={highlightedText}
+              contextualPrompts={contextualPrompts}
+              onPromptClick={onPromptClick}
+            />
+          )}
+        </>
       )}
       
       {/* Unhighlight Button - appears when text is highlighted */}
@@ -147,25 +177,13 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
         return (
           <div key={index}>
-            {/* Show current active highlighted text before this message */}
-            {shouldShowCurrentHighlight && (
-              <div className="inline-highlighted-text">
-                <HighlightedTextDisplay
-                  highlightedText={highlightedText}
-                  contextualPrompts={contextualPrompts}
-                  onPromptClick={onPromptClick}
-                />
-              </div>
-            )}
-            
-            {/* Show preserved highlighted text from this message's context */}
+            {/* Context Badge - Cursor-inspired minimal design */}
             {messageHasHighlightedText && msg.role === 'user' && (
-              <div className="inline-highlighted-text">
-                <HighlightedTextDisplay
-                  highlightedText={msg.highlightedText!}
-                  contextualPrompts={contextualPrompts}
-                  onPromptClick={onPromptClick}
-                />
+              <div className="message-context-badge">
+                <span className="context-icon">📝</span>
+                <span className="context-preview">
+                  Context: "{msg.highlightedText!.substring(0, 30)}..."
+                </span>
               </div>
             )}
             
@@ -218,6 +236,91 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           color: #7c3aed;
         }
         
+        /* NEW: Highlight Section Toggle Button */
+        .highlight-section-toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 10px 16px;
+          margin-bottom: 12px;
+          background: rgba(59, 130, 246, 0.05);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          border-radius: 8px;
+          color: #3b82f6;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          position: relative;
+        }
+        
+        .highlight-section-toggle::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: #3b82f6;
+          border-radius: 8px 0 0 8px;
+          opacity: 0.6;
+        }
+        
+        .highlight-section-toggle:hover {
+          background: rgba(59, 130, 246, 0.1);
+          border-color: rgba(59, 130, 246, 0.3);
+          transform: translateY(-1px);
+        }
+        
+        .toggle-icon {
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+        
+        .toggle-text {
+          flex: 1;
+          text-align: left;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        
+        .toggle-arrow {
+          font-size: 12px;
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
+        }
+        
+        /* NEW: Message Context Badge */
+        .message-context-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          margin-bottom: 8px;
+          background: rgba(156, 163, 175, 0.08);
+          border: 1px solid rgba(156, 163, 175, 0.15);
+          border-radius: 16px;
+          color: #6b7280;
+          font-size: 11px;
+          font-weight: 500;
+        }
+        
+        .context-icon {
+          font-size: 12px;
+          opacity: 0.8;
+        }
+        
+        .context-preview {
+          font-style: italic;
+          opacity: 0.9;
+          max-width: 300px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        
         @media (max-width: 768px) {
           .premium-status-bar {
             padding: 6px 12px;
@@ -225,6 +328,20 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
           
           .status-message {
             font-size: 0.75rem;
+          }
+          
+          .highlight-section-toggle {
+            padding: 8px 12px;
+            font-size: 12px;
+          }
+          
+          .message-context-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+          }
+          
+          .context-preview {
+            max-width: 200px;
           }
         }
       `}</style>

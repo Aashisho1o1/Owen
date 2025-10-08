@@ -91,26 +91,47 @@ export const useDocuments = (): UseDocumentsReturn => {
   const lastContentRef = useRef<string>('');
   const lastTitleRef = useRef<string>('');
 
-  // Auto-save function
+  // FIXED: Auto-save function with optimized dependencies to prevent infinite loops
   const performAutoSave = useCallback(async () => {
-    if (!state.currentDocument || !state.hasUnsavedChanges) return;
+    // Get current state values to avoid stale closures
+    const currentDoc = state.currentDocument;
+    const hasChanges = state.hasUnsavedChanges;
+    const isSaving = state.isSaving;
+    const pendingContent = state.pendingContent;
+    const pendingTitle = state.pendingTitle;
 
-    const contentChanged = state.pendingContent !== lastContentRef.current;
-    const titleChanged = state.pendingTitle !== lastTitleRef.current;
+    if (!currentDoc || !hasChanges || isSaving) {
+      console.log('⏸️ Auto-save skipped:', { hasDoc: !!currentDoc, hasChanges, isSaving });
+      return;
+    }
 
-    if (!contentChanged && !titleChanged) return;
+    const contentChanged = pendingContent !== lastContentRef.current;
+    const titleChanged = pendingTitle !== lastTitleRef.current;
+
+    if (!contentChanged && !titleChanged) {
+      console.log('⏸️ Auto-save skipped: no actual changes detected');
+      return;
+    }
 
     try {
-      setState(prev => ({ ...prev, isSaving: true }));
+      setState(prev => ({ ...prev, isSaving: true, error: null }));
       
       const updates: Partial<Document> = {};
-      if (contentChanged) updates.content = state.pendingContent;
-      if (titleChanged) updates.title = state.pendingTitle;
+      if (contentChanged) updates.content = pendingContent;
+      if (titleChanged) updates.title = pendingTitle;
 
-      await api.updateDocument(state.currentDocument.id, updates);
+      console.log('🔄 Auto-saving document:', {
+        documentId: currentDoc.id,
+        contentChanged,
+        titleChanged,
+        contentLength: pendingContent.length
+      });
+
+      await api.updateDocument(currentDoc.id, updates);
       
-      lastContentRef.current = state.pendingContent;
-      lastTitleRef.current = state.pendingTitle;
+      // Update refs to track what was saved
+      lastContentRef.current = pendingContent;
+      lastTitleRef.current = pendingTitle;
       
       setState(prev => ({
         ...prev,
@@ -123,28 +144,41 @@ export const useDocuments = (): UseDocumentsReturn => {
           updated_at: new Date().toISOString()
         } : null
       }));
+      
+      console.log('✅ Auto-save completed successfully');
     } catch (error) {
       const apiError = error as ApiError;
+      console.error('❌ Auto-save failed:', error);
       setState(prev => ({ 
         ...prev, 
         isSaving: false, 
         error: apiError.response?.data?.detail || apiError.message || 'Failed to save document' 
       }));
     }
-  }, [state.currentDocument, state.hasUnsavedChanges, state.pendingContent, state.pendingTitle]);
+  }, [state]); // Simplified dependency - just the state object
 
-  // Setup auto-save timer
+  // FIXED: Setup auto-save timer with proper dependencies - removed pendingContent and pendingTitle
+  // to prevent constant timer resets that block auto-save execution
   useEffect(() => {
-    if (state.hasUnsavedChanges && state.currentDocument) {
+    // Clear any existing timer first
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    
+    // Only set new timer if we have unsaved changes and a current document and not already saving
+    if (state.hasUnsavedChanges && state.currentDocument && !state.isSaving) {
+      console.log('⏰ Setting auto-save timer for 2 seconds');
       autoSaveTimerRef.current = setTimeout(performAutoSave, 2000);
     }
     
     return () => {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
       }
     };
-  }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument]);
+  }, [performAutoSave, state.hasUnsavedChanges, state.currentDocument, state.isSaving]); // CRITICAL: Removed pendingContent and pendingTitle
 
   // FIXED: Add request deduplication to prevent duplicate API calls
   const fetchInProgress = useRef(false);
@@ -172,15 +206,16 @@ export const useDocuments = (): UseDocumentsReturn => {
       return;
     }
 
-    // FIXED: Prevent duplicate requests for same user
+    // FIXED: Improved request deduplication - only prevent overlapping requests, allow explicit refreshes
     const currentUserId = user.user_id;
     if (fetchInProgress.current) {
       console.log('🔄 useDocuments: Request already in progress, skipping');
       return;
     }
 
-    if (lastUserId.current === currentUserId && state.documents.length > 0) {
-      console.log('📊 useDocuments: Data already loaded for current user');
+    // Allow refresh if user changed OR if documents array is empty (failed previous load)
+    if (lastUserId.current === currentUserId && state.documents.length > 0 && !state.error) {
+      console.log('📊 useDocuments: Data already loaded for current user, skipping');
       return;
     }
 
@@ -245,8 +280,14 @@ export const useDocuments = (): UseDocumentsReturn => {
   }, [user, state.documents.length, isAuthLoading]);
 
   useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    // CRITICAL FIX: Only fetch data after auth initialization completes
+    // This prevents premature API calls that trigger 403 → logout loops
+    if (!isAuthLoading) {
+      fetchAllData();
+    } else {
+      console.log('🔄 useDocuments: Waiting for auth initialization to complete...');
+    }
+  }, [fetchAllData, isAuthLoading]);
 
   // Document CRUD operations
   const createDocument = async (
@@ -570,8 +611,9 @@ export const useDocuments = (): UseDocumentsReturn => {
     }
   }, [state.currentDocument, state.pendingContent, state.pendingTitle, state.hasUnsavedChanges]);
 
-  // Utility functions
+  // Utility functions - FIXED: Consistent word count calculation
   const getWordCount = (text: string): number => {
+    if (!text || typeof text !== 'string') return 0;
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
@@ -603,9 +645,15 @@ export const useDocuments = (): UseDocumentsReturn => {
     getWordCount,
     getDocumentsByFolder,
     getTotalWordCount,
-    refreshAll: fetchAllData,
+    refreshAll: useCallback(async () => {
+      // FIXED: Force refresh by clearing cache and reloading data
+      console.log('🔄 useDocuments: Force refreshing all data');
+      fetchInProgress.current = false;
+      lastUserId.current = null;
+      setState(prev => ({ ...prev, error: null }));
+      await fetchAllData();
+    }, [fetchAllData]),
   };
 };
 
- 
  

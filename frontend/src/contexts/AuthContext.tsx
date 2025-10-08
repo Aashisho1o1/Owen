@@ -8,6 +8,7 @@ import React, {
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import { useSafeState } from '../hooks/useSafeState';
+import { updateApiClientToken } from '../services/api/client'; // CRITICAL: Import token sync function
 // Note: Auth functions are implemented within this context
 // import { getStoredTokens } from '../services/api/auth';
 
@@ -58,6 +59,7 @@ interface AuthContextType {
   // Actions
   login: (data: LoginData) => Promise<boolean>;
   register: (data: RegisterData) => Promise<boolean>;
+  createGuestSession: () => Promise<boolean>;  // NEW: Guest session creation
   logout: () => void;
   updateProfile: (data: { display_name?: string; email?: string }) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -138,8 +140,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('owen_token_type', tokens.token_type);
       localStorage.setItem('owen_token_expires', (Date.now() + tokens.expires_in * 1000).toString());
       
-      // Set axios default auth header
+      // Set axios default auth header for AuthContext instance
       apiInstance.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
+      
+      // CRITICAL: Also update the shared apiClient instance!
+      updateApiClientToken(tokens.access_token, tokens.token_type);
+      console.log('🔄 Token synchronized across all axios instances');
     } catch (err) {
       logger.error('Error storing tokens:', err);
     }
@@ -160,7 +166,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('expires_at');
       localStorage.removeItem('owen_expires_in'); // Remove old key format
       
+      // Clear from AuthContext instance
       delete apiInstance.defaults.headers.common['Authorization'];
+      
+      // CRITICAL: Also clear from shared apiClient instance!
+      updateApiClientToken(null);
+      console.log('🧹 Tokens cleared from all axios instances');
     } catch (err) {
       logger.error('Error clearing tokens:', err);
     }
@@ -291,7 +302,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [refreshToken, getStoredTokens]);
 
-  // Initialize authentication state - FIXED: Remove problematic dependencies
+  // Initialize authentication state - CRITICAL FIX: Empty dependency array
   useEffect(() => {
     const initializeAuth = async () => {
       if (isInitialized) return; // Prevent multiple initializations
@@ -304,6 +315,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const tokens = getStoredTokens();
         if (tokens) {
           console.log('🔍 Found stored tokens, validating...');
+          
+          // CRITICAL: Sync token to apiClient immediately
+          updateApiClientToken(tokens.access_token, tokens.token_type);
           
           // Try to get user profile to verify token validity
           const success = await loadUserProfile();
@@ -330,7 +344,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     initializeAuth();
-  }, [isInitialized]); // FIXED: Include isInitialized in dependency array
+  }, []); // CRITICAL FIX: Empty dependency array - run only once on mount
 
   // Add token expiration listener
   useEffect(() => {
@@ -359,6 +373,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('token_type');
       localStorage.removeItem('expires_at');
       localStorage.removeItem('owen_expires_in'); // Remove old key format
+      
+      // CRITICAL: Clear from apiClient too
+      updateApiClientToken(null);
       
       // Reset expiration handling flag after a short delay
       setTimeout(() => {
@@ -389,9 +406,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       console.log('🔐 STEP 3: Storing tokens...');
-      // Store tokens
+      // Store tokens (this will sync to apiClient automatically)
       storeTokens({ access_token, refresh_token, token_type, expires_in });
-      console.log('🔐 STEP 3: ✅ Tokens stored successfully');
+      console.log('🔐 STEP 3: ✅ Tokens stored and synchronized successfully');
       
       console.log('🔐 STEP 4: Setting user data...');
       // Set user data
@@ -413,10 +430,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         method: (err as any)?.config?.method
       });
       
-      const errorMessage =
-        axios.isAxiosError(err) && err.response?.data?.detail
-          ? (err.response.data as any).detail
-          : 'Login failed. Please try again.';
+      // Handle detailed error messages from backend
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        
+        // Check if it's a detailed validation error
+        if (typeof detail === 'object' && detail.validation_errors) {
+          // Extract the most relevant error message
+          const validationErrors = detail.validation_errors;
+          if (validationErrors.length > 0) {
+            errorMessage = validationErrors[0].message;
+          } else if (detail.message) {
+            errorMessage = detail.message;
+          }
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
       setError(errorMessage);
       logger.error('Login error:', err);
       return false;
@@ -443,7 +476,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
-      // Store tokens
+      // Store tokens (this will sync to apiClient automatically)
       storeTokens({ access_token, refresh_token, token_type, expires_in });
       
       // Set user data
@@ -461,10 +494,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         config: (err as any)?.config
       });
       
-      const errorMessage =
-        axios.isAxiosError(err) && err.response?.data?.detail
-          ? (err.response.data as any).detail
-          : 'Registration failed. Please try again.';
+      // Handle detailed error messages from backend
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        
+        // Check if it's a detailed validation error
+        if (typeof detail === 'object' && detail.validation_errors) {
+          // Extract the most relevant error message
+          const validationErrors = detail.validation_errors;
+          if (validationErrors.length > 0) {
+            errorMessage = validationErrors[0].message;
+          } else if (detail.message) {
+            errorMessage = detail.message;
+          }
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
       setError(errorMessage);
       logger.error('Registration error:', err);
       return false;
@@ -513,6 +562,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const createGuestSession = async (): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    // Debug logging
+    console.log('🎯 Guest session creation:', { 
+      apiUrl: API_URL,
+      fullUrl: `${API_URL}/api/auth/guest`
+    });
+    
+    try {
+      console.log('🎯 STEP 1: Making guest session API request...');
+      const response = await apiInstance.post('/api/auth/guest');
+      console.log('🎯 STEP 2: ✅ Guest session API request successful:', response.data);
+      
+      const { access_token, token_type, expires_in, user: userProfile } = response.data;
+
+      console.log('🎯 STEP 3: Storing guest tokens...');
+      // Store tokens (no refresh token for guests) - this will sync to apiClient automatically
+      storeTokens({ 
+        access_token, 
+        refresh_token: '', // Guests don't get refresh tokens
+        token_type, 
+        expires_in 
+      });
+      console.log('🎯 STEP 3: ✅ Guest tokens stored and synchronized successfully');
+      
+      console.log('🎯 STEP 4: Setting guest user data...');
+      // Set user data (includes guest-specific info)
+      setUser({
+        ...userProfile,
+        preferences: {
+          onboarding_completed: true, // Skip onboarding for guests
+          user_corrections: [],
+          writing_style_profile: {},
+          writing_type: 'fiction',
+          feedback_style: 'constructive',
+          primary_goal: 'try_features'
+        },
+        onboarding_completed: true
+      });
+      setIsAuthenticated(true);
+      console.log('🎯 STEP 4: ✅ Guest user data set successfully');
+      
+      logger.log('Guest session created successfully', { 
+        username: userProfile.username,
+        sessionType: 'guest',
+        expiresIn: expires_in 
+      });
+      console.log('🎯 STEP 5: ✅ Guest session completed successfully');
+      return true;
+    } catch (err) {
+      console.error('🎯 ❌ Guest session creation failed:', {
+        error: err,
+        status: (err as any)?.response?.status,
+        statusText: (err as any)?.response?.statusText,
+        data: (err as any)?.response?.data,
+        config: (err as any)?.config,
+        url: (err as any)?.config?.url,
+        method: (err as any)?.config?.method
+      });
+      
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data?.detail
+          ? (err.response.data as any).detail
+          : 'Failed to create guest session. Please try again.';
+      setError(errorMessage);
+      logger.error('Guest session creation error:', err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -524,6 +647,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error,
     login,
     register,
+    createGuestSession,
     logout,
     updateProfile,
     changePassword,

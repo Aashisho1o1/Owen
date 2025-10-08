@@ -40,8 +40,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.max_request_size = 10 * 1024 * 1024
         
         # FIXED: Add burst allowance for legitimate users (initial page load)
-        self.burst_allowance = 10       # Allow 10 requests in first 10 seconds
-        self.burst_window = 10          # 10 seconds burst window
+        # CRITICAL FIX: Increase burst allowance for React Strict Mode + multiple useDocuments instances
+        self.burst_allowance = 25       # Allow 25 requests in first 15 seconds (React Strict Mode compatible)
+        self.burst_window = 15          # 15 seconds burst window
         
         # Enhanced security headers configuration (2025 OWASP standards)
         self.security_headers = {
@@ -114,18 +115,24 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             # 1. Check if IP is blocked
             if client_ip in self.blocked_ips:
                 logger.warning(f"Blocked IP attempted access: {client_ip}")
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=429,
                     content={"error": "IP temporarily blocked due to excessive requests"}
                 )
+                # CRITICAL FIX: Add CORS headers to blocked IP responses
+                self._add_security_headers(response)
+                return response
             
             # 2. Rate limiting
             if not self._check_rate_limit(client_ip):
                 logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=429,
                     content={"error": "Rate limit exceeded. Please try again later."}
                 )
+                # CRITICAL FIX: Add CORS headers to rate-limited responses
+                self._add_security_headers(response)
+                return response
             
             # 3. Request size validation
             if not await self._validate_request_size(request):

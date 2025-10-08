@@ -58,8 +58,51 @@ export const useAuthFormValidation = () => {
         if (!String(value)) {
           return 'Password is required';
         }
-        if (String(value).length < 8) {
-          return 'Password must be at least 8 characters long';
+        if (mode === 'signup') {
+          // Detailed password validation for signup
+          const password = String(value);
+          const issues = [];
+          
+          if (password.length < 8) {
+            issues.push('be at least 8 characters long');
+          }
+          
+          if (!/[A-Z]/.test(password)) {
+            issues.push('contain at least one uppercase letter (A-Z)');
+          }
+          
+          if (!/[a-z]/.test(password)) {
+            issues.push('contain at least one lowercase letter (a-z)');
+          }
+          
+          if (!/[0-9]/.test(password)) {
+            issues.push('contain at least one number (0-9)');
+          }
+          
+          // Check for common weak passwords
+          const weakPasswords = [
+            'password', '12345678', 'qwerty123', 'abc12345', 'password123',
+            '11111111', '87654321', 'qwertyui', 'password1', '123456789'
+          ];
+          
+          if (weakPasswords.includes(password.toLowerCase())) {
+            issues.push('not be a commonly used password');
+          }
+          
+          if (issues.length > 0) {
+            if (issues.length === 1) {
+              return `Password must ${issues[0]}`;
+            } else if (issues.length === 2) {
+              return `Password must ${issues[0]} and ${issues[1]}`;
+            } else {
+              return `Password must ${issues.slice(0, -1).join(', ')}, and ${issues[issues.length - 1]}`;
+            }
+          }
+        } else {
+          // Simple validation for login
+          if (String(value).length < 8) {
+            return 'Password must be at least 8 characters long';
+          }
         }
         break;
 

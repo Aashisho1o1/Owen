@@ -1,1 +1,2 @@
-Force deployment: Thu Jul  3 20:53:20 PDT 2025 - Reverting to working authentication commit af16a4a
+# Update the trigger file with current timestamp
+echo "Force deployment: $(date) - Testing new GitHub repository connection" > .railway-trigger

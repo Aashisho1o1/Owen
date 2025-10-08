@@ -219,6 +219,9 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     setSelection(null);
   }, [selection, setHighlightedText, handleTextHighlighted, isChatVisible, openChatWithText]);
   
+  // Add debounce ref for content updates
+  const updateDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -228,7 +231,16 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
     content: contentProp || '',
     onUpdate: async ({ editor }) => {
       const newContent = editor.getHTML();
-      onChangeProp(newContent);
+      
+      // Debounce content updates to prevent excessive saves
+      if (updateDebounceRef.current) {
+        clearTimeout(updateDebounceRef.current);
+      }
+      
+      // Update content immediately for responsive UI
+      updateDebounceRef.current = setTimeout(() => {
+        onChangeProp(newContent);
+      }, 300); // Back to 300ms debounce for stability
       
       // Only run voice analysis for authenticated users with sufficient content
       // CONDITIONAL LOGIC: Only run voice analysis if VoiceGuard is enabled
@@ -551,6 +563,12 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
         voiceInconsistencyObserver.current = null;
       }
       
+      // Clean up update debounce timer
+      if (updateDebounceRef.current) {
+        clearTimeout(updateDebounceRef.current);
+        updateDebounceRef.current = null;
+      }
+      
       window.removeEventListener('applyActiveDiscussionHighlight', handleActiveDiscussionHighlight as EventListener);
     };
   }, [editor]);
@@ -686,14 +704,16 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   // Auto-focus editor when component mounts or when user clicks
   useEffect(() => {
     if (editor && editorRef.current) {
+      const currentEditorRef = editorRef.current; // Fix: Copy ref to variable
+      
       // Set up click handler to focus editor
       const handleContainerClick = (e: MouseEvent) => {
-        if (e.target === editorRef.current || editorRef.current?.contains(e.target as Node)) {
+        if (e.target === currentEditorRef || currentEditorRef?.contains(e.target as Node)) {
           editor.commands.focus();
         }
       };
       
-      editorRef.current.addEventListener('click', handleContainerClick);
+      currentEditorRef.addEventListener('click', handleContainerClick);
       
       // Auto-focus on mount to show cursor immediately
       setTimeout(() => {
@@ -701,7 +721,7 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
       }, 200);
       
       return () => {
-        editorRef.current?.removeEventListener('click', handleContainerClick);
+        currentEditorRef?.removeEventListener('click', handleContainerClick);
       };
     }
   }, [editor]);
@@ -791,4 +811,4 @@ const HighlightableEditor: React.FC<HighlightableEditorProps> = ({
   );
 };
 
-export default HighlightableEditor; 
+export default HighlightableEditor;

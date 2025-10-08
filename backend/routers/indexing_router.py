@@ -8,13 +8,14 @@ from pydantic import BaseModel
 import asyncio
 
 from dependencies import get_current_user_id
-from services.indexing import HybridIndexer
+from services.indexing.hybrid_indexer import get_hybrid_indexer
 
 # Initialize router
 router = APIRouter(prefix="/api/indexing", tags=["indexing"])
 
-# Initialize indexer (in production, this would be a singleton)
-indexer = HybridIndexer(collection_name="documents")
+# Initialize indexer using singleton pattern for memory optimization
+# MEMORY OPTIMIZATION: Reuses same instance instead of creating new 400MB+ models
+indexer = get_hybrid_indexer(collection_name="documents")
 
 # Request/Response models
 class IndexDocumentRequest(BaseModel):

@@ -4,6 +4,7 @@ interface PasswordInputProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   disabled?: boolean;
   autoComplete?: string;
@@ -20,6 +21,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
   id,
   value,
   onChange,
+  onBlur,
   placeholder = "Enter your password",
   disabled = false,
   autoComplete = "current-password",
@@ -47,6 +49,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
           placeholder={placeholder}
           value={value}
           onChange={handleChange}
+          onBlur={onBlur}
           disabled={disabled}
           autoComplete={autoComplete}
           aria-describedby={ariaDescribedBy}
@@ -74,7 +77,15 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
       
       {showRequirements && (
         <div className="auth-password-requirements" id={`${id}-requirements`}>
-          <small>Password must be at least 8 characters long</small>
+          <small>
+            Password must:
+            <ul style={{ margin: '4px 0', paddingLeft: '16px', fontSize: '12px' }}>
+              <li>Be at least 8 characters long</li>
+              <li>Contain at least one uppercase letter (A-Z)</li>
+              <li>Contain at least one lowercase letter (a-z)</li>
+              <li>Contain at least one number (0-9)</li>
+            </ul>
+          </small>
         </div>
       )}
     </>

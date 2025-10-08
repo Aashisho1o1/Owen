@@ -4,9 +4,8 @@
  * Extracted from api.ts as part of God File refactoring.
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { clearAuthTokens, getStoredTokens, refreshToken } from './auth';
-import { logger } from '../utils/logger';
+import axios, { AxiosResponse } from 'axios';
+import { getStoredTokens } from './auth';
 
 // Use VITE_API_URL from environment variables - MUST be defined in .env file
 // Normalize API_URL to prevent double slashes (trailing slash issues)
@@ -47,15 +46,16 @@ const VOICE_ANALYSIS_TIMEOUT = 300000; // 5 minutes for voice analysis with buff
 // Token refresh state management
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (value: any) => void;
-  reject: (error: any) => void;
+  resolve: (value: unknown) => void;
+  reject: (error: unknown) => void;
 }> = [];
 
 // FIXED: Simple request deduplication to prevent duplicate API calls
-const pendingRequests = new Map<string, Promise<any>>();
+const pendingRequests = new Map<string, Promise<unknown>>();
 
-const createRequestKey = (config: any): string => {
-  return `${config.method}:${config.url}:${JSON.stringify(config.data || {})}`;
+const createRequestKey = (config: unknown): string => {
+  const configObj = config as { method?: string; url?: string; data?: unknown };
+  return `${configObj.method}:${configObj.url}:${JSON.stringify(configObj.data || {})}`;
 };
 
 // NEW: Clean up stale requests to prevent browser state accumulation
@@ -67,7 +67,7 @@ const cleanupStaleRequests = () => {
     // Check if promise is still pending by checking its state
     Promise.race([promise, Promise.resolve('__timeout__')])
       .then((result) => {
-        if (result === '__timeout__' || now - (promise as any)._timestamp > staleThreshold) {
+        if (result === '__timeout__' || now - ((promise as unknown) as { _timestamp: number })._timestamp > staleThreshold) {
           pendingRequests.delete(key);
           console.log(`🧹 Cleaned up stale request: ${key}`);
         }
@@ -82,7 +82,7 @@ const cleanupStaleRequests = () => {
 // Clean up stale requests every 30 seconds
 setInterval(cleanupStaleRequests, 30000);
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
@@ -92,6 +92,16 @@ const processQueue = (error: any, token: string | null = null) => {
   });
   
   failedQueue = [];
+};
+
+// CRITICAL FIX: Token synchronization function
+export const updateApiClientToken = (token: string | null, tokenType: string = 'Bearer') => {
+  console.log('🔄 Updating apiClient token:', token ? 'Token set' : 'Token cleared');
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `${tokenType} ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
 };
 
 const refreshTokens = async (): Promise<string | null> => {
@@ -123,6 +133,9 @@ const refreshTokens = async (): Promise<string | null> => {
     localStorage.setItem('owen_token_type', token_type);
     localStorage.setItem('owen_token_expires', (Date.now() + expires_in * 1000).toString());
     
+    // CRITICAL: Update apiClient with new token
+    updateApiClientToken(access_token, token_type);
+    
     return access_token;
   } catch (error) {
     console.error('❌ Token refresh failed:', error);
@@ -142,6 +155,9 @@ const refreshTokens = async (): Promise<string | null> => {
     
     tokenKeys.forEach(key => localStorage.removeItem(key));
     console.log('🧹 All tokens cleared after refresh failure');
+    
+    // CRITICAL: Clear token from apiClient
+    updateApiClientToken(null);
     
     throw error;
   }
@@ -170,7 +186,7 @@ apiClient.interceptors.request.use(
       
       // Create a new promise with timestamp for cleanup
       const requestPromise = Promise.resolve(config);
-      (requestPromise as any)._timestamp = Date.now();
+      ((requestPromise as unknown) as { _timestamp: number })._timestamp = Date.now();
       pendingRequests.set(requestKey, requestPromise);
     }
     
@@ -254,6 +270,23 @@ apiClient.interceptors.response.use(
     
     // Handle 401 AND 403 errors with token refresh
     if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+      // CRITICAL FIX: Check if we have a token before attempting refresh
+      // This prevents logout loops for unauthenticated users
+      const storedTokens = getStoredTokens();
+      if (!storedTokens.accessToken) {
+        // No token exists = user hasn't authenticated yet, this is expected behavior
+        console.log(`🔒 Got ${error.response?.status} but no token exists - user needs to authenticate first`);
+        // IMPORTANT: Don't trigger logout event - user was never logged in!
+        return Promise.reject(error);
+      }
+      
+      // CRITICAL FIX: Add refresh token guard for guest sessions
+      // Guest sessions have access tokens but no refresh tokens
+      if (!storedTokens.refreshToken) {
+        console.log('🧑‍🚀 Guest session detected (no refresh token) - skipping token refresh');
+        return Promise.reject(error);
+      }
+      
       // CRITICAL: Don't attempt token refresh for auth endpoints to prevent infinite loops
       const isAuthEndpoint = originalRequest.url && (
         originalRequest.url.includes('/api/auth/login') ||
@@ -315,6 +348,9 @@ apiClient.interceptors.response.use(
         tokenKeys.forEach(key => localStorage.removeItem(key));
         console.log('🧹 All tokens cleared after interceptor refresh failure');
         
+        // CRITICAL: Clear token from apiClient
+        updateApiClientToken(null);
+        
         // Dispatch token expired event ONLY once
         window.dispatchEvent(new CustomEvent('auth:token-expired'));
         
@@ -336,4 +372,4 @@ apiClient.interceptors.response.use(
   }
 );
 
-export default apiClient; 
+export default apiClient;
