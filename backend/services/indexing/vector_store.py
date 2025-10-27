@@ -36,19 +36,14 @@ class VectorStore:
             telemetry_settings = Settings(anonymized_telemetry=False)
             
             if is_railway:
-                # Railway: Use /tmp for session-persistent storage (memory optimization)
-                # /tmp survives container restarts and reduces RAM usage significantly
                 persist_directory = "/tmp/chroma_db"
-                telemetry_settings.persist_directory = persist_directory
-                telemetry_settings.is_persistent = True
-                self.client = chromadb.Client(telemetry_settings)
-            else:
-                # Local: Persistent storage
-                telemetry_settings.persist_directory = persist_directory
-                telemetry_settings.is_persistent = True
-                self.client = chromadb.Client(telemetry_settings)
-            
+            self.client = chromadb.PersistentClient(
+                path=persist_directory,
+                settings=chromadb.Settings(anonymized_telemetry=False)
+            )
+    
             print("✅ ChromaDB initialized successfully with telemetry disabled.")
+    
             
         except Exception as e:
             print(f"⚠️ ChromaDB initialization failed: {e}")
