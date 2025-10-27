@@ -6,12 +6,12 @@ and ultra-fast dialogue consistency checking using Ollama.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
 from ..services.llm_service import llm_service
-# from ..services.auth_service import get_current_user_optional  # TODO: Fix import
+from ..dependencies import get_current_user_id  # ✅ FIXED: Added authentication import
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +55,16 @@ async def get_local_ai_status():
         raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
 
 @router.get("/cost-analytics", response_model=Dict[str, Any])
-async def get_cost_analytics():
+async def get_cost_analytics(
+    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
+):
     """
     Get cost analytics and optimization recommendations
+    
+    🔒 PROTECTED: Requires authentication (JWT token in Authorization header)
     """
     try:
+        logger.info(f"Cost analytics requested by user {user_id}")
         analytics = await llm_service.get_llm_cost_analytics()
         return {
             "success": True,
@@ -67,24 +72,26 @@ async def get_cost_analytics():
             "message": "Cost analytics retrieved successfully"
         }
     except Exception as e:
-        logger.error(f"Error getting cost analytics: {e}")
+        logger.error(f"Error getting cost analytics for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
 
 # Fast Inference Endpoints
 @router.post("/quick-consistency-check", response_model=Dict[str, Any])
 async def quick_consistency_check(
     request: QuickConsistencyRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
 ):
     """
     Ultra-fast dialogue consistency check using local models when available
     
+    🔒 PROTECTED: Requires authentication (JWT token in Authorization header)
     Target performance: Sub-10 seconds, $0 cost when using local models
     """
     try:
         # Log usage for analytics (background task)
         def log_usage():
-            logger.info(f"Quick consistency check: {len(request.dialogue)} chars")
+            logger.info(f"Quick consistency check by user {user_id}: {len(request.dialogue)} chars")
         
         background_tasks.add_task(log_usage)
         
@@ -98,7 +105,7 @@ async def quick_consistency_check(
         result.update({
             "character_name": request.character_name,
             "dialogue_length": len(request.dialogue),
-            "user_type": "guest"  # TODO: Add proper auth
+            "user_id": user_id  # ✅ FIXED: Now tracks actual user
         })
         
         return {
@@ -114,11 +121,13 @@ async def quick_consistency_check(
 @router.post("/analyze-dialogue", response_model=Dict[str, Any])
 async def analyze_dialogue_comprehensive(
     request: DialogueAnalysisRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
 ):
     """
     Comprehensive dialogue analysis with hybrid model routing
     
+    🔒 PROTECTED: Requires authentication (JWT token in Authorization header)
     Automatically selects optimal model (local vs cloud) based on:
     - Model availability
     - Speed requirements  
@@ -136,7 +145,7 @@ async def analyze_dialogue_comprehensive(
         def log_analysis():
             segments_count = len(request.dialogue_segments)
             character_name = request.character_profile.get("name", "unknown")
-            logger.info(f"Dialogue analysis: {segments_count} segments, character: {character_name}")
+            logger.info(f"Dialogue analysis by user {user_id}: {segments_count} segments, character: {character_name}")
         
         background_tasks.add_task(log_analysis)
         
@@ -152,7 +161,7 @@ async def analyze_dialogue_comprehensive(
             "segments_analyzed": len(request.dialogue_segments),
             "character_name": request.character_profile.get("name"),
             "speed_priority": request.speed_priority,
-            "user_type": "guest"  # TODO: Add proper auth
+            "user_id": user_id  # ✅ FIXED: Now tracks actual user
         })
         
         return {
@@ -296,20 +305,25 @@ async def get_performance_comparison():
 
 # Background task for model optimization
 @router.post("/optimize-models", response_model=Dict[str, Any])
-async def optimize_models(background_tasks: BackgroundTasks):
+async def optimize_models(
+    background_tasks: BackgroundTasks,
+    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
+):
     """
     Trigger model optimization and cleanup (background task)
+    
+    🔒 PROTECTED: Requires authentication (JWT token in Authorization header)
     """
     try:
         def run_optimization():
             """Background optimization task"""
-            logger.info("Starting model optimization...")
+            logger.info(f"Starting model optimization for user {user_id}...")
             # In a real implementation, this would:
             # 1. Clear unused model cache
             # 2. Optimize memory usage
             # 3. Update model routing preferences
             # 4. Generate optimization report
-            logger.info("Model optimization completed")
+            logger.info(f"Model optimization completed for user {user_id}")
         
         background_tasks.add_task(run_optimization)
         
