@@ -187,16 +187,22 @@ class VectorStore:
             where=filter_dict
         )
         
-        # Format results
-        formatted_results = []
-        for i in range(len(results['ids'][0])):
-            formatted_results.append({
-                'id': results['ids'][0][i],
-                'text': results['documents'][0][i],
-                'metadata': results['metadatas'][0][i],
-                'distance': results['distances'][0][i],
-                'score': 1 - results['distances'][0][i]  # Convert distance to similarity score
-            })
+        # Format results - optimized using zip for better performance
+        formatted_results = [
+            {
+                'id': id_,
+                'text': text,
+                'metadata': metadata,
+                'distance': distance,
+                'score': 1 - distance  # Convert distance to similarity score
+            }
+            for id_, text, metadata, distance in zip(
+                results['ids'][0],
+                results['documents'][0],
+                results['metadatas'][0],
+                results['distances'][0]
+            )
+        ]
         
         return formatted_results
     
@@ -235,17 +241,22 @@ class VectorStore:
             }
         )
         
-        # Format and sort by chunk index
-        formatted_chunks = []
-        for i in range(len(chunks['ids'])):
-            formatted_chunks.append({
-                'id': chunks['ids'][i],
-                'text': chunks['documents'][i],
-                'metadata': chunks['metadatas'][i]
-            })
-        
-        # Sort by chunk index
-        formatted_chunks.sort(key=lambda x: x['metadata']['chunk_index'])
+        # Format and sort by chunk index - optimized using zip and sorted
+        formatted_chunks = sorted(
+            [
+                {
+                    'id': id_,
+                    'text': text,
+                    'metadata': metadata
+                }
+                for id_, text, metadata in zip(
+                    chunks['ids'],
+                    chunks['documents'],
+                    chunks['metadatas']
+                )
+            ],
+            key=lambda x: x['metadata']['chunk_index']
+        )
         
         return formatted_chunks
     

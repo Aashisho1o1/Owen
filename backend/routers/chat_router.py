@@ -86,7 +86,7 @@ router = APIRouter(
 )
 
 def build_conversation_context(chat_history: List[ChatMessage], max_history: int = 5) -> str:
-    """Build conversation context from chat history using sliding window approach"""
+    """Build conversation context from chat history using sliding window approach - optimized"""
     if not chat_history:
         return ""
     
@@ -96,12 +96,11 @@ def build_conversation_context(chat_history: List[ChatMessage], max_history: int
     if not recent_history:
         return ""
     
-    context_parts = []
-    for msg in recent_history:
-        role = "Human" if msg.role == "user" else "Assistant"
-        # Truncate very long messages to keep context manageable
-        content = msg.content[:500] + "..." if len(msg.content) > 500 else msg.content
-        context_parts.append(f"{role}: {content}")
+    # Optimized using list comprehension and generator expression
+    context_parts = [
+        f"{'Human' if msg.role == 'user' else 'Assistant'}: {msg.content[:500] + '...' if len(msg.content) > 500 else msg.content}"
+        for msg in recent_history
+    ]
     
     return "\n".join(context_parts)
 

@@ -140,20 +140,24 @@ class PathRetriever:
         # Calculate path importance scores
         path_scores = []
         
+        # Define weight mapping for better performance
+        relationship_weights = {
+            'CAUSES': 2.0,
+            'LEADS_TO': 2.0,
+            'RESULTS_IN': 2.0,
+            'SPEAKS_TO': 1.5,
+            'FEELS_ABOUT': 1.5
+        }
+        
         for path in paths:
-            # Calculate edge weights sum
+            # Calculate edge weights sum - optimized with enumerate
             edge_weight = 0
-            for i in range(len(path) - 1):
-                if self.graph.has_edge(path[i], path[i+1]):
-                    edge_data = self.graph[path[i]][path[i+1]]
+            for node1, node2 in zip(path[:-1], path[1:]):
+                if self.graph.has_edge(node1, node2):
+                    edge_data = self.graph[node1][node2]
                     # Weight based on relationship type and frequency
-                    weight = 1.0
-                    if 'type' in edge_data:
-                        # Prioritize certain relationship types
-                        if edge_data['type'] in ['CAUSES', 'LEADS_TO', 'RESULTS_IN']:
-                            weight = 2.0
-                        elif edge_data['type'] in ['SPEAKS_TO', 'FEELS_ABOUT']:
-                            weight = 1.5
+                    edge_type = edge_data.get('type')
+                    weight = relationship_weights.get(edge_type, 1.0)
                     edge_weight += weight
             
             # Apply distance penalty
@@ -169,10 +173,8 @@ class PathRetriever:
         covered_edges = set()
         
         for score, path in path_scores:
-            # Check if this path adds new information
-            path_edges = set()
-            for i in range(len(path) - 1):
-                path_edges.add((path[i], path[i+1]))
+            # Check if this path adds new information - optimized with set comprehension
+            path_edges = {(node1, node2) for node1, node2 in zip(path[:-1], path[1:])}
             
             # If path has unique edges, keep it
             if not path_edges.issubset(covered_edges):
@@ -212,12 +214,13 @@ class PathRetriever:
                         if any(word in label_lower for word in query_lower.split()):
                             node_relevance += 1.0
             
-            # 2. Path coherence (strong relationships)
+            # 2. Path coherence (strong relationships) - optimized with zip
             path_coherence = 0.0
-            for i in range(len(path) - 1):
-                if self.graph.has_edge(path[i], path[i+1]):
-                    edge_data = self.graph[path[i]][path[i+1]]
-                    if edge_data.get('type') in ['CAUSES', 'LEADS_TO', 'SPEAKS_TO']:
+            strong_relationships = {'CAUSES', 'LEADS_TO', 'SPEAKS_TO'}
+            for node1, node2 in zip(path[:-1], path[1:]):
+                if self.graph.has_edge(node1, node2):
+                    edge_data = self.graph[node1][node2]
+                    if edge_data.get('type') in strong_relationships:
                         path_coherence += 1.0
             
             # 3. Entity diversity (different types of entities)
@@ -366,19 +369,16 @@ class PathRetriever:
         return entities
     
     def _extract_path_relationships(self, path: List[str]) -> List[Dict[str, str]]:
-        """Extract relationship information from path"""
-        relationships = []
-        
-        for i in range(len(path) - 1):
-            if self.graph.has_edge(path[i], path[i+1]):
-                edge_data = self.graph[path[i]][path[i+1]]
-                relationships.append({
-                    'source': path[i],
-                    'target': path[i+1],
-                    'type': edge_data.get('type', 'RELATED_TO')
-                })
-        
-        return relationships
+        """Extract relationship information from path - optimized with list comprehension"""
+        return [
+            {
+                'source': node1,
+                'target': node2,
+                'type': self.graph[node1][node2].get('type', 'RELATED_TO')
+            }
+            for node1, node2 in zip(path[:-1], path[1:])
+            if self.graph.has_edge(node1, node2)
+        ]
     
     def get_character_context_paths(self, character_name: str, context_type: str = 'all') -> List[Dict[str, Any]]:
         """

@@ -100,6 +100,19 @@ COMMON_NON_CHARACTER_WORDS = {
     'september', 'october', 'november', 'december'
 }
 
+# Pre-compile regex patterns for better performance
+_COMPILED_PATTERNS = {
+    'html_tags': re.compile(r'<[^>]+>'),
+    'html_p_div_br': re.compile(r'<(?:p|div|br)[^>]*>', re.IGNORECASE),
+    'html_closing': re.compile(r'</(?:p|div)>', re.IGNORECASE),
+    'multiple_newlines': re.compile(r'\n\s*\n'),
+    'multiple_spaces': re.compile(r'[ \t]+'),
+    'three_plus_newlines': re.compile(r'\n{3,}'),
+    'dialogue_format': re.compile(r'([.!?])\s*([A-Z][a-zA-Z\s]{1,25}):\s*"'),
+    'json_array': re.compile(r'\[([^\]]*)\]'),
+    'json_object': re.compile(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', re.DOTALL)
+}
+
 class CharacterVoiceService:
     """
     Analyzes character voice consistency using the same successful pattern as contextual understanding.
@@ -396,8 +409,8 @@ Character names to validate: {potential_characters}"""
                 # Clean the response to extract just the JSON array
                 response_text = response_text.strip()
                 
-                # Look for JSON array pattern
-                json_match = re.search(r'\[([^\]]*)\]', response_text)
+                # Look for JSON array pattern - using pre-compiled pattern
+                json_match = _COMPILED_PATTERNS['json_array'].search(response_text)
                 if json_match:
                     json_text = json_match.group(0)
                     validated_characters = json.loads(json_text)
@@ -494,20 +507,19 @@ Character names to validate: {potential_characters}"""
             text = html.unescape(text)
             logger.debug(f"   HTML entities unescaped: {original_length} -> {len(text)} chars")
             
-            # Convert HTML structure to preserve dialogue formatting
-            text = re.sub(r'<(?:p|div|br)[^>]*>', '\n', text, flags=re.IGNORECASE)
-            text = re.sub(r'</(?:p|div)>', '\n', text, flags=re.IGNORECASE)
+            # Convert HTML structure to preserve dialogue formatting - using pre-compiled patterns
+            text = _COMPILED_PATTERNS['html_p_div_br'].sub('\n', text)
+            text = _COMPILED_PATTERNS['html_closing'].sub('\n', text)
             
-            # Remove all remaining HTML tags
-            html_tag_pattern = re.compile(r'<[^>]+>')
-            plain_text = html_tag_pattern.sub('', text)
+            # Remove all remaining HTML tags - using pre-compiled pattern
+            plain_text = _COMPILED_PATTERNS['html_tags'].sub('', text)
             logger.debug(f"   HTML tags removed: {len(text)} -> {len(plain_text)} chars")
             
-            # Clean whitespace while preserving dialogue structure
-            plain_text = re.sub(r'\n\s*\n', '\n\n', plain_text)
-            plain_text = re.sub(r'[ \t]+', ' ', plain_text)
+            # Clean whitespace while preserving dialogue structure - using pre-compiled patterns
+            plain_text = _COMPILED_PATTERNS['multiple_newlines'].sub('\n\n', plain_text)
+            plain_text = _COMPILED_PATTERNS['multiple_spaces'].sub(' ', plain_text)
             plain_text = '\n'.join(line.strip() for line in plain_text.split('\n'))
-            plain_text = re.sub(r'\n{3,}', '\n\n', plain_text)
+            plain_text = _COMPILED_PATTERNS['three_plus_newlines'].sub('\n\n', plain_text)
             plain_text = plain_text.strip()
             
             logger.debug(f"   Whitespace cleaned: {len(plain_text)} chars final")
@@ -523,8 +535,8 @@ Character names to validate: {potential_characters}"""
             # CRITICAL FIX: Ensure dialogue patterns have proper line breaks
             # This fixes the issue where "sentence.Alice: dialogue" becomes "sentence.\nAlice: dialogue"
             logger.info(f"🔧 Normalizing dialogue formatting...")
-            # Add line breaks before character dialogue patterns
-            text = re.sub(r'([.!?])\s*([A-Z][a-zA-Z\s]{1,25}):\s*"', r'\1\n\2: "', text)
+            # Add line breaks before character dialogue patterns - using pre-compiled pattern
+            text = _COMPILED_PATTERNS['dialogue_format'].sub(r'\1\n\2: "', text)
             logger.debug(f"   Dialogue formatting normalized")
             
             logger.info(f"🚀 SERVICE STEP 2: Extracting dialogue segments...")
@@ -796,8 +808,8 @@ EXECUTE STRICT CRITICAL ANALYSIS NOW. No mercy for poor dialogue.
                     analysis_data = json.loads(response_text.strip())
                     logger.info(f"✅ Successfully parsed complete response as JSON for {profile.character_name}")
                 except json.JSONDecodeError:
-                    # Extract JSON object using regex (fallback)
-                    json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_text, re.DOTALL)
+                    # Extract JSON object using regex (fallback) - using pre-compiled pattern
+                    json_match = _COMPILED_PATTERNS['json_object'].search(response_text)
                     if json_match:
                         try:
                             analysis_data = json.loads(json_match.group())
