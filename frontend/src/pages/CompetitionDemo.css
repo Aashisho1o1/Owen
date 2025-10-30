@@ -619,6 +619,159 @@
   font-size: 0.9rem;
 }
 
+/* Mode Selection (Co-Write / Brainstorm) */
+.mode-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.mode-btn {
+  background: white;
+  border: 3px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.mode-btn:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.mode-btn.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+.mode-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.mode-desc {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* Assistance Inputs */
+.assistance-inputs {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.assistance-inputs label {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.context-input {
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.context-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Completion Card (Co-Write) */
+.completion-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.completion-card h3 {
+  margin: 0 0 1.5rem 0;
+  color: #667eea;
+}
+
+.original-text,
+.completion-text {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.original-text {
+  background: #f7fafc;
+  border-left: 4px solid #a0aec0;
+}
+
+.completion-text {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-left: 4px solid #667eea;
+}
+
+.original-text strong,
+.completion-text strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+}
+
+.original-text p,
+.completion-text p {
+  margin: 0;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+/* Brainstorm Results */
+.brainstorm-results {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.brainstorm-results h3 {
+  margin: 0 0 1.5rem 0;
+  color: #667eea;
+}
+
+.idea-card {
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-left: 4px solid #667eea;
+  border-radius: 8px;
+}
+
+.idea-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.75rem;
+}
+
+.idea-desc,
+.idea-example {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+.idea-desc strong,
+.idea-example strong {
+  color: #2d3748;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .dialogue-row {

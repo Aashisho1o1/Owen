@@ -5,16 +5,24 @@
  * 1. Dialogue Consistency Checker
  * 2. Classic Author Feedback
  * 3. Writing Help Categorization
+ * 4. Co-Write & Brainstorm Modes
  *
  * Chrome Built-in AI Challenge 2025
  * Strategy: Simple, focused, impressive
  */
 
 import React, { useState, useEffect } from 'react';
-import { geminiService, DialogueAnalysisResult, AuthorFeedback, WritingHelpCategory } from '../services/gemini.service';
+import {
+  geminiService,
+  DialogueAnalysisResult,
+  AuthorFeedback,
+  WritingHelpCategory,
+  WritingAssistanceResult,
+  AssistanceMode
+} from '../services/gemini.service';
 import './CompetitionDemo.css';
 
-type Feature = 'dialogue' | 'author' | 'categorize';
+type Feature = 'dialogue' | 'author' | 'categorize' | 'assistance';
 
 const SAMPLE_DIALOGUES = {
   consistent: [
@@ -60,6 +68,12 @@ export const CompetitionDemo: React.FC = () => {
   // Categorization state
   const [categorizeText, setCategorizeText] = useState('');
   const [category, setCategory] = useState<WritingHelpCategory | null>(null);
+
+  // Writing assistance state
+  const [assistanceText, setAssistanceText] = useState('');
+  const [assistanceMode, setAssistanceMode] = useState<AssistanceMode>('co-write');
+  const [assistanceContext, setAssistanceContext] = useState('');
+  const [assistanceResult, setAssistanceResult] = useState<WritingAssistanceResult | null>(null);
 
   // Initialize Gemini on mount if API key in localStorage
   useEffect(() => {
@@ -174,6 +188,38 @@ export const CompetitionDemo: React.FC = () => {
     }
   };
 
+  const getWritingAssistance = async () => {
+    if (!assistanceText.trim()) {
+      setError('Please enter some text');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setAssistanceResult(null);
+
+    try {
+      const result = await geminiService.getWritingAssistance(
+        assistanceText,
+        assistanceMode,
+        assistanceContext.trim() || undefined
+      );
+      setAssistanceResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSampleAssistance = () => {
+    setAssistanceText(
+      `Sarah stared at the letter. Her hands shook as she read the words again. "We regret to inform you..." The rest blurred.`
+    );
+    setAssistanceContext('Mystery novel. Sarah just received rejection from detective academy. She has a dark secret.');
+    setAssistanceResult(null);
+  };
+
   // API Key Setup Screen
   if (!isInitialized) {
     return (
@@ -187,6 +233,7 @@ export const CompetitionDemo: React.FC = () => {
               <span className="badge">✅ Dialogue Consistency Checker</span>
               <span className="badge">✅ Classic Author Feedback</span>
               <span className="badge">✅ Writing Help Categorization</span>
+              <span className="badge">✅ Co-Write & Brainstorm Modes</span>
             </div>
 
             <div className="setup-form">
@@ -240,6 +287,12 @@ export const CompetitionDemo: React.FC = () => {
           onClick={() => setActiveFeature('categorize')}
         >
           🎯 Writing Help
+        </button>
+        <button
+          className={`tab ${activeFeature === 'assistance' ? 'active' : ''}`}
+          onClick={() => setActiveFeature('assistance')}
+        >
+          ✍️ Co-Write & Brainstorm
         </button>
       </div>
 
@@ -485,6 +538,115 @@ export const CompetitionDemo: React.FC = () => {
                   ))}
                 </ul>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Feature 4: Writing Assistance (Co-Write & Brainstorm) */}
+      {activeFeature === 'assistance' && (
+        <div className="feature-section">
+          <div className="section-header">
+            <h2>Writing Assistance</h2>
+            <p>Choose your level of AI help: Co-Write or Brainstorm</p>
+          </div>
+
+          {/* Mode Selection */}
+          <div className="mode-selection">
+            <button
+              className={`mode-btn ${assistanceMode === 'co-write' ? 'active' : ''}`}
+              onClick={() => setAssistanceMode('co-write')}
+            >
+              <div className="mode-title">✍️ Co-Write Mode</div>
+              <div className="mode-desc">AI continues your text directly</div>
+            </button>
+            <button
+              className={`mode-btn ${assistanceMode === 'brainstorm' ? 'active' : ''}`}
+              onClick={() => setAssistanceMode('brainstorm')}
+            >
+              <div className="mode-title">💡 Brainstorm Mode</div>
+              <div className="mode-desc">Get creative ideas and directions</div>
+            </button>
+          </div>
+
+          <div className="sample-buttons">
+            <button onClick={loadSampleAssistance} className="btn-sample">
+              Load Sample
+            </button>
+          </div>
+
+          <div className="assistance-inputs">
+            <label>Your Writing:</label>
+            <textarea
+              value={assistanceText}
+              onChange={(e) => setAssistanceText(e.target.value)}
+              placeholder="Paste your writing here..."
+              className="large-textarea"
+              rows={6}
+            />
+
+            <label>Context (Optional):</label>
+            <input
+              type="text"
+              value={assistanceContext}
+              onChange={(e) => setAssistanceContext(e.target.value)}
+              placeholder="e.g., Mystery novel. Character just discovered a clue."
+              className="context-input"
+            />
+          </div>
+
+          <button
+            onClick={getWritingAssistance}
+            disabled={isLoading}
+            className="btn-primary"
+          >
+            {isLoading ? 'Analyzing...' : `Get ${assistanceMode === 'co-write' ? 'Co-Write' : 'Brainstorm'} Help`}
+          </button>
+
+          {/* Assistance Results */}
+          {assistanceResult && (
+            <div className="results-section">
+              {assistanceResult.mode === 'co-write' && assistanceResult.completion && (
+                <div className="completion-card">
+                  <h3>✍️ AI Continuation</h3>
+                  <div className="original-text">
+                    <strong>Your text:</strong>
+                    <p>{assistanceResult.originalText}</p>
+                  </div>
+                  <div className="completion-text">
+                    <strong>Continuation:</strong>
+                    <p>{assistanceResult.completion}</p>
+                  </div>
+                </div>
+              )}
+
+              {assistanceResult.mode === 'brainstorm' && assistanceResult.ideas && (
+                <div className="brainstorm-results">
+                  <h3>💡 Creative Directions</h3>
+                  {assistanceResult.ideas.map((idea, idx) => (
+                    <div key={idx} className="idea-card">
+                      <div className="idea-title">{idea.direction}</div>
+                      <div className="idea-desc">
+                        <strong>Why this works:</strong> {idea.description}
+                      </div>
+                      <div className="idea-example">
+                        <strong>Example:</strong> {idea.example}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {assistanceResult.suggestions && assistanceResult.suggestions.length > 0 && (
+                <div className="suggestions-card">
+                  <h4>💡 General Tips</h4>
+                  <ul>
+                    {assistanceResult.suggestions.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

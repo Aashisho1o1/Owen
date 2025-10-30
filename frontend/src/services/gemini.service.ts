@@ -50,6 +50,22 @@ export interface WritingHelpCategory {
   suggestions: string[];
 }
 
+export type AssistanceMode = 'co-write' | 'brainstorm';
+
+export interface WritingAssistanceResult {
+  mode: AssistanceMode;
+  originalText: string;
+  suggestions: string[];
+  // Co-Write mode: Direct completion/continuation
+  completion?: string;
+  // Brainstorm mode: Ideas and directions
+  ideas?: Array<{
+    direction: string;
+    description: string;
+    example: string;
+  }>;
+}
+
 // Configuration
 const SAFETY_SETTINGS = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -283,6 +299,150 @@ Respond ONLY with valid JSON:
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new Error('Failed to categorize writing');
+    }
+  }
+
+  /**
+   * Get writing assistance based on mode
+   *
+   * Co-Write mode: Direct completion/continuation of text
+   * Brainstorm mode: Ideas and creative directions
+   *
+   * @param text Current writing
+   * @param mode Assistance mode
+   * @param context Optional context about the story/character
+   * @returns Assistance based on selected mode
+   */
+  async getWritingAssistance(
+    text: string,
+    mode: AssistanceMode,
+    context?: string
+  ): Promise<WritingAssistanceResult> {
+    if (!this.isReady()) {
+      throw new Error('Gemini service not initialized');
+    }
+
+    if (mode === 'co-write') {
+      return this.getCoWriteAssistance(text, context);
+    } else {
+      return this.getBrainstormAssistance(text, context);
+    }
+  }
+
+  /**
+   * Co-Write mode: Direct text completion
+   * AI acts as co-author, continuing your writing
+   */
+  private async getCoWriteAssistance(
+    text: string,
+    context?: string
+  ): Promise<WritingAssistanceResult> {
+    const prompt = `You are a creative writing co-author. Continue this text naturally.
+
+${context ? `CONTEXT: ${context}\n\n` : ''}TEXT TO CONTINUE:
+"""
+${text}
+"""
+
+Write 2-3 sentences that continue this text. Match the voice, tone, and style EXACTLY.
+
+Respond ONLY with valid JSON:
+{
+  "completion": "your continuation here (2-3 sentences)",
+  "suggestions": [
+    "tip 1 about maintaining voice",
+    "tip 2 about plot/character development",
+    "tip 3 about pacing or style"
+  ]
+}`;
+
+    try {
+      const result = await this.model!.generateContent(prompt);
+      const response = result.response.text();
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Invalid response format');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        mode: 'co-write',
+        originalText: text,
+        completion: parsed.completion,
+        suggestions: parsed.suggestions,
+      };
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      throw new Error('Failed to get co-write assistance');
+    }
+  }
+
+  /**
+   * Brainstorm mode: Creative ideas and directions
+   * AI suggests possibilities without writing for you
+   */
+  private async getBrainstormAssistance(
+    text: string,
+    context?: string
+  ): Promise<WritingAssistanceResult> {
+    const prompt = `You are a creative writing brainstorm partner. Suggest creative directions for this text.
+
+${context ? `CONTEXT: ${context}\n\n` : ''}CURRENT TEXT:
+"""
+${text}
+"""
+
+Suggest 3 different creative directions this writing could take. For each:
+- Give a compelling direction/angle
+- Explain why it works
+- Provide a brief example
+
+Respond ONLY with valid JSON:
+{
+  "ideas": [
+    {
+      "direction": "Direction title (e.g., 'Add tension through conflict')",
+      "description": "Why this works and what it achieves",
+      "example": "Brief example of how this could play out"
+    },
+    {
+      "direction": "Second direction",
+      "description": "Why this approach",
+      "example": "Example"
+    },
+    {
+      "direction": "Third direction",
+      "description": "Why this works",
+      "example": "Example"
+    }
+  ],
+  "suggestions": [
+    "General tip 1",
+    "General tip 2",
+    "General tip 3"
+  ]
+}`;
+
+    try {
+      const result = await this.model!.generateContent(prompt);
+      const response = result.response.text();
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Invalid response format');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        mode: 'brainstorm',
+        originalText: text,
+        ideas: parsed.ideas,
+        suggestions: parsed.suggestions,
+      };
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      throw new Error('Failed to get brainstorm assistance');
     }
   }
 
