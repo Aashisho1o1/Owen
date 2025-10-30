@@ -11,7 +11,6 @@ import AuthModal from './AuthModal';
 import UserProfileModal from './UserProfileModal';
 import { Document } from '../services/api/types'; // ✅ ADDED: Import Document type
 // Voice consistency analysis is now handled in HighlightableEditor
-import './WritingWorkspace.css';
 
 /**
  * WritingWorkspace - Clean layout component with single responsibility
