@@ -132,15 +132,20 @@ async def get_documents(
         )
         
         # Format response
+        # Optimized document formatting with list comprehension would change dict in-place
+        # So we keep the loop but optimize the tag parsing
         for doc in documents:
             doc['created_at'] = doc['created_at'].isoformat() if doc['created_at'] else None
             doc['updated_at'] = doc['updated_at'].isoformat() if doc['updated_at'] else None
-            # Ensure tags is a list
-            if isinstance(doc.get('tags'), str):
+            # Ensure tags is a list - optimized with faster type checking
+            tags = doc.get('tags')
+            if isinstance(tags, str):
                 try:
-                    doc['tags'] = json.loads(doc['tags'])
-                except:
+                    doc['tags'] = json.loads(tags)
+                except (json.JSONDecodeError, ValueError):
                     doc['tags'] = []
+            elif not tags:
+                doc['tags'] = []
         
         return {
             "documents": documents,

@@ -19,6 +19,18 @@ from ..llm.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
 
+# Pre-defined query expansions for better performance
+_QUERY_EXPANSIONS = {
+    'letter': ['note', 'message', 'correspondence', 'mail', 'writing'],
+    'character': ['person', 'protagonist', 'hero', 'villain', 'figure'],
+    'gave': ['handed', 'delivered', 'passed', 'sent', 'provided'],
+    'received': ['got', 'obtained', 'accepted', 'took'],
+    'wrote': ['written', 'penned', 'composed', 'authored'],
+    'said': ['told', 'spoke', 'mentioned', 'stated', 'expressed'],
+    'went': ['traveled', 'moved', 'headed', 'departed'],
+    'found': ['discovered', 'located', 'uncovered', 'encountered'],
+}
+
 class HybridIndexer:
     """
     Unified interface for hybrid document indexing combining:
@@ -1165,45 +1177,46 @@ Answer:"""
             return None
 
     def _extract_smart_excerpt(self, content: str, query: str, max_length: int = 1000) -> str:
-        """Extract the most relevant excerpt from content based on query"""
+        """Extract the most relevant excerpt from content based on query - optimized"""
         try:
-            # Split into sentences
+            # Split into sentences - optimized
             sentences = [s.strip() for s in content.replace('\n', ' ').split('.') if s.strip()]
             
             if len(sentences) <= 3:
                 return content[:max_length]
             
-            # Simple scoring: more query words = higher score
+            # Simple scoring: more query words = higher score - pre-compute query words
             query_words = set(query.lower().split())
+            num_sentences = len(sentences)
             
-            sentence_scores = []
-            for i, sentence in enumerate(sentences):
-                words = set(sentence.lower().split())
-                score = len(query_words.intersection(words))
-                # Boost score for sentences in the middle (often contain more context)
-                if len(sentences) > 5 and len(sentences) * 0.2 < i < len(sentences) * 0.8:
-                    score += 1
-                sentence_scores.append((score, i, sentence))
+            # Optimize scoring with list comprehension
+            sentence_scores = [
+                (
+                    len(query_words.intersection(set(sentence.lower().split()))) +
+                    (1 if num_sentences > 5 and num_sentences * 0.2 < i < num_sentences * 0.8 else 0),
+                    i,
+                    sentence
+                )
+                for i, sentence in enumerate(sentences)
+            ]
             
             # Sort by score and get top sentences
             sentence_scores.sort(key=lambda x: x[0], reverse=True)
             
-            # Take top scoring sentences and some context
-            selected_indices = set()
-            for score, idx, _ in sentence_scores[:3]:  # Top 3 sentences
-                if score > 0:  # Only if there's some relevance
-                    # Add context sentences around the selected one
-                    for i in range(max(0, idx-1), min(len(sentences), idx+2)):
-                        selected_indices.add(i)
+            # Take top scoring sentences and some context - optimized with set comprehension
+            selected_indices = {
+                context_i
+                for score, idx, _ in sentence_scores[:3]  # Top 3 sentences
+                if score > 0  # Only if there's some relevance
+                for context_i in range(max(0, idx-1), min(num_sentences, idx+2))
+            }
             
             if not selected_indices:
                 # Fallback: take first part of document
                 return content[:max_length]
             
-            # Create excerpt from selected sentences
-            selected_indices = sorted(selected_indices)
-            excerpt_sentences = [sentences[i] for i in selected_indices]
-            excerpt = '. '.join(excerpt_sentences) + '.'
+            # Create excerpt from selected sentences - optimized
+            excerpt = '. '.join(sentences[i] for i in sorted(selected_indices)) + '.'
             
             return excerpt[:max_length] + "..." if len(excerpt) > max_length else excerpt
             
@@ -1307,28 +1320,19 @@ Answer:"""
             return None
 
     def _expand_query_terms(self, query: str) -> List[str]:
-        """Expand query with related terms for better matching"""
+        """Expand query with related terms for better matching - optimized"""
         query_lower = query.lower()
-        terms = [query_lower]
         
-        # Common expansions for writing-related queries
-        expansions = {
-            'letter': ['note', 'message', 'correspondence', 'mail', 'writing'],
-            'character': ['person', 'protagonist', 'hero', 'villain', 'figure'],
-            'gave': ['handed', 'delivered', 'passed', 'sent', 'provided'],
-            'received': ['got', 'obtained', 'accepted', 'took'],
-            'wrote': ['written', 'penned', 'composed', 'authored'],
-            'said': ['told', 'spoke', 'mentioned', 'stated', 'expressed'],
-            'went': ['traveled', 'moved', 'headed', 'departed'],
-            'found': ['discovered', 'located', 'uncovered', 'encountered'],
-        }
+        # Add expansions for words in the query - optimized with set and list comprehension
+        expanded_terms = {query_lower}  # Use set for automatic deduplication
+        expanded_terms.update(
+            expansion
+            for word in query_lower.split()
+            if word in _QUERY_EXPANSIONS
+            for expansion in _QUERY_EXPANSIONS[word]
+        )
         
-        # Add expansions for words in the query
-        for word in query_lower.split():
-            if word in expansions:
-                terms.extend(expansions[word])
-        
-        return list(set(terms))  # Remove duplicates
+        return list(expanded_terms)
 
 
 # Factory function for convenient singleton access

@@ -30,6 +30,14 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     )
 
 def calculate_word_count(content: str) -> int:
-    """Calculate word count"""
-    return len(content.split()) if content else 0 
+    """
+    Calculate word count - optimized for performance.
+    Uses simple whitespace splitting which is faster than more complex tokenization.
+    """
+    if not content:
+        return 0
+    
+    # Simple whitespace splitting is faster than regex for word counting
+    # and sufficient for most use cases
+    return len(content.split()) 
  
