@@ -1,1 +1,0 @@
-web: echo "🚀 Procfile starting (DEBUG MODE)..." && cd backend && echo "📁 Changed to backend directory" && chmod +x start_simple.sh && echo "🔧 Made start_simple.sh executable" && ./start_simple.sh 

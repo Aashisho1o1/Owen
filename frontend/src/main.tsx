@@ -2,19 +2,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { ThemeProvider } from './contexts/ThemeContext'
-import { AppProvider } from './contexts/AppContext'
-import { AuthProvider } from './contexts/AuthContext'
-import './styles/global.css'
-import './styles/editor.css'
-import './styles/suggestions-compact-fix.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <AuthProvider>
-    <ThemeProvider>
-      <AppProvider>
-        <App />
-      </AppProvider>
-    </ThemeProvider>
-  </AuthProvider>
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 )
