@@ -27,11 +27,13 @@ class DatabaseService:
         try:
             self.pool = await asyncpg.create_pool(
                 self.database_url,
-                min_size=2,
-                max_size=10,
-                command_timeout=60
+                min_size=5,
+                max_size=20,
+                command_timeout=30,
+                max_queries=50000,
+                max_inactive_connection_lifetime=300
             )
-            logger.info("✅ Database connected")
+            logger.info("✅ Database connected with optimized pool")
         except Exception as e:
             logger.error(f"❌ Database connection failed: {e}")
             self.pool = None

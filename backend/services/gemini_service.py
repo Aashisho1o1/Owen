@@ -5,7 +5,9 @@ Replaces llm_service with focused Gemini API integration
 
 import os
 import logging
+import hashlib
 from typing import List, Dict, Any, Optional
+from functools import lru_cache
 import google.generativeai as genai
 import json
 
@@ -15,6 +17,7 @@ class GeminiService:
     """
     Simplified Gemini service for voice consistency analysis.
     Handles dialogue extraction and character voice analysis using Gemini API.
+    Includes response caching for improved performance.
     """
 
     def __init__(self):
@@ -26,6 +29,27 @@ class GeminiService:
             logger.info("✅ Gemini service initialized")
 
         self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self._response_cache: Dict[str, Any] = {}
+        self._cache_max_size = 100
+
+    def _get_cache_key(self, prompt: str) -> str:
+        """Generate cache key from prompt."""
+        return hashlib.md5(prompt.encode()).hexdigest()
+
+    def _get_cached_response(self, prompt: str) -> Optional[Any]:
+        """Get cached response if available."""
+        cache_key = self._get_cache_key(prompt)
+        return self._response_cache.get(cache_key)
+
+    def _cache_response(self, prompt: str, response: Any) -> None:
+        """Cache a response with size limit."""
+        if len(self._response_cache) >= self._cache_max_size:
+            # Remove oldest entry (simple FIFO)
+            first_key = next(iter(self._response_cache))
+            del self._response_cache[first_key]
+        
+        cache_key = self._get_cache_key(prompt)
+        self._response_cache[cache_key] = response
 
     async def extract_dialogue(self, text: str) -> List[Dict[str, Any]]:
         """
@@ -55,17 +79,33 @@ Rules:
 - Confidence: 1.0 = explicit speaker, 0.8 = inferred, 0.5 = uncertain
 """
 
+        # Check cache first
+        cached = self._get_cached_response(prompt)
+        if cached is not None:
+            logger.info("✅ Using cached dialogue extraction")
+            return cached
+
         try:
             response = self.model.generate_content(prompt)
             result_text = response.text.strip()
 
-            # Extract JSON from response
-            json_start = result_text.find('{')
-            json_end = result_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                json_str = result_text[json_start:json_end]
-                data = json.loads(json_str)
-                return data.get('dialogues', [])
+            # Optimized JSON extraction - try direct parse first
+            data = None
+            try:
+                # Try parsing the entire response as JSON
+                data = json.loads(result_text)
+            except json.JSONDecodeError:
+                # Fall back to finding JSON boundaries
+                json_start = result_text.find('{')
+                json_end = result_text.rfind('}') + 1
+                if json_start != -1 and json_end > json_start:
+                    json_str = result_text[json_start:json_end]
+                    data = json.loads(json_str)
+
+            if data:
+                dialogues = data.get('dialogues', [])
+                self._cache_response(prompt, dialogues)
+                return dialogues
 
             logger.error("❌ No valid JSON in Gemini response")
             return []
@@ -134,16 +174,30 @@ Return ONLY valid JSON in this format:
 }}
 """
 
+        # Check cache first
+        cached = self._get_cached_response(prompt)
+        if cached is not None:
+            logger.info(f"✅ Using cached voice analysis for {character_name}")
+            return cached
+
         try:
             response = self.model.generate_content(prompt)
             result_text = response.text.strip()
 
-            # Extract JSON
-            json_start = result_text.find('{')
-            json_end = result_text.rfind('}') + 1
-            if json_start != -1 and json_end > json_start:
-                json_str = result_text[json_start:json_end]
-                return json.loads(json_str)
+            # Optimized JSON extraction
+            analysis = None
+            try:
+                analysis = json.loads(result_text)
+            except json.JSONDecodeError:
+                json_start = result_text.find('{')
+                json_end = result_text.rfind('}') + 1
+                if json_start != -1 and json_end > json_start:
+                    json_str = result_text[json_start:json_end]
+                    analysis = json.loads(json_str)
+
+            if analysis:
+                self._cache_response(prompt, analysis)
+                return analysis
 
             logger.error("❌ No valid JSON in voice analysis response")
             return self._default_analysis()

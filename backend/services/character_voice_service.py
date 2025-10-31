@@ -3,6 +3,7 @@ Character Voice Service - Simplified for competition
 Uses Gemini for all analysis (no regex extraction)
 """
 
+import asyncio
 import logging
 from typing import List, Dict, Any, Optional
 from services.gemini_service import gemini_service
@@ -76,20 +77,20 @@ class CharacterVoiceService:
 
         logger.info(f"👥 Found {len(character_dialogues)} unique characters")
 
-        # Step 4: Analyze each character
-        results = []
-        for character_name, dialogue_samples in character_dialogues.items():
+        # Step 4: Analyze all characters in parallel for better performance
+        async def analyze_character(character_name: str, dialogue_samples: List[str]) -> Dict[str, Any]:
+            """Analyze a single character's voice consistency."""
             logger.info(f"🎯 Analyzing {character_name} ({len(dialogue_samples)} samples)...")
-
+            
             existing_profile = profiles.get(character_name)
-
+            
             # Analyze with Gemini
             analysis = await gemini_service.analyze_voice_consistency(
                 character_name,
                 dialogue_samples,
                 existing_profile
             )
-
+            
             result = {
                 "character_name": character_name,
                 "is_consistent": analysis.get("is_consistent", True),
@@ -99,9 +100,7 @@ class CharacterVoiceService:
                 "suggestions": analysis.get("suggestions", []),
                 "flagged_text": dialogue_samples[0] if not analysis.get("is_consistent") else None
             }
-
-            results.append(result)
-
+            
             # Update database
             if db_service.is_available():
                 success = await db_service.upsert_character_profile(
@@ -112,11 +111,29 @@ class CharacterVoiceService:
                 )
                 if success:
                     logger.info(f"✅ Updated profile for {character_name}")
+            
+            return result
+        
+        # Execute all character analyses in parallel
+        analysis_tasks = [
+            analyze_character(char_name, samples)
+            for char_name, samples in character_dialogues.items()
+        ]
+        results = await asyncio.gather(*analysis_tasks, return_exceptions=True)
+        
+        # Filter out any exceptions and log them
+        valid_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                char_name = list(character_dialogues.keys())[i]
+                logger.error(f"❌ Failed to analyze {char_name}: {result}")
+            else:
+                valid_results.append(result)
 
-        logger.info(f"✅ Analysis complete: {len(results)} characters analyzed")
+        logger.info(f"✅ Analysis complete: {len(valid_results)} characters analyzed")
 
         return {
-            "results": results,
+            "results": valid_results,
             "characters_analyzed": len(character_dialogues),
             "dialogue_segments_found": len(dialogues)
         }

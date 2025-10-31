@@ -90,6 +90,9 @@ class GeminiService {
   private genAI: GoogleGenerativeAI | null = null;
   private model: GenerativeModel | null = null;
   private isInitialized = false;
+  private responseCache: Map<string, unknown> = new Map();
+  private pendingRequests: Map<string, Promise<unknown>> = new Map();
+  private readonly CACHE_MAX_SIZE = 50;
 
   private constructor() {}
 
@@ -125,6 +128,61 @@ class GeminiService {
   }
 
   /**
+   * Generate cache key from content
+   */
+  private getCacheKey(content: string): string {
+    // Simple hash function for cache key
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+  }
+
+  /**
+   * Get cached response if available
+   */
+  private getCachedResponse<T>(key: string): T | null {
+    return this.responseCache.get(key) || null;
+  }
+
+  /**
+   * Cache a response with size limit (LRU-like behavior)
+   */
+  private cacheResponse(key: string, response: unknown): void {
+    if (this.responseCache.size >= this.CACHE_MAX_SIZE) {
+      // Remove oldest entry (first item)
+      const firstKey = this.responseCache.keys().next().value;
+      this.responseCache.delete(firstKey);
+    }
+    this.responseCache.set(key, response);
+  }
+
+  /**
+   * Deduplicate concurrent requests
+   */
+  private async deduplicateRequest<T>(
+    key: string,
+    requestFn: () => Promise<T>
+  ): Promise<T> {
+    // Check if request is already in progress
+    const pending = this.pendingRequests.get(key);
+    if (pending) {
+      return pending as Promise<T>;
+    }
+
+    // Start new request
+    const request = requestFn().finally(() => {
+      this.pendingRequests.delete(key);
+    });
+
+    this.pendingRequests.set(key, request);
+    return request;
+  }
+
+  /**
    * Analyze dialogue for voice consistency
    *
    * @param dialogues Array of {speaker, text} objects
@@ -137,7 +195,19 @@ class GeminiService {
       throw new Error('Gemini service not initialized');
     }
 
-    const prompt = `You are an expert literary voice analyst specializing in character dialogue consistency.
+    // Create cache key from dialogue content
+    const cacheKey = 'dialogue_' + this.getCacheKey(JSON.stringify(dialogues));
+    
+    // Check cache first
+    const cached = this.getCachedResponse<DialogueAnalysisResult[]>(cacheKey);
+    if (cached) {
+      console.log('Using cached dialogue analysis');
+      return cached;
+    }
+
+    // Deduplicate concurrent requests
+    return this.deduplicateRequest(cacheKey, async () => {
+      const prompt = `You are an expert literary voice analyst specializing in character dialogue consistency.
 
 Analyze these dialogue pieces for voice consistency:
 
@@ -175,21 +245,30 @@ Respond ONLY with valid JSON (no markdown):
   }
 ]`;
 
-    try {
-      const result = await this.model!.generateContent(prompt);
-      const response = result.response.text();
+      try {
+        const result = await this.model!.generateContent(prompt);
+        const response = result.response.text();
 
-      // Extract JSON from response
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error('Invalid response format from Gemini');
+        // Extract JSON from response - try direct parse first
+        let parsed: DialogueAnalysisResult[];
+        try {
+          parsed = JSON.parse(response);
+        } catch {
+          const jsonMatch = response.match(/\[[\s\S]*\]/);
+          if (!jsonMatch) {
+            throw new Error('Invalid response format from Gemini');
+          }
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+
+        // Cache the result
+        this.cacheResponse(cacheKey, parsed);
+        return parsed;
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        throw new Error('Failed to analyze dialogue consistency');
       }
-
-      return JSON.parse(jsonMatch[0]) as DialogueAnalysisResult[];
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      throw new Error('Failed to analyze dialogue consistency');
-    }
+    });
   }
 
   /**
@@ -209,7 +288,19 @@ Respond ONLY with valid JSON (no markdown):
       throw new Error('Gemini service not initialized');
     }
 
-    const prompt = `You are a literary expert specializing in ${author}'s writing style.
+    // Create cache key
+    const cacheKey = 'author_' + this.getCacheKey(`${text}_${author}_${includeRewrite}`);
+    
+    // Check cache first
+    const cached = this.getCachedResponse<AuthorFeedback>(cacheKey);
+    if (cached) {
+      console.log('Using cached author feedback');
+      return cached;
+    }
+
+    // Deduplicate concurrent requests
+    return this.deduplicateRequest(cacheKey, async () => {
+      const prompt = `You are a literary expert specializing in ${author}'s writing style.
 
 Analyze this text and compare it to ${author}'s distinctive voice:
 
@@ -238,20 +329,29 @@ Respond ONLY with valid JSON:
   ${includeRewrite ? ',"rewrittenSample": "rewritten text"' : ''}
 }`;
 
-    try {
-      const result = await this.model!.generateContent(prompt);
-      const response = result.response.text();
+      try {
+        const result = await this.model!.generateContent(prompt);
+        const response = result.response.text();
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Invalid response format');
+        // Try direct parse first
+        let parsed: AuthorFeedback;
+        try {
+          parsed = JSON.parse(response);
+        } catch {
+          const jsonMatch = response.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('Invalid response format');
+          }
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+
+        this.cacheResponse(cacheKey, parsed);
+        return parsed;
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        throw new Error('Failed to get author feedback');
       }
-
-      return JSON.parse(jsonMatch[0]) as AuthorFeedback;
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      throw new Error('Failed to get author feedback');
-    }
+    });
   }
 
   /**
@@ -265,7 +365,19 @@ Respond ONLY with valid JSON:
       throw new Error('Gemini service not initialized');
     }
 
-    const prompt = `Analyze this text and determine what kind of writing help it needs most:
+    // Create cache key
+    const cacheKey = 'categorize_' + this.getCacheKey(text);
+    
+    // Check cache first
+    const cached = this.getCachedResponse<WritingHelpCategory>(cacheKey);
+    if (cached) {
+      console.log('Using cached categorization');
+      return cached;
+    }
+
+    // Deduplicate concurrent requests
+    return this.deduplicateRequest(cacheKey, async () => {
+      const prompt = `Analyze this text and determine what kind of writing help it needs most:
 
 TEXT:
 """
@@ -286,20 +398,29 @@ Respond ONLY with valid JSON:
   "suggestions": ["specific suggestion 1", "specific suggestion 2", "specific suggestion 3"]
 }`;
 
-    try {
-      const result = await this.model!.generateContent(prompt);
-      const response = result.response.text();
+      try {
+        const result = await this.model!.generateContent(prompt);
+        const response = result.response.text();
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Invalid response format');
+        // Try direct parse first
+        let parsed: WritingHelpCategory;
+        try {
+          parsed = JSON.parse(response);
+        } catch {
+          const jsonMatch = response.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('Invalid response format');
+          }
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+
+        this.cacheResponse(cacheKey, parsed);
+        return parsed;
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        throw new Error('Failed to categorize writing');
       }
-
-      return JSON.parse(jsonMatch[0]) as WritingHelpCategory;
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      throw new Error('Failed to categorize writing');
-    }
+    });
   }
 
   /**
@@ -337,7 +458,19 @@ Respond ONLY with valid JSON:
     text: string,
     context?: string
   ): Promise<WritingAssistanceResult> {
-    const prompt = `You are a creative writing co-author. Continue this text naturally.
+    // Create cache key
+    const cacheKey = 'cowrite_' + this.getCacheKey(`${text}_${context || ''}`);
+    
+    // Check cache first
+    const cached = this.getCachedResponse<WritingAssistanceResult>(cacheKey);
+    if (cached) {
+      console.log('Using cached co-write assistance');
+      return cached;
+    }
+
+    // Deduplicate concurrent requests
+    return this.deduplicateRequest(cacheKey, async () => {
+      const prompt = `You are a creative writing co-author. Continue this text naturally.
 
 ${context ? `CONTEXT: ${context}\n\n` : ''}TEXT TO CONTINUE:
 """
@@ -356,26 +489,36 @@ Respond ONLY with valid JSON:
   ]
 }`;
 
-    try {
-      const result = await this.model!.generateContent(prompt);
-      const response = result.response.text();
+      try {
+        const result = await this.model!.generateContent(prompt);
+        const response = result.response.text();
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Invalid response format');
+        // Try direct parse first
+        let parsed: { completion: string; suggestions: string[] };
+        try {
+          parsed = JSON.parse(response);
+        } catch {
+          const jsonMatch = response.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('Invalid response format');
+          }
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+
+        const assistanceResult = {
+          mode: 'co-write' as AssistanceMode,
+          originalText: text,
+          completion: parsed.completion,
+          suggestions: parsed.suggestions,
+        };
+
+        this.cacheResponse(cacheKey, assistanceResult);
+        return assistanceResult;
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        throw new Error('Failed to get co-write assistance');
       }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        mode: 'co-write',
-        originalText: text,
-        completion: parsed.completion,
-        suggestions: parsed.suggestions,
-      };
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      throw new Error('Failed to get co-write assistance');
-    }
+    });
   }
 
   /**
@@ -386,7 +529,19 @@ Respond ONLY with valid JSON:
     text: string,
     context?: string
   ): Promise<WritingAssistanceResult> {
-    const prompt = `You are a creative writing brainstorm partner. Suggest creative directions for this text.
+    // Create cache key
+    const cacheKey = 'brainstorm_' + this.getCacheKey(`${text}_${context || ''}`);
+    
+    // Check cache first
+    const cached = this.getCachedResponse<WritingAssistanceResult>(cacheKey);
+    if (cached) {
+      console.log('Using cached brainstorm assistance');
+      return cached;
+    }
+
+    // Deduplicate concurrent requests
+    return this.deduplicateRequest(cacheKey, async () => {
+      const prompt = `You are a creative writing brainstorm partner. Suggest creative directions for this text.
 
 ${context ? `CONTEXT: ${context}\n\n` : ''}CURRENT TEXT:
 """
@@ -424,26 +579,39 @@ Respond ONLY with valid JSON:
   ]
 }`;
 
-    try {
-      const result = await this.model!.generateContent(prompt);
-      const response = result.response.text();
+      try {
+        const result = await this.model!.generateContent(prompt);
+        const response = result.response.text();
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Invalid response format');
+        // Try direct parse first
+        let parsed: { 
+          ideas: Array<{ direction: string; description: string; example: string }>;
+          suggestions: string[];
+        };
+        try {
+          parsed = JSON.parse(response);
+        } catch {
+          const jsonMatch = response.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('Invalid response format');
+          }
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+
+        const assistanceResult = {
+          mode: 'brainstorm' as AssistanceMode,
+          originalText: text,
+          ideas: parsed.ideas,
+          suggestions: parsed.suggestions,
+        };
+
+        this.cacheResponse(cacheKey, assistanceResult);
+        return assistanceResult;
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        throw new Error('Failed to get brainstorm assistance');
       }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        mode: 'brainstorm',
-        originalText: text,
-        ideas: parsed.ideas,
-        suggestions: parsed.suggestions,
-      };
-    } catch (error) {
-      console.error('Gemini API error:', error);
-      throw new Error('Failed to get brainstorm assistance');
-    }
+    });
   }
 
   /**
