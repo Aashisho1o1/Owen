@@ -1,0 +1,89 @@
+/* Voice Inconsistency Underlines - Comprehensive Styling */
+
+/* Base voice inconsistency mark */
+.voice-inconsistent,
+[data-voice-inconsistency="true"] {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 2px;
+  position: relative;
+  cursor: help;
+}
+
+/* High confidence inconsistency (definitely problematic) */
+.voice-inconsistent[data-confidence-level="high"],
+[data-voice-inconsistency="true"][data-confidence-level="high"] {
+  text-decoration-color: #EF4444; /* Bright red */
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Medium confidence inconsistency (possibly problematic) */
+.voice-inconsistent[data-confidence-level="medium"],
+[data-voice-inconsistency="true"][data-confidence-level="medium"] {
+  text-decoration-color: #F59E0B; /* Orange */
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+/* Low confidence inconsistency (mild concern) */
+.voice-inconsistent[data-confidence-level="low"],
+[data-voice-inconsistency="true"][data-confidence-level="low"] {
+  text-decoration-color: #10B981; /* Green - just flagged for review */
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+/* Hover effects for all levels */
+.voice-inconsistent:hover,
+[data-voice-inconsistency="true"]:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  text-decoration-thickness: 3px;
+  transition: all 0.2s ease;
+}
+
+/* Tooltip styling for explanations */
+.voice-inconsistent::after,
+[data-voice-inconsistency="true"]::after {
+  content: attr(data-explanation);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  max-width: 300px;
+  white-space: normal;
+}
+
+.voice-inconsistent:hover::after,
+[data-voice-inconsistency="true"]:hover::after {
+  opacity: 1;
+}
+
+/* Character-specific styling if needed */
+.voice-inconsistent[data-character*="Tyrion"] {
+  /* Could add character-specific styling here */
+}
+
+/* Animation for newly applied marks */
+@keyframes voice-inconsistency-highlight {
+  0% {
+    background-color: rgba(239, 68, 68, 0.3);
+    text-decoration-thickness: 4px;
+  }
+  100% {
+    background-color: rgba(239, 68, 68, 0.1);
+    text-decoration-thickness: 2px;
+  }
+}
+
+.voice-inconsistent.newly-applied,
+[data-voice-inconsistency="true"].newly-applied {
+  animation: voice-inconsistency-highlight 1s ease;
+} 
