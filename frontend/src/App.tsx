@@ -1,9 +1,9 @@
 import React from 'react';
-import CompetitionDemo from './pages/CompetitionDemo';
+import { WritingWorkspace } from './components/WritingWorkspaceSimple';
 import './App.css';
 
 const App: React.FC = () => {
-  return <CompetitionDemo />;
+  return <WritingWorkspace />;
 };
 
 export default App;

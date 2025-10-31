@@ -461,6 +461,80 @@ Respond ONLY with valid JSON:
 
     return characteristics[author] || '- Distinctive voice and style\n- Consistent character development\n- Clear thematic elements';
   }
+
+  /**
+   * Extract dialogue from text using Gemini AI
+   * Much smarter than regex - catches all dialogue formats
+   *
+   * @param text The full text to analyze
+   * @returns Array of {speaker, text} objects
+   */
+  async extractDialogue(text: string): Promise<Array<{ speaker: string; text: string }>> {
+    if (!this.isReady()) {
+      throw new Error('Gemini service not initialized');
+    }
+
+    if (!text || text.trim().length < 20) {
+      return [];
+    }
+
+    const prompt = `You are an expert at extracting dialogue from fiction writing.
+
+Extract ALL dialogue from this text and identify the speakers.
+
+TEXT:
+"""
+${text}
+"""
+
+For each piece of dialogue:
+1. Identify the speaker (character name)
+2. Extract the exact dialogue text
+3. If speaker is not explicitly stated, infer from context or use "Unknown"
+
+Respond ONLY with valid JSON:
+{
+  "dialogues": [
+    {
+      "speaker": "Character Name",
+      "text": "The dialogue text",
+      "confidence": 0.0-1.0
+    }
+  ]
+}
+
+Rules:
+- Extract ALL dialogue, even without quotation marks if it's clearly dialogue
+- Handle various formats: "dialogue", 'dialogue', —dialogue, Character: dialogue
+- Infer speakers from context when possible
+- Use "Unknown" only as last resort
+- confidence: 1.0 = speaker explicitly stated, 0.8 = inferred from context, 0.5 = uncertain`;
+
+    try {
+      const result = await this.model!.generateContent(prompt);
+      const response = result.response.text();
+
+      // Extract JSON from response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('No JSON found in Gemini response:', response);
+        return [];
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const dialogues = parsed.dialogues || [];
+
+      console.log(`✅ Gemini extracted ${dialogues.length} dialogue pieces`);
+
+      return dialogues.map((d: any) => ({
+        speaker: d.speaker || 'Unknown',
+        text: d.text || '',
+      }));
+    } catch (error) {
+      console.error('❌ Dialogue extraction failed:', error);
+      return [];
+    }
+  }
 }
 
 // Export singleton instance

@@ -1,0 +1,595 @@
+/**
+ * WritingWorkspace Styles
+ * Comprehensive responsive layout for optimal writing experience across all devices
+ */
+
+.writing-workspace {
+  height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  transition: all var(--transition-normal);
+  gap: 0;
+  flex: 1;
+}
+
+/* ============= EDITOR-ONLY LAYOUT (DEFAULT) ============= */
+.workspace-layout.editor-only {
+  justify-content: center;
+}
+
+.workspace-layout.editor-only .workspace-editor {
+  width: 100%;
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+}
+
+/* ============= WITH CHAT LAYOUT ============= */
+.workspace-layout.with-chat {
+  justify-content: stretch;
+  padding: 0;
+  margin: 0;
+  gap: 0;
+}
+
+.workspace-layout.with-chat .workspace-editor {
+  width: 50%;
+  min-width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-light);
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.workspace-layout.with-chat .workspace-chat {
+  width: 50%;
+  min-width: 280px;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ============= WORKSPACE PANELS ============= */
+.workspace-editor,
+.workspace-chat {
+  background: #ffffff !important;
+  overflow: hidden;
+  transition: all var(--transition-normal);
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
+  color: #1f2937 !important;
+}
+
+/* Ensure all child elements maintain proper contrast */
+.workspace-editor *,
+.workspace-chat * {
+  color: #1f2937 !important;
+}
+
+/* Exception for elements that should maintain their styling */
+.workspace-editor .highlight,
+.workspace-editor .active-discussion-highlight,
+.workspace-editor mark,
+.workspace-editor button,
+.workspace-editor .button-primary,
+.workspace-editor .button-secondary,
+.workspace-chat .highlight,
+.workspace-chat .active-discussion-highlight,
+.workspace-chat mark,
+.workspace-chat button,
+.workspace-chat .button-primary,
+.workspace-chat .button-secondary {
+  color: inherit !important;
+}
+
+/* ============= RESPONSIVE CHAT TOGGLE BUTTON ============= */
+.chat-toggle-button {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  width: var(--touch-target-large);
+  height: var(--touch-target-large);
+  border-radius: 50%;
+  background: var(--primary-600);
+  color: white;
+  border: none;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  
+  /* Ensure good touch target for mobile */
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+}
+
+.chat-toggle-button:hover {
+  background: var(--primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+.chat-toggle-button.active {
+  background: var(--primary-700);
+  box-shadow: var(--shadow-md);
+}
+
+.chat-toggle-button svg {
+  transition: transform var(--transition-fast);
+  width: 20px;
+  height: 20px;
+}
+
+.chat-toggle-button.active svg {
+  transform: rotate(180deg);
+}
+
+/* ============= RESPONSIVE BREAKPOINTS ============= */
+
+/* Small phones (320px - 479px) - Optimized mobile experience */
+@media (max-width: 479px) {
+  .writing-workspace {
+    height: 100vh;
+    padding: 0;
+    background: var(--bg-primary);
+    overflow: hidden;
+  }
+
+  /* CRITICAL: Side-by-side layout optimized for mobile - Full screen utilization */
+  .workspace-layout.with-chat {
+    flex-direction: row; /* Maintain side-by-side on mobile */
+    height: 100%;
+    width: 100vw; /* Use full viewport width */
+    padding: 0;
+    margin: 0;
+    gap: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 160px; /* Reduced for mobile */
+    max-width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    border-right: 1px solid var(--border-light);
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 160px; /* Reduced for mobile */
+    max-width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Editor-only mode on mobile */
+  .workspace-layout.editor-only {
+    padding: var(--space-1);
+  }
+
+  .workspace-layout.editor-only .workspace-editor {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 50%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    border-right: 1px solid var(--border-light);
+    box-sizing: border-box;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 50%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  /* Chat toggle positioning */
+  .chat-toggle-container {
+    position: fixed;
+    bottom: var(--space-2);
+    right: var(--space-2);
+    z-index: 200;
+  }
+
+  .chat-toggle-button {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-600);
+    color: var(--text-inverse);
+    border: none;
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+  }
+
+  .chat-toggle-button:hover {
+    background: var(--primary-700);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 6px 16px rgba(0, 0, 0, 0.2),
+      0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .chat-toggle-button.active {
+    background: var(--error-600);
+  }
+
+  .chat-toggle-button.active:hover {
+    background: var(--error-700);
+  }
+
+  /* Hide text, show icon only */
+  .chat-toggle-button span {
+    display: none;
+  }
+
+  .chat-toggle-button::before {
+    content: '💬';
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .chat-toggle-button.active::before {
+    content: '✕';
+    font-size: 18px;
+    font-weight: bold;
+  }
+}
+
+/* Large phones (480px - 767px) - Enhanced mobile layout */
+@media (min-width: 480px) and (max-width: 767px) {
+  .writing-workspace {
+    height: 100vh;
+    padding: 0;
+    background: var(--bg-primary);
+    overflow: hidden;
+  }
+
+  /* Optimized side-by-side layout for larger mobile screens */
+  .workspace-layout.with-chat {
+    flex-direction: row; /* Maintain side-by-side */
+    height: 100%;
+    width: 100vw; /* Use full viewport width */
+    padding: 0;
+    margin: 0;
+    gap: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 200px;
+    max-width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    border-right: 1px solid var(--border-light);
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 50vw; /* Use viewport width for precision */
+    min-width: 200px;
+    max-width: 50vw;
+    height: 100%;
+    flex-shrink: 0;
+    flex-grow: 0;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Editor-only mode */
+  .workspace-layout.editor-only .workspace-editor {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    padding: var(--space-2);
+    box-sizing: border-box;
+  }
+
+  /* Chat toggle */
+  .chat-toggle-container {
+    position: fixed;
+    bottom: var(--space-3);
+    right: var(--space-3);
+    z-index: 200;
+  }
+
+  .chat-toggle-button {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-600);
+    color: var(--text-inverse);
+    border: none;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+  }
+
+  .chat-toggle-button span {
+    display: none;
+  }
+
+  .chat-toggle-button::before {
+    content: '💬';
+    font-size: 22px;
+  }
+
+  .chat-toggle-button.active::before {
+    content: '✕';
+    font-size: 20px;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .writing-workspace {
+    height: 100vh;
+    padding: var(--space-2);
+  }
+
+  .workspace-content.split-mode {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .workspace-content.split-mode .editor-panel {
+    width: 100%;
+    height: 60%;
+    border-radius: var(--radius-xl);
+  }
+
+  .workspace-content.split-mode .chat-panel {
+    width: 100%;
+    height: 40%;
+    border-radius: var(--radius-xl);
+  }
+
+  /* Larger toggle button for tablets */
+  .chat-toggle-button {
+    width: 72px;
+    height: 72px;
+    bottom: var(--space-4);
+    right: var(--space-4);
+  }
+
+  .chat-toggle-button::before {
+    font-size: 24px;
+  }
+}
+
+/* Small laptops (1024px - 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-lg);
+    padding: 0 var(--space-6);
+  }
+  
+  .workspace-layout.with-chat .workspace-editor {
+    width: 55%;
+    min-width: 450px;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 45%;
+    min-width: 400px;
+  }
+}
+
+/* Desktops (1280px - 1535px) */
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-xl);
+    padding: 0 var(--space-8);
+  }
+  
+  .workspace-layout.with-chat .workspace-editor {
+    width: 55%;
+    min-width: 500px;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 45%;
+    min-width: 450px;
+  }
+}
+
+/* Large desktops (1536px+) */
+@media (min-width: 1536px) {
+  .workspace-layout.editor-only .workspace-editor {
+    max-width: var(--container-2xl);
+    padding: 0 var(--space-10);
+  }
+  
+  .workspace-layout.with-chat .workspace-editor {
+    width: 60%;
+    min-width: 600px;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 40%;
+    min-width: 500px;
+  }
+}
+
+/* ============= LANDSCAPE ORIENTATION OPTIMIZATION ============= */
+
+/* Landscape phones */
+@media (max-width: 767px) and (orientation: landscape) {
+  .writing-workspace {
+    height: 100vh;
+    padding: var(--space-1);
+  }
+
+  .workspace-content.split-mode {
+    flex-direction: row;
+    gap: var(--space-1);
+  }
+
+  .workspace-content.split-mode .editor-panel {
+    width: 60%;
+    height: 100%;
+    border-radius: var(--radius-lg) var(--radius-sm) var(--radius-sm) var(--radius-lg);
+  }
+
+  .workspace-content.split-mode .chat-panel {
+    width: 40%;
+    height: 100%;
+    border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+  }
+
+  /* Smaller toggle in landscape */
+  .chat-toggle-button {
+    width: 48px;
+    height: 48px;
+    bottom: var(--space-2);
+    right: var(--space-2);
+  }
+
+  .chat-toggle-button::before {
+    font-size: 18px;
+  }
+}
+
+/* Landscape tablets */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: landscape) {
+  .workspace-layout.with-chat {
+    flex-direction: row;
+  }
+
+  .workspace-layout.with-chat .workspace-editor {
+    width: 60%;
+    height: 100%;
+    border-right: 1px solid var(--border-light);
+    border-bottom: none;
+  }
+
+  .workspace-layout.with-chat .workspace-chat {
+    width: 40%;
+    height: 100%;
+  }
+}
+
+/* ============= ACCESSIBILITY ENHANCEMENTS ============= */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .workspace-layout,
+  .workspace-editor,
+  .workspace-chat,
+  .chat-toggle-button,
+  .chat-toggle-button svg {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .workspace-editor,
+  .workspace-chat {
+    border-color: var(--text-primary);
+  }
+  
+  .chat-toggle-button {
+    border: 2px solid var(--text-primary);
+  }
+}
+
+/* Focus management for keyboard navigation */
+.workspace-layout:focus-within {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+.chat-toggle-button:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+}
+
+/* ============= PRINT STYLES ============= */
+@media print {
+  .writing-workspace {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .workspace-layout {
+    flex-direction: column;
+  }
+  
+  .workspace-chat,
+  .chat-toggle-button {
+    display: none;
+  }
+  
+  .workspace-editor {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+} 
