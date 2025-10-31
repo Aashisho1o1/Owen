@@ -49,8 +49,7 @@ const ChatPane: React.FC = () => {
     setAuthorPersona,
     helpFocus,
     setHelpFocus,
-    selectedLLM,
-    setSelectedLLM,
+    // selectedLLM and setSelectedLLM removed - hardcoded to Gemini
     // AI interaction mode
     aiMode,
     setAiMode,
@@ -125,13 +124,11 @@ const ChatPane: React.FC = () => {
       <ChatHeader
         authorPersona={authorPersona}
         helpFocus={helpFocus}
-        selectedLLM={selectedLLM}
         aiMode={aiMode}
         folderScopeEnabled={folderScopeEnabled}
         voiceGuardEnabled={voiceGuardEnabled}
         onAuthorPersonaChange={setAuthorPersona}
         onHelpFocusChange={setHelpFocus}
-        onLLMChange={setSelectedLLM}
         onAiModeChange={setAiMode}
         onFolderScopeChange={setFolderScopeEnabled}
         onVoiceGuardChange={setVoiceGuardEnabled}

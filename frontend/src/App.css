@@ -149,10 +149,10 @@ body {
 
 /* Enhanced Navigation Buttons with Beautiful Aesthetics and FIXED CONTRAST */
 .nav-action-button {
-  padding: 0.75rem 1.5rem;
+  padding: 0.625rem 1.25rem;
   border-radius: var(--radius-xl);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   text-decoration: none;
   transition: all var(--transition-normal);
   border: 1.5px solid var(--border-medium);
@@ -222,7 +222,7 @@ body {
 
 .auth-buttons .nav-action-button {
   padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--gray-800) !important;
 }
 

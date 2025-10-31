@@ -21,10 +21,7 @@ const HELP_FOCUSES = [
   'Overall Tone'
 ];
 
-const LLM_OPTIONS = [
-  'OpenAI GPT',
-  'Google Gemini',
-];
+// Removed LLM_OPTIONS - app now uses Gemini only
 
 // NEW: AI Interaction Modes - Similar to Cursor's Ask vs Agent
 const AI_MODES = [
@@ -45,13 +42,11 @@ const AI_MODES = [
 interface ChatHeaderProps {
   authorPersona: string;
   helpFocus: string;
-  selectedLLM: string;
   aiMode: string; // NEW: Add AI mode prop
   folderScopeEnabled: boolean; // Premium Feature 1
   voiceGuardEnabled: boolean; // Premium Feature 2
   onAuthorPersonaChange: (persona: string) => void;
   onHelpFocusChange: (focus: string) => void;
-  onLLMChange: (llm: string) => void;
   onAiModeChange: (mode: string) => void; // NEW: Add AI mode change handler
   onFolderScopeChange: (enabled: boolean) => void; // Premium Feature 1 handler
   onVoiceGuardChange: (enabled: boolean) => void; // Premium Feature 2 handler
@@ -66,13 +61,11 @@ interface ChatHeaderProps {
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   authorPersona,
   helpFocus,
-  selectedLLM,
   aiMode, // NEW
   folderScopeEnabled, // Premium Feature 1
   voiceGuardEnabled, // Premium Feature 2
   onAuthorPersonaChange,
   onHelpFocusChange,
-  onLLMChange,
   onAiModeChange, // NEW
   onFolderScopeChange, // Premium Feature 1 handler
   onVoiceGuardChange // Premium Feature 2 handler
@@ -277,22 +270,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               {HELP_FOCUSES.map((focus) => (
                 <option key={focus} value={focus}>
                   {focus}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="control-select-group">
-            <label>🤖</label>
-            <select 
-              value={selectedLLM} 
-              onChange={(e) => onLLMChange(e.target.value)}
-              className="control-select"
-              aria-label="Select AI model"
-            >
-              {LLM_OPTIONS.map((model) => (
-                <option key={model} value={model}>
-                  {model}
                 </option>
               ))}
             </select>

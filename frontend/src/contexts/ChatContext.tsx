@@ -50,8 +50,7 @@ export interface ChatContextType {
   setAuthorPersona: React.Dispatch<React.SetStateAction<string>>;
   helpFocus: string;
   setHelpFocus: React.Dispatch<React.SetStateAction<string>>;
-  selectedLLM: string;
-  setSelectedLLM: React.Dispatch<React.SetStateAction<string>>;
+  // selectedLLM is hardcoded to "Google Gemini" and not exported
   
   // NEW: AI Interaction Mode (Talk vs Co-Edit)
   aiMode: string;
@@ -159,7 +158,8 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
   // Core chat settings state
   const [authorPersona, setAuthorPersona] = useState('Ernest Hemingway');
   const [helpFocus, setHelpFocus] = useState('Dialogue Writing');
-  const [selectedLLM, setSelectedLLM] = useState('Google Gemini');
+  // Hardcoded to Google Gemini only for Google AI competition
+  const [selectedLLM] = useState('Google Gemini');
   
   // NEW: AI Interaction Mode state
   const [aiMode, setAiMode] = useState('talk'); // Default to conversational mode
@@ -699,8 +699,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string
     setAuthorPersona,
     helpFocus,
     setHelpFocus,
-    selectedLLM,
-    setSelectedLLM,
+    // selectedLLM and setSelectedLLM removed - hardcoded to Google Gemini
     aiMode,
     setAiMode,
     folderScopeEnabled,

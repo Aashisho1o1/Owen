@@ -12,84 +12,36 @@ from typing import Dict, Any, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-# ROBUST IMPORT: Handle cases where LLM services are not available
+# GOOGLE GEMINI ONLY - Simplified for Google AI competition
 SERVICES_AVAILABLE = False
 gemini_service = None
-openai_service = None
-ollama_service = None
-hybrid_service = None
-huggingface_service = None
 
 try:
     from .llm.base_service import get_prompt_template, PromptLibrary, LLMError
     logger.info("✅ LLM base service imported successfully")
-    
-    # Try importing Gemini service (may fail if google-generativeai not available)
+
+    # Import Gemini service only
     try:
         from .llm.gemini_service import gemini_service
-        logger.info("✅ Gemini service imported successfully")
+        logger.info("✅ Gemini service imported successfully - using Google AI exclusively")
     except ImportError as e:
         logger.warning(f"⚠️ Gemini service not available: {e}")
         gemini_service = None
     except Exception as e:
         logger.error(f"❌ Unexpected error importing Gemini service: {e}")
         gemini_service = None
-    
-    # Try importing OpenAI service
-    try:
-        from .llm.openai_service import openai_service
-        logger.info("✅ OpenAI service imported successfully")
-    except ImportError as e:
-        logger.warning(f"⚠️ OpenAI service not available: {e}")
-        openai_service = None
-    except Exception as e:
-        logger.error(f"❌ Unexpected error importing OpenAI service: {e}")
-        openai_service = None
-    
-    # NEW: Try importing Ollama service for local models
-    try:
-        from .llm.ollama_service import ollama_service
-        logger.info("🏠 Ollama service imported successfully")
-    except ImportError as e:
-        logger.warning(f"⚠️ Ollama service not available: {e}")
-        ollama_service = None
-    except Exception as e:
-        logger.error(f"❌ Unexpected error importing Ollama service: {e}")
-        ollama_service = None
-    
-    # NEW: Try importing HuggingFace service for cost-effective cloud inference
-    try:
-        from .llm.huggingface_service import huggingface_service
-        logger.info("🤗 HuggingFace service imported successfully")
-    except ImportError as e:
-        logger.warning(f"⚠️ HuggingFace service not available: {e}")
-        huggingface_service = None
-    except Exception as e:
-        logger.error(f"❌ Unexpected error importing HuggingFace service: {e}")
-        huggingface_service = None
-    
-    # NEW: Try importing Hybrid service for intelligent routing
-    try:
-        from .llm.hybrid_service import hybrid_llm_service as hybrid_service
-        logger.info("🧠 Hybrid LLM service imported successfully")
-    except ImportError as e:
-        logger.warning(f"⚠️ Hybrid service not available: {e}")
-        hybrid_service = None
-    except Exception as e:
-        logger.error(f"❌ Unexpected error importing Hybrid service: {e}")
-        hybrid_service = None
-    
+
     SERVICES_AVAILABLE = True
-    logger.info("🚀 LLM services coordination layer initialized")
-    
+    logger.info("🚀 Google Gemini service initialized for competition")
+
 except ImportError as e:
     logger.warning(f"⚠️ LLM services not available: {e}")
     SERVICES_AVAILABLE = False
-    
-    # Fallback for when new services aren't available yet
+
+    # Fallback for when service isn't available
     class LLMError(Exception):
         pass
-    
+
     logger.warning("🔧 Using fallback LLM service configuration")
 
 class LLMService:
@@ -100,47 +52,19 @@ class LLMService:
     """
     
     def __init__(self):
-        """Initialize the coordinated LLM service"""
+        """Initialize Google Gemini LLM service only"""
         if SERVICES_AVAILABLE:
             self.providers = {}
-            
-            # Add Gemini if available
+
+            # Register Gemini service only
             if gemini_service and gemini_service.is_available():
                 self.providers["Google Gemini"] = gemini_service
-                logger.info("✅ Google Gemini provider registered")
+                logger.info("✅ Google Gemini provider registered for competition")
             else:
                 logger.warning("⚠️ Google Gemini provider not available")
-            
-            # Add OpenAI if available  
-            if openai_service and openai_service.is_available():
-                self.providers["OpenAI GPT"] = openai_service
-                logger.info("✅ OpenAI GPT provider registered")
-            else:
-                logger.warning("⚠️ OpenAI GPT provider not available")
-            
-            # NEW: Add Ollama local models if available
-            if ollama_service and ollama_service.is_available():
-                self.providers["Local gpt-oss"] = ollama_service
-                logger.info("🏠 Local gpt-oss provider registered")
-            else:
-                logger.warning("⚠️ Local gpt-oss provider not available")
-            
-            # NEW: Add HuggingFace models if available
-            if huggingface_service and huggingface_service.is_available():
-                self.providers["HuggingFace gpt-oss"] = huggingface_service
-                logger.info("🤗 HuggingFace gpt-oss provider registered")
-            else:
-                logger.warning("⚠️ HuggingFace gpt-oss provider not available")
-            
-            # NEW: Add Hybrid service if available
-            if hybrid_service:
-                self.providers["Hybrid (Smart Routing)"] = hybrid_service
-                logger.info("🧠 Hybrid smart routing provider registered")
-            else:
-                logger.warning("⚠️ Hybrid service not available")
-            
-            self.default_provider = self._get_default_provider()
-            logger.info(f"🎯 Default LLM provider: {self.default_provider}")
+
+            self.default_provider = "Google Gemini"
+            logger.info(f"🎯 Using Google Gemini exclusively")
         else:
             # Fallback initialization for backward compatibility
             self.providers = {}
@@ -148,34 +72,8 @@ class LLMService:
             logger.warning("🔧 Using fallback LLM service initialization")
     
     def _get_default_provider(self) -> str:
-        """Determine the best available provider"""
-        if not SERVICES_AVAILABLE or not self.providers:
-            logger.warning("⚠️ No LLM providers available, defaulting to Google Gemini")
-            return "Google Gemini"
-            
-        # Prefer cost-effective options: Local → HuggingFace → Cloud
-        priority_order = [
-            "Local gpt-oss",           # Free, fast, private
-            "HuggingFace gpt-oss",     # Low cost, reliable cloud
-            "Google Gemini",           # Reliable cloud fallback  
-            "OpenAI GPT"               # Premium cloud option
-        ]
-        
-        for provider_name in priority_order:
-            if provider_name in self.providers:
-                service = self.providers[provider_name]
-                if service.is_available():
-                    logger.info(f"✅ Selected {provider_name} as default provider")
-                    return provider_name
-        
-        # If no services are actually available, still return a name
-        if self.providers:
-            first_provider = list(self.providers.keys())[0]
-            logger.warning(f"⚠️ No fully available providers, defaulting to {first_provider}")
-            return first_provider
-        
-        logger.warning("⚠️ No LLM providers registered!")
-        return "Google Gemini"  # Fallback name
+        """Return Google Gemini as the only provider"""
+        return "Google Gemini"
     
     def get_available_providers(self) -> List[str]:
         """Get list of available LLM providers"""
@@ -470,102 +368,55 @@ Editor Context: {len(editor_text)} characters total"""
                 "dialogue_response": f"I encountered an error generating suggestions: {str(e)}"
             }
 
-    # NEW: Optimized dialogue consistency methods using hybrid routing
+    # Dialogue consistency check using Gemini only
     async def quick_dialogue_consistency_check(self,
                                              dialogue: str,
                                              character_context: str) -> Dict[str, Any]:
-        """
-        Ultra-fast dialogue consistency check using local models when available
-        Target: Sub-10 second response time with zero cost
-        """
-        if not SERVICES_AVAILABLE:
+        """Dialogue consistency check using Google Gemini"""
+        if not SERVICES_AVAILABLE or not gemini_service or not gemini_service.is_available():
             return {
                 "is_consistent": True,
-                "explanation": "LLM services temporarily unavailable",
+                "explanation": "Gemini service temporarily unavailable",
                 "processing_time": 0,
                 "cost": 0.0,
                 "provider": "fallback"
             }
-        
+
         try:
-            # Try hybrid service first (smart routing)
-            if hybrid_service:
-                from .llm.hybrid_service import quick_consistency_check
-                return await quick_consistency_check(dialogue, character_context)
-            
-            # Fallback to direct Ollama if available
-            elif ollama_service and ollama_service.is_available():
-                return await ollama_service.quick_consistency_check(dialogue, character_context)
-            
-            # Final fallback to Gemini
-            elif gemini_service and gemini_service.is_available():
-                prompt = f"Character: {character_context}\nDialogue: '{dialogue}'\nIs this dialogue consistent with the character? Brief yes/no answer with reason."
-                response = await gemini_service.generate_text(prompt)
-                return {
-                    "is_consistent": "yes" in response.lower(),
-                    "explanation": response,
-                    "processing_time": 5.0,  # Estimate
-                    "cost": 0.005,  # Estimate
-                    "provider": "cloud_gemini_fallback"
-                }
-            
-            else:
-                return {
-                    "is_consistent": True,
-                    "explanation": "No LLM providers available for consistency checking",
-                    "processing_time": 0,
-                    "cost": 0.0,
-                    "provider": "no_provider"
-                }
-                
-        except Exception as e:
-            logger.error(f"Error in quick consistency check: {e}")
+            prompt = f"Character: {character_context}\nDialogue: '{dialogue}'\nIs this dialogue consistent with the character? Brief yes/no answer with reason."
+            response = await gemini_service.generate_text(prompt)
             return {
-                "is_consistent": True,  # Default to consistent to avoid blocking user
+                "is_consistent": "yes" in response.lower(),
+                "explanation": response,
+                "processing_time": 5.0,
+                "cost": 0.005,
+                "provider": "google_gemini"
+            }
+        except Exception as e:
+            logger.error(f"Error in consistency check: {e}")
+            return {
+                "is_consistent": True,
                 "explanation": f"Error during analysis: {str(e)}",
                 "processing_time": 0,
                 "cost": 0.0,
                 "provider": "error_fallback"
             }
-    
+
     async def analyze_dialogue_with_hybrid(self,
                                          character_profile: Dict,
                                          dialogue_segments: List[str],
                                          speed_priority: bool = False) -> Dict[str, Any]:
-        """
-        Advanced dialogue analysis using hybrid routing for optimal cost/speed/quality
-        
-        Args:
-            character_profile: Character information dict
-            dialogue_segments: List of dialogue strings to analyze  
-            speed_priority: If True, prioritize speed over depth of analysis
-        """
-        if not SERVICES_AVAILABLE:
+        """Dialogue analysis using Google Gemini"""
+        if not SERVICES_AVAILABLE or not gemini_service or not gemini_service.is_available():
             return {
-                "analysis": "LLM services temporarily unavailable",
+                "analysis": "Gemini service temporarily unavailable",
                 "provider": "fallback",
                 "cost": 0.0,
                 "processing_time": 0
             }
-        
+
         try:
-            # Use hybrid service if available (preferred)
-            if hybrid_service:
-                return await hybrid_service.analyze_dialogue_consistency_optimized(
-                    character_profile, dialogue_segments, speed_priority
-                )
-            
-            # Fallback to direct Ollama
-            elif ollama_service and ollama_service.is_available():
-                use_powerful_model = not speed_priority
-                return await ollama_service.analyze_dialogue_consistency(
-                    character_profile, dialogue_segments, use_powerful_model
-                )
-            
-            # Final fallback to Gemini
-            elif gemini_service and gemini_service.is_available():
-                # Build prompt for Gemini
-                prompt = f"""DIALOGUE CONSISTENCY ANALYSIS
+            prompt = f"""DIALOGUE CONSISTENCY ANALYSIS
 
 Character: {character_profile.get('name', 'Unknown')}
 Traits: {character_profile.get('traits', [])}
@@ -574,56 +425,22 @@ Dialogue Segments:
 {chr(10).join([f"{i+1}. {seg}" for i, seg in enumerate(dialogue_segments[:5])])}
 
 Analyze consistency and provide specific feedback."""
-                
-                response = await gemini_service.generate_text(prompt)
-                return {
-                    "analysis": response,
-                    "provider": "cloud_gemini_fallback",
-                    "cost": 0.01,  # Estimate
-                    "processing_time": 15.0,  # Estimate
-                    "model_used": "gemini-2.5-flash"
-                }
-            
-            else:
-                return {
-                    "analysis": "No LLM providers available for dialogue analysis",
-                    "provider": "no_provider",
-                    "cost": 0.0,
-                    "processing_time": 0
-                }
-                
+
+            response = await gemini_service.generate_text(prompt)
+            return {
+                "analysis": response,
+                "provider": "google_gemini",
+                "cost": 0.01,
+                "processing_time": 15.0,
+                "model_used": "gemini-2.5-flash"
+            }
         except Exception as e:
             logger.error(f"Error in dialogue analysis: {e}")
             return {
                 "analysis": f"Error during analysis: {str(e)}",
-                "provider": "error_fallback", 
+                "provider": "error_fallback",
                 "cost": 0.0,
                 "processing_time": 0
-            }
-    
-    async def get_llm_cost_analytics(self) -> Dict[str, Any]:
-        """Get cost and performance analytics from hybrid service"""
-        if hybrid_service:
-            return await hybrid_service.get_cost_analytics()
-        else:
-            return {
-                "message": "Hybrid service not available",
-                "recommendation": "Install Ollama for cost analytics and local inference"
-            }
-    
-    async def check_local_model_status(self) -> Dict[str, Any]:
-        """Check status of local Ollama models"""
-        if ollama_service:
-            return await ollama_service.check_ollama_status()
-        else:
-            return {
-                "status": "not_available",
-                "message": "Ollama service not imported",
-                "setup_instructions": [
-                    "1. Install Ollama: curl -fsSL https://ollama.ai/install.sh | sh",
-                    "2. Start Ollama: ollama serve", 
-                    "3. Download gpt-oss: ollama pull gpt-oss:20b"
-                ]
             }
 
 # Global instance for backward compatibility

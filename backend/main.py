@@ -76,18 +76,18 @@ except Exception as e:
     # Continue without database for now
     get_db_service = None
 
-# Import all routers with error handling
+# Import all routers with error handling - Cleaned up for Google AI competition
 routers_to_import = [
     ("routers.auth_router", "auth_router"),
     ("routers.document_router", "document_router"),
     ("routers.folder_router", "folder_router"),
     ("routers.chat_router", "chat_router"),
-    ("routers.grammar_router", "grammar_router"),
+    # grammar_router removed - non-essential feature
     ("routers.indexing_router", "indexing_router"),
     ("routers.story_generator_router", "story_generator_router"),
     ("routers.character_voice_router", "character_voice_router"),
     ("routers.cost_optimization_router", "cost_optimization_router"),
-    ("routers.local_ai_router", "local_ai_router"),  # NEW: Local AI models
+    # local_ai_router removed - using Google Gemini only
 ]
 
 imported_routers = []

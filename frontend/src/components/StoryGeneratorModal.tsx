@@ -262,12 +262,12 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
 
   // Render form inputs - reusing existing styling patterns
   const renderForm = () => (
-    <div style={{ maxWidth: '600px', padding: '20px' }}>
+    <div style={{ maxWidth: '550px', padding: '18px' }}>
       {/* Story Idea Selection */}
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '8px', 
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{
+          display: 'block',
+          marginBottom: '6px',
           fontWeight: '600',
           color: 'var(--text-primary)',
           fontSize: '14px'
@@ -320,10 +320,10 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       </div>
 
       {/* Reader Emotion Selection */}
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '8px', 
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{
+          display: 'block',
+          marginBottom: '6px', 
           fontWeight: '600',
           color: 'var(--text-primary)',
           fontSize: '14px'
@@ -353,10 +353,10 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       </div>
 
       {/* Author Style Selection */}
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '8px', 
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{
+          display: 'block',
+          marginBottom: '6px', 
           fontWeight: '600',
           color: 'var(--text-primary)',
           fontSize: '14px'
@@ -386,10 +386,10 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
       </div>
 
       {/* Story Length Selection */}
-      <div style={{ marginBottom: '24px' }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '8px', 
+      <div style={{ marginBottom: '20px' }}>
+        <label style={{
+          display: 'block',
+          marginBottom: '6px', 
           fontWeight: '600',
           color: 'var(--text-primary)',
           fontSize: '14px'
@@ -493,7 +493,7 @@ export const StoryGeneratorModal: React.FC<StoryGeneratorModalProps> = ({
 
   // Render generated story display
   const renderStory = () => (
-    <div style={{ maxWidth: '700px', padding: '20px' }}>
+    <div style={{ maxWidth: '600px', padding: '18px' }}>
       {/* Story Display */}
       <div style={{ 
         marginBottom: '20px', 
