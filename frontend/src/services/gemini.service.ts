@@ -128,10 +128,13 @@ class GeminiService {
   }
 
   /**
-   * Generate cache key from content
+   * Generate cache key from content using simple hash function.
+   * Note: This is a fast, simple hash suitable for cache keys.
+   * For production with strict collision avoidance requirements,
+   * consider using crypto.subtle.digest() or a UUID-based approach.
    */
   private getCacheKey(content: string): string {
-    // Simple hash function for cache key
+    // Fast hash function for cache key (djb2 variant)
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
@@ -145,15 +148,18 @@ class GeminiService {
    * Get cached response if available
    */
   private getCachedResponse<T>(key: string): T | null {
-    return this.responseCache.get(key) || null;
+    const cached = this.responseCache.get(key);
+    return cached !== undefined ? cached as T : null;
   }
 
   /**
-   * Cache a response with size limit (LRU-like behavior)
+   * Cache a response with size limit using FIFO eviction.
+   * Note: Using simple FIFO instead of true LRU for performance and simplicity.
+   * For production with high cache requirements, consider using 'lru-cache' npm package.
    */
   private cacheResponse(key: string, response: unknown): void {
     if (this.responseCache.size >= this.CACHE_MAX_SIZE) {
-      // Remove oldest entry (first item)
+      // Remove oldest entry (FIFO eviction)
       const firstKey = this.responseCache.keys().next().value;
       this.responseCache.delete(firstKey);
     }

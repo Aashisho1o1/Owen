@@ -115,9 +115,10 @@ class CharacterVoiceService:
             return result
         
         # Execute all character analyses in parallel
+        character_names = list(character_dialogues.keys())
         analysis_tasks = [
-            analyze_character(char_name, samples)
-            for char_name, samples in character_dialogues.items()
+            analyze_character(char_name, character_dialogues[char_name])
+            for char_name in character_names
         ]
         results = await asyncio.gather(*analysis_tasks, return_exceptions=True)
         
@@ -125,8 +126,7 @@ class CharacterVoiceService:
         valid_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                char_name = list(character_dialogues.keys())[i]
-                logger.error(f"❌ Failed to analyze {char_name}: {result}")
+                logger.error(f"❌ Failed to analyze {character_names[i]}: {result}")
             else:
                 valid_results.append(result)
 

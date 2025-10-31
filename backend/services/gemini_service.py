@@ -42,9 +42,13 @@ class GeminiService:
         return self._response_cache.get(cache_key)
 
     def _cache_response(self, prompt: str, response: Any) -> None:
-        """Cache a response with size limit."""
+        """
+        Cache a response with size limit using FIFO eviction.
+        Note: Using simple FIFO instead of LRU for performance.
+        For production with high cache hit requirements, consider functools.lru_cache.
+        """
         if len(self._response_cache) >= self._cache_max_size:
-            # Remove oldest entry (simple FIFO)
+            # Remove oldest entry (FIFO eviction)
             first_key = next(iter(self._response_cache))
             del self._response_cache[first_key]
         
