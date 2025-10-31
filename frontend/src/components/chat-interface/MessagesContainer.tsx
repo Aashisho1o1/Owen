@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { EnhancedChatMessage } from './EnhancedChatMessage';
 import { HighlightedTextDisplay } from './HighlightedTextDisplay';
 import { ErrorDisplay } from './ErrorDisplay';
@@ -65,13 +65,13 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
   }, [messages.length, showHighlightedSection]);
 
   // Handle user scroll to detect if they want auto-scroll or not
-  const handleUserScroll = () => {
+  const handleUserScroll = useCallback(() => {
     if (!containerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
     // Within 60px of bottom = user wants to see new messages
     const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
     setAutoScrollEnabled(distanceFromBottom < 60);
-  };
+  }, []);
 
   // Set up scroll listener
   useEffect(() => {
@@ -80,7 +80,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
     
     container.addEventListener('scroll', handleUserScroll);
     return () => container.removeEventListener('scroll', handleUserScroll);
-  }, []);
+  }, [handleUserScroll]);
 
   // Smart auto-scroll - only when user wants it
   useEffect(() => {

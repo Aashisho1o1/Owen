@@ -159,11 +159,7 @@ export const EnhancedChatMessage: React.FC<EnhancedChatMessageProps> = ({
 
   const handleAcceptSuggestion = async (suggestion: SuggestionOption) => {
     try {
-      await acceptTextSuggestion(suggestion, (newContent, replacementInfo) => {
-        console.log('📝 Content updated via suggestion:', {
-          newContentLength: newContent.length,
-          replacementInfo
-        });
+      await acceptTextSuggestion(suggestion, (newContent) => {
         setEditorContent(newContent);
       });
     } catch (error) {

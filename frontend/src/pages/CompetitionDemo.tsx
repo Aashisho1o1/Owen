@@ -11,7 +11,7 @@
  * Strategy: Simple, focused, impressive
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   geminiService,
   DialogueAnalysisResult,
@@ -101,26 +101,26 @@ export const CompetitionDemo: React.FC = () => {
     }
   };
 
-  const loadSampleDialogue = (type: 'consistent' | 'inconsistent') => {
+  const loadSampleDialogue = useCallback((type: 'consistent' | 'inconsistent') => {
     setDialogues(SAMPLE_DIALOGUES[type]);
     setDialogueResults(null);
-  };
+  }, []);
 
-  const addDialogue = () => {
-    setDialogues([...dialogues, { speaker: '', text: '' }]);
-  };
+  const addDialogue = useCallback(() => {
+    setDialogues(prev => [...prev, { speaker: '', text: '' }]);
+  }, []);
 
-  const updateDialogue = (index: number, field: 'speaker' | 'text', value: string) => {
-    const updated = [...dialogues];
-    updated[index][field] = value;
-    setDialogues(updated);
-  };
+  const updateDialogue = useCallback((index: number, field: 'speaker' | 'text', value: string) => {
+    setDialogues(prev => {
+      const updated = [...prev];
+      updated[index][field] = value;
+      return updated;
+    });
+  }, []);
 
-  const removeDialogue = (index: number) => {
-    if (dialogues.length > 1) {
-      setDialogues(dialogues.filter((_, i) => i !== index));
-    }
-  };
+  const removeDialogue = useCallback((index: number) => {
+    setDialogues(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }, []);
 
   const analyzeDialogues = async () => {
     const validDialogues = dialogues.filter(d => d.speaker.trim() && d.text.trim());
@@ -212,13 +212,13 @@ export const CompetitionDemo: React.FC = () => {
     }
   };
 
-  const loadSampleAssistance = () => {
+  const loadSampleAssistance = useCallback(() => {
     setAssistanceText(
       `Sarah stared at the letter. Her hands shook as she read the words again. "We regret to inform you..." The rest blurred.`
     );
     setAssistanceContext('Mystery novel. Sarah just received rejection from detective academy. She has a dark secret.');
     setAssistanceResult(null);
-  };
+  }, []);
 
   // API Key Setup Screen
   if (!isInitialized) {
