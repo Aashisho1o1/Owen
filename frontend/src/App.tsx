@@ -56,8 +56,8 @@ const lightThemeOverrides = `
 const AppContent: React.FC = () => {
   return (
       <div className="app-layout app-layout-mvp">
-        <style dangerouslySetInnerHTML={{ __html: lightThemeOverrides }} />
       <div className="app-main app-main-mvp">
+        <style dangerouslySetInnerHTML={{ __html: lightThemeOverrides }} />
         <Routes>
           <Route path="/" element={<WritingWorkspace />} />
           <Route path="/documents" element={<DocumentsPage />} />
