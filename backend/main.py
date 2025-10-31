@@ -384,10 +384,25 @@ async def health_check(request: Request = None):
         except Exception as e:
             db_status = f"error: {str(e)}"
 
+    # Check LLM service status
+    llm_status = "unknown"
+    try:
+        from services.llm_service import llm_service, SERVICES_AVAILABLE, gemini_service
+        llm_status = {
+            "services_available": SERVICES_AVAILABLE,
+            "gemini_exists": gemini_service is not None,
+            "gemini_available": gemini_service.is_available() if gemini_service else False,
+            "providers": list(llm_service.providers.keys()) if SERVICES_AVAILABLE else [],
+            "env_var_set": bool(os.getenv("GEMINI_API_KEY"))
+        }
+    except Exception as e:
+        llm_status = f"error: {str(e)}"
+
     response_data = {
         "status": "healthy" if startup_success and db_status == 'healthy' else "unhealthy",
         "timestamp": datetime.now().isoformat(),
         "database_status": db_status,
+        "llm_status": llm_status,
         "startup_errors": startup_errors,
         "api_version": "1.2.0",  # TRACER BULLET: Check for this version
         "deployment_verification": "CORS_FIX_APPLIED_SUCCESSFULLY" # TRACER BULLET
