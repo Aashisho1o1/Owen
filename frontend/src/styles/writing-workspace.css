@@ -13,16 +13,11 @@
   flex-direction: column;
 }
 
-/* Ensure header is visible and positioned correctly */
+/* Ensure header stays visible in flex layout */
 .workspace-header {
   flex-shrink: 0;
-  width: 100%;
-  z-index: 10;
   position: relative;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
-  padding: 0.75rem 1rem;
+  z-index: 10;
 }
 
 .workspace-layout {
@@ -609,19 +604,7 @@
 
 /* ============= MOBILE RESPONSIVE FIXES ============= */
 @media (max-width: 768px) {
-  .workspace-header {
-    padding: 0.5rem;
-    flex-wrap: wrap;
-    min-height: auto;
-  }
-
   .writing-workspace {
     height: 100dvh; /* Use dynamic viewport height for mobile browsers */
-  }
-}
-
-@media (max-width: 480px) {
-  .workspace-header {
-    padding: 0.5rem 0.25rem;
   }
 } 
