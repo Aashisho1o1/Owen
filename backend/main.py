@@ -384,16 +384,32 @@ async def health_check(request: Request = None):
         except Exception as e:
             db_status = f"error: {str(e)}"
 
-    # Check LLM service status
+    # Check LLM service status with detailed diagnostics
     llm_status = "unknown"
     try:
         from services.llm_service import llm_service, SERVICES_AVAILABLE, gemini_service
+
+        # Get detailed gemini info
+        gemini_details = {}
+        if gemini_service:
+            try:
+                gemini_details = {
+                    "api_key_configured": bool(gemini_service.api_key),
+                    "api_key_preview": gemini_service.safe_api_key_display() if hasattr(gemini_service, 'safe_api_key_display') else "N/A",
+                    "available_flag": gemini_service.available if hasattr(gemini_service, 'available') else False,
+                    "model_exists": bool(gemini_service.model) if hasattr(gemini_service, 'model') else False
+                }
+            except Exception as detail_error:
+                gemini_details = {"error": str(detail_error)}
+
         llm_status = {
             "services_available": SERVICES_AVAILABLE,
             "gemini_exists": gemini_service is not None,
             "gemini_available": gemini_service.is_available() if gemini_service else False,
+            "gemini_details": gemini_details,
             "providers": list(llm_service.providers.keys()) if SERVICES_AVAILABLE else [],
-            "env_var_set": bool(os.getenv("GEMINI_API_KEY"))
+            "env_var_set": bool(os.getenv("GEMINI_API_KEY")),
+            "env_var_preview": (os.getenv("GEMINI_API_KEY")[:10] + "...") if os.getenv("GEMINI_API_KEY") else None
         }
     except Exception as e:
         llm_status = f"error: {str(e)}"
