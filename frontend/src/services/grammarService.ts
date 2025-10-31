@@ -34,12 +34,17 @@ interface GrammarCheckResult {
 const MAX_TEXT_LENGTH = 50000;
 const MAX_CACHE_SIZE = 500;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const DEBOUNCE_DELAY = 500; // 500ms
 
 // Grammar checking service
+interface CacheEntry {
+  result: GrammarCheckResult;
+  timestamp: number;
+}
+
 class GrammarService {
   private baseURL: string;
-  private cache: Map<string, any> = new Map();
+  private cache: Map<string, CacheEntry> = new Map();
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private lastRequestTime: number = 0;
   private readonly DEBOUNCE_MS = 1000;
 
@@ -155,7 +160,7 @@ class GrammarService {
     }
     
     // Debounce rapid requests
-    if (this.shouldDebounce(textHash)) {
+    if (this.shouldDebounce()) {
       return this.getEmptyResult(text, 'real_time');
     }
     
@@ -318,14 +323,13 @@ class GrammarService {
   }
   
   private generateHash(text: string): string {
-    // Simple hash function for caching
-    let hash = 0;
+    // Improved hash function with better distribution
+    let hash = 5381;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = ((hash << 5) + hash) + char; // hash * 33 + c
     }
-    return hash.toString();
+    return (hash >>> 0).toString(36); // Convert to base36 for shorter strings
   }
   
   private getCached(textHash: string): GrammarCheckResult | null {
@@ -341,7 +345,7 @@ class GrammarService {
     return cached.result;
   }
   
-  private shouldDebounce(textHash: string): boolean {
+  private shouldDebounce(): boolean {
     const lastCheck = this.lastRequestTime;
     if (!lastCheck) return false;
     

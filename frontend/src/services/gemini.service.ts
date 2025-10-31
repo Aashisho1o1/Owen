@@ -81,6 +81,16 @@ const GENERATION_CONFIG = {
   maxOutputTokens: 2048,
 };
 
+// Cached author characteristics for faster lookup
+const AUTHOR_CHARACTERISTICS: Record<string, string> = {
+  'Hemingway': '- Short, declarative sentences\n- Active voice, concrete nouns\n- Minimal adjectives\n- "Iceberg theory" - implied meaning\n- Simple, direct language\n- Understated emotion',
+  'Jane Austen': '- Ironic, witty observations\n- Complex sentence structures\n- Social commentary\n- Free indirect discourse\n- Elegant, refined prose\n- Subtle character revelation',
+  'Stephen King': '- Conversational, accessible tone\n- Vivid sensory details\n- Everyday language mixed with literary skill\n- Strong character voice\n- Building tension through pacing\n- Pop culture references',
+  'Toni Morrison': '- Lyrical, poetic prose\n- Rich, musical language\n- Mythic elements\n- Nonlinear narrative\n- Dense, layered meaning\n- African American vernacular artistry',
+  'Raymond Carver': '- Minimalist style\n- Working-class dialogue\n- Subtext-heavy\n- Ordinary situations\n- Sparse description\n- Implication over explanation',
+  'default': '- Distinctive voice and style\n- Consistent character development\n- Clear thematic elements',
+};
+
 /**
  * Gemini Service Class
  * Singleton pattern for efficient resource usage
@@ -179,7 +189,12 @@ Respond ONLY with valid JSON (no markdown):
       const result = await this.model!.generateContent(prompt);
       const response = result.response.text();
 
-      // Extract JSON from response
+      // Early exit if response is empty
+      if (!response || response.length === 0) {
+        throw new Error('Empty response from Gemini');
+      }
+
+      // Extract JSON from response with optimized regex
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
         throw new Error('Invalid response format from Gemini');
@@ -242,6 +257,11 @@ Respond ONLY with valid JSON:
       const result = await this.model!.generateContent(prompt);
       const response = result.response.text();
 
+      // Early exit if response is empty
+      if (!response || response.length === 0) {
+        throw new Error('Empty response from Gemini');
+      }
+
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('Invalid response format');
@@ -289,6 +309,11 @@ Respond ONLY with valid JSON:
     try {
       const result = await this.model!.generateContent(prompt);
       const response = result.response.text();
+
+      // Early exit if response is empty
+      if (!response || response.length === 0) {
+        throw new Error('Empty response from Gemini');
+      }
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -360,6 +385,11 @@ Respond ONLY with valid JSON:
       const result = await this.model!.generateContent(prompt);
       const response = result.response.text();
 
+      // Early exit if response is empty
+      if (!response || response.length === 0) {
+        throw new Error('Empty response from Gemini');
+      }
+
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('Invalid response format');
@@ -428,6 +458,11 @@ Respond ONLY with valid JSON:
       const result = await this.model!.generateContent(prompt);
       const response = result.response.text();
 
+      // Early exit if response is empty
+      if (!response || response.length === 0) {
+        throw new Error('Empty response from Gemini');
+      }
+
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('Invalid response format');
@@ -448,18 +483,10 @@ Respond ONLY with valid JSON:
 
   /**
    * Get characteristics for a classic author
-   * Internal helper method
+   * Internal helper method with cached characteristics
    */
   private getAuthorCharacteristics(author: string): string {
-    const characteristics: Record<string, string> = {
-      'Hemingway': '- Short, declarative sentences\n- Active voice, concrete nouns\n- Minimal adjectives\n- "Iceberg theory" - implied meaning\n- Simple, direct language\n- Understated emotion',
-      'Jane Austen': '- Ironic, witty observations\n- Complex sentence structures\n- Social commentary\n- Free indirect discourse\n- Elegant, refined prose\n- Subtle character revelation',
-      'Stephen King': '- Conversational, accessible tone\n- Vivid sensory details\n- Everyday language mixed with literary skill\n- Strong character voice\n- Building tension through pacing\n- Pop culture references',
-      'Toni Morrison': '- Lyrical, poetic prose\n- Rich, musical language\n- Mythic elements\n- Nonlinear narrative\n- Dense, layered meaning\n- African American vernacular artistry',
-      'Raymond Carver': '- Minimalist style\n- Working-class dialogue\n- Subtext-heavy\n- Ordinary situations\n- Sparse description\n- Implication over explanation',
-    };
-
-    return characteristics[author] || '- Distinctive voice and style\n- Consistent character development\n- Clear thematic elements';
+    return AUTHOR_CHARACTERISTICS[author] || AUTHOR_CHARACTERISTICS.default;
   }
 }
 

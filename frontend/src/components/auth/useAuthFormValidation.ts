@@ -19,15 +19,15 @@ export interface FormErrors {
 
 export type AuthMode = 'signin' | 'signup';
 
+// Email validation regex - moved outside component for performance
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
  * Custom hook for handling authentication form validation logic.
  * Separates validation concerns from UI components for better testability and reusability.
  */
 export const useAuthFormValidation = () => {
   const [errors, setErrors] = useState<FormErrors>({});
-
-  // Email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   /**
    * Validate individual field
@@ -128,7 +128,7 @@ export const useAuthFormValidation = () => {
     }
     
     return undefined;
-  }, [emailRegex]);
+  }, []);
 
   /**
    * Validate entire form

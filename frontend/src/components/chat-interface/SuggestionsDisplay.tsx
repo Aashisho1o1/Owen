@@ -74,7 +74,7 @@ export const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
       </div>
 
       <div className="suggestions-list">
-        {suggestions.map((suggestion, index) => (
+        {suggestions.map((suggestion) => (
           <div
             key={suggestion.id}
             className={`suggestion-item ${hoveredSuggestion === suggestion.id ? 'hovered' : ''} ${

@@ -96,7 +96,7 @@ export const CompetitionDemo: React.FC = () => {
       localStorage.setItem('gemini_api_key', apiKey);
       setIsInitialized(true);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Failed to initialize Gemini API');
     }
   };

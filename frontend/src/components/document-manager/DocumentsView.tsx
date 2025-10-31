@@ -16,7 +16,6 @@ interface DocumentsViewProps {
  * Single Responsibility: Display all documents in a clean, organized layout
  */
 export const DocumentsView: React.FC<DocumentsViewProps> = ({
-  documents,
   allDocuments,
   folders,
   onDocumentSelect,
