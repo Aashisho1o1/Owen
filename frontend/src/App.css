@@ -823,4 +823,72 @@ body {
     border-left: none;
     border-top: 1px solid var(--border-light);
   }
+}
+
+/* ============= WORKSPACE CONTENT LAYOUT FIX ============= */
+/* Side-by-side editor and chat layout */
+.workspace-content {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-content.with-chat {
+  flex-direction: row;
+}
+
+.workspace-content.editor-only {
+  flex-direction: row;
+  justify-content: center;
+}
+
+.workspace-content .editor-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.workspace-content.with-chat .editor-section {
+  flex: 1;
+  border-right: 1px solid var(--border-light);
+}
+
+.workspace-content .chat-section {
+  width: 400px;
+  min-width: 300px;
+  max-width: 600px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.workspace-content.editor-only .chat-section {
+  display: none;
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 768px) {
+  .workspace-content.with-chat {
+    flex-direction: column;
+  }
+  
+  .workspace-content.with-chat .editor-section {
+    width: 100%;
+    height: 60%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+  
+  .workspace-content .chat-section {
+    width: 100%;
+    height: 40%;
+    max-width: 100%;
+  }
 } 
