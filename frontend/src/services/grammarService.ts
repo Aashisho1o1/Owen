@@ -345,6 +345,11 @@ class GrammarService {
     return cached.result;
   }
   
+  /**
+   * Simple rate limiting - prevents too many requests in quick succession
+   * Note: This is global rate limiting, not per-text debouncing
+   * For per-text debouncing, use checkRealTimeDebounced() instead
+   */
   private shouldDebounce(): boolean {
     const lastCheck = this.lastRequestTime;
     if (!lastCheck) return false;
