@@ -30,6 +30,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# PERFORMANCE OPTIMIZATION: Pre-compile frequently used regex patterns
+# These patterns are used repeatedly in _infer_speaker_from_context and other methods
+_NAME_PATTERN = re.compile(r'\b([A-Z][a-z]{1,15})\b')
+_SENTENCE_NAME_PATTERN = re.compile(r'^([A-Z][a-z]{1,15})')
+_HTML_TAG_PATTERN = re.compile(r'<[^>]+>')
+_DIALOGUE_PATTERN = re.compile(r'([.!?])\s*([A-Z][a-zA-Z\s]{1,25}):\s*"')
+_JSON_ARRAY_PATTERN = re.compile(r'\[([^\]]*)\]')
+
 # Optimized stopwords list - reduced from the original massive set for better performance
 COMMON_NON_CHARACTER_WORDS = {
     # Core stopwords (most essential ones)
@@ -300,11 +308,11 @@ class CharacterVoiceService:
         
         # IMPROVED: Look for character names with better filtering
         # Look for proper nouns (capitalized words) that could be names
-        name_pattern = r'\b([A-Z][a-z]{1,15})\b'  # Limit length to avoid false positives
+        # PERFORMANCE: Using pre-compiled regex pattern
         
         # Search in context after first, then before
-        names_after = re.findall(name_pattern, context_after)
-        names_before = re.findall(name_pattern, context_before)
+        names_after = _NAME_PATTERN.findall(context_after)
+        names_before = _NAME_PATTERN.findall(context_before)
         
         # Combine and filter out common non-character words
         all_names = names_after + names_before
@@ -333,7 +341,8 @@ class CharacterVoiceService:
             sentence = sentence.strip()
             if sentence and len(sentence) > 5:
                 # Look for a name at the start of a sentence
-                name_match = re.match(r'^([A-Z][a-z]{1,15})', sentence)
+                # PERFORMANCE: Using pre-compiled regex pattern
+                name_match = _SENTENCE_NAME_PATTERN.match(sentence)
                 if name_match:
                     candidate = name_match.group(1)
                     if candidate.lower() not in COMMON_NON_CHARACTER_WORDS:
@@ -397,7 +406,8 @@ Character names to validate: {potential_characters}"""
                 response_text = response_text.strip()
                 
                 # Look for JSON array pattern
-                json_match = re.search(r'\[([^\]]*)\]', response_text)
+                # PERFORMANCE: Using pre-compiled regex pattern
+                json_match = _JSON_ARRAY_PATTERN.search(response_text)
                 if json_match:
                     json_text = json_match.group(0)
                     validated_characters = json.loads(json_text)
@@ -465,12 +475,9 @@ Character names to validate: {potential_characters}"""
         analysis_start_time = datetime.now()
         
         try:
-            logger.info(f"🔍 === SERVICE ANALYSIS START ===")
-            logger.info(f"📊 Input Analysis:")
-            logger.info(f"   - Text length: {len(text)} chars")
-            logger.info(f"   - Text preview: {text[:100]}{'...' if len(text) > 100 else ''}")
-            logger.info(f"   - Has HTML tags: {bool(re.search(r'<[^>]+>', text))}")
-            logger.info(f"   - Existing profiles: {len(existing_profiles) if existing_profiles else 0}")
+            # PERFORMANCE OPTIMIZATION: Reduced excessive logging for better performance
+            logger.info(f"Starting character voice analysis: {len(text)} chars, {len(existing_profiles) if existing_profiles else 0} existing profiles")
+            logger.debug(f"Text preview: {text[:100]}{'...' if len(text) > 100 else ''}")
             
             # 🐉 DEMO MODE: Check if this is demo content and inject demo profiles
             is_demo = detect_demo_content(text)
@@ -480,28 +487,24 @@ Character names to validate: {potential_characters}"""
                 existing_profiles = self.demo_profiles.copy()
                 logger.info(f"✅ Demo profiles injected successfully")
             
-            logger.info(f"🚀 SERVICE STEP 1: Text preprocessing...")
             # Limit text length to prevent API timeouts
             # ENHANCED: Higher limit for demo mode to preserve full scripts
             MAX_TEXT_LENGTH = demo_config.max_text_length if is_demo else 10000
             if len(text) > MAX_TEXT_LENGTH:
-                logger.info(f"🔧 Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters for analysis")
+                logger.info(f"Truncating text from {len(text)} to {MAX_TEXT_LENGTH} characters")
                 text = text[:MAX_TEXT_LENGTH] + "\n\n[Text truncated for analysis efficiency]"
             
-            logger.info(f"🧹 Removing HTML tags and entities...")
             # Remove HTML tags since TipTap editor sends HTML-formatted content
             original_length = len(text)
             text = html.unescape(text)
-            logger.debug(f"   HTML entities unescaped: {original_length} -> {len(text)} chars")
             
             # Convert HTML structure to preserve dialogue formatting
             text = re.sub(r'<(?:p|div|br)[^>]*>', '\n', text, flags=re.IGNORECASE)
             text = re.sub(r'</(?:p|div)>', '\n', text, flags=re.IGNORECASE)
             
             # Remove all remaining HTML tags
-            html_tag_pattern = re.compile(r'<[^>]+>')
-            plain_text = html_tag_pattern.sub('', text)
-            logger.debug(f"   HTML tags removed: {len(text)} -> {len(plain_text)} chars")
+            # PERFORMANCE: Using pre-compiled regex pattern
+            plain_text = _HTML_TAG_PATTERN.sub('', text)
             
             # Clean whitespace while preserving dialogue structure
             plain_text = re.sub(r'\n\s*\n', '\n\n', plain_text)
@@ -510,35 +513,21 @@ Character names to validate: {potential_characters}"""
             plain_text = re.sub(r'\n{3,}', '\n\n', plain_text)
             plain_text = plain_text.strip()
             
-            logger.debug(f"   Whitespace cleaned: {len(plain_text)} chars final")
-            logger.info(f"📝 Text processing result:")
-            logger.info(f"   - Original: {original_length} chars")
-            logger.info(f"   - Final: {len(plain_text)} chars")
-            logger.info(f"   - Sample: {plain_text[:300]}{'...' if len(plain_text) > 300 else ''}")
-            
-            logger.info(f"✅ SERVICE STEP 1 COMPLETE: Text cleaned from {original_length} to {len(plain_text)} chars")
+            logger.debug(f"Text processed: {original_length} -> {len(plain_text)} chars")
             
             text = plain_text
             
             # CRITICAL FIX: Ensure dialogue patterns have proper line breaks
             # This fixes the issue where "sentence.Alice: dialogue" becomes "sentence.\nAlice: dialogue"
-            logger.info(f"🔧 Normalizing dialogue formatting...")
-            # Add line breaks before character dialogue patterns
-            text = re.sub(r'([.!?])\s*([A-Z][a-zA-Z\s]{1,25}):\s*"', r'\1\n\2: "', text)
-            logger.debug(f"   Dialogue formatting normalized")
-            
-            logger.info(f"🚀 SERVICE STEP 2: Extracting dialogue segments...")
+            # PERFORMANCE: Using pre-compiled regex pattern
+            text = _DIALOGUE_PATTERN.sub(r'\1\n\2: "', text)
             try:
                 segments = self._extract_dialogue_segments(text)
-                logger.info(f"✅ SERVICE STEP 2 COMPLETE: Found {len(segments)} dialogue segments")
-                
-                if segments:
-                    logger.info(f"📝 Dialogue segments preview:")
-                    for i, segment in enumerate(segments[:3]):
-                        logger.info(f"   Segment {i+1}: Speaker='{segment.speaker}', Text='{segment.text[:50]}{'...' if len(segment.text) > 50 else ''}'")
+                logger.info(f"Found {len(segments)} dialogue segments")
+                logger.debug(f"Sample segments: {[(s.speaker, s.text[:30]) for s in segments[:3]]}")
                         
             except Exception as segment_error:
-                logger.error(f"❌ SERVICE STEP 2 FAILED: Dialogue extraction error: {segment_error}")
+                logger.error(f"Dialogue extraction error: {segment_error}")
                 logger.exception("Dialogue extraction traceback:")
                 raise
             
@@ -551,15 +540,13 @@ Character names to validate: {potential_characters}"""
                     "processing_time_ms": 0
                 }
             
-            logger.info(f"🚀 SERVICE STEP 3: Building character profiles...")
             try:
                 current_profiles = self._build_character_profiles(segments)
-                logger.info(f"📊 Initial profile building found {len(current_profiles)} potential characters")
+                logger.info(f"Built profiles for {len(current_profiles)} potential characters")
                 
                 # Use LLM to validate character names
                 potential_character_names = list(current_profiles.keys())
                 if potential_character_names:
-                    logger.info(f"🤖 SERVICE STEP 3a: LLM validation of character names...")
                     validated_character_names = await self._validate_character_names_with_llm(
                         potential_character_names, 
                         text[:2000]
@@ -572,76 +559,48 @@ Character names to validate: {potential_characters}"""
                             if name in validated_character_names
                         }
                         
-                        logger.info(f"✅ SERVICE STEP 3 COMPLETE: LLM validated {len(validated_profiles)} real characters from {len(current_profiles)} potential names")
-                        logger.info(f"   Validated characters: {list(validated_profiles.keys())}")
-                        logger.info(f"   Filtered out: {[name for name in current_profiles.keys() if name not in validated_character_names]}")
+                        logger.info(f"LLM validated {len(validated_profiles)} characters: {list(validated_profiles.keys())}")
+                        logger.debug(f"Filtered out: {[name for name in current_profiles.keys() if name not in validated_character_names]}")
                         
                         current_profiles = validated_profiles
                     else:
-                        logger.warning(f"⚠️ LLM validation failed or returned zero characters")
-                        logger.info(f"➡️ FALLBACK: Using all {len(current_profiles)} heuristically detected characters")
-                        logger.info(f"   Fallback characters: {list(current_profiles.keys())}")
-                
-                for char_name, profile in current_profiles.items():
-                    logger.debug(f"   Final profile: {char_name} - {len(profile.dialogue_samples)} samples")
+                        logger.warning(f"LLM validation failed, using all {len(current_profiles)} detected characters")
                     
             except Exception as profile_error:
-                logger.error(f"❌ SERVICE STEP 3 FAILED: Profile building error: {profile_error}")
+                logger.error(f"Profile building error: {profile_error}")
                 logger.exception("Profile building traceback:")
                 raise
             
-            logger.info(f"🚀 SERVICE STEP 4: Merging with existing profiles...")
             merged_count = 0
             if existing_profiles:
                 for char_name, existing_profile in existing_profiles.items():
                     if char_name in current_profiles:
-                        logger.debug(f"   Merging profile for: {char_name}")
                         # Merge dialogue samples (keep recent ones)
                         all_samples = existing_profile.dialogue_samples + current_profiles[char_name].dialogue_samples
                         current_profiles[char_name].dialogue_samples = all_samples[-20:]  # Keep last 20 samples
                         current_profiles[char_name].voice_traits = existing_profile.voice_traits
                         merged_count += 1
                         
-            logger.info(f"✅ SERVICE STEP 4 COMPLETE: Merged {merged_count} existing profiles")
+            logger.info(f"Merged {merged_count} existing profiles")
             
-            logger.info(f"🚀 SERVICE STEP 5: Performing AI analysis for each character...")
             results = []
             start_time = datetime.now()
             
-            character_count = 0
             for character_name, profile in current_profiles.items():
-                character_count += 1
-                logger.info(f"🧠 Analyzing character {character_count}/{len(current_profiles)}: {character_name}")
-                
                 try:
-                    logger.debug(f"   Calling _analyze_character_voice for {character_name}...")
                     result = await self._analyze_character_voice(profile, segments)
-                    
                     if result:
                         results.append(result)
-                        logger.info(f"   ✅ Analysis complete for {character_name}: Consistent={result.is_consistent}, Confidence={result.confidence_score}")
+                        logger.info(f"Analyzed {character_name}: Consistent={result.is_consistent}, Confidence={result.confidence_score}")
                     else:
-                        logger.warning(f"   ⚠️ No result returned for {character_name}")
+                        logger.warning(f"No result for {character_name}")
                         
                 except Exception as char_error:
-                    logger.error(f"   ❌ Analysis failed for {character_name}: {char_error}")
-                    logger.exception(f"Character analysis traceback for {character_name}:")
+                    logger.error(f"Analysis failed for {character_name}: {char_error}")
                     continue
             
-            processing_time = (datetime.now() - start_time).total_seconds() * 1000
             total_processing_time = (datetime.now() - analysis_start_time).total_seconds() * 1000
-            
-            logger.info(f"✅ SERVICE STEP 5 COMPLETE: {len(results)} characters analyzed")
-            logger.info(f"📊 Analysis Results Summary:")
-            logger.info(f"   - Characters analyzed: {len(results)}")
-            logger.info(f"   - Dialogue segments found: {len(segments)}")
-            logger.info(f"   - AI processing time: {int(processing_time)}ms")
-            logger.info(f"   - Total processing time: {int(total_processing_time)}ms")
-            
-            for i, result in enumerate(results):
-                logger.debug(f"   Result {i+1}: {result.character_name} - Consistent: {result.is_consistent}, Confidence: {result.confidence_score}")
-            
-            logger.info(f"✅ === SERVICE ANALYSIS COMPLETE ===")
+            logger.info(f"Analysis complete: {len(results)} characters, {len(segments)} segments, {int(total_processing_time)}ms")
             
             return {
                 "results": results,

@@ -182,13 +182,16 @@ class PostgreSQLService:
                 self.pool.putconn(conn)
     
     def execute_query(self, query: str, params: tuple = (), fetch: str = None) -> Union[List[Dict], Dict, int, None]:
-        """Execute database query with enhanced error handling and retry logic"""
-        print(f"💾 DB STEP 1: Executing query: {query[:100]}...")
-        print(f"💾 DB STEP 1a: Query params: {params}")
+        """Execute database query with enhanced error handling and retry logic
+        
+        PERFORMANCE OPTIMIZATION: Reduced excessive logging that was slowing down query execution.
+        Debug logging now only happens when logger level is set to DEBUG.
+        """
+        logger.debug(f"Executing query: {query[:100]}... with params: {params}")
         
         # SECURITY: Validate that query uses parameterized queries only
         if '%s' not in query and params:
-            print(f"💾 DB ❌ SECURITY ERROR: Query parameters provided but query doesn't use parameterized placeholders")
+            logger.error("Query parameters provided but query doesn't use parameterized placeholders")
             raise DatabaseError("Query parameters provided but query doesn't use parameterized placeholders")
         
         # SECURITY: Basic SQL injection pattern detection
@@ -202,46 +205,34 @@ class PostgreSQLService:
         query_upper = query.upper()
         for pattern in dangerous_patterns:
             if re.search(pattern, query_upper):
-                print(f"💾 DB ❌ SECURITY ERROR: Potentially dangerous SQL pattern detected: {pattern}")
                 logger.error(f"SECURITY: Potentially dangerous SQL pattern detected: {pattern}")
                 raise DatabaseError("Query contains potentially dangerous SQL patterns")
-        
-        print(f"💾 DB STEP 2: Security checks passed")
         
         # Add query timeout for long-running queries
         if "SELECT" in query.upper() and "COUNT" not in query.upper():
             query = f"SET LOCAL statement_timeout = '10s'; {query}"
         
-        print(f"💾 DB STEP 3: Getting database connection...")
-        
         with self.get_connection() as conn:
-            print(f"💾 DB STEP 3: ✅ Connection obtained")
-            print(f"💾 DB STEP 4: Creating cursor...")
             cursor = conn.cursor()
-            print(f"💾 DB STEP 4: ✅ Cursor created")
-            
-            print(f"💾 DB STEP 5: Executing query...")
             cursor.execute(query, params)
-            print(f"💾 DB STEP 5: ✅ Query executed")
             
-            print(f"💾 DB STEP 6: Processing results (fetch={fetch})...")
             if fetch == 'one':
                 result = cursor.fetchone()
                 final_result = dict(result) if result else None
-                print(f"💾 DB STEP 6: ✅ Fetched one result: {bool(final_result)}")
+                logger.debug(f"Fetched one result: {bool(final_result)}")
                 return final_result
             elif fetch == 'all':
                 results = cursor.fetchall()
                 final_results = [dict(row) for row in results] if results else []
-                print(f"💾 DB STEP 6: ✅ Fetched all results: {len(final_results)} rows")
+                logger.debug(f"Fetched all results: {len(final_results)} rows")
                 return final_results
             elif fetch == 'none':
                 row_count = cursor.rowcount
-                print(f"💾 DB STEP 6: ✅ Query executed, affected rows: {row_count}")
+                logger.debug(f"Query executed, affected rows: {row_count}")
                 return row_count
             else:
                 row_count = cursor.rowcount
-                print(f"💾 DB STEP 6: ✅ Query executed, affected rows: {row_count}")
+                logger.debug(f"Query executed, affected rows: {row_count}")
                 return row_count
     
 

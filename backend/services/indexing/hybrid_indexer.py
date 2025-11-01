@@ -180,18 +180,32 @@ class HybridIndexer:
         """
         Index multiple documents as a related collection (e.g., chapters in a book)
         
+        PERFORMANCE OPTIMIZATION: Uses asyncio.gather to index documents in parallel
+        instead of sequentially, significantly improving throughput for multiple documents.
+        
         Args:
             documents: List of (doc_id, text, metadata) tuples
             
         Returns:
             Batch indexing results
         """
-        results = []
+        # PERFORMANCE: Index documents in parallel using asyncio.gather
+        # This can significantly speed up batch indexing operations
+        indexing_tasks = [
+            self.index_document(doc_id, text, metadata)
+            for doc_id, text, metadata in documents
+        ]
+        results = await asyncio.gather(*indexing_tasks, return_exceptions=True)
         
-        # Index each document
-        for doc_id, text, metadata in documents:
-            result = await self.index_document(doc_id, text, metadata)
-            results.append(result)
+        # Filter out exceptions and convert to list of successful results
+        successful_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                doc_id = documents[i][0]
+                logger.error(f"Failed to index document {doc_id}: {result}")
+            else:
+                successful_results.append(result)
+        results = successful_results
         
         # Build unified graph from all documents
         doc_texts = [(doc_id, text) for doc_id, text, _ in documents]
