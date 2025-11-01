@@ -35,7 +35,9 @@ logger = logging.getLogger(__name__)
 _NAME_PATTERN = re.compile(r'\b([A-Z][a-z]{1,15})\b')
 _SENTENCE_NAME_PATTERN = re.compile(r'^([A-Z][a-z]{1,15})')
 _HTML_TAG_PATTERN = re.compile(r'<[^>]+>')
-_DIALOGUE_PATTERN = re.compile(r'([.!?])\s*([A-Z][a-zA-Z\s]{1,25}):\s*"')
+# Updated pattern to be more specific about whitespace in character names
+_DIALOGUE_PATTERN = re.compile(r'([.!?])\s*([A-Z][a-zA-Z ]{1,25}):\s*"')
+# Simple pattern to find JSON arrays - we use json.loads() for proper parsing after extraction
 _JSON_ARRAY_PATTERN = re.compile(r'\[([^\]]*)\]')
 
 # Optimized stopwords list - reduced from the original massive set for better performance
@@ -405,20 +407,30 @@ Character names to validate: {potential_characters}"""
                 # Clean the response to extract just the JSON array
                 response_text = response_text.strip()
                 
-                # Look for JSON array pattern
-                # PERFORMANCE: Using pre-compiled regex pattern
+                # PERFORMANCE IMPROVEMENT: Use proper JSON parsing instead of regex
+                # Look for JSON array pattern - handle LLM responses that may include extra text
                 json_match = _JSON_ARRAY_PATTERN.search(response_text)
                 if json_match:
                     json_text = json_match.group(0)
+                    # Use json.loads for proper JSON parsing with escape handling
                     validated_characters = json.loads(json_text)
                     
                     # Ensure all items are strings and filter out empty ones
                     validated_characters = [str(name).strip() for name in validated_characters if str(name).strip()]
                     
-                    logger.info(f"✅ LLM validated {len(validated_characters)} character names: {validated_characters}")
+                    logger.info(f"LLM validated {len(validated_characters)} character names: {validated_characters}")
                     return validated_characters
                 else:
-                    logger.warning("⚠️ No JSON array found in LLM response")
+                    # Fallback: Try to parse the entire response as JSON
+                    try:
+                        validated_characters = json.loads(response_text)
+                        if isinstance(validated_characters, list):
+                            validated_characters = [str(name).strip() for name in validated_characters if str(name).strip()]
+                            logger.info(f"LLM validated {len(validated_characters)} character names: {validated_characters}")
+                            return validated_characters
+                    except json.JSONDecodeError:
+                        pass
+                    logger.warning("No JSON array found in LLM response")
                     return []
                     
             except json.JSONDecodeError as e:
