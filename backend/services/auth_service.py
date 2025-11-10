@@ -499,10 +499,48 @@ class AuthService:
         except Exception as e:
             logger.error(f"Error revoking tokens for user {user_id}: {e}")
 
+    def _ensure_guest_table_exists(self):
+        """
+        Ensure guest_sessions table exists before using it.
+        This is a defensive programming practice - creates table on-demand if missing.
+
+        Why this approach:
+        - Lazy initialization: Only runs when needed
+        - Fast: Single CREATE TABLE IF NOT EXISTS query
+        - Safe: Idempotent - won't fail if table already exists
+        - Non-blocking: Doesn't slow down startup
+        """
+        try:
+            self.db.execute_query("""
+                CREATE TABLE IF NOT EXISTS guest_sessions (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    session_token VARCHAR(255) UNIQUE NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    expires_at TIMESTAMPTZ NOT NULL,
+                    ip_address INET,
+                    user_agent TEXT,
+                    device_fingerprint VARCHAR(32),
+                    data JSONB DEFAULT '{}',
+                    converted_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    is_active BOOLEAN DEFAULT TRUE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_guest_expires
+                    ON guest_sessions(expires_at) WHERE is_active = TRUE;
+                CREATE INDEX IF NOT EXISTS idx_guest_ip_created
+                    ON guest_sessions(ip_address, created_at);
+                CREATE INDEX IF NOT EXISTS idx_guest_device
+                    ON guest_sessions(device_fingerprint) WHERE is_active = TRUE;
+            """)
+            logger.info("✅ Guest sessions table verified/created")
+        except Exception as e:
+            logger.error(f"Failed to create guest_sessions table: {e}")
+            raise
+
     def create_guest_session(self, ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
         """
         Create a secure guest session with device binding and rate limiting.
-        
+
         Engineering principles:
         1. Separate guest sessions from user accounts (data hygiene)
         2. Device fingerprinting prevents token sharing
@@ -510,6 +548,9 @@ class AuthService:
         4. Short-lived tokens minimize security risk
         """
         try:
+            # 0. CRITICAL: Ensure table exists before querying it!
+            self._ensure_guest_table_exists()
+
             # 1. Rate limiting: Prevent IP-based guest session spam
             if ip_address:
                 recent_guests = self.db.execute_query(
