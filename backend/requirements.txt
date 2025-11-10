@@ -56,8 +56,6 @@ chromadb==1.2.1
 sentence-transformers==2.3.1
 networkx==3.2.1
 spacy==3.7.2
-
-#let's make changes
 # Note: Run `python -m spacy download en_core_web_sm` after installation
 
 # All character voice analysis is now handled by Gemini 2.5 Flash for simplicity and reliability
