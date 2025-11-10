@@ -15,7 +15,8 @@ from models.schemas import (
 )
 
 # Import services
-from services.auth_service import auth_service, AuthenticationError
+from services.auth_service import AuthService, AuthenticationError
+auth_service = AuthService()
 from services.enhanced_validation import DetailedAuthenticationError
 from services.database import get_db_service, DatabaseError
 
