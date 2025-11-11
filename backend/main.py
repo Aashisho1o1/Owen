@@ -269,9 +269,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin for origin in ALLOWED_ORIGINS if origin],
     allow_credentials=True,
-    # CRITICAL FIX: Add "POST", "PUT", and "DELETE" to allow all necessary API methods
-    # This was the root cause of the 405 Method Not Allowed error
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    # CRITICAL FIX: Must include "OPTIONS" for CORS preflight requests!
+    # Without OPTIONS, browsers can't complete preflight and requests timeout with status: 0
+    # FastAPI's CORSMiddleware should auto-handle OPTIONS, but explicit is better than implicit
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     # Add a max_age to cache preflight responses for better performance
     max_age=600 # Cache for 10 minutes
