@@ -92,7 +92,7 @@ console.log('🌐 AuthContext API Configuration:', {
 // Configure axios instance
 const apiInstance = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 60000,
   // 🔒 Security headers
   headers: {
     'Content-Type': 'application/json',
