@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class SimpleRateLimiter:
     """Simple rate limiting for MVP"""
     
-    def __init__(self):
+    def __init__(self, block_duration: timedelta = timedelta(minutes=30)):
         # Basic rate limits
         self.limits = {
             'general': {'requests': 100, 'window': 60},  # 100 req/min
@@ -28,6 +28,7 @@ class SimpleRateLimiter:
         # Storage for request counts
         self.request_counts: Dict[str, deque] = defaultdict(deque)
         self.blocked_ips: Dict[str, datetime] = {}
+        self.block_duration = block_duration
     
     def get_client_ip(self, request: Request) -> str:
         """Extract client IP from request"""
@@ -40,10 +41,17 @@ class SimpleRateLimiter:
         if real_ip:
             return real_ip.strip()
         
-        return request.client.host if request.client else "unknown"
-    
+        if request.client and request.client.host:
+            return request.client.host
     def is_blocked(self, ip_address: str) -> bool:
         """Check if IP is currently blocked"""
+        if ip_address in self.blocked_ips:
+            block_time = self.blocked_ips[ip_address]
+            if datetime.now() - block_time < self.block_duration:
+                return True
+            else:
+                del self.blocked_ips[ip_address]
+        return False
         if ip_address in self.blocked_ips:
             block_time = self.blocked_ips[ip_address]
             if datetime.now() - block_time < timedelta(minutes=30):  # 30 min block
@@ -121,9 +129,12 @@ class SimpleRateLimiter:
         # Record this request
         requests.append(now)
         
-        # Cleanup old data periodically
-        if now % 300 < 1:  # Every 5 minutes
+        # Cleanup old data periodically (every 5 minutes)
+        if not hasattr(self, 'last_cleanup_time'):
+            self.last_cleanup_time = now
+        if now - self.last_cleanup_time >= 300:
             self._cleanup_old_data()
+            self.last_cleanup_time = now
         
         return True
     
@@ -141,10 +152,14 @@ class SimpleRateLimiter:
             # Remove empty queues
             if not requests:
                 keys_to_remove.append(key)
-        
+        before_cleanup = len(self.request_counts)
         for key in keys_to_remove:
             del self.request_counts[key]
-        
+        after_cleanup = len(self.request_counts)
+        logger.info(
+            f"[{datetime.now().isoformat()}] Cleaned up {len(keys_to_remove)} old rate limit entries. "
+            f"Keys before: {before_cleanup}, after: {after_cleanup}"
+        )
         logger.info(f"Cleaned up {len(keys_to_remove)} old rate limit entries")
 
 # Global instance

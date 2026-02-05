@@ -378,7 +378,7 @@ class AuthService:
                 "SELECT id, user_id, token_hash FROM refresh_tokens WHERE user_id = %s AND expires_at > %s AND revoked = FALSE",
                 (user_id, datetime.utcnow()),
                 fetch='all'
-            )
+            ) or []
             
             if not stored_tokens:
                 logger.warning(f"No valid refresh tokens found for user {user_id}")
