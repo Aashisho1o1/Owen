@@ -20,9 +20,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   placeholder = "Ask Owen anything about your writing..."
 }) => {
   const { 
-    handleSendMessage, 
-    isThinking, 
-    isStreaming, 
     highlightedText,
     aiMode,
     currentSuggestions = [],
@@ -31,7 +28,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   } = useChatContext();
   
   const [message, setMessage] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Function to recalculate textarea size

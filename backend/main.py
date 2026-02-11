@@ -46,11 +46,9 @@ routers_to_import = [
     ("routers.document_router", "document_router"),
     ("routers.folder_router", "folder_router"),
     ("routers.chat_router", "chat_router"),
-    # ("routers.grammar_router", "grammar_router"), # didn't we delete grammar related.. maybe we can delete this as we are not focusing on gammar at this stage
     ("routers.indexing_router", "indexing_router"),
     ("routers.story_generator_router", "story_generator_router"),
     ("routers.character_voice_router", "character_voice_router"),
-    ("routers.cost_optimization_router", "cost_optimization_router"),
     ("routers.local_ai_router", "local_ai_router"),  # NEW: Local AI models
 ]
 

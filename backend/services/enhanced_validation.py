@@ -1,4 +1,5 @@
 """
+WHY WE HAVE THIS FILE???
 Enhanced Validation Service for DOG Writer
 Provides detailed, user-friendly validation error messages for authentication
 """

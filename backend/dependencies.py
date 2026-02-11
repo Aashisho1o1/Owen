@@ -8,12 +8,13 @@ consistency and adherence to the DRY (Don't Repeat Yourself) principle.
 
 import logging
 import time
+from dataclasses import dataclass
 from typing import Union
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from services.auth_service import auth_service, AuthenticationError
-from services.infra_service import infra_service, RateLimitResult
+from services.rate_limiter import check_rate_limit
 from utils.error_responses import error_response
 from utils.request_helpers import get_client_ip
 
@@ -21,6 +22,16 @@ logger = logging.getLogger(__name__)
 
 # Reusable security scheme using HTTP Bearer for JWT tokens.
 security = HTTPBearer()
+
+
+@dataclass
+class RateLimitResult:
+    """Lightweight result model used by existing endpoint dependencies."""
+    allowed: bool
+    tokens_remaining: int
+    reset_time: int
+    tier: str
+    endpoint: str
 
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Union[str, int]:
     """
@@ -84,17 +95,13 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
             message="Could not validate credentials due to a server error.",
         )
 
-# New PostgreSQL-based rate limiting dependency
 async def check_rate_limit_dependency(
     request: Request,
     endpoint: str = "general",
     user_id: Union[str, int] = Depends(get_current_user_id)
 ) -> RateLimitResult:
     """
-    FastAPI dependency for PostgreSQL-based rate limiting.
-    
-    This replaces the old memory-based rate limiter with a proper 
-    database-backed solution that works across multiple Railway instances.
+    FastAPI dependency for shared endpoint rate limiting.
     
     Args:
         request: FastAPI request object (for IP extraction if needed)
@@ -102,52 +109,40 @@ async def check_rate_limit_dependency(
         user_id: Authenticated user ID
         
     Returns:
-        RateLimitResult with rate limit status
+        RateLimitResult with rate limit status metadata
         
     Raises:
         HTTPException: 429 if rate limit exceeded
     """
     fail_closed_endpoints = {"chat", "voice_analysis", "story_generation"}
+    endpoint_alias = {
+        "voice_analysis": "chat",
+        "story_generation": "chat",
+    }
+    limiter_endpoint = endpoint_alias.get(endpoint, endpoint)
 
     try:
-        # Check rate limit using our new PostgreSQL-based service
-        rate_limit_result = await infra_service.check_rate_limit(user_id, endpoint)
-        
-        if not rate_limit_result.allowed:
-            logger.warning(f"Rate limit exceeded for user {user_id} on endpoint {endpoint}")
-
-            # Get client IP for logging
-            client_ip = get_client_ip(request)
-            logger.info("Rate limit denied request from ip=%s endpoint=%s", client_ip, endpoint)
-
-            retry_after = max(0, rate_limit_result.reset_time - int(time.time()))
-            raise error_response(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                code="RATE_LIMIT_EXCEEDED",
-                message=f"You have exceeded the rate limit for {endpoint}. Please try again later.",
-                meta={
-                    "retry_after": retry_after,
-                    "tokens_remaining": rate_limit_result.tokens_remaining,
-                    "reset_time": rate_limit_result.reset_time,
-                    "tier": rate_limit_result.tier,
-                    "endpoint": endpoint
-                },
-                headers={
-                    "Retry-After": str(retry_after),
-                    "X-RateLimit-Limit": "varies-by-tier",
-                    "X-RateLimit-Remaining": str(rate_limit_result.tokens_remaining),
-                    "X-RateLimit-Reset": str(rate_limit_result.reset_time)
-                }
-            )
-        
-        logger.debug(f"Rate limit OK for user {user_id} on {endpoint}: {rate_limit_result.tokens_remaining} tokens remaining")
-        return rate_limit_result
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions (rate limit exceeded)
-        raise
-    except Exception as e:
-        logger.error(f"Rate limit check failed for user {user_id}: {e}")
+        await check_rate_limit(request, limiter_endpoint)
+        return RateLimitResult(
+            allowed=True,
+            tokens_remaining=-1,
+            reset_time=int(time.time()) + 60,
+            tier="free",
+            endpoint=endpoint,
+        )
+    except HTTPException as exc:
+        logger.warning("Rate limit exceeded for user=%s endpoint=%s", user_id, endpoint)
+        client_ip = get_client_ip(request)
+        logger.info("Rate limit denied request from ip=%s endpoint=%s", client_ip, endpoint)
+        message = exc.detail if isinstance(exc.detail, str) else f"Rate limit exceeded for {endpoint}"
+        raise error_response(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            code="RATE_LIMIT_EXCEEDED",
+            message=message,
+            meta={"endpoint": endpoint},
+        )
+    except Exception as exc:
+        logger.error("Rate limit check failed for user %s: %s", user_id, exc)
         if endpoint in fail_closed_endpoints:
             raise error_response(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -164,7 +159,7 @@ async def check_rate_limit_dependency(
         # Fail open for non-expensive endpoints
         return RateLimitResult(
             allowed=True,
-            tokens_remaining=0,
+            tokens_remaining=-1,
             reset_time=int(time.time()) + 60,
             tier="free",
             endpoint=endpoint
@@ -189,9 +184,6 @@ async def check_auth_rate_limit(request: Request) -> bool:
     Uses IP-based rate limiting for unauthenticated requests.
     """
     try:
-        # For auth endpoints, we don't have a user_id yet
-        # Use IP-based rate limiting (fall back to old system for now)
-        from services.rate_limiter import check_rate_limit
         return await check_rate_limit(request, "auth")
     except Exception as e:
         logger.error(f"Auth rate limit check failed: {e}")

@@ -210,7 +210,9 @@ export const useChat = ({
         helpFocus,
         selectedLLM,
         hasHighlightedText: !!highlightedText,
-        aiMode
+        aiMode,
+        folderScopeEnabled,
+        voiceGuardEnabled
       });
       
       const requestPayload = {
@@ -231,7 +233,6 @@ export const useChat = ({
         english_variant: "US",
         ai_mode: aiMode,
         // Premium Features (opt-in)
-        folder_scope: folderScopeEnabled,
         voice_guard: voiceGuardEnabled
       };
       

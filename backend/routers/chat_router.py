@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import json
 import re
 import logging
@@ -7,13 +6,12 @@ import time
 from typing import List, Optional, Union
 
 # Import security services
-from services.auth_service import auth_service, AuthenticationError
+from services.auth_service import auth_service
 from services.validation_service import input_validator
 from services.rate_limiter import check_rate_limit
 
-# Import the new PostgreSQL-based rate limiter and caching
+# Import centralized rate limiting dependency
 from dependencies import check_chat_rate_limit
-from services.infra_service import cache_provider, CacheType, usage_analytics, UsageMetrics
 from utils.error_responses import error_response
 
 # Change relative imports to absolute imports
@@ -45,39 +43,27 @@ def get_character_voice_service() -> CharacterVoiceService:
         character_voice_service = CharacterVoiceService()
     return character_voice_service
 
-# Cached LLM generation function
-@cache_provider.cached_call(CacheType.CHAT)
-async def cached_llm_generate(prompt: str, provider: str, user_id: int) -> str:
+async def generate_llm_response(prompt: str, provider: str) -> str:
     """
-    Cached wrapper for LLM generation to reduce API costs.
-    
-    This function is automatically cached by the PostgreSQL-based cache provider.
-    Cache hits will return instantly, cache misses will call the LLM and store the result.
+    Generate LLM response with provider-specific input formatting.
     
     Args:
         prompt: The prompt to send to the LLM
         provider: LLM provider (Google Gemini, OpenAI GPT, etc.)
-        user_id: User ID for cache ownership and analytics
         
     Returns:
         Generated response text
     """
-    logger.info(f"💸 Cache MISS - Making expensive LLM call to {provider}")
-    
     if provider == "Google Gemini":
-        # Format prompt for Gemini (expects list of dicts)
         prompts = [{"role": "user", "parts": [prompt]}]
         return await llm_service.generate_with_selected_llm(prompts, provider)
-    elif provider == "OpenAI GPT":
-        # Format prompt for OpenAI (simple string)
+    if provider == "OpenAI GPT":
         return await llm_service.generate_with_selected_llm(prompt, provider)
-    else:
-        # Anthropic Claude or other
-        response_result = await llm_service.generate_with_selected_llm(prompt, provider)
-        if isinstance(response_result, dict) and "text" in response_result:
-            return response_result["text"]
-        else:
-            return str(response_result)
+
+    response_result = await llm_service.generate_with_selected_llm(prompt, provider)
+    if isinstance(response_result, dict) and "text" in response_result:
+        return response_result["text"]
+    return str(response_result)
 
 
 logger = logging.getLogger(__name__)
@@ -112,7 +98,7 @@ async def chat(
     chat_request: ChatRequest,
     http_request: Request,
     user_id: Union[str, int] = Depends(get_current_user_id),  # Accept both guest UUIDs and user IDs
-    rate_limit_result = Depends(check_chat_rate_limit)  # New PostgreSQL-based rate limiting
+    rate_limit_result = Depends(check_chat_rate_limit)
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
@@ -138,7 +124,6 @@ async def chat(
         # ENHANCED DEBUGGING: Log request details for debugging
         request_info = {
             'user_id': user_id,
-            'folder_scope': chat_request.folder_scope,
             'voice_guard': chat_request.voice_guard,
             'ai_mode': chat_request.ai_mode,
             'message_length': len(chat_request.message),
@@ -148,8 +133,7 @@ async def chat(
         }
         logger.debug("Request info: %s", request_info)
         
-        # PRODUCTION RATE LIMITING: Now handled by dependency injection
-        # The new PostgreSQL-based rate limiter works across multiple Railway instances
+        # Shared dependency-based rate limiting.
         logger.debug(
             "Rate limit check passed for user=%s tier=%s tokens_remaining=%s",
             user_id,
@@ -198,7 +182,6 @@ async def chat(
         logger.debug("LLM provider: %s", validated_llm_provider)
         
         # NEW: Log premium features usage
-        logger.debug("Folder scope: %s", bool(chat_request.folder_scope))
         logger.debug("Voice guard: %s", bool(chat_request.voice_guard))
 
         
@@ -229,34 +212,6 @@ async def chat(
                 highlighted_text = input_validator.validate_suggestion_text(parts[1])
                 logger.warning("⚠️ Using deprecated method to extract highlighted text from message")
         
-        # NEW: PREMIUM FEATURE - Folder Context Retrieval
-        folder_context = None
-        
-        if chat_request.folder_scope:
-            logger.info("📁 FolderScope enabled - retrieving folder context...")
-            try:
-                # Import the optimized indexing service (now singleton for memory efficiency)
-                from services.indexing.hybrid_indexer import get_hybrid_indexer
-                # MEMORY OPTIMIZATION: get_hybrid_indexer() returns singleton instance
-                # This prevents loading 400MB+ embedding model on every chat request
-                indexing_service = get_hybrid_indexer()
-                
-                folder_context = await indexing_service.get_folder_context(
-                    user_id=user_id,
-                    query=validated_message,
-                    max_documents=5  # Limit to 5 docs to control cost
-                )
-                
-                if folder_context:
-                    logger.debug("Retrieved folder context length=%s", len(folder_context))
-                else:
-                    logger.debug("No relevant folder context found")
-                    
-            except Exception as folder_error:
-                logger.warning(f"⚠️ Folder context retrieval failed: {folder_error}")
-                # Continue without folder context - don't fail the whole request
-                folder_context = None
-        
         # FEATURE: Build conversation context from chat history
         conversation_context = build_conversation_context(chat_request.chat_history)
         if conversation_context:
@@ -272,8 +227,7 @@ async def chat(
             user_corrections=user_corrections,
             highlighted_text=highlighted_text,
             ai_mode=chat_request.ai_mode,
-            conversation_context=conversation_context,
-            folder_context=folder_context  # NEW: Pass folder context
+            conversation_context=conversation_context
         )
         
         logger.debug("Prompt assembled successfully (length=%s chars)", len(final_prompt))
@@ -282,29 +236,14 @@ async def chat(
         response_text = None
         thinking_trail = None
 
-        logger.info(f"🚀 Generating response with {validated_llm_provider} (with intelligent caching)...")
+        logger.info(f"🚀 Generating response with {validated_llm_provider}...")
         
         try:
-            # COST OPTIMIZATION: Use cached LLM call to reduce API costs
             start_time = time.time()
-            response_text = await cached_llm_generate(final_prompt, validated_llm_provider, user_id)
+            response_text = await generate_llm_response(final_prompt, validated_llm_provider)
             processing_time_ms = int((time.time() - start_time) * 1000)
             
             logger.info(f"✅ Response received (length: {len(response_text) if response_text else 0} chars, time: {processing_time_ms}ms)")
-            
-            # Record usage analytics for cost tracking
-            estimated_tokens = len(final_prompt + (response_text or "")) // 4  # Rough estimate
-            estimated_cost_cents = max(1, estimated_tokens // 100)  # Rough cost estimate
-            
-            await usage_analytics.record_usage(UsageMetrics(
-                user_id=user_id,
-                endpoint="chat",
-                llm_provider=validated_llm_provider,
-                tokens_used=estimated_tokens,
-                estimated_cost_cents=estimated_cost_cents,
-                processing_time_ms=processing_time_ms,
-                cache_hit=processing_time_ms < 1000  # If response was very fast, likely a cache hit
-            ))
         
         except Exception as llm_error:
             logger.error("LLM generation failed for provider=%s", validated_llm_provider, exc_info=True)

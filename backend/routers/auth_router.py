@@ -375,7 +375,6 @@ async def get_profile(request: Request, user_id = Depends(get_current_user_id)):
                 "features_available": [
                     "chat_assistance",
                     "voice_consistency_analysis", 
-                    "folder_level_analysis",
                     "grammar_checking",
                     "document_creation"
                 ],

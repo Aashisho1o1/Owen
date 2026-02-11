@@ -116,36 +116,6 @@ export interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-// Simple cache for API requests to prevent duplicate calls
-const apiCache = new Map<string, { timestamp: number; data: any }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-const getCacheKey = (content: string, flags: { folderScope: boolean; voiceGuard: boolean }) => {
-  const contentHash = content.slice(0, 100) + content.slice(-50); // Simple content signature
-  return `${contentHash}_${flags.folderScope}_${flags.voiceGuard}`;
-};
-
-const checkCache = (key: string) => {
-  const cached = apiCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-  return null;
-};
-
-const setCache = (key: string, data: any) => {
-  apiCache.set(key, { timestamp: Date.now(), data });
-  // Clean old entries periodically
-  if (apiCache.size > 50) {
-    const cutoff = Date.now() - CACHE_DURATION;
-    for (const [k, v] of apiCache.entries()) {
-      if (v.timestamp < cutoff) {
-        apiCache.delete(k);
-      }
-    }
-  }
-};
-
 export const ChatProvider: React.FC<{ children: ReactNode; editorContent: string }> = ({ 
   children, 
   editorContent 

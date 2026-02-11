@@ -55,6 +55,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  showAuthModal: boolean;
+  setShowAuthModal: React.Dispatch<React.SetStateAction<boolean>>;
+  authMode: 'signin' | 'signup';
+  setAuthMode: React.Dispatch<React.SetStateAction<'signin' | 'signup'>>;
   
   // Actions
   login: (data: LoginData) => Promise<boolean>;
@@ -107,6 +111,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useSafeState(true);
   const [error, setError] = useSafeState<string | null>(null);
   const [isInitialized, setIsInitialized] = useSafeState(false);
+  const [showAuthModal, setShowAuthModal] = useSafeState(false);
+  const [authMode, setAuthMode] = useSafeState<'signin' | 'signup'>('signin');
 
   // Token management
   // 🔒 SECURITY NOTE: localStorage is vulnerable to XSS attacks
@@ -645,6 +651,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated,
     isLoading,
     error,
+    showAuthModal,
+    setShowAuthModal,
+    authMode,
+    setAuthMode,
     login,
     register,
     createGuestSession,

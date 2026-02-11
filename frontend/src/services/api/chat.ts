@@ -10,13 +10,12 @@ import { ChatRequest, ChatResponse, EnhancedChatResponse, UserFeedbackRequest } 
 // === CHAT ENDPOINTS ===
 
 export const sendChatMessage = async (request: ChatRequest): Promise<ChatResponse> => {
-  // OPTIMIZED FIX: Reduced timeout for better user experience
-  // FolderScope/VoiceGuard: 2.5 minutes - optimized for backend performance
-  // Standard requests: 45 seconds - faster feedback for normal chat
-  const timeoutMs = (request.folder_scope || request.voice_guard) ? 150000 : 45000; // 2.5 min vs 45 sec
+  // OPTIMIZED FIX: Reduced timeout for better user experience.
+  // VoiceGuard requests may run longer; standard requests should fail fast.
+  const timeoutMs = request.voice_guard ? 150000 : 45000; // 2.5 min vs 45 sec
   
-  console.log(`🔧 Chat request timeout: ${timeoutMs/1000}s (FolderScope: ${request.folder_scope}, VoiceGuard: ${request.voice_guard})`);
-  console.log(`🔧 Premium features enabled: FolderScope=${request.folder_scope}, VoiceGuard=${request.voice_guard}`);
+  console.log(`🔧 Chat request timeout: ${timeoutMs/1000}s (VoiceGuard: ${request.voice_guard})`);
+  console.log(`🔧 Premium features enabled: VoiceGuard=${request.voice_guard}`);
   
   // ENHANCED DEBUGGING: Check authentication state before request
   const tokens = localStorage.getItem('owen_access_token');
@@ -36,16 +35,15 @@ export const sendChatMessage = async (request: ChatRequest): Promise<ChatRespons
     method: 'POST',
     timeout: timeoutMs,
     hasToken: !!tokens,
-    folderScope: request.folder_scope,
     voiceGuard: request.voice_guard,
     messagePreview: request.message.substring(0, 50) + '...'
   });
 
   // ENHANCED: Add progress feedback for long operations
-  if (request.folder_scope || request.voice_guard) {
+  if (request.voice_guard) {
     // Emit progress events for UI feedback
     window.dispatchEvent(new CustomEvent('folderScopeProgress', { 
-      detail: { stage: 'starting', message: 'Analyzing documents for context...' } 
+      detail: { stage: 'starting', message: 'Running voice analysis...' } 
     }));
   }
 
@@ -55,9 +53,8 @@ export const sendChatMessage = async (request: ChatRequest): Promise<ChatRespons
       timeout: timeoutMs,
       headers: {
         'Content-Type': 'application/json',
-        'X-Request-Type': request.folder_scope ? 'folder-scope' : 'standard',
+        'X-Request-Type': request.voice_guard ? 'voice-guard' : 'standard',
         'X-Debug-Features': JSON.stringify({
-          folderScope: request.folder_scope,
           voiceGuard: request.voice_guard
         })
       },
@@ -71,7 +68,7 @@ export const sendChatMessage = async (request: ChatRequest): Promise<ChatRespons
     });
     
     // On success, clear any progress messages
-    if (request.folder_scope || request.voice_guard) {
+    if (request.voice_guard) {
       window.dispatchEvent(new CustomEvent('folderScopeProgress', { detail: { stage: 'completed' } }));
     }
     return response.data;
@@ -86,7 +83,7 @@ export const sendChatMessage = async (request: ChatRequest): Promise<ChatRespons
     });
     
     // On error, clear any progress messages and show error
-    if (request.folder_scope || request.voice_guard) {
+    if (request.voice_guard) {
       window.dispatchEvent(new CustomEvent('folderScopeProgress', { 
         detail: { 
           stage: 'error', 
@@ -144,8 +141,6 @@ export const buildChatRequest = (
   highlightedText?: string,
   highlightId?: string,
   aiMode: string = 'talk',
-  // CRITICAL FIX: Add missing premium feature parameters
-  folderScope: boolean = false,
   voiceGuard: boolean = false
 ): ChatRequest => {
   return {
@@ -160,8 +155,7 @@ export const buildChatRequest = (
     highlighted_text: highlightedText || '',
     highlight_id: highlightId || '',
     ai_mode: aiMode,
-    // CRITICAL FIX: Include premium features in request
-    folder_scope: folderScope,
+    // Include premium feature flags in request
     voice_guard: voiceGuard
   };
-}; 
+};

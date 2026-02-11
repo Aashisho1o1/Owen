@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { UIProvider } from './contexts/UIContext';
 import { DocumentThemeProvider } from './contexts/DocumentThemeContext';
 import DocumentsPage from './pages/DocumentsPage';
 import DocumentEditor from './pages/DocumentEditor';
@@ -71,11 +70,9 @@ const App: React.FC = () => {
   return (
     <Router>
       <ErrorBoundary>
-        <UIProvider>
-          <DocumentThemeProvider>
-            <AppContent />
-          </DocumentThemeProvider>
-        </UIProvider>
+        <DocumentThemeProvider>
+          <AppContent />
+        </DocumentThemeProvider>
       </ErrorBoundary>
     </Router>
   );

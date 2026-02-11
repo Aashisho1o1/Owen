@@ -2,14 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useUIContext } from '../contexts/UIContext';
 import { useDocuments } from '../hooks/useDocuments';
 import './DocumentsPage.css';
 
 const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const { setShowAuthModal, setAuthMode } = useUIContext();
+  const { isAuthenticated, setShowAuthModal, setAuthMode } = useAuth();
   
   // Destructure all needed values from useDocuments
   const {
@@ -20,8 +18,7 @@ const DocumentsPage: React.FC = () => {
     // createFromTemplate removed - template system deprecated
     createDocument,
     deleteDocument,
-    updateDocument,
-    getRecentDocuments
+    updateDocument
   } = useDocuments();
   
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -96,8 +93,6 @@ const DocumentsPage: React.FC = () => {
         return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     }
   });
-
-  const recentDocuments = getRecentDocuments(5);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -179,7 +174,7 @@ const DocumentsPage: React.FC = () => {
             
             <select 
               value={sortBy} 
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="sort-select"
             >
               <option value="updated">Last modified</option>

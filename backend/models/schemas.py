@@ -191,7 +191,6 @@ class ChatRequest(BaseModel):
     highlighted_text: Optional[str] = None
     highlight_id: Optional[str] = None
     # Premium Features
-    folder_scope: bool = False  # NEW: Whether to include folder context
     voice_guard: bool = False   # NEW: Whether to enable voice consistency checking
 
 class ChatResponse(BaseModel):
@@ -230,50 +229,6 @@ class UserFeedbackRequest(BaseModel):
     ai_response: str
     user_feedback: str
     correction_type: str  # "style", "grammar", "tone", "cultural", "other"
-
-# === GRAMMAR CHECKING SCHEMAS (Core MVP Feature) ===
-class GrammarCheckRequest(BaseModel):
-    """Request for grammar checking"""
-    text: str = Field(..., max_length=10000, description="Text to check for grammar and spelling")
-    check_type: str = Field("real_time", description="Type of check: 'real_time' or 'comprehensive'")
-    language: str = Field("en-US", description="Language code for checking")
-    context: Optional[str] = Field(None, max_length=2000, description="Additional context for comprehensive checking")
-    
-    @field_validator('text')
-    @classmethod
-    def validate_text(cls, v):
-        if not v.strip():
-            raise ValueError('Text cannot be empty')
-        return v
-    
-    @field_validator('check_type')
-    @classmethod
-    def validate_check_type(cls, v):
-        if v not in ['real_time', 'comprehensive']:
-            raise ValueError('check_type must be either "real_time" or "comprehensive"')
-        return v
-
-class GrammarIssueResponse(BaseModel):
-    """Grammar issue response model"""
-    start: int
-    end: int
-    issue_type: str
-    severity: str
-    message: str
-    suggestions: List[str]
-    confidence: float
-    source: str
-
-class GrammarCheckResponse(BaseModel):
-    """Grammar check response"""
-    text_length: int
-    word_count: int
-    issues: List[GrammarIssueResponse]
-    check_type: str
-    processing_time_ms: int
-    cached: bool
-    overall_score: Optional[int] = None
-    style_notes: Optional[str] = None
 
 # === CHARACTER PERSONA SCHEMAS ===
 class CharacterPersona(BaseModel):
