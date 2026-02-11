@@ -19,7 +19,8 @@ from models.schemas import (
 # Import services
 from services.database import db_service, DatabaseError
 # Template service removed - template system deprecated for MVP
-from services.security_logger import security_logger, get_client_ip
+from services.security_logger import security_logger
+from utils.request_helpers import get_client_ip
 
 # Import production rate limiter
 from services.rate_limiter import check_rate_limit
@@ -47,8 +48,8 @@ async def get_documents(
     document_type: Optional[DocumentType] = Query(None),
     series_name: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    limit: Optional[int] = Query(50),
-    offset: Optional[int] = Query(0)
+    limit: int = Query(25, ge=1, le=50),
+    offset: int = Query(0, ge=0)
 ):
     """Get user documents with fiction-specific filtering"""
     try:

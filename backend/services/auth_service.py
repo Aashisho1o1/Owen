@@ -201,79 +201,78 @@ class AuthService:
     def login_user(self, email: str, password: str, ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
         """Authenticate user and return tokens"""
         try:
-            print(f"🔑 AUTH STEP 1: Starting login for {email}")
+            logger.debug("AUTH_STEP_1: Starting login for email=%s", email)
             
             # Get user from database
-            print(f"🔑 AUTH STEP 2: Querying database for user...")
+            logger.debug("AUTH_STEP_2: Querying database for user")
             user = self.db.execute_query(
                 "SELECT id, username, email, name, password_hash, is_active, failed_login_attempts, account_locked_until FROM users WHERE email = %s",
                 (email,),
                 fetch='one'
             )
-            print(f"🔑 AUTH STEP 2: ✅ Database query completed")
+            logger.debug("AUTH_STEP_2: Database query completed")
             
             if not user:
-                print(f"🔑 AUTH STEP 2: ❌ User not found")
+                logger.warning("AUTH_STEP_2_FAIL: User not found for email=%s", email)
                 self._log_login_attempt(None, email, False, ip_address, "User not found")
                 raise AuthenticationError("Invalid email or password")
             
-            print(f"🔑 AUTH STEP 3: User found, checking account status...")
+            logger.debug("AUTH_STEP_3: User found, checking account status")
             
             # Check if account is locked
             if user['account_locked_until'] and user['account_locked_until'] > datetime.utcnow():
-                print(f"🔑 AUTH STEP 3: ❌ Account is locked")
+                logger.warning("AUTH_STEP_3_FAIL: Account locked for user_id=%s", user['id'])
                 self._log_login_attempt(user['id'], email, False, ip_address, "Account locked")
                 raise AuthenticationError("Account is temporarily locked")
             
             # Check if account is active
             if not user['is_active']:
-                print(f"🔑 AUTH STEP 3: ❌ Account is inactive")
+                logger.warning("AUTH_STEP_3_FAIL: Account inactive for user_id=%s", user['id'])
                 self._log_login_attempt(user['id'], email, False, ip_address, "Account inactive")
                 raise AuthenticationError("Account is inactive")
             
-            print(f"🔑 AUTH STEP 3: ✅ Account status OK")
+            logger.debug("AUTH_STEP_3: Account status OK")
             
             # Verify password
-            print(f"🔑 AUTH STEP 4: Verifying password...")
+            logger.debug("AUTH_STEP_4: Verifying password")
             if not self._verify_password(password, user['password_hash']):
-                print(f"🔑 AUTH STEP 4: ❌ Password verification failed")
+                logger.warning("AUTH_STEP_4_FAIL: Password verification failed for user_id=%s", user['id'])
                 # Increment failed login attempts
                 self._handle_failed_login(user['id'])
                 self._log_login_attempt(user['id'], email, False, ip_address, "Invalid password")
                 raise AuthenticationError("Invalid email or password")
             
-            print(f"🔑 AUTH STEP 4: ✅ Password verified")
+            logger.debug("AUTH_STEP_4: Password verified")
             
             # Reset failed login attempts on successful login
-            print(f"🔑 AUTH STEP 5: Resetting failed login attempts...")
+            logger.debug("AUTH_STEP_5: Resetting failed login attempts")
             self._reset_failed_login_attempts(user['id'])
-            print(f"🔑 AUTH STEP 5: ✅ Failed login attempts reset")
+            logger.debug("AUTH_STEP_5: Failed login attempts reset")
             
             # Generate tokens
-            print(f"🔑 AUTH STEP 6: Generating tokens...")
+            logger.debug("AUTH_STEP_6: Generating tokens")
             access_token, refresh_token = self._generate_tokens(user['id'], user['email'])
-            print(f"🔑 AUTH STEP 6: ✅ Tokens generated")
+            logger.debug("AUTH_STEP_6: Tokens generated")
             
             # Store refresh token
-            print(f"🔑 AUTH STEP 7: Storing refresh token...")
+            logger.debug("AUTH_STEP_7: Storing refresh token")
             self._store_refresh_token(user['id'], refresh_token, user_agent, ip_address)
-            print(f"🔑 AUTH STEP 7: ✅ Refresh token stored")
+            logger.debug("AUTH_STEP_7: Refresh token stored")
             
             # Update last login
-            print(f"🔑 AUTH STEP 8: Updating last login time...")
+            logger.debug("AUTH_STEP_8: Updating last login time")
             self.db.execute_query(
                 "UPDATE users SET last_login = %s WHERE id = %s",
                 (datetime.utcnow(), user['id'])
             )
-            print(f"🔑 AUTH STEP 8: ✅ Last login updated")
+            logger.debug("AUTH_STEP_8: Last login updated")
             
             # Log successful login
-            print(f"🔑 AUTH STEP 9: Logging successful login...")
+            logger.debug("AUTH_STEP_9: Logging successful login")
             self._log_login_attempt(user['id'], email, True, ip_address, "Login successful")
-            print(f"🔑 AUTH STEP 9: ✅ Login logged")
             
             logger.info(f"User logged in successfully: {email}")
-            print(f"🔑 AUTH STEP 10: ✅ Login completed successfully")
+            logger.debug("AUTH_STEP_10: Login completed successfully for user_id=%s", user['id'])
             
             return {
                 "user": {
@@ -288,14 +287,12 @@ class AuthService:
             }
             
         except DatabaseError as e:
-            print(f"🔑 AUTH ❌ DATABASE ERROR: {str(e)}")
             logger.error(f"Database error during login: {e}")
             raise AuthenticationError("Login failed due to database error")
         except AuthenticationError:
-            print(f"🔑 AUTH ❌ AUTHENTICATION ERROR (re-raising)")
+            logger.debug("Authentication error during login for email=%s", email)
             raise
         except Exception as e:
-            print(f"🔑 AUTH ❌ UNEXPECTED ERROR: {type(e).__name__}: {str(e)}")
             logger.error(f"Unexpected error during login: {e}")
             raise AuthenticationError("Login failed")
     

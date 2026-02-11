@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 from collections import defaultdict, deque
 from fastapi import HTTPException, Request
+from utils.request_helpers import get_client_ip as extract_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,10 @@ class SimpleRateLimiter:
     def __init__(self, block_duration: timedelta = timedelta(minutes=30)):
         # Basic rate limits
         self.limits = {
-            'general': {'requests': 100, 'window': 60},  # 100 req/min
-            'auth': {'requests': 5, 'window': 300},      # 5 auth/5min
-            'chat': {'requests': 30, 'window': 60},      # 30 chat/min
-            'grammar': {'requests': 50, 'window': 60},   # 50 grammar/min
+            'general': {'requests': 30, 'window': 60},   # 30 req/min
+            'auth': {'requests': 4, 'window': 300},      # 4 auth/5min
+            'chat': {'requests': 8, 'window': 60},       # 8 chat/min
+            'grammar': {'requests': 20, 'window': 60},   # 20 grammar/min
         }
         
         # Storage for request counts
@@ -32,29 +33,14 @@ class SimpleRateLimiter:
     
     def get_client_ip(self, request: Request) -> str:
         """Extract client IP from request"""
-        # Check for forwarded headers
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            return forwarded_for.split(",")[0].strip()
-        
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip.strip()
-        
-        if request.client and request.client.host:
-            return request.client.host
+        ip_address = extract_client_ip(request)
+        return ip_address if ip_address else "unknown"
+
     def is_blocked(self, ip_address: str) -> bool:
         """Check if IP is currently blocked"""
         if ip_address in self.blocked_ips:
             block_time = self.blocked_ips[ip_address]
             if datetime.now() - block_time < self.block_duration:
-                return True
-            else:
-                del self.blocked_ips[ip_address]
-        return False
-        if ip_address in self.blocked_ips:
-            block_time = self.blocked_ips[ip_address]
-            if datetime.now() - block_time < timedelta(minutes=30):  # 30 min block
                 return True
             else:
                 del self.blocked_ips[ip_address]

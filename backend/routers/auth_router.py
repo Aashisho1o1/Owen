@@ -28,6 +28,7 @@ from dependencies import get_current_user_id
 
 # Import helper functions
 from utils.helpers import get_user_by_id
+from utils.error_responses import error_response
 
 logger = logging.getLogger(__name__)
 
@@ -74,41 +75,52 @@ async def register(user_data: UserCreate, request: Request) -> TokenResponse:
         )
     except DetailedAuthenticationError as e:
         logger.error(f"Detailed authentication error during registration: {e}")
-        # Return detailed error information for better user experience
-        error_detail = e.to_dict()
-        raise HTTPException(status_code=400, detail=error_detail)
+        raise error_response(
+            status_code=400,
+            code="REGISTRATION_VALIDATION_FAILED",
+            message="Registration validation failed.",
+            meta=e.to_dict()
+        )
     except AuthenticationError as e:
         logger.error(f"Authentication error during registration: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise error_response(
+            status_code=400,
+            code="REGISTRATION_FAILED",
+            message=str(e)
+        )
     except DatabaseError as e:
         logger.error(f"Database error during registration: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="DATABASE_ERROR",
+            message="Registration failed due to a database error."
+        )
     except Exception as e:
         logger.error(f"Unexpected registration error: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="REGISTRATION_FAILED",
+            message="Registration failed due to an internal server error."
+        )
 
 @router.post("/login", response_model=TokenResponse)
 async def login(login_data: UserLogin, request: Request) -> TokenResponse:
     """Authenticate user and return tokens"""
     try:
-        print("🔐 STEP 1: Login endpoint called")
-        print(f"🔐 STEP 1a: Email: {login_data.email}")
+        logger.debug("Login endpoint called for email=%s", login_data.email)
         
         # Initialize database service
         db_service = get_db_service()
         
         # Apply strict rate limiting for login to prevent brute force attacks
-        print("🔐 STEP 2: Checking rate limit...")
         await check_rate_limit(request, "auth")
-        print("🔐 STEP 2: ✅ Rate limit check passed")
+        logger.debug("Login rate limit check passed")
         
         logger.info(f"Login attempt for email: {login_data.email}")
         
-        print("🔐 STEP 3: Calling auth_service.login_user...")
         result = auth_service.login_user(login_data.email, login_data.password)
-        print("🔐 STEP 3: ✅ auth_service.login_user completed successfully")
+        logger.debug("auth_service.login_user completed successfully")
         
-        print("🔐 STEP 4: Creating TokenResponse...")
         response = TokenResponse(
             access_token=result['access_token'],
             refresh_token=result['refresh_token'],
@@ -120,33 +132,26 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
                 "email": result['user']['email']
             }
         )
-        print("🔐 STEP 4: ✅ TokenResponse created successfully")
         
         logger.info(f"User logged in successfully: {login_data.email}")
-        print("🔐 STEP 5: ✅ Login completed successfully")
         return response
         
     except AuthenticationError as e:
-        print(f"🔐 ❌ AUTHENTICATION ERROR: {str(e)}")
         logger.warning(f"Authentication failed for {login_data.email}: {str(e)}")
-        raise HTTPException(status_code=401, detail=str(e))
+        raise error_response(
+            status_code=401,
+            code="INVALID_CREDENTIALS",
+            message=str(e)
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"🔐 ❌ UNEXPECTED ERROR: {type(e).__name__}: {str(e)}")
-        print(f"🔐 ❌ ERROR DETAILS: {repr(e)}")
         logger.error(f"Login error for {login_data.email}: {type(e).__name__}: {e}")
-        
-        # Provide more specific error messages
-        error_message = "Login failed"
-        if "database" in str(e).lower():
-            error_message = "Database connection error. Please try again."
-        elif "timeout" in str(e).lower():
-            error_message = "Login request timed out. Please try again."
-        elif "connection" in str(e).lower():
-            error_message = "Connection error. Please check your internet connection."
-        else:
-            error_message = "An unexpected error occurred during login. Please try again."
-        
-        raise HTTPException(status_code=500, detail=error_message)
+        raise error_response(
+            status_code=500,
+            code="LOGIN_FAILED",
+            message="An unexpected error occurred during login. Please try again."
+        )
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> TokenResponse:
@@ -165,10 +170,18 @@ async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> 
             user={}
         )
     except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise error_response(
+            status_code=401,
+            code="TOKEN_REFRESH_FAILED",
+            message=str(e)
+        )
     except Exception as e:
         logger.error(f"Token refresh error: {e}")
-        raise HTTPException(status_code=500, detail="Token refresh failed")
+        raise error_response(
+            status_code=500,
+            code="TOKEN_REFRESH_FAILED",
+            message="Token refresh failed."
+        )
 
 @router.post("/logout")
 async def logout(request: Request, user_id: int = Depends(get_current_user_id)):
@@ -184,7 +197,11 @@ async def logout(request: Request, user_id: int = Depends(get_current_user_id)):
         }
     except Exception as e:
         logger.error(f"Logout error: {e}")
-        raise HTTPException(status_code=500, detail="Logout failed")
+        raise error_response(
+            status_code=500,
+            code="LOGOUT_FAILED",
+            message="Logout failed."
+        )
 
 @router.post("/guest", response_model=TokenResponse)
 async def create_guest_session(request: Request) -> TokenResponse:
@@ -234,10 +251,18 @@ async def create_guest_session(request: Request) -> TokenResponse:
         
     except AuthenticationError as e:
         logger.warning(f"Guest session creation failed: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise error_response(
+            status_code=400,
+            code="GUEST_SESSION_FAILED",
+            message=str(e)
+        )
     except Exception as e:
         logger.error(f"Unexpected guest session error: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail="Guest session creation failed")
+        raise error_response(
+            status_code=500,
+            code="GUEST_SESSION_FAILED",
+            message="Guest session creation failed."
+        )
 
 @router.post("/cleanup-guests")
 async def cleanup_expired_guests(request: Request):
@@ -282,7 +307,11 @@ async def cleanup_expired_guests(request: Request):
         
     except Exception as e:
         logger.error(f"Guest cleanup error: {e}")
-        raise HTTPException(status_code=500, detail="Cleanup operation failed")
+        raise error_response(
+            status_code=500,
+            code="GUEST_CLEANUP_FAILED",
+            message="Cleanup operation failed."
+        )
 
 @router.get("/guest-quota")
 async def get_guest_quota(user_id = Depends(get_current_user_id)):
@@ -311,7 +340,11 @@ async def get_guest_quota(user_id = Depends(get_current_user_id)):
             
     except Exception as e:
         logger.error(f"Error fetching guest quota: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get quota information")
+        raise error_response(
+            status_code=500,
+            code="GUEST_QUOTA_FETCH_FAILED",
+            message="Failed to get quota information."
+        )
 
 @router.get("/profile")
 async def get_profile(request: Request, user_id = Depends(get_current_user_id)):
@@ -357,7 +390,11 @@ async def get_profile(request: Request, user_id = Depends(get_current_user_id)):
         # Regular user profile
         user = get_user_by_id(user_id)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise error_response(
+                status_code=404,
+                code="USER_NOT_FOUND",
+                message="User not found."
+            )
         
         # Get basic document count only
         try:
@@ -379,4 +416,8 @@ async def get_profile(request: Request, user_id = Depends(get_current_user_id)):
         raise
     except Exception as e:
         logger.error(f"Profile error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get profile") 
+        raise error_response(
+            status_code=500,
+            code="PROFILE_FETCH_FAILED",
+            message="Failed to get profile."
+        )
