@@ -691,8 +691,8 @@ class PostgreSQLService:
         try:
             import hashlib
             
-            # Generate character_id as MD5 hash of user_id + character_name
-            character_id = hashlib.md5(f"{user_id}_{character_name}".encode()).hexdigest()[:16]
+            # Generate character_id as SHA-256 hash of user_id + character_name (truncated for brevity)
+            character_id = hashlib.sha256(f"{user_id}_{character_name}".encode()).hexdigest()[:16]
             
             logger.info(f"💾 Upserting profile for character '{character_name}' (user {user_id})")
             logger.debug(f"   Character ID: {character_id}")
