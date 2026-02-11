@@ -9,10 +9,12 @@ from typing import List, Optional, Union
 # Import security services
 from services.auth_service import auth_service, AuthenticationError
 from services.validation_service import input_validator
+from services.rate_limiter import check_rate_limit
 
 # Import the new PostgreSQL-based rate limiter and caching
 from dependencies import check_chat_rate_limit
 from services.infra_service import cache_provider, CacheType, usage_analytics, UsageMetrics
+from utils.error_responses import error_response
 
 # Change relative imports to absolute imports
 from models.schemas import (
@@ -114,8 +116,7 @@ async def chat(
 ):
     """Enhanced chat endpoint with personalized, culturally-aware feedback and security."""
     try:
-        # CRITICAL DEBUGGING: Log that we've reached the chat endpoint
-        logger.info(f"🎯 CHAT ENDPOINT REACHED - User ID: {user_id}")
+        logger.debug("Chat endpoint reached for user_id=%s", user_id)
         
         # GUEST QUOTA ENFORCEMENT: Check daily limits for cost control
         if isinstance(user_id, str):  # Guest sessions are UUID strings
@@ -123,18 +124,16 @@ async def chat(
             if usage_count >= GUEST_DAILY_LIMIT:
                 logger.info(f"Guest {user_id} hit daily chat limit: {usage_count}/{GUEST_DAILY_LIMIT}")
                 quota_info = auth_service.get_guest_quota(user_id, GUEST_DAILY_LIMIT)
-                raise HTTPException(
+                raise error_response(
                     status_code=402,  # Payment Required - perfect for quota limits
-                    detail={
-                        "code": "GUEST_LIMIT_REACHED",
-                        "message": f"You've used your {GUEST_DAILY_LIMIT} free daily AI chats. Sign up for unlimited access!",
-                        "quota": quota_info
-                    }
+                    code="GUEST_LIMIT_REACHED",
+                    message=f"You've used your {GUEST_DAILY_LIMIT} free daily AI chats. Sign up for unlimited access!",
+                    meta={"quota": quota_info}
                 )
             logger.info(f"Guest {user_id} chat interaction: {usage_count + 1}/{GUEST_DAILY_LIMIT}")
         
         # ENHANCED DEBUGGING: Log authentication success
-        logger.info(f"🔐 Authentication successful for user {user_id}")
+        logger.debug("Authentication successful for user_id=%s", user_id)
         
         # ENHANCED DEBUGGING: Log request details for debugging
         request_info = {
@@ -147,15 +146,20 @@ async def chat(
             'has_highlighted_text': bool(chat_request.highlighted_text),
             'llm_provider': chat_request.llm_provider
         }
-        logger.info(f"📋 Request Info: {request_info}")
+        logger.debug("Request info: %s", request_info)
         
         # PRODUCTION RATE LIMITING: Now handled by dependency injection
         # The new PostgreSQL-based rate limiter works across multiple Railway instances
-        logger.info(f"🛡️ Rate limit check passed for user {user_id} (tier: {rate_limit_result.tier}, tokens remaining: {rate_limit_result.tokens_remaining})")
+        logger.debug(
+            "Rate limit check passed for user=%s tier=%s tokens_remaining=%s",
+            user_id,
+            rate_limit_result.tier,
+            rate_limit_result.tokens_remaining
+        )
         
         # ENHANCED DEBUGGING: Log LLM service availability
         available_providers = llm_service.get_available_providers()
-        logger.info(f"🤖 Available LLM providers: {available_providers}")
+        logger.debug("Available LLM providers: %s", available_providers)
         
         # Validate and sanitize all input data
         validated_message = input_validator.validate_chat_message(chat_request.message)
@@ -165,39 +169,37 @@ async def chat(
         # ENHANCED DEBUGGING: Verify the requested provider is available
         if validated_llm_provider not in available_providers:
             logger.error(f"❌ Requested LLM provider '{validated_llm_provider}' not available. Available: {available_providers}")
-            raise HTTPException(
+            raise error_response(
                 status_code=400,
-                detail=f"LLM provider '{validated_llm_provider}' is not available. Available providers: {available_providers}"
+                code="INVALID_LLM_PROVIDER",
+                message=f"LLM provider '{validated_llm_provider}' is not available.",
+                meta={"available_providers": available_providers}
             )
         
         # SECURITY: Additional length checks for expensive operations
         total_input_length = len(validated_message) + len(validated_editor_text)
         if total_input_length > 100000:  # Increased limit to align with validation service
-            raise HTTPException(
+            raise error_response(
                 status_code=400,
-                detail="Input too long. Please reduce the length of your message and editor content."
+                code="INPUT_TOO_LONG",
+                message="Input too long. Please reduce the length of your message and editor content."
             )
         
         # DEBUG: Log what content is being sent to AI
-        logger.info(f"🔍 CHAT DEBUG - User ID: {user_id}")
-        logger.info(f"📝 Message: {validated_message[:200]}..." if len(validated_message) > 200 else f"📝 Message: {validated_message}")
-        logger.info(f"📄 Editor text length: {len(validated_editor_text)} chars")
+        logger.debug("Chat request user_id=%s", user_id)
+        logger.debug("Message preview: %s", f"{validated_message[:200]}..." if len(validated_message) > 200 else validated_message)
+        logger.debug("Editor text length: %s chars", len(validated_editor_text))
         if validated_editor_text and len(validated_editor_text) > 0:
             editor_preview = validated_editor_text[:300] + "..." if len(validated_editor_text) > 300 else validated_editor_text
-            logger.info(f"📄 Editor content preview: {editor_preview}")
-        logger.info(f"🎭 Author persona: {chat_request.author_persona}")
-        logger.info(f"🎯 Help focus: {chat_request.help_focus}")
-        logger.info(f"🤖 AI Mode: {chat_request.ai_mode}")
-        logger.info(f"🔧 LLM Provider: {validated_llm_provider}")
+            logger.debug("Editor content preview: %s", editor_preview)
+        logger.debug("Author persona: %s", chat_request.author_persona)
+        logger.debug("Help focus: %s", chat_request.help_focus)
+        logger.debug("AI mode: %s", chat_request.ai_mode)
+        logger.debug("LLM provider: %s", validated_llm_provider)
         
         # NEW: Log premium features usage
-        logger.info(f"📁 Folder Scope: {'ENABLED' if chat_request.folder_scope else 'DISABLED'}")
-        logger.info(f"🛡️ Voice Guard: {'ENABLED' if chat_request.voice_guard else 'DISABLED'}")
-
-        # CRITICAL DEBUGGING: Let's see exactly what values we're getting
-        logger.info(f"🔧 DEBUGGING - folder_scope type: {type(chat_request.folder_scope)}")
-        logger.info(f"🔧 DEBUGGING - folder_scope value: {repr(chat_request.folder_scope)}")
-        logger.info(f"🔧 DEBUGGING - folder_scope bool conversion: {bool(chat_request.folder_scope)}")
+        logger.debug("Folder scope: %s", bool(chat_request.folder_scope))
+        logger.debug("Voice guard: %s", bool(chat_request.voice_guard))
 
         
         # Simplified user preferences - handle both Pydantic model and dict cases
@@ -218,7 +220,7 @@ async def chat(
         highlighted_text = None
         if chat_request.highlighted_text:
             highlighted_text = input_validator.validate_suggestion_text(chat_request.highlighted_text)
-            logger.info(f"📝 User highlighted text received: {highlighted_text[:100]}..." if len(highlighted_text) > 100 else f"📝 User highlighted text: {highlighted_text}")
+            logger.debug("Highlighted text length: %s", len(highlighted_text))
         
         # DEPRECATED: Old method of extracting from message - keeping as fallback
         elif "improve this text:" in validated_message and '"' in validated_message:
@@ -229,11 +231,6 @@ async def chat(
         
         # NEW: PREMIUM FEATURE - Folder Context Retrieval
         folder_context = None
-        
-        # CRITICAL DEBUGGING: Log the exact condition check
-        logger.info(f"🔧 DEBUGGING - About to check folder_scope condition...")
-        logger.info(f"🔧 DEBUGGING - chat_request.folder_scope = {chat_request.folder_scope}")
-        logger.info(f"🔧 DEBUGGING - if chat_request.folder_scope evaluates to: {bool(chat_request.folder_scope)}")
         
         if chat_request.folder_scope:
             logger.info("📁 FolderScope enabled - retrieving folder context...")
@@ -251,9 +248,9 @@ async def chat(
                 )
                 
                 if folder_context:
-                    logger.info(f"📁 Retrieved folder context: {len(folder_context)} characters")
+                    logger.debug("Retrieved folder context length=%s", len(folder_context))
                 else:
-                    logger.info("📁 No relevant folder context found")
+                    logger.debug("No relevant folder context found")
                     
             except Exception as folder_error:
                 logger.warning(f"⚠️ Folder context retrieval failed: {folder_error}")
@@ -263,10 +260,10 @@ async def chat(
         # FEATURE: Build conversation context from chat history
         conversation_context = build_conversation_context(chat_request.chat_history)
         if conversation_context:
-            logger.info(f"💬 Using conversation context with {len(chat_request.chat_history)} messages")
+            logger.debug("Using conversation context with %s messages", len(chat_request.chat_history))
         
         # Use the simplified prompt assembly system with AI mode
-        logger.info(f"🔧 Assembling prompt for {validated_llm_provider}...")
+        logger.debug("Assembling prompt for provider=%s", validated_llm_provider)
         final_prompt = llm_service.assemble_chat_prompt(
             user_message=validated_message,
             editor_text=validated_editor_text,
@@ -279,7 +276,7 @@ async def chat(
             folder_context=folder_context  # NEW: Pass folder context
         )
         
-        logger.info(f"✅ Prompt assembled successfully (length: {len(final_prompt)} chars)")
+        logger.debug("Prompt assembled successfully (length=%s chars)", len(final_prompt))
         
         # Generate response using selected LLM
         response_text = None
@@ -310,9 +307,7 @@ async def chat(
             ))
         
         except Exception as llm_error:
-            logger.error(f"❌ LLM Generation Error with {validated_llm_provider}: {llm_error}")
-            logger.error(f"❌ LLM Error Type: {type(llm_error).__name__}")
-            logger.error(f"❌ LLM Error Details: {str(llm_error)}")
+            logger.error("LLM generation failed for provider=%s", validated_llm_provider, exc_info=True)
             
             # Return user-friendly error message
             error_message = f"I'm having trouble connecting to the AI service ({validated_llm_provider}). Please try again in a moment."
@@ -325,7 +320,7 @@ async def chat(
             
             return ChatResponse(
                 dialogue_response=error_message,
-                thinking_trail=f"Error: {str(llm_error)}"
+                thinking_trail=None
             )
 
         # Parse and validate the JSON response
@@ -438,7 +433,7 @@ async def chat(
         except Exception as json_error:
             logger.error(f"❌ JSON parsing error in main chat: {json_error}. Raw response: {str(response_text)[:200]}...")
             return ChatResponse(
-                dialogue_response=str(response_text) if response_text else "Error: Could not parse the AI's response.",
+                dialogue_response="I generated a response, but it couldn't be formatted correctly. Please try again.",
                 thinking_trail=thinking_trail
             )
             
@@ -447,18 +442,9 @@ async def chat(
         logger.error(f"❌ HTTP Exception in chat endpoint: {http_error.status_code} - {http_error.detail}")
         raise
     except Exception as e:
-        logger.error(f"❌ General error in /api/chat: {e}")
-        logger.error(f"❌ Error Type: {type(e).__name__}")
-        logger.error(f"❌ Error Details: {str(e)}")
-        
-        error_dialogue = "Error: Failed to generate response. An unexpected error occurred."
-        if hasattr(e, 'detail') and e.detail:
-            error_dialogue = f"Error: {e.detail}"
-        elif str(e):
-            error_dialogue = f"Error: {str(e)}"
-            
+        logger.error("General error in /api/chat", exc_info=True)
         return ChatResponse(
-            dialogue_response=error_dialogue,
+            dialogue_response="Error: Failed to generate response. An unexpected error occurred.",
             thinking_trail=None
         )
 
@@ -481,7 +467,12 @@ async def submit_user_feedback(
         # Validate correction type
         allowed_types = ['grammar', 'style', 'tone', 'general']
         if feedback_request.correction_type not in allowed_types:
-            raise HTTPException(status_code=400, detail=f"Invalid correction type. Must be one of: {allowed_types}")
+            raise error_response(
+                status_code=400,
+                code="INVALID_CORRECTION_TYPE",
+                message="Invalid correction type.",
+                meta={"allowed_types": allowed_types}
+            )
         
         success = db_service.add_user_feedback(
             user_id=user_id,
@@ -494,13 +485,21 @@ async def submit_user_feedback(
         if success:
             return {"status": "success", "message": "Feedback recorded successfully"}
         else:
-            return {"status": "error", "message": "Failed to record feedback"}
+            raise error_response(
+                status_code=500,
+                code="FEEDBACK_PERSIST_FAILED",
+                message="Failed to record feedback."
+            )
             
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error submitting user feedback: {e}")
-        return {"status": "error", "message": str(e)}
+        logger.error("Error submitting user feedback", exc_info=True)
+        raise error_response(
+            status_code=500,
+            code="FEEDBACK_SUBMISSION_FAILED",
+            message="An internal error occurred while submitting feedback."
+        )
 
 @router.get("/preferences")
 async def get_user_preferences(http_request: Request, user_id: int = Depends(get_current_user_id)):
@@ -524,13 +523,13 @@ async def get_user_preferences(http_request: Request, user_id: int = Depends(get
                 "preferences": default_preferences
             }
             
-    except Exception as e:
-        print(f"Error getting user preferences: {e}")
-        return {
-            "status": "error",
-            "message": "An internal error occurred while retrieving user preferences.",
-            "preferences": None
-        }
+    except Exception:
+        logger.error("Error getting user preferences", exc_info=True)
+        raise error_response(
+            status_code=500,
+            code="PREFERENCES_FETCH_FAILED",
+            message="An internal error occurred while retrieving user preferences."
+        )
 
 @router.post("/suggestions", response_model=EnhancedChatResponse)
 async def generate_suggestions(
@@ -602,9 +601,9 @@ async def generate_suggestions(
         )
         
     except Exception as e:
-        logger.error(f"Error generating suggestions: {e}")
+        logger.error("Error generating suggestions", exc_info=True)
         return EnhancedChatResponse(
-            dialogue_response=f"I encountered an error generating suggestions: {str(e)}",
+            dialogue_response="I encountered an error generating suggestions. Please try again.",
             suggestions=[],
             has_suggestions=False
         )

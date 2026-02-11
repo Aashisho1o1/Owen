@@ -8,6 +8,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+# Configure logging early so startup diagnostics are captured.
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Disable ChromaDB telemetry to prevent backend crashes on Railway (connection test: comment updated)
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
@@ -51,28 +58,28 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Add comprehensive startup logging
-print("🚀 DOG Writer Backend Starting...")
-print(f"📍 Current working directory: {os.getcwd()}")
-print(f"🐍 Python version: {sys.version}")
-print(f"🌍 Environment: {os.getenv('RAILWAY_ENVIRONMENT', 'local')}")
-print(f"🔧 PORT: {os.getenv('PORT', 'not set')}")
-print(f"🔑 JWT_SECRET_KEY: {'✅ SET' if os.getenv('JWT_SECRET_KEY') else '❌ NOT SET'}")
-print(f"🗄️ DATABASE_URL: {'✅ SET' if os.getenv('DATABASE_URL') else '❌ NOT SET'}")
+logger.info("DOG Writer backend starting")
+logger.info("Current working directory: %s", os.getcwd())
+logger.info("Python version: %s", sys.version)
+logger.info("Environment: %s", os.getenv('RAILWAY_ENVIRONMENT', 'local'))
+logger.info("PORT: %s", os.getenv('PORT', 'not set'))
+logger.info("JWT_SECRET_KEY: %s", "set" if os.getenv('JWT_SECRET_KEY') else "not set")
+logger.info("DATABASE_URL: %s", "set" if os.getenv('DATABASE_URL') else "not set")
 
 try:
     from fastapi import FastAPI, Request
     from fastapi.middleware.cors import CORSMiddleware
-    print("✅ FastAPI imports successful")
+    logger.info("FastAPI imports successful")
 except Exception as e:
-    print(f"❌ FastAPI imports failed: {e}")
+    logger.error("FastAPI imports failed: %s", e)
     sys.exit(1)
 
 try:
     # Import our PostgreSQL services with lazy initialization
     from services.database import get_db_service
-    print("✅ Database service import successful")
+    logger.info("Database service import successful")
 except Exception as e:
-    print(f"❌ Database service import failed: {e}")
+    logger.error("Database service import failed: %s", e)
     # Continue without database for now
     get_db_service = None
 
@@ -93,44 +100,37 @@ routers_to_import = [
 imported_routers = []
 for module_name, router_name in routers_to_import:
     try:
-        print(f"🔄 Importing {router_name} from {module_name}...")
+        logger.info("Importing %s from %s", router_name, module_name)
         module = __import__(module_name, fromlist=[router_name])
         router = getattr(module, "router")
         imported_routers.append((router_name, router))
-        print(f"✅ {router_name} imported successfully")
+        logger.info("%s imported successfully", router_name)
         # DEBUG: Check if router has routes
         if hasattr(router, 'routes'):
-            print(f"   Router has {len(router.routes)} routes defined")
+            logger.debug("%s has %s routes defined", router_name, len(router.routes))
         else:
-            print(f"   ⚠️ Router has no routes attribute")
+            logger.warning("%s has no routes attribute", router_name)
     except Exception as e:
-        print(f"❌ {router_name} import failed: {e}")
+        logger.error("%s import failed: %s", router_name, e)
         import traceback
-        print(f"   Import error details: {traceback.format_exc()}")
+        logger.debug("Import error details: %s", traceback.format_exc())
         # Continue without this router
 
 try:
     # Import security middleware
     from middleware.security_middleware import SecurityMiddleware
-    print("✅ Security middleware import successful")
+    logger.info("Security middleware import successful")
 except Exception as e:
-    print(f"❌ Security middleware import failed: {e}")
+    logger.error("Security middleware import failed: %s", e)
     SecurityMiddleware = None
 
 try:
     # Import rate limiter for health checks
     from services.rate_limiter import rate_limiter
-    print("✅ Rate limiter import successful")
+    logger.info("Rate limiter import successful")
 except Exception as e:
-    print(f"❌ Rate limiter import failed: {e}")
+    logger.error("Rate limiter import failed: %s", e)
     rate_limiter = None
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # CRITICAL: Suppress ChromaDB telemetry errors at the logging level
 # This prevents telemetry errors from appearing in logs even if they occur
@@ -165,7 +165,7 @@ async def lifespan(app: FastAPI):
     startup_errors = []
     
     try:
-        print("🚀 Starting DOG Writer MVP backend lifespan...")
+        logger.info("Starting DOG Writer MVP backend lifespan")
         logger.info("🚀 Starting DOG Writer MVP backend...")
         
         # Check critical environment variables first
@@ -174,10 +174,10 @@ async def lifespan(app: FastAPI):
             'JWT_SECRET_KEY': os.getenv('JWT_SECRET_KEY'),
         }
         
-        print(f"🔍 Checking critical environment variables...")
+        logger.info("Checking critical environment variables")
         for var_name, var_value in critical_vars.items():
             status = "✅ SET" if var_value else "❌ NOT SET"
-            print(f"   {var_name}: {status}")
+            logger.info("%s: %s", var_name, status)
         
         for var_name, var_value in critical_vars.items():
             if not var_value:
@@ -273,7 +273,16 @@ app.add_middleware(
     # Without OPTIONS, browsers can't complete preflight and requests timeout with status: 0
     # FastAPI's CORSMiddleware should auto-handle OPTIONS, but explicit is better than implicit
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-Request-Type",
+        "X-Debug-Features",
+        "X-Fresh-Request",
+    ],
     # Add a max_age to cache preflight responses for better performance
     max_age=600 # Cache for 10 minutes
 )
@@ -282,19 +291,19 @@ app.add_middleware(
 security_middleware_instance = None
 if SecurityMiddleware:
     app.add_middleware(SecurityMiddleware)
-    print("✅ Security middleware added")
+    logger.info("Security middleware added")
     # Note: We can't directly access the middleware instance from FastAPI
     # The admin endpoints will need to be implemented differently
 else:
-    print("⚠️ Security middleware not available - continuing without it")
+    logger.warning("Security middleware not available - continuing without it")
 
 # Include all imported routers
 for router_name, router in imported_routers:
     try:
         app.include_router(router)
-        print(f"✅ {router_name} included successfully")
+        logger.info("%s included successfully", router_name)
     except Exception as e:
-        print(f"❌ Failed to include {router_name}: {e}")
+        logger.error("Failed to include %s: %s", router_name, e)
 
 # Explicit CORS preflight handler for all routes
 @app.options("/{path:path}")

@@ -10,43 +10,37 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 from collections import defaultdict, deque
 from fastapi import HTTPException, Request
+from utils.request_helpers import get_client_ip as extract_client_ip
 
 logger = logging.getLogger(__name__)
 
 class SimpleRateLimiter:
     """Simple rate limiting for MVP"""
     
-    def __init__(self):
+    def __init__(self, block_duration: timedelta = timedelta(minutes=30)):
         # Basic rate limits
         self.limits = {
-            'general': {'requests': 100, 'window': 60},  # 100 req/min
-            'auth': {'requests': 5, 'window': 300},      # 5 auth/5min
-            'chat': {'requests': 30, 'window': 60},      # 30 chat/min
-            'grammar': {'requests': 50, 'window': 60},   # 50 grammar/min
+            'general': {'requests': 30, 'window': 60},   # 30 req/min
+            'auth': {'requests': 4, 'window': 300},      # 4 auth/5min
+            'chat': {'requests': 8, 'window': 60},       # 8 chat/min
+            'grammar': {'requests': 20, 'window': 60},   # 20 grammar/min
         }
         
         # Storage for request counts
         self.request_counts: Dict[str, deque] = defaultdict(deque)
         self.blocked_ips: Dict[str, datetime] = {}
+        self.block_duration = block_duration
     
     def get_client_ip(self, request: Request) -> str:
         """Extract client IP from request"""
-        # Check for forwarded headers
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            return forwarded_for.split(",")[0].strip()
-        
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip.strip()
-        
-        return request.client.host if request.client else "unknown"
-    
+        ip_address = extract_client_ip(request)
+        return ip_address if ip_address else "unknown"
+
     def is_blocked(self, ip_address: str) -> bool:
         """Check if IP is currently blocked"""
         if ip_address in self.blocked_ips:
             block_time = self.blocked_ips[ip_address]
-            if datetime.now() - block_time < timedelta(minutes=30):  # 30 min block
+            if datetime.now() - block_time < self.block_duration:
                 return True
             else:
                 del self.blocked_ips[ip_address]
@@ -121,9 +115,12 @@ class SimpleRateLimiter:
         # Record this request
         requests.append(now)
         
-        # Cleanup old data periodically
-        if now % 300 < 1:  # Every 5 minutes
+        # Cleanup old data periodically (every 5 minutes)
+        if not hasattr(self, 'last_cleanup_time'):
+            self.last_cleanup_time = now
+        if now - self.last_cleanup_time >= 300:
             self._cleanup_old_data()
+            self.last_cleanup_time = now
         
         return True
     
@@ -141,10 +138,14 @@ class SimpleRateLimiter:
             # Remove empty queues
             if not requests:
                 keys_to_remove.append(key)
-        
+        before_cleanup = len(self.request_counts)
         for key in keys_to_remove:
             del self.request_counts[key]
-        
+        after_cleanup = len(self.request_counts)
+        logger.info(
+            f"[{datetime.now().isoformat()}] Cleaned up {len(keys_to_remove)} old rate limit entries. "
+            f"Keys before: {before_cleanup}, after: {after_cleanup}"
+        )
         logger.info(f"Cleaned up {len(keys_to_remove)} old rate limit entries")
 
 # Global instance

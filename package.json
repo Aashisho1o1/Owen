@@ -1,5 +1,4 @@
 {
-  "devDependencies": {
-    "@railway/cli": "^4.5.3"
-  }
+  "private": true,
+  "devDependencies": {}
 }

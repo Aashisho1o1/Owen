@@ -14,6 +14,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from services.auth_service import auth_service, AuthenticationError
 from services.infra_service import infra_service, RateLimitResult
+from utils.error_responses import error_response
+from utils.request_helpers import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +40,10 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     """
     if credentials is None or not credentials.credentials:
         logger.warning("Authentication attempt failed: No credentials provided.")
-        raise HTTPException(
+        raise error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication credentials were not provided.",
+            code="AUTH_CREDENTIALS_MISSING",
+            message="Authentication credentials were not provided.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -68,17 +71,19 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
         
     except AuthenticationError as e:
         logger.warning(f"Authentication failed for token. Reason: {e}")
-        raise HTTPException(
+        raise error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
+            code="AUTH_INVALID_TOKEN",
+            message=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as e:
         logger.error(f"An unexpected server error occurred during authentication: {e}", exc_info=True)
-        raise HTTPException(
+        raise error_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Could not validate credentials due to a server error.",
-        ) 
+            code="AUTH_VALIDATION_ERROR",
+            message="Could not validate credentials due to a server error.",
+        )
 
 # New PostgreSQL-based rate limiting dependency
 async def check_rate_limit_dependency(
@@ -103,34 +108,33 @@ async def check_rate_limit_dependency(
     Raises:
         HTTPException: 429 if rate limit exceeded
     """
+    fail_closed_endpoints = {"chat", "voice_analysis", "story_generation"}
+
     try:
         # Check rate limit using our new PostgreSQL-based service
         rate_limit_result = await infra_service.check_rate_limit(user_id, endpoint)
         
         if not rate_limit_result.allowed:
             logger.warning(f"Rate limit exceeded for user {user_id} on endpoint {endpoint}")
-            
+
             # Get client IP for logging
-            client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-            if not client_ip:
-                client_ip = request.headers.get("X-Real-IP", "")
-            if not client_ip:
-                client_ip = request.client.host if request.client else "unknown"
-            
-            # Enhanced error response with rate limit info
-            raise HTTPException(
+            client_ip = get_client_ip(request)
+            logger.info("Rate limit denied request from ip=%s endpoint=%s", client_ip, endpoint)
+
+            retry_after = max(0, rate_limit_result.reset_time - int(time.time()))
+            raise error_response(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
-                    "error": "Rate limit exceeded",
-                    "message": f"You have exceeded the rate limit for {endpoint}. Please try again later.",
-                    "retry_after": rate_limit_result.reset_time - int(time.time()),
+                code="RATE_LIMIT_EXCEEDED",
+                message=f"You have exceeded the rate limit for {endpoint}. Please try again later.",
+                meta={
+                    "retry_after": retry_after,
                     "tokens_remaining": rate_limit_result.tokens_remaining,
                     "reset_time": rate_limit_result.reset_time,
                     "tier": rate_limit_result.tier,
                     "endpoint": endpoint
                 },
                 headers={
-                    "Retry-After": str(rate_limit_result.reset_time - int(time.time())),
+                    "Retry-After": str(retry_after),
                     "X-RateLimit-Limit": "varies-by-tier",
                     "X-RateLimit-Remaining": str(rate_limit_result.tokens_remaining),
                     "X-RateLimit-Reset": str(rate_limit_result.reset_time)
@@ -145,8 +149,20 @@ async def check_rate_limit_dependency(
         raise
     except Exception as e:
         logger.error(f"Rate limit check failed for user {user_id}: {e}")
-        # Fail open - allow request but log error for monitoring
-        # This prevents rate limiting failures from breaking the app
+        if endpoint in fail_closed_endpoints:
+            raise error_response(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="RATE_LIMIT_UNAVAILABLE",
+                message="Rate limiter is temporarily unavailable for this endpoint. Please try again shortly.",
+                meta={"endpoint": endpoint}
+            )
+
+        logger.warning(
+            "Rate limiter unavailable for non-expensive endpoint=%s user_id=%s; failing open",
+            endpoint,
+            user_id
+        )
+        # Fail open for non-expensive endpoints
         return RateLimitResult(
             allowed=True,
             tokens_remaining=0,

@@ -33,15 +33,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.rate_limit_storage: Dict[str, list] = {}
         self.blocked_ips: Set[str] = set()
         
-        # Security configuration - Updated for development/testing
-        self.rate_limit_requests = 300  # Increased from 100 to 300 requests per minute
+        # Conservative default limits for cost and abuse control
+        self.rate_limit_requests = 60
         self.rate_limit_window = 60     # seconds
-        self.block_threshold = 500      # Increased from 300 to 500 requests before IP block
+        self.block_threshold = 120
         self.max_request_size = 10 * 1024 * 1024
         
-        # FIXED: Add burst allowance for legitimate users (initial page load)
-        # CRITICAL FIX: Increase burst allowance for React Strict Mode + multiple useDocuments instances
-        self.burst_allowance = 25       # Allow 25 requests in first 15 seconds (React Strict Mode compatible)
+        # Allow a small burst for initial page load while keeping abuse resistance high
+        self.burst_allowance = 10
         self.burst_window = 15          # 15 seconds burst window
         
         # Enhanced security headers configuration (2025 OWASP standards)
@@ -73,7 +72,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             # Comprehensive Content Security Policy
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "script-src 'self' 'unsafe-inline'; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com; "
                 "img-src 'self' data: https: blob:; "
@@ -95,7 +94,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             "Expires": "0",
             
             # Rate limiting information
-            "X-Rate-Limit-Policy": "100-per-minute-per-ip"
+            "X-Rate-Limit-Policy": "60-per-minute-per-ip"
         }
     
     async def dispatch(self, request: Request, call_next):

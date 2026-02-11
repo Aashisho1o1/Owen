@@ -9,6 +9,7 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional
 from enum import Enum
+from utils.request_helpers import get_client_ip  # Re-export shared helper for compatibility
 
 logger = logging.getLogger(__name__)
 
@@ -239,18 +240,3 @@ class SecurityLogger:
 
 # Global security logger instance
 security_logger = SecurityLogger()
-
-# Helper functions
-def get_client_ip(request) -> str:
-    """Extract client IP from request"""
-    # Check for forwarded headers (common in production behind proxy)
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip
-    
-    # Fallback to direct client IP
-    return getattr(request.client, "host", "unknown") 

@@ -17,17 +17,11 @@ from models.schemas import GrammarCheckRequest, GrammarCheckResponse
 from services.grammar_service import grammar_service, SecurityError
 # from services.auth_service import get_current_user_id, get_optional_user_id
 from services.validation_service import input_validator
+from utils.request_helpers import get_client_ip
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/grammar", tags=["grammar"])
-
-def get_client_ip(request: Request) -> str:
-    """Extract client IP for rate limiting and logging"""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 @router.post("/check", response_model=GrammarCheckResponse)
 async def check_grammar(
