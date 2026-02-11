@@ -53,9 +53,6 @@ LOGGING_CONFIG = {
     }
 }
 
-#####
-
-
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
 load_dotenv()
