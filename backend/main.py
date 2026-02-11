@@ -18,41 +18,6 @@ logger = logging.getLogger(__name__)
 # Disable ChromaDB telemetry to prevent backend crashes on Railway (connection test: comment updated)
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
-# --- Centralized Logging Configuration ---
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "standard": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        }
-    },
-    "handlers": {
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "standard"
-        }
-    },
-    "loggers": {
-        "": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": True
-        },
-        "chromadb.telemetry": {
-            "level": "CRITICAL",
-            "handlers": ["console"],
-            "propagate": False
-        },
-        "chromadb.telemetry.product.posthog": {
-            "level": "CRITICAL",
-            "handlers": ["console"],
-            "propagate": False
-        }
-    }
-}
-
 # Load environment variables from .env file for local development
 from dotenv import load_dotenv
 load_dotenv()
@@ -65,14 +30,6 @@ logger.info("Environment: %s", os.getenv('RAILWAY_ENVIRONMENT', 'local'))
 logger.info("PORT: %s", os.getenv('PORT', 'not set'))
 logger.info("JWT_SECRET_KEY: %s", "set" if os.getenv('JWT_SECRET_KEY') else "not set")
 logger.info("DATABASE_URL: %s", "set" if os.getenv('DATABASE_URL') else "not set")
-
-try:
-    from fastapi import FastAPI, Request
-    from fastapi.middleware.cors import CORSMiddleware
-    logger.info("FastAPI imports successful")
-except Exception as e:
-    logger.error("FastAPI imports failed: %s", e)
-    sys.exit(1)
 
 try:
     # Import our PostgreSQL services with lazy initialization
@@ -89,7 +46,7 @@ routers_to_import = [
     ("routers.document_router", "document_router"),
     ("routers.folder_router", "folder_router"),
     ("routers.chat_router", "chat_router"),
-    ("routers.grammar_router", "grammar_router"),
+    # ("routers.grammar_router", "grammar_router"), # didn't we delete grammar related.. maybe we can delete this as we are not focusing on gammar at this stage
     ("routers.indexing_router", "indexing_router"),
     ("routers.story_generator_router", "story_generator_router"),
     ("routers.character_voice_router", "character_voice_router"),
@@ -218,7 +175,7 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Shutting down database connections...")
         try:
             # Ensure we're in the right context for database cleanup
-            db = get_db_service()
+            db = get_db_service() # type: ignore
             if db and hasattr(db, 'close'):
                 db.close()
                 logger.info("✅ Database connections closed cleanly")
@@ -288,7 +245,6 @@ app.add_middleware(
 )
 
 # Add security middleware AFTER CORS middleware (if available)
-security_middleware_instance = None
 if SecurityMiddleware:
     app.add_middleware(SecurityMiddleware)
     logger.info("Security middleware added")
@@ -310,9 +266,6 @@ for router_name, router in imported_routers:
 async def preflight_handler(path: str):
     """Handle CORS preflight requests for all paths"""
     return {"message": "OK"}
-
-# DEBUGGING: The character voice router is not being registered properly
-# The issue is likely in the router import chain - let's check dependencies
 
 # Health endpoints
 @app.get("/")

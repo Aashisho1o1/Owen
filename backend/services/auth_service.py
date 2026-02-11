@@ -7,7 +7,6 @@ and comprehensive user management.
 import bcrypt
 import jwt
 import logging
-import secrets
 import os
 import uuid
 import hashlib
@@ -48,8 +47,6 @@ def _validate_jwt_configuration():
         logger.critical("This creates a critical security vulnerability")
         logger.critical("Generate a secure key: python -c 'import secrets; print(secrets.token_urlsafe(64))'")
         raise ValueError("JWT_SECRET_KEY must not use common weak values")
-
-logger.info("✅ JWT_SECRET_KEY security validation passed")
 
 class AuthenticationError(Exception):
     """Custom exception for authentication errors"""
@@ -201,78 +198,57 @@ class AuthService:
     def login_user(self, email: str, password: str, ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
         """Authenticate user and return tokens"""
         try:
-            logger.debug("AUTH_STEP_1: Starting login for email=%s", email)
-            
             # Get user from database
-            logger.debug("AUTH_STEP_2: Querying database for user")
             user = self.db.execute_query(
                 "SELECT id, username, email, name, password_hash, is_active, failed_login_attempts, account_locked_until FROM users WHERE email = %s",
                 (email,),
                 fetch='one'
             )
-            logger.debug("AUTH_STEP_2: Database query completed")
             
             if not user:
-                logger.warning("AUTH_STEP_2_FAIL: User not found for email=%s", email)
+                logger.warning("User not found for email=%s", email)
                 self._log_login_attempt(None, email, False, ip_address, "User not found")
                 raise AuthenticationError("Invalid email or password")
-            
-            logger.debug("AUTH_STEP_3: User found, checking account status")
-            
+
             # Check if account is locked
             if user['account_locked_until'] and user['account_locked_until'] > datetime.utcnow():
-                logger.warning("AUTH_STEP_3_FAIL: Account locked for user_id=%s", user['id'])
+                logger.warning("Account locked for user_id=%s", user['id'])
                 self._log_login_attempt(user['id'], email, False, ip_address, "Account locked")
                 raise AuthenticationError("Account is temporarily locked")
             
             # Check if account is active
             if not user['is_active']:
-                logger.warning("AUTH_STEP_3_FAIL: Account inactive for user_id=%s", user['id'])
+                logger.warning("Account inactive for user_id=%s", user['id'])
                 self._log_login_attempt(user['id'], email, False, ip_address, "Account inactive")
                 raise AuthenticationError("Account is inactive")
-            
-            logger.debug("AUTH_STEP_3: Account status OK")
-            
+
             # Verify password
-            logger.debug("AUTH_STEP_4: Verifying password")
             if not self._verify_password(password, user['password_hash']):
-                logger.warning("AUTH_STEP_4_FAIL: Password verification failed for user_id=%s", user['id'])
+                logger.warning("Password verification failed for user_id=%s", user['id'])
                 # Increment failed login attempts
                 self._handle_failed_login(user['id'])
                 self._log_login_attempt(user['id'], email, False, ip_address, "Invalid password")
                 raise AuthenticationError("Invalid email or password")
-            
-            logger.debug("AUTH_STEP_4: Password verified")
-            
+
             # Reset failed login attempts on successful login
-            logger.debug("AUTH_STEP_5: Resetting failed login attempts")
             self._reset_failed_login_attempts(user['id'])
-            logger.debug("AUTH_STEP_5: Failed login attempts reset")
-            
+
             # Generate tokens
-            logger.debug("AUTH_STEP_6: Generating tokens")
             access_token, refresh_token = self._generate_tokens(user['id'], user['email'])
-            logger.debug("AUTH_STEP_6: Tokens generated")
-            
+
             # Store refresh token
-            logger.debug("AUTH_STEP_7: Storing refresh token")
             self._store_refresh_token(user['id'], refresh_token, user_agent, ip_address)
-            logger.debug("AUTH_STEP_7: Refresh token stored")
-            
+
             # Update last login
-            logger.debug("AUTH_STEP_8: Updating last login time")
             self.db.execute_query(
                 "UPDATE users SET last_login = %s WHERE id = %s",
                 (datetime.utcnow(), user['id'])
             )
-            logger.debug("AUTH_STEP_8: Last login updated")
-            
+
             # Log successful login
-            logger.debug("AUTH_STEP_9: Logging successful login")
             self._log_login_attempt(user['id'], email, True, ip_address, "Login successful")
             
             logger.info(f"User logged in successfully: {email}")
-            logger.debug("AUTH_STEP_10: Login completed successfully for user_id=%s", user['id'])
             
             return {
                 "user": {
@@ -298,31 +274,25 @@ class AuthService:
     
     def verify_token(self, token: str) -> Dict[str, Any]:
         """Verify JWT token and return user info"""
-        logger.info("--- 🕵️ Starting Token Verification ---")
         if not token:
-            logger.error("VERIFY_TOKEN_FAIL: Token is null or empty.")
+            logger.error("Token is null or empty")
             raise AuthenticationError("Token not provided.")
             
         try:
-            logger.info(f"VERIFY_TOKEN_STEP_1: Decoding JWT. Token starts with: {token[:20]}...")
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            logger.info("VERIFY_TOKEN_STEP_2: JWT decoded successfully.")
             
             # Check token type
             token_type = payload.get('type')
-            logger.info(f"VERIFY_TOKEN_STEP_3: Checking token type. Found type: '{token_type}'.")
             if token_type != 'access':
-                logger.warning(f"VERIFY_TOKEN_FAIL: Invalid token type. Expected 'access', got '{token_type}'.")
+                logger.warning(f"Invalid token type. Expected 'access', got '{token_type}'")
                 raise AuthenticationError("Invalid token type")
             
             user_id = payload.get('user_id')
-            logger.info(f"VERIFY_TOKEN_STEP_4: Extracting user_id. Found user_id: {user_id}.")
             if not user_id:
-                logger.error("VERIFY_TOKEN_FAIL: 'user_id' not found in token payload.")
+                logger.error("'user_id' not found in token payload")
                 raise AuthenticationError("'user_id' missing from token.")
 
             # Get user from database to ensure they still exist and are active
-            logger.info(f"VERIFY_TOKEN_STEP_5: Querying database for user_id: {user_id}.")
             user = self.db.execute_query(
                 "SELECT id, username, email, name, is_active FROM users WHERE id = %s",
                 (user_id,),
@@ -330,16 +300,13 @@ class AuthService:
             )
             
             if not user:
-                logger.warning(f"VERIFY_TOKEN_FAIL: User {user_id} not found in database.")
+                logger.warning(f"User {user_id} not found in database")
                 raise AuthenticationError("User not found")
-            logger.info(f"VERIFY_TOKEN_STEP_6: User {user_id} found in database.")
                 
             if not user['is_active']:
-                logger.warning(f"VERIFY_TOKEN_FAIL: User {user_id} is inactive.")
+                logger.warning(f"User {user_id} is inactive")
                 raise AuthenticationError("User account is inactive")
-            logger.info(f"VERIFY_TOKEN_STEP_7: User {user_id} is active.")
-            
-            logger.info(f"--- ✅ Token Verified Successfully for user {user['id']} ---")
+
             return {
                 "user_id": user['id'],
                 "username": user['username'],
@@ -348,13 +315,13 @@ class AuthService:
             }
             
         except jwt.ExpiredSignatureError:
-            logger.warning("VERIFY_TOKEN_FAIL: JWT has expired.")
+            logger.warning("JWT has expired")
             raise AuthenticationError("Token has expired")
         except jwt.InvalidTokenError as e:
-            logger.error(f"VERIFY_TOKEN_FAIL: JWT is invalid. Details: {str(e)}")
+            logger.error(f"JWT is invalid. Details: {str(e)}")
             raise AuthenticationError("Invalid token")
         except Exception as e:
-            logger.error(f"VERIFY_TOKEN_FAIL: An unexpected exception occurred. Details: {str(e)}", exc_info=True)
+            logger.error(f"Token verification failed: {str(e)}", exc_info=True)
             raise AuthenticationError("Token verification failed")
     
     def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
@@ -880,12 +847,6 @@ def get_auth_service() -> AuthService:
     if _auth_service_instance is None:
         _auth_service_instance = AuthService()
     return _auth_service_instance
-
-# Backward compatibility - this will be initialized on first access
-@property
-def auth_service():
-    """Backward compatibility property"""
-    return get_auth_service()
 
 # Create a module-level object that behaves like the old auth_service
 class AuthServiceProxy:

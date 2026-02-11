@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-# CRITICAL FIX: Use the LLM service coordinator (same as successful contextual understanding)
+# Use the shared LLM service coordinator.
 from services.llm_service import llm_service
 from services.dialogue_extractor import dialogue_extractor
 
@@ -520,7 +520,7 @@ Character names to validate: {potential_characters}"""
             
             text = plain_text
             
-            # CRITICAL FIX: Ensure dialogue patterns have proper line breaks
+            # Ensure dialogue patterns have proper line breaks.
             # This fixes the issue where "sentence.Alice: dialogue" becomes "sentence.\nAlice: dialogue"
             logger.info(f"🔧 Normalizing dialogue formatting...")
             # Add line breaks before character dialogue patterns

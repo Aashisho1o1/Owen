@@ -379,7 +379,7 @@ async def chat(
                         text=validated_editor_text
                     )
                     
-                    # CRITICAL FIX: Robust type checking for voice_results
+                    # Robust type checking for voice_results
                     if voice_results is None:
                         logger.warning("⚠️ Voice analysis returned None, skipping voice consistency check")
                     elif isinstance(voice_results, str):

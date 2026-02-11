@@ -56,8 +56,7 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
             logger.info(f"Successfully authenticated user_id: {user_info['user_id']}")
             return user_info['user_id']
         except AuthenticationError as e:
-            # CRITICAL FIX: Always try guest token verification on any auth failure
-            # This ensures guest sessions work regardless of the specific error message
+            # Always try guest token verification on auth failure
             try:
                 guest_info = auth_service.verify_guest_token(token)
                 # Return session_id as user_id for guests (maintains compatibility)

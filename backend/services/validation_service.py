@@ -6,8 +6,7 @@ Basic input validation and sanitization for essential security.
 
 import re
 import html
-from typing import Any, Dict, List, Optional
-from fastapi import HTTPException
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -288,33 +287,3 @@ class SimpleInputValidator:
 
 # Global instance
 input_validator = SimpleInputValidator()
-
-# Helper functions
-def validate_request_data(data: Dict[str, Any], required_fields: List[str] = None) -> Dict[str, Any]:
-    """Validate request data"""
-    if not isinstance(data, dict):
-        raise HTTPException(status_code=400, detail="Invalid data format")
-    
-    # Check required fields
-    if required_fields:
-        missing_fields = [field for field in required_fields if field not in data]
-        if missing_fields:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing required fields: {missing_fields}"
-            )
-    
-    return data
-
-def validate_chat_input(message: str, editor_text: str = "") -> Dict[str, str]:
-    """Validate chat input data"""
-    try:
-        validated_message = input_validator.validate_chat_message(message)
-        validated_editor = input_validator.validate_text_input(editor_text or "")
-        
-        return {
-            "message": validated_message,
-            "editor_text": validated_editor
-        }
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e)) 

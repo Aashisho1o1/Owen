@@ -47,7 +47,7 @@ const DocumentsPage: React.FC = () => {
 
     try {
       const newDoc = await createDocument('Untitled Document', 'novel');
-      navigate(`/document/${newDoc.id}`);
+      navigate(`/editor/${newDoc.id}`);
     } catch (error) {
       console.error('Failed to create blank document:', error);
       alert('Failed to create document. Please try again.');

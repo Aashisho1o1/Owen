@@ -1024,7 +1024,7 @@ class HybridIndexer:
             logger.info(f"📁 LLM STEP 3a: Query: \n{query_sql}")
             logger.info(f"📁 LLM STEP 3b: Params: {(user_id,)}")
 
-            # CRITICAL FIX: Use correct synchronous database service method
+            # Use the synchronous database service method.
             documents = db_service.execute_query(query_sql, (user_id,), fetch='all')
             
             logger.info(f"📁 LLM STEP 4: Database query executed successfully")
@@ -1229,7 +1229,7 @@ Answer:"""
             expanded_query_terms = self._expand_query_terms(query)
             logger.info(f"📁 KEYWORD STEP 3a: Expanded terms: {expanded_query_terms}")
             
-            # CRITICAL FIX: Use simpler SQL query instead of PostgreSQL full-text search
+            # Use a simpler SQL query instead of PostgreSQL full-text search.
             logger.info(f"📁 KEYWORD STEP 4: Building simplified SQL query")
             
             # Simple LIKE-based search that works on all databases
@@ -1250,7 +1250,7 @@ Answer:"""
             logger.info(f"📁 KEYWORD STEP 5a: Query: \n{query_sql}")
             logger.info(f"📁 KEYWORD STEP 5b: Params: {(user_id, f'%{query}%', f'%{query}%', max_documents)}")
 
-            # CRITICAL FIX: Use correct synchronous database service method
+            # Use the synchronous database service method.
             documents = db_service.execute_query(
                 query_sql,
                 (user_id, f'%{query}%', f'%{query}%', max_documents),

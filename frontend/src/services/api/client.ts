@@ -50,38 +50,6 @@ let failedQueue: Array<{
   reject: (error: unknown) => void;
 }> = [];
 
-// FIXED: Simple request deduplication to prevent duplicate API calls
-const pendingRequests = new Map<string, Promise<unknown>>();
-
-const createRequestKey = (config: unknown): string => {
-  const configObj = config as { method?: string; url?: string; data?: unknown };
-  return `${configObj.method}:${configObj.url}:${JSON.stringify(configObj.data || {})}`;
-};
-
-// NEW: Clean up stale requests to prevent browser state accumulation
-const cleanupStaleRequests = () => {
-  const staleThreshold = 60000; // 1 minute
-  const now = Date.now();
-  
-  for (const [key, promise] of pendingRequests.entries()) {
-    // Check if promise is still pending by checking its state
-    Promise.race([promise, Promise.resolve('__timeout__')])
-      .then((result) => {
-        if (result === '__timeout__' || now - ((promise as unknown) as { _timestamp: number })._timestamp > staleThreshold) {
-          pendingRequests.delete(key);
-          console.log(`🧹 Cleaned up stale request: ${key}`);
-        }
-      })
-      .catch(() => {
-        // Promise already rejected, clean it up
-        pendingRequests.delete(key);
-      });
-  }
-};
-
-// Clean up stale requests every 30 seconds
-setInterval(cleanupStaleRequests, 30000);
-
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
@@ -175,21 +143,6 @@ apiClient.interceptors.request.use(
       console.error('🔧 Expected URL pattern: baseURL + /api/... (no double slashes)');
     }
     
-    // FIXED: Only apply deduplication to GET requests and exclude voice analysis
-    if (config.method?.toLowerCase() === 'get' && !config.url?.includes('/character-voice/')) {
-      const requestKey = createRequestKey(config);
-      if (pendingRequests.has(requestKey)) {
-        console.log(`🔄 Request deduplication: ${config.url} already pending`);
-        // Return the existing promise instead of making a new request
-        return pendingRequests.get(requestKey)!.then(() => config);
-      }
-      
-      // Create a new promise with timestamp for cleanup
-      const requestPromise = Promise.resolve(config);
-      ((requestPromise as unknown) as { _timestamp: number })._timestamp = Date.now();
-      pendingRequests.set(requestKey, requestPromise);
-    }
-    
     // Special handling for voice analysis endpoints - ALWAYS bypass deduplication
     if (config.url?.includes('/character-voice/analyze')) {
       console.log('🧠 Voice Analysis Request: Using extended timeout (5 minutes)');
@@ -223,23 +176,12 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to clean up completed requests
+// Response interceptor for centralized API error logging
 apiClient.interceptors.response.use(
   (response) => {
-    // Clean up completed request from pending map
-    if (response.config.method?.toLowerCase() === 'get' && !response.config.url?.includes('/character-voice/')) {
-      const requestKey = createRequestKey(response.config);
-      pendingRequests.delete(requestKey);
-    }
     return response;
   },
   (error) => {
-    // Clean up failed request from pending map
-    if (error.config?.method?.toLowerCase() === 'get' && !error.config?.url?.includes('/character-voice/')) {
-      const requestKey = createRequestKey(error.config);
-      pendingRequests.delete(requestKey);
-    }
-    
     // ENHANCED: Log the specific error for debugging
     if (error.response) {
       console.error(`❌ API Error ${error.response.status}:`, {
@@ -258,11 +200,6 @@ apiClient.interceptors.response.use(
 // Response interceptor to handle 401 errors with token refresh
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    // FIXED: Clean up request deduplication cache
-    if (response.config.method?.toLowerCase() === 'get') {
-      const requestKey = createRequestKey(response.config);
-      pendingRequests.delete(requestKey);
-    }
     return response;
   },
   async (error) => {

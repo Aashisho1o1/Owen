@@ -3,7 +3,6 @@ export { DocumentIcon } from './DocumentIcon';
 
 // Molecular Components (Molecules)
 export { SearchBar } from './SearchBar';
-export { ControlsPanel } from './ControlsPanel';
 export { DocumentItem } from './DocumentItem';
 export { FolderItem } from './FolderItem';
 // TemplateItem removed - template system deprecated
@@ -20,5 +19,5 @@ export { SearchResultsView } from './SearchResultsView';
 export { AppMapView } from './AppMapView';
 
 // Type exports
-export type { SortBy, FilterBy, ViewMode } from './ControlsPanel'; 
+export type { SortBy, FilterBy, ViewMode } from './types'; 
  

@@ -6,7 +6,6 @@ following OWASP best practices and security standards.
 """
 
 import time
-import hashlib
 import logging
 from typing import Dict, Set
 from fastapi import Request, Response
@@ -136,18 +135,22 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             # 3. Request size validation
             if not await self._validate_request_size(request):
                 logger.warning(f"Request size exceeded limit from IP: {client_ip}")
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=413,
                     content={"error": "Request too large"}
                 )
+                self._add_security_headers(response)
+                return response
             
             # 4. Security headers check
             if not self._validate_request_headers(request):
                 logger.warning(f"Suspicious request headers from IP: {client_ip}")
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=400,
                     content={"error": "Invalid request headers"}
                 )
+                self._add_security_headers(response)
+                return response
             
             # 5. Process request
             response = await call_next(request)
@@ -164,10 +167,12 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             logger.error(f"Security middleware error: {e}")
             # Don't expose internal errors
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=500,
                 content={"error": "Internal server error"}
             )
+            self._add_security_headers(response)
+            return response
     
     def _get_client_ip(self, request: Request) -> str:
         """Get real client IP address handling proxies"""

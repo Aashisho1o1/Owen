@@ -1,5 +1,5 @@
 import React from 'react';
-import { ViewMode } from './ControlsPanel';
+import { ViewMode } from './types';
 
 interface NavigationTabsProps {
   viewMode: ViewMode;

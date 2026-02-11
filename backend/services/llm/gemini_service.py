@@ -15,7 +15,7 @@ from .base_service import BaseLLMService, LLMError, log_api_error, clean_json_re
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# CRITICAL FIX: Robust import handling for Railway deployment
+# Robust import handling for Railway deployment
 GENAI_AVAILABLE = False
 genai = None
 

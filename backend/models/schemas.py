@@ -107,7 +107,6 @@ class DocumentCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     content: str = ""
     document_type: DocumentType = DocumentType.NOVEL
-    # template_id: Optional[str] = None  # REMOVED - template system deprecated for MVP
     folder_id: Optional[str] = None
     status: DocumentStatus = DocumentStatus.DRAFT
     # Fiction-specific metadata
@@ -127,8 +126,6 @@ class DocumentUpdate(BaseModel):
     tags: Optional[List[str]] = None
     series_name: Optional[str] = None
     chapter_number: Optional[int] = None
-
-# DocumentFromTemplateCreate removed - template system deprecated
 
 # === FOLDER SCHEMAS ===
 class FolderType(str, Enum):
@@ -155,9 +152,6 @@ class FolderUpdate(BaseModel):
     folder_type: Optional[FolderType] = None
     color: Optional[str] = None
     description: Optional[str] = None
-
-# === FICTION TEMPLATE SCHEMAS REMOVED ===
-# Template system removed for MVP simplicity
 
 # === SERIES MANAGEMENT ===
 class SeriesCreate(BaseModel):
@@ -322,18 +316,19 @@ class VoiceConsistencyResponse(BaseModel):
     dialogue_segments_found: int = Field(..., description="Number of dialogue segments found")
     processing_time_ms: int = Field(..., description="Processing time in milliseconds")
 
-class CharacterVoiceProfile(BaseModel):
+class CharacterVoiceProfileResponse(BaseModel):
     """Character voice profile information"""
     character_id: str = Field(..., description="Unique character identifier")
     character_name: str = Field(..., description="Character name")
+    dialogue_samples: List[str] = Field(default_factory=list, description="Dialogue samples used for analysis")
+    voice_traits: Dict[str, Any] = Field(default_factory=dict, description="Character voice metadata")
     sample_count: int = Field(..., description="Number of dialogue samples")
-    last_updated: datetime = Field(..., description="When the profile was last updated")
-    voice_characteristics: Dict[str, Any] = Field(default_factory=dict, description="Character voice metadata")
+    last_updated: Optional[str] = Field(None, description="When the profile was last updated")
 
 class CharacterVoiceProfilesResponse(BaseModel):
     """Response containing user's character voice profiles"""
-    profiles: List[CharacterVoiceProfile] = Field(default_factory=list, description="List of character profiles")
-    total_characters: int = Field(..., description="Total number of characters")
+    profiles: List[CharacterVoiceProfileResponse] = Field(default_factory=list, description="List of character profiles")
+    total_characters: int = Field(0, description="Total number of characters")
 
 class DeleteCharacterProfileRequest(BaseModel):
     """Request to delete a character profile"""

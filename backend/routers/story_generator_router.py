@@ -1,10 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, Union
 import logging
 
 from services.llm_service import LLMService
-# REMOVED: from services.rate_limiter import check_rate_limit
 from services.validation_service import input_validator
 from services.auth_service import auth_service
 from dependencies import get_current_user_id, check_chat_rate_limit
@@ -36,9 +35,8 @@ class StoryGenerateResponse(BaseModel):
 @router.post("/generate", response_model=StoryGenerateResponse)
 async def generate_story(
     request: StoryGenerateRequest,
-    http_request: Request,
     user_id: Union[str, int] = Depends(get_current_user_id),  # Accept both guest UUIDs and user IDs
-    rate_limit_result = Depends(check_chat_rate_limit)  # FIXED: Proper async rate limiting
+    _rate_limit_result = Depends(check_chat_rate_limit)
 ):
     """
     Generate a complete short story based on user inputs.
@@ -51,9 +49,6 @@ async def generate_story(
     5. Returns structured response with story and metadata
     """
     try:
-        # FIXED: Rate limiting now handled by FastAPI dependency injection (check_chat_rate_limit)
-        # This prevents the async/await bug that caused first-click hangs
-        
         # GUEST QUOTA ENFORCEMENT: Check daily limits for cost control
         if isinstance(user_id, str):  # Guest sessions are UUID strings
             usage_count = auth_service.get_guest_usage_count(user_id)

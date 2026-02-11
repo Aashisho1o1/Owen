@@ -699,7 +699,7 @@ class PostgreSQLService:
             logger.debug(f"   Dialogue samples: {len(dialogue_samples)}")
             logger.debug(f"   Voice traits keys: {list(voice_traits.keys())}")
             
-            # CRITICAL FIX: Convert Python objects to JSON for PostgreSQL compatibility
+            # Convert Python objects to JSON for PostgreSQL compatibility
             import json
             dialogue_samples_json = json.dumps(dialogue_samples) if dialogue_samples else '[]'
             voice_traits_json = json.dumps(voice_traits) if voice_traits else '{}'

@@ -1,2 +1,0 @@
-# Update the trigger file with current timestamp
-echo "Force deployment: $(date) - Testing new GitHub repository connection" > .railway-trigger

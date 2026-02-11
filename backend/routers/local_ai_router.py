@@ -11,7 +11,8 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
 from ..services.llm_service import llm_service
-from ..dependencies import get_current_user_id  # ✅ FIXED: Added authentication import
+from ..dependencies import get_current_user_id
+from ..utils.error_responses import error_response
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +31,6 @@ class DialogueAnalysisRequest(BaseModel):
     dialogue_segments: List[str] = Field(..., description="List of dialogue segments")
     speed_priority: bool = Field(False, description="Prioritize speed over thoroughness")
 
-class LocalModelStatus(BaseModel):
-    """Response model for local model status"""
-    status: str
-    ollama_running: bool
-    available_models: List[str]
-    recommendations: List[str]
-
 # Health and Status Endpoints
 @router.get("/status", response_model=Dict[str, Any])
 async def get_local_ai_status():
@@ -52,11 +46,15 @@ async def get_local_ai_status():
         }
     except Exception as e:
         logger.error(f"Error getting local AI status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="LOCAL_AI_STATUS_FETCH_FAILED",
+            message="Failed to get local AI status."
+        )
 
 @router.get("/cost-analytics", response_model=Dict[str, Any])
 async def get_cost_analytics(
-    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
+    user_id: Union[str, int] = Depends(get_current_user_id)
 ):
     """
     Get cost analytics and optimization recommendations
@@ -73,14 +71,18 @@ async def get_cost_analytics(
         }
     except Exception as e:
         logger.error(f"Error getting cost analytics for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="LOCAL_AI_ANALYTICS_FETCH_FAILED",
+            message="Failed to get cost analytics."
+        )
 
 # Fast Inference Endpoints
 @router.post("/quick-consistency-check", response_model=Dict[str, Any])
 async def quick_consistency_check(
     request: QuickConsistencyRequest,
     background_tasks: BackgroundTasks,
-    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
+    user_id: Union[str, int] = Depends(get_current_user_id)
 ):
     """
     Ultra-fast dialogue consistency check using local models when available
@@ -105,7 +107,7 @@ async def quick_consistency_check(
         result.update({
             "character_name": request.character_name,
             "dialogue_length": len(request.dialogue),
-            "user_id": user_id  # ✅ FIXED: Now tracks actual user
+            "user_id": user_id
         })
         
         return {
@@ -116,13 +118,17 @@ async def quick_consistency_check(
         
     except Exception as e:
         logger.error(f"Error in quick consistency check: {e}")
-        raise HTTPException(status_code=500, detail=f"Consistency check failed: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="LOCAL_AI_CONSISTENCY_CHECK_FAILED",
+            message="Consistency check failed."
+        )
 
 @router.post("/analyze-dialogue", response_model=Dict[str, Any])
 async def analyze_dialogue_comprehensive(
     request: DialogueAnalysisRequest,
     background_tasks: BackgroundTasks,
-    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
+    user_id: Union[str, int] = Depends(get_current_user_id)
 ):
     """
     Comprehensive dialogue analysis with hybrid model routing
@@ -161,7 +167,7 @@ async def analyze_dialogue_comprehensive(
             "segments_analyzed": len(request.dialogue_segments),
             "character_name": request.character_profile.get("name"),
             "speed_priority": request.speed_priority,
-            "user_id": user_id  # ✅ FIXED: Now tracks actual user
+            "user_id": user_id
         })
         
         return {
@@ -174,7 +180,11 @@ async def analyze_dialogue_comprehensive(
         raise
     except Exception as e:
         logger.error(f"Error in dialogue analysis: {e}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="LOCAL_AI_DIALOGUE_ANALYSIS_FAILED",
+            message="Dialogue analysis failed."
+        )
 
 # Setup and Management Endpoints
 @router.get("/setup-guide", response_model=Dict[str, Any])
@@ -307,7 +317,7 @@ async def get_performance_comparison():
 @router.post("/optimize-models", response_model=Dict[str, Any])
 async def optimize_models(
     background_tasks: BackgroundTasks,
-    user_id: Union[str, int] = Depends(get_current_user_id)  # ✅ FIXED: Added authentication
+    user_id: Union[str, int] = Depends(get_current_user_id)
 ):
     """
     Trigger model optimization and cleanup (background task)
@@ -338,7 +348,11 @@ async def optimize_models(
         
     except Exception as e:
         logger.error(f"Error starting optimization: {e}")
-        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
+        raise error_response(
+            status_code=500,
+            code="LOCAL_AI_OPTIMIZATION_FAILED",
+            message="Model optimization failed."
+        )
 
 # Export router
 __all__ = ["router"]

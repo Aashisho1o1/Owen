@@ -7,7 +7,6 @@ Extracted from main.py as part of God File refactoring.
 import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Request
-from typing import Optional, Dict, Any, Union
 
 # Import models from centralized schemas
 from models.schemas import (
@@ -15,8 +14,7 @@ from models.schemas import (
 )
 
 # Import services
-from services.auth_service import AuthService, AuthenticationError
-auth_service = AuthService()
+from services.auth_service import auth_service, AuthenticationError
 from services.enhanced_validation import DetailedAuthenticationError
 from services.database import get_db_service, DatabaseError
 
@@ -38,15 +36,10 @@ router = APIRouter(
     tags=["authentication"],
 )
 
-# Remove module-level db_service initialization - it will be initialized per request
-
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, request: Request) -> TokenResponse:
     """Register a new user account"""
     try:
-        # Initialize database service
-        db_service = get_db_service()
-        
         # Apply strict rate limiting for registration to prevent abuse
         await check_rate_limit(request, "auth")
         
@@ -95,6 +88,8 @@ async def register(user_data: UserCreate, request: Request) -> TokenResponse:
             code="DATABASE_ERROR",
             message="Registration failed due to a database error."
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected registration error: {type(e).__name__}: {e}")
         raise error_response(
@@ -108,10 +103,7 @@ async def login(login_data: UserLogin, request: Request) -> TokenResponse:
     """Authenticate user and return tokens"""
     try:
         logger.debug("Login endpoint called for email=%s", login_data.email)
-        
-        # Initialize database service
-        db_service = get_db_service()
-        
+
         # Apply strict rate limiting for login to prevent brute force attacks
         await check_rate_limit(request, "auth")
         logger.debug("Login rate limit check passed")
@@ -175,6 +167,8 @@ async def refresh_token(refresh_data: RefreshTokenRequest, request: Request) -> 
             code="TOKEN_REFRESH_FAILED",
             message=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Token refresh error: {e}")
         raise error_response(
@@ -195,6 +189,8 @@ async def logout(request: Request, user_id: int = Depends(get_current_user_id)):
             "success": True,
             "message": "Logged out successfully"
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Logout error: {e}")
         raise error_response(
@@ -256,6 +252,8 @@ async def create_guest_session(request: Request) -> TokenResponse:
             code="GUEST_SESSION_FAILED",
             message=str(e)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected guest session error: {type(e).__name__}: {e}")
         raise error_response(
@@ -304,7 +302,8 @@ async def cleanup_expired_guests(request: Request):
             "deleted_analytics": deleted_analytics,
             "message": f"Cleanup completed: {deleted_sessions} expired guest sessions removed"
         }
-        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Guest cleanup error: {e}")
         raise error_response(
@@ -337,7 +336,8 @@ async def get_guest_quota(user_id = Depends(get_current_user_id)):
                 "quota": None,
                 "upgrade_message": None
             }
-            
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching guest quota: {e}")
         raise error_response(

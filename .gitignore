@@ -189,6 +189,12 @@ coverage/
 backend/.env
 backend/.env.example
 .env.example
+backend/chroma_db/
+/.railway-trigger
+backend/.railway-*
+backend/.force-*
+backend/.cors-fixed
+frontend/.railway-*
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
