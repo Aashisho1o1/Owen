@@ -366,12 +366,13 @@ async def health_check():
         )
         
     except Exception as e:
-        logger.error(f"❌ Health check failed: {str(e)}")
+        # Log full exception details server-side without exposing them to the client
+        logger.exception(f"❌ Health check failed: {str(e)}")
         return JSONResponse(
             status_code=503,
             content={
                 "status": "unhealthy",
-                "error": str(e),
+                "error": "Internal health check failure",
                 "timestamp": "2024-01-01T00:00:00Z"
             }
         )
