@@ -111,11 +111,13 @@ class OllamaService(BaseLLMService):
                     "3. Download gpt-oss model: ollama pull gpt-oss:20b"
                 ]
             }
-        except Exception as e:
+        except Exception:
+            # Log full exception details on the server without exposing them to clients
+            logger.exception("Unexpected error while checking Ollama status")
             return {
                 "status": "error",
                 "ollama_running": False,
-                "message": f"Error checking Ollama status: {str(e)}"
+                "message": "Unexpected error while checking Ollama status. See server logs for details."
             }
     
     def _get_setup_recommendations(self) -> List[str]:
