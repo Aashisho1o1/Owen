@@ -395,7 +395,8 @@ async def health_check(request: Request = None):
         try:
             db_status = get_db_service().health_check().get('status', 'error')
         except Exception as e:
-            db_status = f"error: {str(e)}"
+            logger.error("Database health check failed", exc_info=e)
+            db_status = "error"
 
     response_data = {
         "status": "healthy" if startup_success and db_status == 'healthy' else "unhealthy",
