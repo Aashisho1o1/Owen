@@ -19,6 +19,8 @@ from .ollama_service import ollama_service
 from .gemini_service import gemini_service
 from .base_service import LLMError
 
+logger = logging.getLogger(__name__)
+
 # Try importing HuggingFace service
 try:
     from .huggingface_service import huggingface_service
@@ -32,8 +34,6 @@ except Exception as e:
     logger.error(f"❌ Error importing HuggingFace service: {e}")
     huggingface_service = None
     HUGGINGFACE_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
 
 class TaskComplexity(Enum):
     """Task complexity levels for routing decisions"""

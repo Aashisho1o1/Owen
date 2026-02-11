@@ -13,9 +13,15 @@ from services.indexing.hybrid_indexer import get_hybrid_indexer
 # Initialize router
 router = APIRouter(prefix="/api/indexing", tags=["indexing"])
 
-# Initialize indexer using singleton pattern for memory optimization
-# MEMORY OPTIMIZATION: Reuses same instance instead of creating new 400MB+ models
-indexer = get_hybrid_indexer(collection_name="documents")
+# Initialize indexer lazily to avoid blocking app startup on model downloads
+indexer = None
+
+def get_indexer():
+    global indexer
+    if indexer is None:
+        indexer = get_hybrid_indexer(collection_name="documents")
+    return indexer
+
 
 # Request/Response models
 class IndexDocumentRequest(BaseModel):
@@ -63,7 +69,7 @@ async def index_document(
         request.metadata['user_id'] = current_user_id
         
         # Index document
-        result = await indexer.index_document(
+        result = await get_indexer().index_document(
             doc_id=request.doc_id,
             text=request.text,
             metadata=request.metadata
@@ -99,7 +105,7 @@ async def index_folder(
             ))
         
         # Index folder
-        result = await indexer.index_folder(documents)
+        result = await get_indexer().index_folder(documents)
         
         return result
     
@@ -115,7 +121,7 @@ async def get_contextual_feedback(
     Get contextual feedback for highlighted text
     """
     try:
-        feedback = await indexer.get_contextual_feedback(
+        feedback = await get_indexer().get_contextual_feedback(
             highlighted_text=request.highlighted_text,
             doc_id=request.doc_id,
             context_window=request.context_window
@@ -135,7 +141,7 @@ async def check_consistency(
     Check consistency of a statement against the knowledge base
     """
     try:
-        result = await indexer.check_consistency(
+        result = await get_indexer().check_consistency(
             statement=request.statement,
             doc_id=request.doc_id,
             check_type=request.check_type
@@ -155,7 +161,7 @@ async def get_writing_suggestions(
     Get AI-powered writing suggestions based on context
     """
     try:
-        suggestions = await indexer.get_writing_suggestions(
+        suggestions = await get_indexer().get_writing_suggestions(
             context=request.context,
             suggestion_type=request.suggestion_type
         )
@@ -179,7 +185,7 @@ async def search(
             request.filters = {}
         request.filters['user_id'] = current_user_id
         
-        results = indexer.search(
+        results = get_indexer().search(
             query=request.query,
             search_type=request.search_type,
             filters=request.filters
@@ -203,7 +209,7 @@ async def get_document_stats(
     Get indexing statistics for a document
     """
     try:
-        stats = indexer.get_document_stats(doc_id)
+        stats = get_indexer().get_document_stats(doc_id)
         
         # Verify user owns this document
         if 'metadata' in stats and stats['metadata'].get('user_id') != current_user_id:
@@ -223,7 +229,7 @@ async def export_knowledge_graph(
     Export the knowledge graph for visualization
     """
     try:
-        graph_data = indexer.export_knowledge_graph(format)
+        graph_data = get_indexer().export_knowledge_graph(format)
         
         return {
             'format': format,
@@ -239,6 +245,14 @@ async def indexing_health():
     """
     Check if indexing service is healthy
     """
+    if indexer is None:
+        return {
+            'status': 'not_initialized',
+            'indexed_documents': 0,
+            'graph_nodes': 0,
+            'graph_edges': 0
+        }
+
     return {
         'status': 'healthy',
         'indexed_documents': len(indexer.indexed_documents),
