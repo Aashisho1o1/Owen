@@ -73,14 +73,12 @@ export {
 export {
   analyzeVoiceConsistency,
   getCharacterProfiles,
+  updateCharacterProfile,
   deleteCharacterProfile,
-  resetAllCharacterProfiles,
-  getVoiceAnalysisStats,
-  checkVoiceServiceHealth,
-  formatVoiceConsistencyFeedback,
+  checkCharacterVoiceHealth,
   hasDialogue,
   analyzeVoiceConsistencyDebounced,
-  getVoiceConsistencyStatus
+  cancelPendingAnalysis
 } from './character-voice';
 
 // === HEALTH CHECK ===

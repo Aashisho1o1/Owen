@@ -1,0 +1,91 @@
+name: backend-e2e
+
+on:
+  pull_request:
+    branches: [elon]
+  push:
+    branches: [elon, codex/**]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owen
+          POSTGRES_PASSWORD: owen
+          POSTGRES_DB: owen
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd="pg_isready -U owen -d owen"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: postgresql://owen:owen@127.0.0.1:54329/owen
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY_CI }}
+      PORT: "8000"
+      GEMINI_API_KEY: ""
+      OPENAI_API_KEY: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Initialize database schema
+        working-directory: backend
+        run: |
+          source .venv/bin/activate
+          python -c "from services.database import get_db_service; get_db_service().init_database(); print('db init ok')"
+
+      - name: Static checks
+        working-directory: backend
+        run: |
+          source .venv/bin/activate
+          python -m compileall -q .
+          if find . -name 'test*.py' -o -name '*_test.py' | grep -q .; then
+            pytest -q --maxfail=1
+          else
+            echo "no tests discovered"
+          fi
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          source .venv/bin/activate
+          hypercorn main:app --bind 127.0.0.1:8000 --workers 1 --log-level info > /tmp/owen-backend.log 2>&1 &
+          echo $! > /tmp/owen-backend.pid
+          sleep 4
+
+      - name: API smoke suite
+        run: |
+          bash scripts/backend_smoke.sh
+
+      - name: Upload backend logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-ci-artifacts
+          path: |
+            /tmp/owen-backend.log
+            /tmp/owen-api-health.out
+            /tmp/owen-register.json
+            /tmp/owen-login.json
