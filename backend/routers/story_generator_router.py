@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 llm_service = LLMService()
 
 # Guest quota configuration
-GUEST_DAILY_LIMIT = 2  # Maximum story generations per 24h for guests
+GUEST_DAILY_LIMIT = 1  # Maximum story generations per 24h for guests
 
 router = APIRouter(
     prefix="/api/story-generator",

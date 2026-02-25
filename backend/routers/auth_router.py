@@ -323,7 +323,7 @@ async def get_guest_quota(user_id = Depends(get_current_user_id)):
     try:
         # Only return quota for guest sessions
         if isinstance(user_id, str):  # Guest sessions are UUID strings
-            quota_info = auth_service.get_guest_quota(user_id, daily_limit=2)
+            quota_info = auth_service.get_guest_quota(user_id, daily_limit=1)
             return {
                 "is_guest": True,
                 "quota": quota_info,

@@ -702,7 +702,7 @@ class AuthService:
             logger.warning(f"Failed to get guest usage count for {session_id}: {e}")
             return 0  # Fail safe: allow operation if count check fails
 
-    def get_guest_quota(self, session_id: str, daily_limit: int = 2) -> Dict[str, Any]:
+    def get_guest_quota(self, session_id: str, daily_limit: int = 1) -> Dict[str, Any]:
         """
         Get guest quota status for frontend display and enforcement.
         

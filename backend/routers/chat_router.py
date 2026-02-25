@@ -33,7 +33,7 @@ llm_service = LLMService()
 character_voice_service: Optional[CharacterVoiceService] = None  # Lazy init placeholder
 
 # Guest quota configuration - shared with story generation
-GUEST_DAILY_LIMIT = 2  # Maximum chat interactions per 24h for guests
+GUEST_DAILY_LIMIT = 1  # Maximum chat interactions per 24h for guests
 
 
 def get_character_voice_service() -> CharacterVoiceService:
