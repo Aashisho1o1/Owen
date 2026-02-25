@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
+import { logger } from '../utils/logger';
 import { 
   Document, 
   DocumentFolder, 
@@ -100,18 +101,12 @@ export const useDocuments = (): UseDocumentsReturn => {
     const pendingContent = state.pendingContent;
     const pendingTitle = state.pendingTitle;
 
-    if (!currentDoc || !hasChanges || isSaving) {
-      console.log('⏸️ Auto-save skipped:', { hasDoc: !!currentDoc, hasChanges, isSaving });
-      return;
-    }
+    if (!currentDoc || !hasChanges || isSaving) return;
 
     const contentChanged = pendingContent !== lastContentRef.current;
     const titleChanged = pendingTitle !== lastTitleRef.current;
 
-    if (!contentChanged && !titleChanged) {
-      console.log('⏸️ Auto-save skipped: no actual changes detected');
-      return;
-    }
+    if (!contentChanged && !titleChanged) return;
 
     try {
       setState(prev => ({ ...prev, isSaving: true, error: null }));
@@ -119,13 +114,6 @@ export const useDocuments = (): UseDocumentsReturn => {
       const updates: Partial<Document> = {};
       if (contentChanged) updates.content = pendingContent;
       if (titleChanged) updates.title = pendingTitle;
-
-      console.log('🔄 Auto-saving document:', {
-        documentId: currentDoc.id,
-        contentChanged,
-        titleChanged,
-        contentLength: pendingContent.length
-      });
 
       await api.updateDocument(currentDoc.id, updates);
       
@@ -145,10 +133,9 @@ export const useDocuments = (): UseDocumentsReturn => {
         } : null
       }));
       
-      console.log('✅ Auto-save completed successfully');
     } catch (error) {
       const apiError = error as ApiError;
-      console.error('❌ Auto-save failed:', error);
+      logger.error('Auto-save failed', error);
       setState(prev => ({ 
         ...prev, 
         isSaving: false, 
@@ -168,7 +155,6 @@ export const useDocuments = (): UseDocumentsReturn => {
     
     // Only set new timer if we have unsaved changes and a current document and not already saving
     if (state.hasUnsavedChanges && state.currentDocument && !state.isSaving) {
-      console.log('⏰ Setting auto-save timer for 2 seconds');
       autoSaveTimerRef.current = setTimeout(performAutoSave, 2000);
     }
     
@@ -187,13 +173,9 @@ export const useDocuments = (): UseDocumentsReturn => {
   // Fetch initial data (documents and folders)
   const fetchAllData = useCallback(async () => {
     // SAFETY: Wait for authentication to complete before making API calls
-    if (isAuthLoading) {
-      console.log('🔄 useDocuments: Authentication still loading, skipping data load');
-      return;
-    }
-    
+    if (isAuthLoading) return;
+
     if (!user) {
-      console.log('🔐 useDocuments: No user, skipping data load');
       // Clear any existing data when user logs out
       setState(prev => ({
         ...prev,
@@ -208,16 +190,10 @@ export const useDocuments = (): UseDocumentsReturn => {
 
     // FIXED: Improved request deduplication - only prevent overlapping requests, allow explicit refreshes
     const currentUserId = user.user_id;
-    if (fetchInProgress.current) {
-      console.log('🔄 useDocuments: Request already in progress, skipping');
-      return;
-    }
+    if (fetchInProgress.current) return;
 
     // Allow refresh if user changed OR if documents array is empty (failed previous load)
-    if (lastUserId.current === currentUserId && state.documents.length > 0 && !state.error) {
-      console.log('📊 useDocuments: Data already loaded for current user, skipping');
-      return;
-    }
+    if (lastUserId.current === currentUserId && state.documents.length > 0 && !state.error) return;
 
     fetchInProgress.current = true;
     lastUserId.current = currentUserId;
@@ -233,9 +209,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       const documents = docsResponse.documents || [];
       const folders = foldersResponse || [];
 
-      console.log(
-        `📊 useDocuments: Loaded ${documents.length} documents and ${folders.length} folders.`
-      );
+      logger.log(`Loaded ${documents.length} documents and ${folders.length} folders`);
 
       setState(prev => ({
         ...prev,
@@ -246,14 +220,9 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
     } catch (err) {
       const apiError = err as ApiError;
-      console.error('❌ useDocuments: Error fetching initial data', {
-        message: apiError.response?.data?.detail || apiError.message,
-        stack: apiError.stack,
-      });
-      
-      // FIXED: Handle rate limiting gracefully
+      logger.error('Error fetching documents', apiError.message);
+
       if (apiError.message?.includes('429') || apiError.message?.includes('rate limit') || apiError.message?.includes('too many requests')) {
-        console.log('⏱️ useDocuments: Rate limited, will retry in 5 seconds');
         setState(prev => ({
           ...prev,
           error: 'Too many requests. Retrying in 5 seconds...',
@@ -284,8 +253,6 @@ export const useDocuments = (): UseDocumentsReturn => {
     // This prevents premature API calls that trigger 403 → logout loops
     if (!isAuthLoading) {
       fetchAllData();
-    } else {
-      console.log('🔄 useDocuments: Waiting for auth initialization to complete...');
     }
   }, [fetchAllData, isAuthLoading]);
 
@@ -333,7 +300,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       return doc;
     } catch (err) {
       const apiError = err as ApiError;
-      console.error(`❌ useDocuments: Error fetching document ${id}`, err);
+      logger.error(`Error fetching document ${id}`, err);
       setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to fetch document.' }));
       throw apiError;
     }
@@ -426,7 +393,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       return folder;
     } catch (err) {
       const apiError = err as ApiError;
-      console.error('❌ useDocuments: Error creating folder', err);
+      logger.error('Error creating folder', err);
       setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to create folder.' }));
       throw apiError;
     }
@@ -449,7 +416,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       return updatedFolder;
     } catch (err) {
       const apiError = err as ApiError;
-      console.error(`❌ useDocuments: Error updating folder ${id}`, err);
+      logger.error(`Error updating folder ${id}`, err);
       setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to update folder.' }));
       throw apiError;
     }
@@ -466,7 +433,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
     } catch (err) {
       const apiError = err as ApiError;
-      console.error(`❌ useDocuments: Error deleting folder ${id}`, err);
+      logger.error(`Error deleting folder ${id}`, err);
       setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to delete folder.' }));
       // NOTE: Consider reverting optimistic update on failure
     }
@@ -481,7 +448,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
     } catch (err) {
       const apiError = err as ApiError;
-      console.error(`❌ useDocuments: Error moving document ${documentId}`, err);
+      logger.error(`Error moving document ${documentId}`, err);
       setState(prev => ({ ...prev, error: apiError.response?.data?.detail || apiError.message || 'Failed to move document.' }));
     }
   };
@@ -499,7 +466,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
     } catch (err) {
       const apiError = err as ApiError;
-      console.error('❌ useDocuments: Error searching documents', err);
+      logger.error('Error searching documents', err);
       setState(prev => ({
         ...prev,
         isSearching: false,
@@ -514,16 +481,7 @@ export const useDocuments = (): UseDocumentsReturn => {
 
   // Auto-save & sync
   const setCurrentDocument = (doc: Document | null) => {
-    console.log('📋 useDocuments: Setting current document:', {
-      newDocId: doc?.id || 'null',
-      newDocTitle: doc?.title || 'null',
-      previousDocId: state.currentDocument?.id || 'null',
-      previousDocTitle: state.currentDocument?.title || 'null',
-      hasUnsavedChanges: state.hasUnsavedChanges
-    });
-    
     if (state.currentDocument && state.hasUnsavedChanges) {
-      console.log('💾 useDocuments: Auto-saving previous document before switching');
       saveNow();
     }
     
@@ -544,8 +502,6 @@ export const useDocuments = (): UseDocumentsReturn => {
       lastContentRef.current = doc.content;
       lastTitleRef.current = doc.title;
     }
-    
-    console.log('✅ useDocuments: Current document set successfully');
   };
 
   const updateContent = useCallback((content: string) => {
@@ -569,13 +525,6 @@ export const useDocuments = (): UseDocumentsReturn => {
 
     setState(prev => ({ ...prev, isSaving: true }));
     
-    console.log('💾 useDocuments: Saving document:', {
-      documentId: state.currentDocument.id,
-      title: state.currentDocument.title,
-      pendingContent: state.pendingContent.substring(0, 100) + '...',
-      pendingContentLength: state.pendingContent.length
-    });
-    
     try {
       const updates: Partial<Document> = {
         content: state.pendingContent,
@@ -583,12 +532,6 @@ export const useDocuments = (): UseDocumentsReturn => {
       };
 
       const updatedDocument = await api.updateDocument(state.currentDocument.id, updates);
-      
-      console.log('✅ useDocuments: Document saved successfully:', {
-        documentId: updatedDocument.id,
-        title: updatedDocument.title,
-        wordCount: updatedDocument.word_count
-      });
       
       setState(prev => ({
         ...prev,
@@ -602,7 +545,7 @@ export const useDocuments = (): UseDocumentsReturn => {
       }));
     } catch (err) {
       const apiError = err as ApiError;
-      console.error(`❌ useDocuments: Error saving document ${state.currentDocument.id}`, err);
+      logger.error('Error saving document', err);
       setState(prev => ({
         ...prev,
         isSaving: false,
@@ -647,7 +590,7 @@ export const useDocuments = (): UseDocumentsReturn => {
     getTotalWordCount,
     refreshAll: useCallback(async () => {
       // FIXED: Force refresh by clearing cache and reloading data
-      console.log('🔄 useDocuments: Force refreshing all data');
+      logger.log('Force refreshing all data');
       fetchInProgress.current = false;
       lastUserId.current = null;
       setState(prev => ({ ...prev, error: null }));

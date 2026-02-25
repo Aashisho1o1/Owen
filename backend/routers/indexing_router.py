@@ -5,10 +5,12 @@ Indexing Router - API endpoints for document indexing and contextual retrieval
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-import asyncio
+import logging
 
 from dependencies import get_current_user_id
 from services.indexing.hybrid_indexer import get_hybrid_indexer
+
+logger = logging.getLogger(__name__)
 
 # Initialize router
 router = APIRouter(prefix="/api/indexing", tags=["indexing"])
@@ -67,21 +69,24 @@ async def index_document(
         if request.metadata is None:
             request.metadata = {}
         request.metadata['user_id'] = current_user_id
-        
+
         # Index document
         result = await get_indexer().index_document(
             doc_id=request.doc_id,
             text=request.text,
             metadata=request.metadata
         )
-        
+
         if not result['success']:
-            raise HTTPException(status_code=500, detail=result.get('error', 'Indexing failed'))
-        
+            raise HTTPException(status_code=500, detail="Indexing failed")
+
         return result
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to index document {request.doc_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.post("/index-folder")
 async def index_folder(
@@ -103,14 +108,17 @@ async def index_folder(
                 doc['text'],
                 metadata
             ))
-        
+
         # Index folder
         result = await get_indexer().index_folder(documents)
-        
+
         return result
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to index folder: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.post("/contextual-feedback")
 async def get_contextual_feedback(
@@ -126,11 +134,14 @@ async def get_contextual_feedback(
             doc_id=request.doc_id,
             context_window=request.context_window
         )
-        
+
         return feedback
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get contextual feedback: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.post("/check-consistency")
 async def check_consistency(
@@ -146,11 +157,14 @@ async def check_consistency(
             doc_id=request.doc_id,
             check_type=request.check_type
         )
-        
+
         return result
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to check consistency: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.post("/writing-suggestions")
 async def get_writing_suggestions(
@@ -165,11 +179,14 @@ async def get_writing_suggestions(
             context=request.context,
             suggestion_type=request.suggestion_type
         )
-        
+
         return suggestions
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get writing suggestions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.post("/search")
 async def search(
@@ -184,21 +201,24 @@ async def search(
         if request.filters is None:
             request.filters = {}
         request.filters['user_id'] = current_user_id
-        
+
         results = get_indexer().search(
             query=request.query,
             search_type=request.search_type,
             filters=request.filters
         )
-        
+
         return {
             'query': request.query,
             'search_type': request.search_type,
             'results': results
         }
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to search: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.get("/document-stats/{doc_id}")
 async def get_document_stats(
@@ -210,15 +230,18 @@ async def get_document_stats(
     """
     try:
         stats = get_indexer().get_document_stats(doc_id)
-        
+
         # Verify user owns this document
         if 'metadata' in stats and stats['metadata'].get('user_id') != current_user_id:
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return stats
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get document stats for {doc_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @router.get("/export-graph")
 async def export_knowledge_graph(
@@ -230,14 +253,17 @@ async def export_knowledge_graph(
     """
     try:
         graph_data = get_indexer().export_knowledge_graph(format)
-        
+
         return {
             'format': format,
             'graph': graph_data
         }
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to export knowledge graph: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 # Health check endpoint
 @router.get("/health")
@@ -258,4 +284,4 @@ async def indexing_health():
         'indexed_documents': len(indexer.indexed_documents),
         'graph_nodes': indexer.graph_builder.graph.number_of_nodes() if indexer.graph_builder.graph else 0,
         'graph_edges': indexer.graph_builder.graph.number_of_edges() if indexer.graph_builder.graph else 0
-    } 
+    }

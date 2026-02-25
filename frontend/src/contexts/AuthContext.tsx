@@ -79,19 +79,10 @@ const rawApiUrl = import.meta.env.VITE_API_URL;
 
 // Validate environment variable is loaded
 if (!rawApiUrl) {
-  console.error('❌ CRITICAL: VITE_API_URL is not defined in AuthContext');
   throw new Error('VITE_API_URL environment variable is required but not defined');
 }
 
 const API_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
-
-// Debug log to show which API URL is being used
-console.log('🌐 AuthContext API Configuration:', { 
-  VITE_API_URL: import.meta.env.VITE_API_URL,
-  API_BASE_URL: API_URL,
-  mode: import.meta.env.MODE,
-  env_loaded: !!import.meta.env.VITE_API_URL
-});
 
 // Configure axios instance
 const apiInstance = axios.create({
@@ -149,9 +140,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Set axios default auth header for AuthContext instance
       apiInstance.defaults.headers.common['Authorization'] = `${tokens.token_type} ${tokens.access_token}`;
       
-      // CRITICAL: Also update the shared apiClient instance!
+      // Also update the shared apiClient instance
       updateApiClientToken(tokens.access_token, tokens.token_type);
-      console.log('🔄 Token synchronized across all axios instances');
     } catch (err) {
       logger.error('Error storing tokens:', err);
     }
@@ -175,9 +165,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Clear from AuthContext instance
       delete apiInstance.defaults.headers.common['Authorization'];
       
-      // CRITICAL: Also clear from shared apiClient instance!
+      // Also clear from shared apiClient instance
       updateApiClientToken(null);
-      console.log('🧹 Tokens cleared from all axios instances');
     } catch (err) {
       logger.error('Error clearing tokens:', err);
     }
@@ -198,21 +187,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserProfile = useCallback(async (): Promise<boolean> => {
     try {
-      console.log('👤 Loading user profile...');
       const response = await apiInstance.get('/api/auth/profile');
-      console.log('✅ User profile loaded:', response.data);
       setUser(response.data);
       setIsAuthenticated(true);
       setError(null);
       return true;
     } catch (err) {
-      console.error('❌ Failed to load user profile:', {
-        error: err,
-        status: (err as any)?.response?.status,
-        statusText: (err as any)?.response?.statusText,
-        data: (err as any)?.response?.data
-      });
-      logger.error('Error loading user profile:', err);
+      logger.error('Failed to load user profile', err);
       setUser(null);
       setIsAuthenticated(false);
       return false;
@@ -222,19 +203,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshToken = useCallback(async (): Promise<boolean> => {
     const tokens = getStoredTokens();
     if (!tokens?.refresh_token) {
-      console.log('❌ No refresh token available');
       return false;
     }
 
     try {
-      console.log('🔄 Attempting token refresh...');
       const response = await apiInstance.post('/api/auth/refresh', {
         refresh_token: tokens.refresh_token,
       });
 
       const { access_token, token_type, expires_in } = response.data;
-      
-      // Update stored tokens (keep the same refresh token)
+
       storeTokens({
         access_token,
         refresh_token: tokens.refresh_token,
@@ -242,11 +220,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         expires_in,
       });
 
-      console.log('✅ Token refresh successful');
       return true;
     } catch (err) {
-      console.error('❌ Token refresh failed:', err);
-      logger.error('Token refresh error:', err);
+      logger.error('Token refresh failed', err);
       // If refresh fails, log the user out as the session is invalid
       logout();
       return false;
@@ -271,18 +247,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (err.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           originalRequest._retry = true;
 
-          console.log('🔄 Token expired, attempting refresh...');
           const success = await refreshToken();
           if (success) {
             const newTokens = getStoredTokens();
             if (newTokens) {
               originalRequest.headers['Authorization'] = `${newTokens.token_type} ${newTokens.access_token}`;
-              console.log('✅ Token refreshed, retrying request');
               return apiInstance(originalRequest);
             }
-          } else {
-            console.log('❌ Token refresh failed, logging out');
-            // Refresh failed, user will be logged out
           }
         }
 
@@ -314,38 +285,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isInitialized) return; // Prevent multiple initializations
       setIsInitialized(true);
       
-      console.log('🚀 Initializing authentication...');
       setIsLoading(true);
-      
+
       try {
         const tokens = getStoredTokens();
         if (tokens) {
-          console.log('🔍 Found stored tokens, validating...');
-          
-          // CRITICAL: Sync token to apiClient immediately
+          // Sync token to apiClient immediately
           updateApiClientToken(tokens.access_token, tokens.token_type);
-          
-          // Try to get user profile to verify token validity
+
           const success = await loadUserProfile();
           if (!success) {
-            console.log('⚠️ Token validation failed, clearing all tokens');
             clearTokens();
             setUser(null);
             setIsAuthenticated(false);
-          } else {
-            console.log('✅ Token validation successful');
           }
-        } else {
-          console.log('ℹ️ No stored tokens found');
         }
       } catch (error) {
-        console.error('❌ Auth initialization error:', error);
+        logger.error('Auth initialization error', error);
         clearTokens();
         setUser(null);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
-        console.log('✅ Authentication initialization complete');
       }
     };
 
@@ -357,13 +318,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let isHandlingExpiration = false;
     
     const handleTokenExpiration = () => {
-      if (isHandlingExpiration) {
-        console.log('🔐 AuthContext: Token expiration already being handled, skipping...');
-        return;
-      }
-      
+      if (isHandlingExpiration) return;
+
       isHandlingExpiration = true;
-      console.log('🔐 AuthContext: Token expired event received, logging out user');
       
       // Set user to null immediately to prevent multiple calls
       setUser(null);
@@ -397,44 +354,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     
-    // Debug logging
-    console.log('🔐 Login attempt:', { 
-      email: data.email, 
-      apiUrl: API_URL,
-      fullUrl: `${API_URL}/api/auth/login`
-    });
-    
     try {
-      console.log('🔐 STEP 1: Making login API request...');
       const response = await apiInstance.post('/api/auth/login', data);
-      console.log('🔐 STEP 2: ✅ Login API request successful:', response.data);
-      
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
-      console.log('🔐 STEP 3: Storing tokens...');
-      // Store tokens (this will sync to apiClient automatically)
       storeTokens({ access_token, refresh_token, token_type, expires_in });
-      console.log('🔐 STEP 3: ✅ Tokens stored and synchronized successfully');
-      
-      console.log('🔐 STEP 4: Setting user data...');
-      // Set user data
       setUser(userProfile);
       setIsAuthenticated(true);
-      console.log('🔐 STEP 4: ✅ User data set successfully');
-      
+
       logger.log('Login successful', { username: userProfile.username });
-      console.log('🔐 STEP 5: ✅ Login completed successfully');
       return true;
     } catch (err) {
-      console.error('🔐 ❌ Login failed at step:', {
-        error: err,
-        status: (err as any)?.response?.status,
-        statusText: (err as any)?.response?.statusText,
-        data: (err as any)?.response?.data,
-        config: (err as any)?.config,
-        url: (err as any)?.config?.url,
-        method: (err as any)?.config?.method
-      });
       
       // Handle detailed error messages from backend
       let errorMessage = 'Login failed. Please try again.';
@@ -468,18 +398,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     
-    // Debug logging
-    console.log('📝 Register attempt:', { 
-      email: data.email, 
-      name: data.name,
-      apiUrl: API_URL,
-      fullUrl: `${API_URL}/api/auth/register`
-    });
-    
     try {
       const response = await apiInstance.post('/api/auth/register', data);
-      console.log('✅ Registration successful:', response.data);
-      
       const { access_token, refresh_token, token_type, expires_in, user: userProfile } = response.data;
 
       // Store tokens (this will sync to apiClient automatically)
@@ -492,15 +412,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logger.log('Registration successful', { username: userProfile.username });
       return true;
     } catch (err) {
-      console.error('❌ Registration failed:', {
-        error: err,
-        status: (err as any)?.response?.status,
-        statusText: (err as any)?.response?.statusText,
-        data: (err as any)?.response?.data,
-        config: (err as any)?.config
-      });
-      
-      // Handle detailed error messages from backend
       let errorMessage = 'Registration failed. Please try again.';
       
       if (axios.isAxiosError(err) && err.response?.data?.detail) {
@@ -572,31 +483,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     
-    // Debug logging
-    console.log('🎯 Guest session creation:', { 
-      apiUrl: API_URL,
-      fullUrl: `${API_URL}/api/auth/guest`
-    });
-    
     try {
-      console.log('🎯 STEP 1: Making guest session API request...');
       const response = await apiInstance.post('/api/auth/guest');
-      console.log('🎯 STEP 2: ✅ Guest session API request successful:', response.data);
-      
       const { access_token, token_type, expires_in, user: userProfile } = response.data;
 
-      console.log('🎯 STEP 3: Storing guest tokens...');
-      // Store tokens (no refresh token for guests) - this will sync to apiClient automatically
-      storeTokens({ 
-        access_token, 
+      storeTokens({
+        access_token,
         refresh_token: '', // Guests don't get refresh tokens
-        token_type, 
-        expires_in 
+        token_type,
+        expires_in
       });
-      console.log('🎯 STEP 3: ✅ Guest tokens stored and synchronized successfully');
-      
-      console.log('🎯 STEP 4: Setting guest user data...');
-      // Set user data (includes guest-specific info)
+
       setUser({
         ...userProfile,
         preferences: {
@@ -610,26 +507,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onboarding_completed: true
       });
       setIsAuthenticated(true);
-      console.log('🎯 STEP 4: ✅ Guest user data set successfully');
-      
-      logger.log('Guest session created successfully', { 
-        username: userProfile.username,
-        sessionType: 'guest',
-        expiresIn: expires_in 
-      });
-      console.log('🎯 STEP 5: ✅ Guest session completed successfully');
+
+      logger.log('Guest session created', { username: userProfile.username });
       return true;
     } catch (err) {
-      console.error('🎯 ❌ Guest session creation failed:', {
-        error: err,
-        status: (err as any)?.response?.status,
-        statusText: (err as any)?.response?.statusText,
-        data: (err as any)?.response?.data,
-        config: (err as any)?.config,
-        url: (err as any)?.config?.url,
-        method: (err as any)?.config?.method
-      });
-      
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.detail
           ? (err.response.data as any).detail

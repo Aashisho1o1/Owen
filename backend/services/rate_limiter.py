@@ -1,9 +1,3 @@
-"""
-Simple Rate Limiting Service for MVP
-
-Basic rate limiting with IP-based protection.
-"""
-
 import time
 import logging
 from datetime import datetime, timedelta
@@ -142,11 +136,7 @@ class SimpleRateLimiter:
         for key in keys_to_remove:
             del self.request_counts[key]
         after_cleanup = len(self.request_counts)
-        logger.info(
-            f"[{datetime.now().isoformat()}] Cleaned up {len(keys_to_remove)} old rate limit entries. "
-            f"Keys before: {before_cleanup}, after: {after_cleanup}"
-        )
-        logger.info(f"Cleaned up {len(keys_to_remove)} old rate limit entries")
+        logger.info(f"Cleaned up {len(keys_to_remove)} old rate limit entries (before: {before_cleanup}, after: {after_cleanup})")
 
 # Global instance
 rate_limiter = SimpleRateLimiter()

@@ -307,29 +307,6 @@ async def root():
             "error": "An internal error occurred while processing the request."
         }
 
-@app.post("/admin/clear-rate-limits")
-async def clear_rate_limits():
-    """Admin endpoint to clear all rate limiting data"""
-    try:
-        # Since we can't access the middleware instance directly,
-        # we'll return a message indicating the feature is not available
-        # In production, this would be handled by a separate admin API
-        return {"message": "Rate limiting data management not available in current setup"}
-    except Exception as e:
-        logger.error(f"Failed to clear rate limits: {e}")
-        return {"error": "Failed to clear rate limits"}
-
-@app.post("/admin/clear-ip-rate-limit/{ip}")
-async def clear_ip_rate_limit(ip: str):
-    """Admin endpoint to clear rate limiting data for a specific IP"""
-    try:
-        # Since we can't access the middleware instance directly,
-        # we'll return a message indicating the feature is not available
-        return {"message": f"IP rate limit management not available in current setup for IP: {ip}"}
-    except Exception as e:
-        logger.error(f"Failed to clear rate limit for IP {ip}: {e}")
-        return {"error": f"Failed to clear rate limit for IP {ip}"}
-
 @app.get("/api/health")
 async def health_check(request: Request = None):
     """
@@ -348,13 +325,16 @@ async def health_check(request: Request = None):
             logger.error("Database health check failed", exc_info=e)
             db_status = "error"
 
+    # Log startup errors server-side only — never expose to clients
+    if startup_errors:
+        logger.warning(f"Startup errors present: {startup_errors}")
+
     response_data = {
         "status": "healthy" if startup_success and db_status == 'healthy' else "unhealthy",
         "timestamp": datetime.now().isoformat(),
         "database_status": db_status,
-        "startup_errors": startup_errors,
-        "api_version": "1.2.0",  # TRACER BULLET: Check for this version
-        "deployment_verification": "CORS_FIX_APPLIED_SUCCESSFULLY" # TRACER BULLET
+        "startup_errors_count": len(startup_errors) if isinstance(startup_errors, list) else 0,
+        "api_version": "1.2.0",
     }
     
     status_code = 200 if response_data["status"] == "healthy" else 503

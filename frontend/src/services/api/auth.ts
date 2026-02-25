@@ -1,16 +1,16 @@
 /**
  * Authentication API Service
  * Handles all authentication-related API calls.
- * Extracted from api.ts as part of God File refactoring.
  */
 
 import apiClient from './client';
-import { 
-  LoginRequest, 
-  RegisterRequest, 
-  TokenResponse, 
-  UserProfile 
+import {
+  LoginRequest,
+  RegisterRequest,
+  TokenResponse,
+  UserProfile
 } from './types';
+import { logger } from '../../utils/logger';
 
 // === AUTHENTICATION ENDPOINTS ===
 
@@ -47,7 +47,7 @@ export const logoutUser = async (): Promise<{ success: boolean; message: string 
 // === TOKEN MANAGEMENT ===
 
 export const setAuthTokens = (tokenData: TokenResponse): void => {
-  console.log('💾 Storing authentication tokens with consistent prefix');
+  logger.log('Storing authentication tokens');
   localStorage.setItem('owen_access_token', tokenData.access_token);
   localStorage.setItem('owen_refresh_token', tokenData.refresh_token);
   localStorage.setItem('owen_token_type', tokenData.token_type);
@@ -55,11 +55,10 @@ export const setAuthTokens = (tokenData: TokenResponse): void => {
 };
 
 export const clearAuthTokens = (): void => {
-  console.log('🧹 Clearing all authentication tokens');
-  // Clear all possible token keys for complete cleanup
+  logger.log('Clearing all authentication tokens');
   const tokenKeys = [
     'owen_access_token',
-    'owen_refresh_token', 
+    'owen_refresh_token',
     'owen_token_type',
     'owen_token_expires',
     // Legacy keys without prefix
@@ -68,7 +67,6 @@ export const clearAuthTokens = (): void => {
     'token_type',
     'expires_at'
   ];
-  
   tokenKeys.forEach(key => localStorage.removeItem(key));
 };
 
@@ -82,8 +80,8 @@ export const getStoredTokens = (): {
     accessToken: localStorage.getItem('owen_access_token'),
     refreshToken: localStorage.getItem('owen_refresh_token'),
     tokenType: localStorage.getItem('owen_token_type'),
-    expiresAt: localStorage.getItem('owen_token_expires') 
-      ? parseInt(localStorage.getItem('owen_token_expires')!) 
+    expiresAt: localStorage.getItem('owen_token_expires')
+      ? parseInt(localStorage.getItem('owen_token_expires')!)
       : null
   };
 };
@@ -91,19 +89,7 @@ export const getStoredTokens = (): {
 export const isTokenExpired = (): boolean => {
   const expiresAt = localStorage.getItem('owen_token_expires');
   if (!expiresAt) return true;
-  
+
   const expirationTime = parseInt(expiresAt);
-  const currentTime = Date.now();
-  const isExpired = currentTime >= expirationTime;
-  
-  if (isExpired) {
-    console.log('⏰ Token has expired:', {
-      expirationTime: new Date(expirationTime).toISOString(),
-      currentTime: new Date(currentTime).toISOString(),
-      timeUntilExpiry: expirationTime - currentTime
-    });
-  }
-  
-  return isExpired;
-}; 
- 
+  return Date.now() >= expirationTime;
+};
