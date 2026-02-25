@@ -29,12 +29,15 @@ openai>=1.35.0
 # This version is known to work well with Railway's Python environment
 google-generativeai==0.7.2
 
-# HuggingFace for direct model loading and inference
-transformers==4.53.0
-huggingface-hub>=0.19.0
-torch>=2.0.0
-accelerate>=0.24.0
-bitsandbytes>=0.41.0  # For model quantization
+# Local/embedding runtime notes:
+# Railway deploys on Linux CPU and does not need CUDA builds.
+# Force CPU-only PyTorch on Linux to prevent massive CUDA downloads
+# that can cause build/push timeouts.
+torch==2.5.1+cpu; platform_system == "Linux"
+torch==2.5.1; platform_system != "Linux"
+
+# Optional local model optimization dependency (not needed on Railway CPU deploy)
+bitsandbytes>=0.41.0; platform_system != "Linux"
 
 # Database (PostgreSQL only - production ready)
 psycopg2-binary==2.9.9

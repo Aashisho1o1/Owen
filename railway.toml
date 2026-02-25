@@ -13,4 +13,4 @@ path = "/api/health"
 # PRODUCTION MODE - Direct server startup
 [environments.production]
 startCommand = "cd backend && chmod +x start.sh && ./start.sh"
-buildCommand = "cd backend && pip install -r requirements.txt" 
+buildCommand = "cd backend && pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt"
