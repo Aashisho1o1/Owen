@@ -202,6 +202,7 @@ ALLOWED_ORIGINS = [
     "https://frontend-production-e178.up.railway.app",  # OLD: Keep as backup
     "https://frontend-production-88b0.up.railway.app",  # OLD: Keep as backup
     "https://owen-ai-writer.vercel.app",               # Vercel deployment
+    "https://owen-snowy.vercel.app",                   # Current Vercel deployment
     # Local development origins
     "http://localhost:3000", "http://localhost:3001", 
     "http://localhost:4173", "http://localhost:5173", "http://localhost:5174",
